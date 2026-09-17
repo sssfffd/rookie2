@@ -1,0 +1,44 @@
+{
+  // 확장 프로그램 없이 돌아가는 작업들입니다.
+  // Ctrl+Shift+B 로 기본 빌드를 실행합니다.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "빌드 (Release)",
+      "type": "shell",
+      "windows": { "command": "${workspaceFolder}\\build.bat", "args": ["Release"] },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "빌드 (Debug)",
+      "type": "shell",
+      "windows": { "command": "${workspaceFolder}\\build.bat", "args": ["Debug"] },
+      "group": "build",
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "빌드만 (테스트 건너뛰기)",
+      "type": "shell",
+      "windows": { "command": "${workspaceFolder}\\build.bat", "args": ["Release", "nt"] },
+      "group": "build",
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "실행",
+      "type": "shell",
+      "windows": { "command": "${workspaceFolder}\\out\\LogScope.exe" },
+      "dependsOn": "빌드 (Release)",
+      "problemMatcher": []
+    },
+    {
+      "label": "테스트만",
+      "type": "shell",
+      "windows": {
+        "command": "${workspaceFolder}\\src\\LogScope.Tests\\bin\\Release\\LogScope.Tests.exe"
+      },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

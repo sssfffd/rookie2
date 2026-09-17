@@ -1,0 +1,19 @@
+{
+  "files.encoding": "utf8",
+  "files.eol": "\r\n",
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "out": true,
+    "build": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "out": true
+  },
+  "[csharp]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  }
+}
