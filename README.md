@@ -93,7 +93,31 @@ docs/                    보안 메모, 구조 설명
 
 ---
 
-## 4. 빌드하는 세 가지 방법
+## 4. 어느 것을 빌드하고, 실행 파일은 어디에 생기나
+
+솔루션에 프로젝트가 셋 있습니다. **직접 고를 필요는 없습니다** — `LogScope.App`
+하나만 빌드하면 나머지는 따라옵니다.
+
+| 프로젝트 | 무엇 | 결과물 |
+|---|---|---|
+| **LogScope.App** | **실행 파일. 이게 시작 프로젝트입니다** | `LogScope.exe` |
+| LogScope.Core | App 이 참조하는 라이브러리 (자동으로 같이 빌드됨) | `LogScope.Core.dll` |
+| LogScope.Tests | 콘솔 자체 테스트 (실행 파일과 무관) | `LogScope.Tests.exe` |
+
+### 실행 파일 위치
+
+```
+out\LogScope.exe                           <- build.bat 을 돌린 뒤. 이 폴더째 복사하면 됩니다
+src\LogScope.App\bin\Release\LogScope.exe   <- Release 로 빌드한 자리
+src\LogScope.App\bin\Debug\LogScope.exe     <- Visual Studio 에서 F5 로 돌릴 때
+```
+
+### Visual Studio 에서 F5 가 엉뚱한 걸 실행한다면
+
+솔루션 탐색기에서 **LogScope.App 을 오른쪽 클릭 → "시작 프로젝트로 설정"**.
+(`LogScope.Tests` 가 시작 프로젝트로 잡혀 있으면 콘솔 창만 뜹니다.)
+
+## 5. 빌드하는 네 가지 방법
 
 **(1) build.bat** — 가장 간단합니다. MSBuild 를 스스로 찾아 빌드하고 테스트까지 돌립니다.
 
@@ -117,7 +141,13 @@ cmake --build build --config Release
 
 ---
 
-## 5. 버전
+### 빌드가 실패하면
+
+`build.bat` 은 모든 출력을 **`build.log`** 에 남깁니다. 창이 닫혀 버려도 그
+파일을 열어 보면 됩니다. 더블클릭으로 실행한 경우에는 끝나고 창을 붙들어
+두므로 오류를 그 자리에서 읽을 수 있습니다.
+
+## 6. 버전
 
 버전은 `version.txt` **한 곳**에만 있습니다.
 빌드할 때 `tools/BuildInfo.targets` 가 그 값과 `git rev-parse` 결과를 읽어
@@ -128,7 +158,7 @@ cmake --build build --config Release
 
 ---
 
-## 6. 조작 방법
+## 7. 조작 방법
 
 | 하고 싶은 것 | 방법 |
 |---|---|
@@ -150,7 +180,7 @@ cmake --build build --config Release
 
 ---
 
-## 7. 알아 둘 점 / 아직 못 한 것
+## 8. 알아 둘 점 / 아직 못 한 것
 
 - 모니터별 DPI 는 `App.config` 의 스위치로 켭니다. 그 PC 에 .NET Framework
   4.6.2 이상이 깔려 있어야 동작합니다 (윈도우 10/11 은 4.8 이 기본).

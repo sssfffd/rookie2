@@ -15,9 +15,15 @@ namespace LogScope.App.Themes
         private const string LightUri = "pack://application:,,,/Themes/Light.xaml";
         private const string DarkUri = "pack://application:,,,/Themes/Dark.xaml";
 
-        /// <summary>그래프를 직접 그릴 때 쓰는 색. 테마를 바꾸면 같이 바뀝니다.</summary>
-        public static Palette Palette = Palette.Light();
+        // 필드 이름과 형식 이름이 똑같으면(Palette Palette) 컴파일러가
+        // 어느 쪽인지 따지느라 헷갈리기 쉬운 자리가 됩니다. 뒤쪽 형식은
+        // 전부 Themes.Palette 로 또렷하게 적습니다.
+        private static Palette _palette = Themes.Palette.Light();
 
+        /// <summary>그래프를 직접 그릴 때 쓰는 색. 테마를 바꾸면 같이 바뀝니다.</summary>
+        public static Palette Palette { get { return _palette; } }
+
+        /// <summary>지금 쓰는 테마 이름 ("light" 또는 "dark").</summary>
         public static string Current { get; private set; }
 
         /// <summary>테마가 바뀌면 불립니다. 직접 그리는 화면은 여기서 다시 그립니다.</summary>
@@ -32,7 +38,7 @@ namespace LogScope.App.Themes
         {
             bool dark = string.Equals(name, "dark", StringComparison.OrdinalIgnoreCase);
             Current = dark ? "dark" : "light";
-            Palette = dark ? Palette.Dark() : Palette.Light();
+            _palette = dark ? Themes.Palette.Dark() : Themes.Palette.Light();
 
             Application app = Application.Current;
             if (app != null)
