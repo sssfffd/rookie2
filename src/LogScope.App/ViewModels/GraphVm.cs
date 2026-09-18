@@ -44,7 +44,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || S.LaneMode == value) return;   // 라디오는 켤 때만 반응
                 S.LaneMode = true;
-                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint");
+                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint"); Raise("ScaleHintDetail");
                 Changed();
             }
         }
@@ -56,7 +56,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || !S.LaneMode) return;
                 S.LaneMode = false;
-                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint");
+                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint"); Raise("ScaleHintDetail");
                 Changed();
             }
         }
@@ -68,12 +68,12 @@ namespace LogScope.App.ViewModels
             if (S.ValueScaleMode == mode) return;
             S.ValueScaleMode = mode;
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
-            Raise("ScaleHint");
+            Raise("ScaleHint"); Raise("ScaleHintDetail");
             Changed();
         }
 
         /// <summary>
-        /// 세로 눈금 모드가 지금 그림을 실제로 바꾸는지 알려 주는 한 줄.
+        /// 세로 눈금 모드가 지금 그림을 실제로 바꾸는지 알려 주는 짧은 글.
         ///
         /// <b>레인 보기에서는 세 모드가 똑같은 그림을 그립니다.</b> 우연이
         /// 아니라 계산상 반드시 그렇습니다. 레인은 그 채널의 값 범위에 딱
@@ -91,15 +91,38 @@ namespace LogScope.App.ViewModels
         ///
         /// 겹쳐보기에서는 여러 채널이 눈금 하나를 같이 써서, 채널마다 다른
         /// 변환이 걸리므로 그림이 실제로 달라집니다.
+        ///
+        /// <b>글을 짧게 두는 이유</b>가 있습니다. 이 글은 도구 줄 안에 있고,
+        /// 도구 줄은 좁아지면 저절로 줄을 바꾸는 WrapPanel 입니다. 긴 문장이
+        /// 나타났다 사라졌다 하면 그때마다 도구 줄 전체가 다시 접혀서, 단추를
+        /// 누를 때마다 줄 수가 바뀝니다. 그래서 짧게 적고, 긴 설명은
+        /// ScaleHintDetail 로 넘겨 풍선 도움말에만 띄웁니다.
+        /// 자리도 XAML 에서 고정 너비로 잡아 두어, 글이 없을 때도 폭이
+        /// 그대로라 도구 줄이 움직이지 않습니다.
         /// </summary>
         public string ScaleHint
         {
             get
             {
                 if (ScaleRaw) return string.Empty;
+                return S.LaneMode ? "레인에선 눈금 숫자만 바뀜" : "채널마다 따로 변환됨";
+            }
+        }
+
+        /// <summary>풍선 도움말에 띄울 긴 설명. ScaleHint 의 자세한 판입니다.</summary>
+        public string ScaleHintDetail
+        {
+            get
+            {
+                if (ScaleRaw) return null;
                 return S.LaneMode
-                    ? "레인 보기에서는 눈금에 적히는 숫자만 바뀝니다. 그림이 달라지는 것은 겹쳐보기입니다."
-                    : "겹쳐보기라 채널마다 따로 변환됩니다. 값 크기가 다른 채널끼리 모양을 견줄 수 있습니다.";
+                    ? "레인 보기에서는 세 모드가 같은 그림을 그립니다.\n"
+                      + "값과 눈금에 똑같은 변환을 걸기 때문에 화면 좌표가 바뀌지 않고,\n"
+                      + "눈금에 적히는 숫자만 바뀝니다 (6466.3 대신 +0.3).\n"
+                      + "그림이 달라지는 것은 겹쳐보기입니다."
+                    : "겹쳐보기라 채널마다 따로 변환됩니다.\n"
+                      + "여러 채널이 눈금 하나를 같이 쓰므로,\n"
+                      + "값 크기나 값 위치가 다른 채널끼리 모양을 견줄 수 있습니다.";
             }
         }
 
@@ -153,7 +176,7 @@ namespace LogScope.App.ViewModels
                 if (v < 0 || v > 100 || S.RelativeTolerancePercent == v) return;
                 S.RelativeTolerancePercent = v;
                 Raise();
-                Raise("ToleranceHint");
+                Raise("ToleranceHint"); Raise("ToleranceHintDetail");
                 Changed();
             }
         }
@@ -162,15 +185,41 @@ namespace LogScope.App.ViewModels
         public double AbsoluteTolerance { get { return S.AbsoluteTolerance; } }
 
         /// <summary>도구 줄 옆에 붙는 설명. 절대 오차도 걸려 있으면 같이 알려 줍니다.</summary>
+        /// <summary>
+        /// 도구 줄에 적는 짧은 안내.
+        ///
+        /// ScaleHint 와 같은 이유로 짧게 둡니다 — 길이가 들쭉날쭉하면 도구 줄이
+        /// 다시 접혀서, 숫자를 고칠 때마다 단추들이 아래로 내려갑니다.
+        /// 절대 오차까지 걸려 있는지는 여기서 한 글자로만 알리고, 자세한 것은
+        /// ToleranceHintDetail 이 풍선 도움말로 보여 줍니다.
+        /// </summary>
         public string ToleranceHint
         {
             get
             {
-                string s = "값 범위의 " + S.RelativeTolerancePercent.ToString("0.####",
-                            CultureInfo.InvariantCulture) + "% 까지는 같은 것으로 봅니다";
+                // 두 글 모두 XAML 에 잡아 둔 고정 폭 안에 들어가야 합니다.
+                // 넘치면 끝이 "…" 로 잘립니다.
+                return S.AbsoluteTolerance > 0
+                    ? "까지는 같은 값 + 절대 오차"
+                    : "까지는 같은 값";
+            }
+        }
+
+        /// <summary>풍선 도움말에 띄울 긴 설명.</summary>
+        public string ToleranceHintDetail
+        {
+            get
+            {
+                string s = "채널 값 크기의 "
+                         + S.RelativeTolerancePercent.ToString("0.####", CultureInfo.InvariantCulture)
+                         + "% 까지는 같은 것으로 봅니다.";
                 if (S.AbsoluteTolerance > 0)
-                    s += " (절대 " + S.AbsoluteTolerance.ToString("0.######",
-                          CultureInfo.InvariantCulture) + " 과 비교해 큰 쪽)";
+                    s += "\n절대 오차 "
+                       + S.AbsoluteTolerance.ToString("0.######", CultureInfo.InvariantCulture)
+                       + " 과 비교해 큰 쪽이 기준이 됩니다.";
+                s += "\n\n무엇의 몇 % 인지는 채널마다 다릅니다 —"
+                   + "\n값이 오르내린 폭과 값의 크기 중 큰 쪽입니다."
+                   + "\n실제로 쓰인 기준값은 대시보드의 기준값 칸에서 볼 수 있습니다.";
                 return s;
             }
         }
@@ -220,8 +269,8 @@ namespace LogScope.App.ViewModels
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
             Raise("LaneMode"); Raise("OverlayMode");
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
-            Raise("ScaleHint"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
-            Raise("RelativeTolerancePercentText"); Raise("ToleranceHint");
+            Raise("ScaleHint"); Raise("ScaleHintDetail"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
+            Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");
         }
     }
 }

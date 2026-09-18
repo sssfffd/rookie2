@@ -20,3 +20,4 @@
 | `11-build-bat-encoding.md` | chcp 65001 이 왜 틀린 방법이었는지, CP949 로 바꾼 이야기 |
 | `12-tolerance-base.md` | 1% 의 밑값이 잘못돼 있던 것, 세로 눈금 세 모드가 같아 보이던 이유 |
 | `13-shadowing-check.md` | 제가 낸 컴파일 오류와, 그걸 잡으려고 만든 검사 |
+| `14-toolbar-reflow.md` | 안내 글 때문에 도구 줄이 접혔다 펴졌다 하던 것 |

@@ -291,3 +291,11 @@
 > jump라는 local이나 parameter가 선언 안되었다는데
 
 → 답변: [13-shadowing-check.md](13-shadowing-check.md)
+
+---
+
+## 요청 17 — 눈금 단추를 누르면 메뉴 바에 줄바꿈이 생김
+
+> 그리고 기존값이랑 정규화 변화량 눌렀을때 메뉴 바 줄바꿈이 생기는데 이거 왜이래
+
+→ 답변: [14-toolbar-reflow.md](14-toolbar-reflow.md)
