@@ -222,11 +222,41 @@ namespace LogScope.Core.Compare
             return v.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        /// <summary>차이량 기준으로 정렬합니다. 값이 같으면 이름 순.</summary>
         public static void SortByMetric(List<ChannelDiff> items, DiffMetric m)
+        {
+            SortByMetric(items, m, true);
+        }
+
+        public static void SortByMetric(List<ChannelDiff> items, DiffMetric m, bool descending)
         {
             items.Sort(delegate (ChannelDiff a, ChannelDiff b)
             {
-                int c = b.Value(m).CompareTo(a.Value(m));
+                int c = descending
+                    ? b.Value(m).CompareTo(a.Value(m))
+                    : a.Value(m).CompareTo(b.Value(m));
+                if (c != 0) return c;
+                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+            });
+        }
+
+        /// <summary>IO 이름 순으로 정렬합니다.</summary>
+        public static void SortByName(List<ChannelDiff> items, bool ascending)
+        {
+            items.Sort(delegate (ChannelDiff a, ChannelDiff b)
+            {
+                int c = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                return ascending ? c : -c;
+            });
+        }
+
+        /// <summary>"값 다름 / 상태 다름" 구분으로 정렬합니다.</summary>
+        public static void SortByKind(List<ChannelDiff> items, bool ascending)
+        {
+            items.Sort(delegate (ChannelDiff a, ChannelDiff b)
+            {
+                int c = a.ByName.CompareTo(b.ByName);
+                if (!ascending) c = -c;
                 if (c != 0) return c;
                 return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
             });

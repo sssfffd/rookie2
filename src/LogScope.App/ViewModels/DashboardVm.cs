@@ -5,6 +5,7 @@ using System.IO;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
 using LogScope.Core.Compare;
+using LogScope.Core.Settings;
 
 namespace LogScope.App.ViewModels
 {
@@ -22,6 +23,53 @@ namespace LogScope.App.ViewModels
     }
 
     /// <summary>
+    /// 목록의 제목 칸 하나. 누르면 그 기준으로 정렬되고, 지금 정렬 중인
+    /// 칸에는 삼각형이 붙습니다 (내림차순이면 아래, 오름차순이면 위).
+    /// </summary>
+    public sealed class ColumnHeaderVm : ObservableObject
+    {
+        /// <summary>0 = 차이량(Metric), 1 = IO 이름, 2 = 구분.</summary>
+        public int Kind { get; private set; }
+
+        public DiffMetric Metric { get; private set; }
+        public string Text { get; private set; }
+
+        private ColumnHeaderVm(int kind, DiffMetric metric, string text)
+        {
+            Kind = kind; Metric = metric; Text = text;
+        }
+
+        public static ColumnHeaderVm ForMetric(DiffMetric m, string text)
+        {
+            return new ColumnHeaderVm(0, m, text);
+        }
+
+        public static ColumnHeaderVm ForName(string text)
+        {
+            return new ColumnHeaderVm(1, DiffMetric.MaxAbs, text);
+        }
+
+        public static ColumnHeaderVm ForKind(string text)
+        {
+            return new ColumnHeaderVm(2, DiffMetric.MaxAbs, text);
+        }
+
+        private bool _isSorted;
+        public bool IsSorted
+        {
+            get { return _isSorted; }
+            set { Set(ref _isSorted, value); }
+        }
+
+        private bool _descending = true;
+        public bool Descending
+        {
+            get { return _descending; }
+            set { Set(ref _descending, value); }
+        }
+    }
+
+    /// <summary>
     /// 대시보드. 프로그램을 켜면 먼저 나오는 화면입니다.
     /// 이전/이후를 견준 결과를 네모 칸으로 요약하고, 차이가 난 IO 목록과
     /// 한쪽에만 있는 IO 목록을 보여 줍니다.
@@ -33,6 +81,7 @@ namespace LogScope.App.ViewModels
         public DashboardVm(AppState state)
         {
             _state = state;
+            BuildHeaders();
             Refresh();
         }
 
@@ -118,17 +167,84 @@ namespace LogScope.App.ViewModels
 
         public IEnumerable<string> Metrics { get { return MetricNames; } }
 
-        public int SortMetricIndex
+        // 목록 제목 칸들. XAML 이 이 객체를 GridViewColumn.Header 로 씁니다.
+        public ColumnHeaderVm ColName { get; private set; }
+        public ColumnHeaderVm ColKind { get; private set; }
+        public ColumnHeaderVm ColMax { get; private set; }
+        public ColumnHeaderVm ColMean { get; private set; }
+        public ColumnHeaderVm ColRms { get; private set; }
+        public ColumnHeaderVm ColArea { get; private set; }
+        public ColumnHeaderVm ColTime { get; private set; }
+        public ColumnHeaderVm ColSegments { get; private set; }
+
+        private List<ColumnHeaderVm> _headers;
+
+        private void BuildHeaders()
         {
-            get { return (int)_state.Settings.SortMetric; }
-            set
+            ColName = ColumnHeaderVm.ForName("IO 이름");
+            ColKind = ColumnHeaderVm.ForKind("구분");
+            ColMax = ColumnHeaderVm.ForMetric(DiffMetric.MaxAbs, "최대 차이");
+            ColMean = ColumnHeaderVm.ForMetric(DiffMetric.MeanAbs, "평균 차이");
+            ColRms = ColumnHeaderVm.ForMetric(DiffMetric.Rms, "RMS");
+            ColArea = ColumnHeaderVm.ForMetric(DiffMetric.Area, "차이 면적");
+            ColTime = ColumnHeaderVm.ForMetric(DiffMetric.TimeRatio, "차이 시간");
+            ColSegments = ColumnHeaderVm.ForMetric(DiffMetric.SegmentCount, "구간 수");
+
+            _headers = new List<ColumnHeaderVm>
             {
-                if (value < 0 || value > 6 || (int)_state.Settings.SortMetric == value) return;
-                _state.Settings.SortMetric = (DiffMetric)value;
-                if (_state.Comparison != null)
-                    DiffEngine.SortByMetric(_state.Comparison.Items, _state.Settings.SortMetric);
-                Raise();
-                FillChanged();
+                ColName, ColKind, ColMax, ColMean, ColRms, ColArea, ColTime, ColSegments
+            };
+            MarkSorted();
+        }
+
+        /// <summary>지금 정렬 중인 칸에만 삼각형이 붙도록 표시를 맞춥니다.</summary>
+        private void MarkSorted()
+        {
+            AppSettings s = _state.Settings;
+            foreach (ColumnHeaderVm h in _headers)
+            {
+                bool on = h.Kind == s.SortColumn
+                          && (h.Kind != 0 || h.Metric == s.SortMetric);
+                h.IsSorted = on;
+                h.Descending = s.SortDescending;
+            }
+        }
+
+        /// <summary>
+        /// 제목 칸을 눌렀을 때. 같은 칸을 다시 누르면 방향이 뒤집힙니다.
+        /// 차이량은 큰 값이 위로 오는 게 보통이라 내림차순으로 시작하고,
+        /// 이름은 가나다순이 자연스러우니 오름차순으로 시작합니다.
+        /// </summary>
+        public void SortBy(ColumnHeaderVm header)
+        {
+            if (header == null) return;
+            AppSettings s = _state.Settings;
+
+            bool same = header.Kind == s.SortColumn
+                        && (header.Kind != 0 || header.Metric == s.SortMetric);
+
+            if (same) s.SortDescending = !s.SortDescending;
+            else
+            {
+                s.SortColumn = header.Kind;
+                if (header.Kind == 0) s.SortMetric = header.Metric;
+                s.SortDescending = header.Kind == 0;   // 차이량은 큰 값부터
+            }
+
+            ApplySort();
+            MarkSorted();
+            FillChanged();
+        }
+
+        private void ApplySort()
+        {
+            if (_state.Comparison == null) return;
+            AppSettings s = _state.Settings;
+            switch (s.SortColumn)
+            {
+                case 1: DiffEngine.SortByName(_state.Comparison.Items, !s.SortDescending); break;
+                case 2: DiffEngine.SortByKind(_state.Comparison.Items, !s.SortDescending); break;
+                default: DiffEngine.SortByMetric(_state.Comparison.Items, s.SortMetric, s.SortDescending); break;
             }
         }
 
@@ -173,9 +289,10 @@ namespace LogScope.App.ViewModels
 
             Warning = c != null ? c.Warning : string.Empty;
 
+            ApplySort();
+            MarkSorted();
             FillChanged();
             FillOnly();
-            Raise("SortMetricIndex");
         }
 
         private string LoadSummary()

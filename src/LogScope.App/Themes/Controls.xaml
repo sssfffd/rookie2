@@ -390,25 +390,58 @@
         </Setter>
     </Style>
 
+    <!-- 목록 제목 칸. 누르면 그 기준으로 정렬되므로 손 모양 커서를 답니다. -->
     <Style TargetType="{x:Type GridViewColumnHeader}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type GridViewColumnHeader}">
-                    <Border Background="{DynamicResource Brush.PanelAlt}"
+                    <Border x:Name="Bd" Background="{DynamicResource Brush.PanelAlt}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                             Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="Center" />
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{DynamicResource Brush.AccentSoft}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background"
+                                    Value="{DynamicResource Brush.AccentSoft}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- 제목 칸의 내용. 지금 정렬 중인 칸에만 삼각형이 붙습니다.
+         내림차순(큰 값이 위)이면 아래쪽, 오름차순이면 위쪽 삼각형입니다. -->
+    <DataTemplate x:Key="SortHeader">
+        <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="Label" Text="{Binding Text}" VerticalAlignment="Center" />
+            <Path x:Name="Marker" Width="9" Height="6" Margin="6,1,0,0"
+                  VerticalAlignment="Center" Visibility="Collapsed"
+                  Fill="{DynamicResource Brush.Accent}"
+                  Data="M 0 0 L 9 0 L 4.5 6 Z" />
+        </StackPanel>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsSorted}" Value="True">
+                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
+                <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Descending}" Value="False">
+                <Setter TargetName="Marker" Property="Data" Value="M 0 6 L 9 6 L 4.5 0 Z" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
 
     <Style TargetType="{x:Type ListView}">
         <Setter Property="Background" Value="{DynamicResource Brush.Window}" />

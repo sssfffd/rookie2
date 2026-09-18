@@ -12,3 +12,4 @@
 | `03-wpf-rewrite.md` | WinForms 에서 WPF 로 바꾸면서 달라진 것 |
 | `04-heatmap.md` | 히트맵 화면 — 지표를 왜 "절대 차이의 평균" 으로 골랐는지 |
 | `05-tolerance.md` | 허용 오차 — 왜 절대값이 아니라 값 범위의 % 인지 |
+| `06-graph-and-sorting.md` | 확대하면 선이 사라지던 버그, 화질, 제목 클릭 정렬 |

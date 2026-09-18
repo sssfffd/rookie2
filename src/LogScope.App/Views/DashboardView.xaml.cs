@@ -1,4 +1,5 @@
 using System;
+using System.Windows;
 using System.Windows.Controls;
 using LogScope.App.ViewModels;
 
@@ -31,6 +32,20 @@ namespace LogScope.App.Views
             if (string.IsNullOrEmpty(name)) return;
             EventHandler<IoEventArgs> h = IoActivated;
             if (h != null) h(this, new IoEventArgs(name));
+        }
+
+        /// <summary>목록 제목 칸을 눌렀을 때. 그 기준으로 정렬합니다.</summary>
+        private void OnHeaderClick(object sender, RoutedEventArgs e)
+        {
+            var header = e.OriginalSource as GridViewColumnHeader;
+            if (header == null) return;
+
+            // 맨 오른쪽 여백(패딩용 칸)에는 Header 가 없습니다.
+            var column = header.Content as ColumnHeaderVm;
+            if (column == null) return;
+
+            var vm = DataContext as DashboardVm;
+            if (vm != null) vm.SortBy(column);
         }
 
         private void OnChangedSelected(object sender, SelectionChangedEventArgs e)

@@ -62,6 +62,15 @@ namespace LogScope.Core.Settings
         public double RelativeTolerancePercent = ToleranceRule.DefaultPercent;
         public double AbsoluteTolerance;
         public DiffMetric SortMetric = DiffMetric.MaxAbs;
+
+        /// <summary>목록 정렬 방향. 참이면 큰 값이 위로.</summary>
+        public bool SortDescending = true;
+
+        /// <summary>
+        /// 차이량이 아니라 이름/구분으로 정렬 중이면 그 값.
+        /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분.
+        /// </summary>
+        public int SortColumn;
         public bool AutoAlign = true;
         public double ManualShift;
         public bool ShadeDifference = true;
@@ -137,6 +146,8 @@ namespace LogScope.Core.Settings
             root["relativeTolerancePercent"] = RelativeTolerancePercent;
             root["absoluteTolerance"] = AbsoluteTolerance;
             root["sortMetric"] = (double)(int)SortMetric;
+            root["sortDescending"] = SortDescending;
+            root["sortColumn"] = (double)SortColumn;
             root["autoAlign"] = AutoAlign;
             root["manualShift"] = ManualShift;
             root["shadeDifference"] = ShadeDifference;
@@ -204,6 +215,9 @@ namespace LogScope.Core.Settings
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 6) metric = 0;
             s.SortMetric = (DiffMetric)metric;
+            s.SortDescending = Json.GetBool(root, "sortDescending", true);
+            s.SortColumn = Json.GetInt(root, "sortColumn", 0);
+            if (s.SortColumn < 0 || s.SortColumn > 2) s.SortColumn = 0;
             s.AutoAlign = Json.GetBool(root, "autoAlign", true);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);
             s.ShadeDifference = Json.GetBool(root, "shadeDifference", true);

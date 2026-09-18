@@ -64,7 +64,22 @@ namespace LogScope.App.Controls
 
         private Decimator.Column[] _colsBefore = new Decimator.Column[0];
         private Decimator.Column[] _colsAfter = new Decimator.Column[0];
+        private float[] _bandBefore = new float[0];
+        private float[] _bandAfter = new float[0];
         private readonly List<Point> _pts = new List<Point>(4096);
+
+        // WPF 의 좌표 단위는 픽셀이 아니라 DIP(1/96 인치) 입니다. 화면 배율이
+        // 150% 면 1000 DIP 가 실제로는 1500 픽셀입니다. 접을 열 수를 DIP 로
+        // 세면 실제 픽셀의 2/3 만 쓰게 되어 파형이 뭉개져 보입니다.
+        private double _pixelsPerDip = 1.0;
+
+        private void RefreshPixelsPerDip()
+        {
+            PresentationSource src = PresentationSource.FromVisual(this);
+            if (src == null || src.CompositionTarget == null) { _pixelsPerDip = 1.0; return; }
+            double m = src.CompositionTarget.TransformToDevice.M11;
+            _pixelsPerDip = (m > 0.2 && m < 8) ? m : 1.0;
+        }
 
         private readonly Typeface _face = new Typeface("Segoe UI");
         private const double FontNormal = 12.0;
@@ -75,7 +90,6 @@ namespace LogScope.App.Controls
             Focusable = true;
             ClipToBounds = true;
             // 1 픽셀 선이 흐려지지 않게 합니다. 파형은 또렷해야 읽힙니다.
-            RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
             ThemeManager.Changed += delegate { InvalidateVisual(); };
         }
 
@@ -348,7 +362,8 @@ namespace LogScope.App.Controls
             UpdateScrollInfo(needed, plot.Height);
             double scrollY = needed > plot.Height ? VerticalOffset : 0;
 
-            int columns = (int)Math.Max(1, Math.Floor(plot.Width));
+            RefreshPixelsPerDip();
+            int columns = (int)Math.Max(1, Math.Floor(plot.Width * _pixelsPerDip));
             EnsureBuffers(columns);
 
             dc.PushClip(new RectangleGeometry(new Rect(0, 0, ActualWidth, plot.Bottom)));
@@ -405,7 +420,34 @@ namespace LogScope.App.Controls
             {
                 _colsBefore = new Decimator.Column[columns];
                 _colsAfter = new Decimator.Column[columns];
+                _bandBefore = new float[columns];
+                _bandAfter = new float[columns];
             }
+        }
+
+        /// <summary>열 번호를 화면 가로 좌표(DIP)로.</summary>
+        private double ColumnToX(Rect inner, int column)
+        {
+            return inner.Left + column / _pixelsPerDip;
+        }
+
+        /// <summary>
+        /// 1 픽셀짜리 선을 장치 픽셀 한가운데로 맞춥니다.
+        /// 예전에는 요소 전체를 EdgeMode.Aliased 로 두어 눈금선을 또렷하게
+        /// 했는데, 그러면 비스듬한 파형까지 계단처럼 보였습니다. 지금은 파형은
+        /// 부드럽게 두고 눈금선만 이 함수로 맞춥니다.
+        /// </summary>
+        private double Snap(double v)
+        {
+            return (Math.Round(v * _pixelsPerDip) + 0.5) / _pixelsPerDip;
+        }
+
+        /// <summary>시각을 화면 가로 좌표(DIP)로. t0/t1 은 그 로그의 시간 기준입니다.</summary>
+        private static double TimeToXIn(Rect inner, double t, double t0, double t1)
+        {
+            double span = t1 - t0;
+            if (!(span > 0)) return inner.Left;
+            return inner.Left + (t - t0) / span * inner.Width;
         }
 
         private FormattedText Text(string s, double size, Brush brush)
@@ -636,9 +678,9 @@ namespace LogScope.App.Controls
             bool haveB = vm.InBefore && _state.Before != null;
             bool haveA = vm.InAfter && _state.After != null;
 
-            if (haveB) Decimator.Build(_state.Before, vm.BeforeIndex, _t0, _t1, _colsBefore, columns);
-            if (haveA) Decimator.Build(_state.After, vm.AfterIndex,
-                                       _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, _colsAfter, columns);
+            double shift = _state.AppliedShift;
+            double bt0 = _t0, bt1 = _t1;                  // 이전 로그의 시간 기준
+            double at0 = _t0 - shift, at1 = _t1 - shift;  // 이후 로그의 시간 기준
 
             double sep = _separate ? inner.Height * 0.02 : 0.0;
 
@@ -647,20 +689,106 @@ namespace LogScope.App.Controls
                 Channel bch = _state.Before.Channels[vm.BeforeIndex];
                 Channel ach = _state.After.Channels[vm.AfterIndex];
                 double tol = ToleranceRule.For(bch, ach, _absoluteTolerance, _relativeTolerance);
+
+                // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
+                // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.
+                Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
+                Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
                 ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep, tol);
             }
 
-            if (haveB) DrawTrace(dc, inner, _colsBefore, columns, vlo, vhi, chLo, chHi, baseline, beforePen, -sep);
-            if (haveA) DrawTrace(dc, inner, _colsAfter, columns, vlo, vhi, chLo, chHi, baseline, afterPen, +sep);
+            if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1,
+                                _colsBefore, columns, vlo, vhi, chLo, chHi, baseline, beforePen, -sep);
+            if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1,
+                                _colsAfter, columns, vlo, vhi, chLo, chHi, baseline, afterPen, +sep);
         }
 
         /// <summary>
-        /// 열 요약을 선 하나로 만들어 그립니다. 값이 끊긴 자리(NaN)에서는
-        /// 도형을 끊어 선을 잇지 않습니다.
+        /// 한쪽 로그의 선 하나. 표본이 픽셀보다 촘촘한지 성긴지에 따라
+        /// 그리는 방식을 바꿉니다.
+        ///
+        /// 촘촘하면 열마다 최소/최대만 뽑아 그립니다(Decimator). 그러지 않으면
+        /// 한 픽셀 폭에 수천 번 선을 긋게 됩니다.
+        ///
+        /// 성기면 <b>표본을 그대로</b> 잇습니다. 예전에는 이때도 접어서 그렸는데,
+        /// 표본이 없는 열을 "값이 끊긴 자리" 로 보고 선을 끊는 바람에 표본마다
+        /// 점 하나짜리 도형이 되어 <b>아무것도 안 보였습니다</b>. 확대할수록
+        /// 심해지던 그 증상이 이것입니다.
         /// </summary>
-        private void DrawTrace(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns,
-                               double vlo, double vhi, double chLo, double chHi,
-                               double baseline, Pen pen, double dy)
+        private void DrawSide(DrawingContext dc, Rect inner, LogDataset ds, int ch,
+                              double t0, double t1, Decimator.Column[] cols, int columns,
+                              double vlo, double vhi, double chLo, double chHi,
+                              double baseline, Pen pen, double dy)
+        {
+            int first, last;
+            if (!Decimator.VisibleRange(ds, t0, t1, out first, out last)) return;
+
+            long visible = (long)last - first + 1;
+            if (visible <= columns)
+                DrawSamples(dc, inner, ds, ch, first, last, t0, t1, vlo, vhi, chLo, chHi, baseline, pen, dy);
+            else
+            {
+                Decimator.Build(ds, ch, t0, t1, cols, columns);
+                DrawColumns(dc, inner, cols, columns, vlo, vhi, chLo, chHi, baseline, pen, dy);
+            }
+        }
+
+        /// <summary>
+        /// 표본을 그대로 잇습니다. 디지털과 상태 채널은 계단으로 그립니다 —
+        /// 값이 다음 표본까지 그대로 유지되다가 거기서 한 번에 바뀌는 것이므로,
+        /// 비스듬한 선으로 이으면 없던 중간값을 그린 셈이 됩니다.
+        /// </summary>
+        private void DrawSamples(DrawingContext dc, Rect inner, LogDataset ds, int ch,
+                                 int first, int last, double t0, double t1,
+                                 double vlo, double vhi, double chLo, double chHi,
+                                 double baseline, Pen pen, double dy)
+        {
+            Channel c = ds.Channels[ch];
+            float[] v = c.Values;
+            double[] times = ds.Times;
+            bool stepped = c.IsStepped;
+
+            double top = inner.Top - 4, bottom = inner.Bottom + 4;
+            var geo = new StreamGeometry();
+
+            using (StreamGeometryContext ctx = geo.Open())
+            {
+                bool open = false;
+                _pts.Clear();
+
+                for (int i = first; i <= last; i++)
+                {
+                    float value = v[i];
+                    if (float.IsNaN(value)) { if (open) Flush(ctx, ref open); continue; }
+
+                    double x = TimeToXIn(inner, times[i], t0, t1);
+                    double y = Clamp(ValueToY(Transform(value, chLo, chHi, baseline), inner, vlo, vhi) + dy,
+                                     top, bottom);
+
+                    if (!open) { ctx.BeginFigure(new Point(x, y), false, false); open = true; }
+                    else _pts.Add(new Point(x, y));
+
+                    // 계단: 다음 표본 시각까지 이 값을 그대로 끌고 갑니다.
+                    // 그 다음 바퀴가 세로 변을 그립니다.
+                    if (stepped && i < last && !float.IsNaN(v[i + 1]))
+                        _pts.Add(new Point(TimeToXIn(inner, times[i + 1], t0, t1), y));
+                }
+                if (open) Flush(ctx, ref open);
+            }
+
+            geo.Freeze();
+            dc.DrawGeometry(null, pen, geo);
+        }
+
+        /// <summary>
+        /// 접은 열을 그립니다. 열마다 최대 네 점(첫값 / 위끝 / 아래끝 / 끝값)만
+        /// 찍어 파형의 위아래 끝을 살립니다.
+        /// 여기서 값이 없는 열은 정말로 기록이 끊긴 자리입니다 — 표본이 픽셀보다
+        /// 촘촘한 경우에만 이 길로 오기 때문입니다.
+        /// </summary>
+        private void DrawColumns(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns,
+                                 double vlo, double vhi, double chLo, double chHi,
+                                 double baseline, Pen pen, double dy)
         {
             double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
@@ -673,24 +801,16 @@ namespace LogScope.App.Controls
                 for (int x = 0; x < columns; x++)
                 {
                     Decimator.Column c = cols[x];
-                    if (!c.HasValue)
-                    {
-                        if (open) Flush(ctx, ref open);
-                        continue;
-                    }
+                    if (!c.HasValue) { if (open) Flush(ctx, ref open); continue; }
 
-                    double px = inner.Left + x;
+                    double px = ColumnToX(inner, x);
                     // 화면 y 는 값이 클수록 작아집니다. yTop 이 c.Max, yBottom 이 c.Min.
                     double yFirst = Clamp(ValueToY(Transform(c.First, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
                     double yTop = Clamp(ValueToY(Transform(c.Max, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
                     double yBottom = Clamp(ValueToY(Transform(c.Min, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
                     double yLast = Clamp(ValueToY(Transform(c.Last, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
 
-                    if (!open)
-                    {
-                        ctx.BeginFigure(new Point(px, yFirst), false, false);
-                        open = true;
-                    }
+                    if (!open) { ctx.BeginFigure(new Point(px, yFirst), false, false); open = true; }
                     else _pts.Add(new Point(px, yFirst));
 
                     if (yTop != yFirst) _pts.Add(new Point(px, yTop));
@@ -725,8 +845,12 @@ namespace LogScope.App.Controls
         /// 점선을 쓰지 않는 이유는, 점선이 파형의 빈 구간과 섞여 파형을
         /// 읽기 어렵게 만들기 때문입니다. (요구사항 5번)
         ///
-        /// 1 픽셀짜리 네모를 열마다 하나씩 담되, 전부 한 도형에 모아
-        /// 한 번에 칠합니다. 붙어 있는 네모들이 모여 자연스러운 띠가 됩니다.
+        /// 열마다 뽑아 둔 값(_bandBefore / _bandAfter)을 씁니다. 접은 값이
+        /// 아니라 "그 시각의 값" 이라, 확대해서 표본이 성겨져도 띠가 끊기지
+        /// 않습니다.
+        ///
+        /// 1 픽셀짜리 네모를 열마다 하나씩 담되, 전부 한 도형에 모아 한 번에
+        /// 칠합니다. 붙어 있는 네모들이 모여 자연스러운 띠가 됩니다.
         ///
         /// tolerance 는 이 채널의 기준값입니다 (ToleranceRule 이 정한 값).
         /// 그 안쪽 차이는 칠하지 않습니다 — 대시보드가 "차이 없음" 으로 세는
@@ -738,25 +862,26 @@ namespace LogScope.App.Controls
         {
             var geo = new StreamGeometry();
             bool any = false;
+            double width = 1.0 / _pixelsPerDip;   // 한 열의 가로 폭 (DIP)
 
             using (StreamGeometryContext ctx = geo.Open())
             {
                 for (int x = 0; x < columns; x++)
                 {
-                    Decimator.Column cb = _colsBefore[x], ca = _colsAfter[x];
-                    if (!cb.HasValue || !ca.HasValue) continue;
-                    if (Math.Abs(cb.Last - ca.Last) <= tolerance) continue;
+                    float bv = _bandBefore[x], av = _bandAfter[x];
+                    if (float.IsNaN(bv) || float.IsNaN(av)) continue;
+                    if (Math.Abs(bv - av) <= tolerance) continue;
 
-                    double y1 = ValueToY(Transform(cb.Last, chLo, chHi, baseline), inner, vlo, vhi) - sep;
-                    double y2 = ValueToY(Transform(ca.Last, chLo, chHi, baseline), inner, vlo, vhi) + sep;
+                    double y1 = ValueToY(Transform(bv, chLo, chHi, baseline), inner, vlo, vhi) - sep;
+                    double y2 = ValueToY(Transform(av, chLo, chHi, baseline), inner, vlo, vhi) + sep;
                     double t = Clamp(Math.Min(y1, y2), inner.Top, inner.Bottom);
                     double b = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
                     if (b - t < 1) b = t + 1;
 
-                    double px = inner.Left + x;
+                    double px = ColumnToX(inner, x);
                     ctx.BeginFigure(new Point(px, t), true, true);
-                    ctx.LineTo(new Point(px + 1, t), false, false);
-                    ctx.LineTo(new Point(px + 1, b), false, false);
+                    ctx.LineTo(new Point(px + width, t), false, false);
+                    ctx.LineTo(new Point(px + width, b), false, false);
                     ctx.LineTo(new Point(px, b), false, false);
                     any = true;
                 }
@@ -779,7 +904,8 @@ namespace LogScope.App.Controls
                 double y = ValueToY(v, inner, vlo, vhi);
                 if (y < inner.Top - 1 || y > inner.Bottom + 1) continue;
 
-                dc.DrawLine(p.GridPen, new Point(inner.Left + 1, y), new Point(inner.Right - 2, y));
+                double gy = Snap(y);
+                dc.DrawLine(p.GridPen, new Point(inner.Left + 1, gy), new Point(inner.Right - 2, gy));
 
                 // 눈금 글자는 선을 그은 바로 그 y 에 붙입니다. 그래서 숫자와
                 // 그래프 높이가 어긋날 수 없습니다. (요구사항 2번)
@@ -829,8 +955,9 @@ namespace LogScope.App.Controls
                 double x = TimeToX(t);
                 if (x < plot.Left || x > plot.Right) continue;
 
-                dc.DrawLine(p.GridPen, new Point(x, plot.Top), new Point(x, plot.Bottom));
-                dc.DrawLine(p.BorderPen, new Point(x, strip.Top), new Point(x, strip.Top + 4));
+                double gx = Snap(x);
+                dc.DrawLine(p.GridPen, new Point(gx, plot.Top), new Point(gx, plot.Bottom));
+                dc.DrawLine(p.BorderPen, new Point(gx, strip.Top), new Point(gx, strip.Top + 4));
 
                 string label = refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
                 FormattedText ft = Text(label, FontSmall, p.MutedBrush);
@@ -841,7 +968,7 @@ namespace LogScope.App.Controls
         private void DrawCursor(DrawingContext dc, Palette p, Rect plot, double t, Pen pen, Color color, string tag)
         {
             if (double.IsNaN(t) || t < _t0 || t > _t1) return;
-            double x = TimeToX(t);
+            double x = Snap(TimeToX(t));
             dc.DrawLine(pen, new Point(x, plot.Top), new Point(x, plot.Bottom));
 
             var box = new Rect(x - 9, plot.Top + 1, 18, 15);

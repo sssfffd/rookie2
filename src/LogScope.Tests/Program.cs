@@ -37,6 +37,7 @@ namespace LogScope.Tests
                 XlsxRoundTrip();
                 DigitalAndStateKinds();
                 DecimationKeepsExtremes();
+                ZoomedInTraceSurvives();
                 CompareMetrics();
                 ExistenceDifference();
                 ToleranceIsRelativeToRange();
@@ -282,6 +283,74 @@ namespace LogScope.Tests
             double lo, hi;
             Check("보이는 구간 범위를 구함", Decimator.RangeIn(ds, 0, 0, 100, out lo, out hi), null);
             Near("그 구간의 최대", hi, 1, 1e-9);
+        }
+
+        private static void ZoomedInTraceSurvives()
+        {
+            Console.WriteLine("확대했을 때 선이 남아 있는지");
+
+            // 표본 100 개. 크게 확대하면 화면 안에 표본이 서너 개뿐입니다.
+            var sb = new StringBuilder("Time,V,D\n");
+            for (int i = 0; i < 100; i++)
+                sb.Append(i).Append(',').Append(i).Append(',').Append(i % 2).Append('\n');
+            LogDataset ds = Open(WriteCsv("zoom.csv", sb.ToString()), Orientation.Auto);
+
+            // 10.2 ~ 13.8 구간. 안에 든 표본은 11, 12, 13 뿐입니다.
+            double t0 = 10.2, t1 = 13.8;
+            int first, last;
+            Check("걸치는 표본을 찾음", Decimator.VisibleRange(ds, t0, t1, out first, out last), null);
+
+            // 화면 가장자리에서 선이 잘리지 않도록 양쪽 바깥의 표본 하나씩을
+            // 함께 돌려줘야 합니다.
+            Check("왼쪽 바깥 표본까지 포함", first == 10, "실제 " + first);
+            Check("오른쪽 바깥 표본까지 포함", last == 14, "실제 " + last);
+
+            const int columns = 200;
+
+            // 접어서 그리면 표본이 있는 열만 값이 찹니다. 예전에는 이 상태로
+            // 선을 그리면서 빈 열마다 선을 끊어, 표본마다 점 하나짜리 도형이
+            // 되어 아무것도 안 보였습니다. 그 상황을 여기서 확인해 둡니다.
+            var cols = new Decimator.Column[columns];
+            Decimator.Build(ds, 0, t0, t1, cols, columns);
+            int filled = 0;
+            for (int i = 0; i < columns; i++) if (cols[i].HasValue) filled++;
+            Check("접으면 대부분의 열이 빔 (그래서 접어 그리면 안 됨)", filled < columns / 4,
+                  "찬 열 " + filled + " / " + columns);
+
+            // 열마다 값을 뽑으면 빈 열이 없습니다. 차이 음영이 이걸 씁니다.
+            var band = new float[columns];
+            Decimator.SampleColumns(ds, 0, t0, t1, band, columns);
+            int holes = 0;
+            for (int i = 0; i < columns; i++) if (float.IsNaN(band[i])) holes++;
+            Check("열마다 뽑으면 빈 칸 없음", holes == 0, "빈 칸 " + holes);
+
+            Check("왼쪽 끝 값이 구간에 맞음", band[0] >= 10 && band[0] <= 11,
+                  band[0].ToString("0.###"));
+            Check("오른쪽 끝 값이 구간에 맞음", band[columns - 1] >= 13 && band[columns - 1] <= 14,
+                  band[columns - 1].ToString("0.###"));
+
+            bool rising = true;
+            for (int i = 1; i < columns; i++) if (band[i] < band[i - 1]) rising = false;
+            Check("아날로그는 앞뒤를 보간해 매끈하게", rising, null);
+
+            // 디지털은 보간하면 안 됩니다. 0 과 1 사이의 중간값은 없던 값입니다.
+            int d = ds.FindChannel("D");
+            Check("D 는 디지털로 읽힘", ds.Channels[d].Kind == ChannelKind.Digital,
+                  ds.Channels[d].Kind.ToString());
+
+            var stepBand = new float[columns];
+            Decimator.SampleColumns(ds, d, t0, t1, stepBand, columns);
+            bool onlyZeroOne = true;
+            for (int i = 0; i < columns; i++)
+                if (!float.IsNaN(stepBand[i]) && stepBand[i] != 0f && stepBand[i] != 1f) onlyZeroOne = false;
+            Check("디지털은 0 과 1 만 (계단 유지)", onlyZeroOne, null);
+
+            // 표본이 픽셀보다 촘촘할 때(표본 100 개, 열 50 개)는 접는 길로 갑니다.
+            var wide = new Decimator.Column[50];
+            Decimator.Build(ds, 0, ds.TimeStart, ds.TimeEnd, wide, 50);
+            int wideFilled = 0;
+            for (int i = 0; i < 50; i++) if (wide[i].HasValue) wideFilled++;
+            Check("그때는 모든 열이 참", wideFilled == 50, "찬 열 " + wideFilled);
         }
 
         private static void CompareMetrics()
