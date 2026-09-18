@@ -17,3 +17,4 @@
 | `08-heatmap-tolerance-mismatch.md` | 허용 오차와 칸의 숫자가 왜 어긋났는지, 어떻게 맞췄는지 |
 | `09-axis-fit-and-toolbar.md` | 세로축 자동 맞춤, 지수 표기 없애기, 도구 줄 갈래 나누기 |
 | `10-heatmap-row-order.md` | 칸 폭을 바꾸면 IO 차례가 바뀌던 버그 |
+| `11-build-bat-encoding.md` | chcp 65001 이 왜 틀린 방법이었는지, CP949 로 바꾼 이야기 |

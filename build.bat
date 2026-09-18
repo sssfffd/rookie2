@@ -2,15 +2,36 @@
 rem ===================================================================
 rem  LogScope build script.
 rem
-rem  NOTE ON ENCODING (read this before editing):
-rem    This file is saved as UTF-8 WITHOUT a BOM, and the messages below
-rem    are in Korean. A Korean Windows console starts on code page 949,
-rem    so it would print those bytes as garbage. The "chcp 65001" a few
-rem    lines down switches the console to UTF-8 first, and the original
-rem    code page is put back at the end.
+rem  ENCODING -- read this before editing the file.
 rem
-rem    Keep this file UTF-8 without BOM. cmd.exe chokes on a BOM, and a
-rem    BOM would also be printed as stray characters on the first line.
+rem    This file is saved in CP949 (the Korean Windows ANSI/OEM code
+rem    page). It does NOT call "chcp", on purpose.
+rem
+rem    The previous version did the opposite: UTF-8 plus "chcp 65001".
+rem    That is the advice you find everywhere and it did not work.
+rem      - Under code page 65001 the legacy console can only show
+rem        Hangul with a TrueType font that actually contains Hangul.
+rem        The Korean default console font is a raster font, so the
+rem        text came out as boxes or garbage.
+rem      - On Windows 7 it is worse: cmd.exe re-reads the batch file
+rem        while it runs, and under 65001 it can misread its own bytes
+rem        and lose "goto" targets.
+rem
+rem    A Korean Windows console already starts on CP949. Writing the
+rem    bytes it is expecting, and leaving the code page alone, is the
+rem    thing that actually works -- on 7, 10 and 11 alike.
+rem
+rem    Every message below exists twice: once in Korean (CP949 bytes)
+rem    and once in plain ASCII. If the console is not on code page 949
+rem    the ASCII half is printed instead, so this script can never
+rem    print garbage, whatever machine it lands on.
+rem
+rem    IF YOU EDIT THIS FILE, save it as CP949 / ANSI / EUC-KR.
+rem    In VS Code: click the encoding button at the bottom right,
+rem    "Save with Encoding", "Korean (EUC-KR)". No BOM. No "chcp".
+rem    On GitHub the Korean lines will look like mojibake, because
+rem    GitHub assumes UTF-8. That is expected; these ASCII comments
+rem    are here so the file still explains itself.
 rem
 rem  Usage:
 rem     build.bat              Release, then run the self tests
@@ -21,7 +42,9 @@ rem  Output:
 rem     out\LogScope.exe                          <- copy this folder as-is
 rem     src\LogScope.App\bin\Release\LogScope.exe
 rem
-rem  Everything is also written to build.log.
+rem  Logs:
+rem     build.log       everything, UTF-8, meant to be opened in an editor
+rem     build.err.log   error lines only, console encoding, printed below
 rem ===================================================================
 
 setlocal enabledelayedexpansion
@@ -31,26 +54,37 @@ set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Release"
 set "SKIPTEST=%~2"
 set "LOG=%ROOT%build.log"
+set "ERRLOG=%ROOT%build.err.log"
 
 rem ---- keep the window open when started by double-click ------------
-rem  Done before chcp, while the console is still on its default page,
-rem  so a non-ASCII path cannot upset the comparison.
 set "HOLD="
 echo %cmdcmdline% 2>nul | find /i "%~nx0" >nul 2>nul && set "HOLD=1"
 
+rem ---- which half of the messages can this console show? -------------
+rem  KO is set only when the console is on 949, which is where the
+rem  Korean bytes in this file render correctly.
+set "CP="
+for /f "tokens=2 delims=:" %%a in ('chcp') do set "CP=%%a"
+set "CP=%CP: =%"
+set "CP=%CP:.=%"
+set "KO="
+if "%CP%"=="949" set "KO=1"
+
+echo.
+if not defined KO echo   [note] console code page is %CP%, not 949 -- using English messages.
+if not defined KO echo.
+
+call :msg "LogScope ºôµå  [%CONFIG%]" "LogScope build  [%CONFIG%]"
+echo   ------------------------------------------------------------
+
 rem ---- find MSBuild -------------------------------------------------
-rem  Done before chcp as well. "for /f" over a command's output is the
-rem  one thing that has historically misbehaved under code page 65001,
-rem  so the vswhere result goes through a temp file and "set /p" instead.
 set "MSBUILD="
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
 if exist "%VSWHERE%" (
-  "%VSWHERE%" -latest -prerelease -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe > "%TEMP%\logscope_msbuild.txt" 2>nul
-  if exist "%TEMP%\logscope_msbuild.txt" (
-    set /p MSBUILD=<"%TEMP%\logscope_msbuild.txt"
-    del "%TEMP%\logscope_msbuild.txt" >nul 2>nul
+  for /f "usebackq delims=" %%p in (`"%VSWHERE%" -latest -prerelease -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
+    if not defined MSBUILD set "MSBUILD=%%p"
   )
 )
 
@@ -63,62 +97,55 @@ if not defined MSBUILD (
 )
 
 rem  Last resort: the MSBuild that ships with the .NET Framework.
-rem  It may not understand C# 7.3 or WPF (.xaml). Use VS2017 if so.
+rem  It may not understand C# 7.3 or WPF. Use VS2017 if so.
 if not defined MSBUILD (
   if exist "%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe" (
     set "MSBUILD=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe"
   )
 )
 
-rem ---- switch the console to UTF-8 ----------------------------------
-rem  Remember the current code page so it can be restored on the way out.
-set "OLDCP="
-for /f "tokens=2 delims=:" %%a in ('chcp') do set "OLDCP=%%a"
-set "OLDCP=%OLDCP: =%"
-set "OLDCP=%OLDCP:.=%"
-chcp 65001 >nul 2>nul
-
-rem  From here on the Korean text below prints correctly.
-
-echo.
-echo   LogScope ë¹Œë“œ  (%CONFIG%)
-echo   ------------------------------------------------------------
-
 if not defined MSBUILD (
   echo.
-  echo   [ì˜¤ë¥˜] MSBuild ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.
-  echo          Visual Studio 2017 ë˜ëŠ” Build Tools for Visual Studio 2017 ì„
-  echo          ì„¤ì¹˜í•´ ì£¼ì„¸ìš”.
+  call :msg "[¿À·ù] MSBuild ¸¦ Ã£Áö ¸øÇß½À´Ï´Ù." "[error] MSBuild was not found."
+  call :msg "       Visual Studio 2017 ¶Ç´Â Build Tools for" "       Install Visual Studio 2017, or the"
+  call :msg "       Visual Studio 2017 À» ¼³Ä¡ÇØ ÁÖ¼¼¿ä." "       Build Tools for Visual Studio 2017."
   goto :fail
 )
-echo   MSBuild : %MSBUILD%
-echo   ë¡œê·¸    : %LOG%
+
+call :msg "MSBuild : %MSBUILD%" "MSBuild : %MSBUILD%"
+call :msg "·Î±×     : %LOG%" "Log     : %LOG%"
 echo.
 
 rem ---- build --------------------------------------------------------
-rem  /fl writes the whole thing to build.log. The console stays terse.
-"%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl "/flp:logfile=%LOG%;verbosity=normal;encoding=UTF-8"
+rem  Two log files on purpose.
+rem    build.log      UTF-8, so it opens cleanly in an editor.
+rem    build.err.log  default (ANSI) encoding, so the "type" below
+rem                   prints the compiler's own messages without
+rem                   turning them into garbage on a CP949 console.
+if exist "%ERRLOG%" del "%ERRLOG%" >nul 2>nul
+
+"%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl1 "/flp1:logfile=%LOG%;verbosity=normal;encoding=UTF-8" /fl2 "/flp2:logfile=%ERRLOG%;errorsonly;verbosity=normal"
 
 if errorlevel 1 (
   echo.
   echo   ============================================================
-  echo    ë¹Œë“œ ì‹¤íŒ¨. ì˜¤ë¥˜ ì¤„ë§Œ ì¶”ë ¤ ë³´ë©´:
+  call :msg " ºôµå ½ÇÆÐ. ¿À·ù ÁÙ¸¸ Ãß·Á º¸¸é:" " Build failed. Just the error lines:"
   echo   ============================================================
-  findstr /i /c:": error" "%LOG%"
+  if exist "%ERRLOG%" type "%ERRLOG%"
   echo   ------------------------------------------------------------
-  echo    ì „ì²´ ë‚´ìš©ì€ build.log ì— ìžˆìŠµë‹ˆë‹¤.
+  call :msg " ÀüÃ¼ ³»¿ëÀº build.log ¿¡ ÀÖ½À´Ï´Ù." " The full log is in build.log."
   goto :fail
 )
 
 rem ---- tests --------------------------------------------------------
 if /i "%SKIPTEST%"=="nt" goto :collect
 echo.
-echo   í…ŒìŠ¤íŠ¸
+call :msg "Å×½ºÆ®" "Tests"
 echo   ------------------------------------------------------------
 "%ROOT%src\LogScope.Tests\bin\%CONFIG%\LogScope.Tests.exe"
 if errorlevel 1 (
   echo.
-  echo   [ì˜¤ë¥˜] í…ŒìŠ¤íŠ¸ê°€ ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤. ìœ„ì˜ FAIL ì¤„ì„ ë³´ì„¸ìš”.
+  call :msg "[¿À·ù] Å×½ºÆ®°¡ ½ÇÆÐÇß½À´Ï´Ù. À§ÀÇ FAIL ÁÙÀ» º¸¼¼¿ä." "[error] A test failed. See the FAIL lines above."
   goto :fail
 )
 
@@ -137,26 +164,42 @@ if /i "%CONFIG%"=="Debug" (
 
 echo.
 echo   ============================================================
-echo    ì™„ë£Œ.
+call :msg " ¿Ï·á." " Done."
 echo.
-echo    ì‹¤í–‰ íŒŒì¼ : %OUT%\LogScope.exe
-echo    out í´ë”ë¥¼ í†µì§¸ë¡œ ë³µì‚¬í•´ì„œ ì“°ë©´ ë©ë‹ˆë‹¤. ì„¤ì¹˜ í”„ë¡œê·¸ëž¨ì€ í•„ìš” ì—†ìŠµë‹ˆë‹¤.
+call :msg " ½ÇÇà ÆÄÀÏ : %OUT%\LogScope.exe" " Executable : %OUT%\LogScope.exe"
+call :msg " out Æú´õ¸¦ ÅëÂ°·Î º¹»çÇØ¼­ ¾²¸é µË´Ï´Ù." " Copy the whole out folder and run it."
+call :msg " ¼³Ä¡ ÇÁ·Î±×·¥Àº ÇÊ¿ä ¾ø½À´Ï´Ù." " No installer is needed."
 echo   ============================================================
 echo.
-if defined HOLD (
-  echo   ì•„ë¬´ í‚¤ë‚˜ ëˆ„ë¥´ë©´ ì´ ì°½ì´ ë‹«íž™ë‹ˆë‹¤.
-  pause >nul
-)
-if defined OLDCP chcp %OLDCP% >nul 2>nul
+call :hold
 endlocal
 exit /b 0
 
 :fail
 echo.
-if defined HOLD (
-  echo   ì•„ë¬´ í‚¤ë‚˜ ëˆ„ë¥´ë©´ ì´ ì°½ì´ ë‹«íž™ë‹ˆë‹¤.
-  pause >nul
-)
-if defined OLDCP chcp %OLDCP% >nul 2>nul
+call :hold
 endlocal
 exit /b 1
+
+rem ===================================================================
+rem  Subroutines. They must sit past an "exit /b" so the script cannot
+rem  fall into them.
+rem ===================================================================
+
+rem  Print %1 on a Korean console, %2 everywhere else.
+rem  Written without parenthesised if-blocks on purpose: a ")" inside
+rem  a message would otherwise close the block and break the line.
+:msg
+if defined KO goto :msg_ko
+echo   %~2
+goto :eof
+:msg_ko
+echo   %~1
+goto :eof
+
+rem  Wait for a key, but only when the window would vanish otherwise.
+:hold
+if not defined HOLD goto :eof
+call :msg "¾Æ¹« Å°³ª ´©¸£¸é ÀÌ Ã¢ÀÌ ´ÝÈü´Ï´Ù." "Press any key to close this window."
+pause >nul
+goto :eof

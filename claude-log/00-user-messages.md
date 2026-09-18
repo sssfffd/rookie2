@@ -261,3 +261,11 @@
 > 아 그리고 히트맵에서 5분으로 할때랑 1분으로 할 때 io순서가 바뀌던데 뭐임?
 
 → 답변: [10-heatmap-row-order.md](10-heatmap-row-order.md)
+
+---
+
+## 요청 13 — build.bat 한글이 아직도 깨짐
+
+> 근데 build할때 글자 깨지는건 어케 못함?
+
+→ 답변: [11-build-bat-encoding.md](11-build-bat-encoding.md)

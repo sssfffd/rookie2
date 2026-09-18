@@ -2,3 +2,15 @@
 *.sh text eol=lf
 *.py text eol=lf
 *.md text eol=lf
+
+# build.bat 은 UTF-8 이 아니라 CP949 입니다. 이유는 파일 첫머리의 주석에
+# 적어 뒀습니다 (요약: 콘솔이 CP949 라서 chcp 65001 로는 한글이 깨집니다).
+#
+# 여기서 줄바꿈만 CRLF 로 바꾸는 것은 안전합니다. CP949 의 뒤 바이트는
+# 0x41~0xFE 라서 0x0A / 0x0D 가 될 수 없기 때문입니다. 반대로 인코딩을
+# 건드리는 설정(working-tree-encoding 등)은 넣지 마세요 — 오래된 git 이나
+# 다른 클론 도구에서 파일이 깨집니다.
+#
+# 대신 GitHub 웹에서는 한글 줄이 깨져 보입니다. 파일 첫머리 주석을 ASCII 로
+# 써 둔 것이 그래서입니다.
+build.bat text eol=crlf
