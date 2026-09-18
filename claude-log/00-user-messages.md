@@ -299,3 +299,12 @@
 > 그리고 기존값이랑 정규화 변화량 눌렀을때 메뉴 바 줄바꿈이 생기는데 이거 왜이래
 
 → 답변: [14-toolbar-reflow.md](14-toolbar-reflow.md)
+
+---
+
+## 요청 18 — 변화가 심한 IO 에서 그래프가 렉이 심함
+
+> 그리고 그래프가 엄청 변화가 심한거 0.1초마다 1씩 바뀌는 io글 그래프로 그리면
+> 렉이 너무 심한데?
+
+→ 답변: [15-oscillating-channel-perf.md](15-oscillating-channel-perf.md)

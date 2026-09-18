@@ -37,6 +37,7 @@ namespace LogScope.Tests
                 XlsxRoundTrip();
                 DigitalAndStateKinds();
                 DecimationKeepsExtremes();
+                DecimationAccumulatesPerColumn();
                 ZoomedInTraceSurvives();
                 CompareMetrics();
                 ExistenceDifference();
@@ -290,6 +291,56 @@ namespace LogScope.Tests
             double lo, hi;
             Check("보이는 구간 범위를 구함", Decimator.RangeIn(ds, 0, 0, 100, out lo, out hi), null);
             Near("그 구간의 최대", hi, 1, 1e-9);
+        }
+
+        /// <summary>
+        /// 접기를 "열이 바뀔 때 한 번만 쓰기" 로 고친 뒤에도 결과가 같은지.
+        ///
+        /// 표본마다 배열의 구조체를 읽고 고쳐 쓰던 것을, 지역 변수에 모았다가
+        /// 열이 바뀔 때 한 번만 쓰도록 바꿨습니다. 빠르지만 경계 처리를
+        /// 틀리기 쉬운 부분이라 따로 못박아 둡니다.
+        /// </summary>
+        private static void DecimationAccumulatesPerColumn()
+        {
+            Console.WriteLine("픽셀 열 접기 — 열 경계와 최소/최대");
+
+            // 값이 시간과 함께 0 에서 999 까지 늘어나는 표본 1000 개.
+            var sb = new StringBuilder("Time,V\n");
+            for (int i = 0; i < 1000; i++) sb.Append(i).Append(',').Append(i).Append('\n');
+            LogDataset ds = Open(WriteCsv("decim_acc.csv", sb.ToString()), Orientation.Auto);
+
+            var cols = new Decimator.Column[10];
+            Decimator.Build(ds, 0, ds.TimeStart, ds.TimeEnd, cols, 10);
+
+            bool allFilled = true, sane = true, ordered = true;
+            float gmin = float.MaxValue, gmax = float.MinValue;
+            float prevMax = float.NegativeInfinity;
+
+            for (int i = 0; i < 10; i++)
+            {
+                if (!cols[i].HasValue) { allFilled = false; continue; }
+                if (cols[i].Min > cols[i].Max) sane = false;
+                // 값이 계속 커지므로 앞 열의 최대보다 뒤 열의 최소가 큽니다.
+                if (cols[i].Min < prevMax) ordered = false;
+                prevMax = cols[i].Max;
+                if (cols[i].Min < gmin) gmin = cols[i].Min;
+                if (cols[i].Max > gmax) gmax = cols[i].Max;
+            }
+
+            Check("열 10 개가 모두 참", allFilled, null);
+            Check("열마다 최소 <= 최대", sane, null);
+            Check("열끼리 값 범위가 겹치지 않음", ordered, null);
+            Near("전체 최소", gmin, 0, 1e-6);
+            Near("전체 최대 (마지막 표본까지 들어감)", gmax, 999, 1e-6);
+
+            // 구간을 좁혀 잡아도 오른쪽 끝 너머의 한 점을 마지막 열에 넣습니다.
+            // 그래야 선이 화면 오른쪽 끝까지 이어집니다.
+            var part = new Decimator.Column[10];
+            Decimator.Build(ds, 0, 100, 200, part, 10);
+            Check("좁힌 구간에서도 마지막 열이 참", part[9].HasValue, null);
+            Check("좁힌 구간의 값만 들어감",
+                  part[0].Min >= 100 && part[9].Max <= 202,
+                  "첫 열 " + part[0].Min + ", 끝 열 " + part[9].Max);
         }
 
         private static void ZoomedInTraceSurvives()

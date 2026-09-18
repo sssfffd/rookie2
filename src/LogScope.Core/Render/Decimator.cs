@@ -15,13 +15,19 @@ namespace LogScope.Core.Render
     /// </summary>
     public static class Decimator
     {
-        /// <summary>한 픽셀 열의 요약.</summary>
+        /// <summary>
+        /// 한 픽셀 열의 요약.
+        ///
+        /// 최소와 최대만 담습니다. 예전에는 첫값과 끝값도 담았는데, 한 열은
+        /// 가로로 1 픽셀이라 그 값들이 모두 <b>같은 세로 선 위</b>에 찍힙니다.
+        /// 화면에 보이는 것은 최소~최대 사이의 세로 선 하나뿐이라, 나머지
+        /// 두 값은 그리는 데 쓰이지 않으면서 표본마다 읽고 쓰는 비용만
+        /// 냈습니다. 구조체가 작아져서 열 배열을 훑는 것도 빨라집니다.
+        /// </summary>
         public struct Column
         {
             public float Min;
             public float Max;
-            public float First;
-            public float Last;
             public bool HasValue;
         }
 
@@ -46,40 +52,68 @@ namespace LogScope.Core.Render
             if (start < 0) start = 0;
             double scale = columns / (t1 - t0);
 
+            // 표본은 시간 순서라 열 번호가 뒤로 가지 않습니다. 그래서 지금 열의
+            // 최소/최대를 <b>지역 변수에 모았다가</b> 열이 바뀔 때 한 번만
+            // 배열에 씁니다.
+            //
+            // 예전에는 표본마다 배열에서 구조체를 통째로 읽어 고치고 다시
+            // 써 넣었습니다. 0.1 초마다 값이 바뀌는 채널은 한 화면에 표본이
+            // 수십만 개라, 이 읽고-쓰기가 프레임마다 수십만 번 돌았습니다.
+            int cur = -1;
+            float mn = 0f, mx = 0f;
+            bool has = false;
+
             for (int i = start; i < n; i++)
             {
                 double t = times[i];
                 if (t > t1)
                 {
                     // 마지막 한 점은 화면 오른쪽 끝까지 선을 잇기 위해 포함합니다.
-                    int edge = columns - 1;
-                    Put(outCols, edge, v[i]);
+                    float edgeValue = v[i];
+                    if (!float.IsNaN(edgeValue))
+                    {
+                        int edge = columns - 1;
+                        if (has && cur == edge)
+                        {
+                            if (edgeValue < mn) mn = edgeValue;
+                            else if (edgeValue > mx) mx = edgeValue;
+                        }
+                        else
+                        {
+                            if (has) Write(outCols, cur, mn, mx);
+                            cur = edge; mn = edgeValue; mx = edgeValue; has = true;
+                        }
+                    }
                     break;
                 }
+
+                float value = v[i];
+                if (float.IsNaN(value)) continue;
+
                 int c = (int)((t - t0) * scale);
                 if (c < 0) c = 0;
-                if (c >= columns) c = columns - 1;
-                Put(outCols, c, v[i]);
+                else if (c >= columns) c = columns - 1;
+
+                if (c != cur)
+                {
+                    if (has) Write(outCols, cur, mn, mx);
+                    cur = c; mn = value; mx = value; has = true;
+                }
+                else
+                {
+                    if (value < mn) mn = value;
+                    else if (value > mx) mx = value;
+                }
             }
+
+            if (has) Write(outCols, cur, mn, mx);
         }
 
-        private static void Put(Column[] cols, int c, float value)
+        private static void Write(Column[] cols, int c, float mn, float mx)
         {
-            if (float.IsNaN(value)) return;
-            Column col = cols[c];
-            if (!col.HasValue)
-            {
-                col.HasValue = true;
-                col.Min = value; col.Max = value;
-                col.First = value; col.Last = value;
-            }
-            else
-            {
-                if (value < col.Min) col.Min = value;
-                if (value > col.Max) col.Max = value;
-                col.Last = value;
-            }
-            cols[c] = col;
+            cols[c].Min = mn;
+            cols[c].Max = mx;
+            cols[c].HasValue = true;
         }
 
         /// <summary>
