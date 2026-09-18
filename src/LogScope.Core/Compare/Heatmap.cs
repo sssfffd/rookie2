@@ -17,8 +17,27 @@ namespace LogScope.Core.Compare
     /// </summary>
     public struct HeatCell
     {
-        /// <summary>절대 차이의 평균. 칸에 적히는 값입니다.</summary>
+        /// <summary>
+        /// 구간 안 모든 표본의 절대 차이 평균.
+        ///
+        /// 이 값은 <b>칸에 적지 않습니다.</b> 60 표본 중 하나만 크게 튀면
+        /// 나머지 59 개의 0 에 묻혀 기준보다 작아지는데, 칸은 빨갛게 되어
+        /// "기준 0.1% 인데 0.008% 라고 적힌 빨간 칸" 이 나옵니다.
+        /// 칸에 적는 값은 아래 OverMean 입니다. 이 값은 설명 줄에만 씁니다.
+        /// </summary>
         public float Mean;
+
+        /// <summary>
+        /// <b>기준을 넘은 표본만</b>의 절대 차이 평균. 칸에 적히는 값입니다.
+        ///
+        /// "벌어졌을 때 이만큼 벌어졌다" 는 뜻이라, 칸이 빨갛다는 것과
+        /// "이 숫자가 기준보다 크다" 가 <b>항상 같은 말</b>이 됩니다.
+        /// 넘은 표본이 없으면 0 이고, 그 칸은 정상입니다.
+        ///
+        /// 합계가 아니라 평균이라 구간이 길다고 커지지 않고, 절대값이라
+        /// +1 / -1 로 진동해도 0 이 되지 않습니다. 고르던 조건은 그대로입니다.
+        /// </summary>
+        public float OverMean;
         /// <summary>이 구간에서 가장 크게 벌어진 순간.</summary>
         public float Max;
         /// <summary>제곱평균제곱근. 큰 차이에 더 무게를 둡니다.</summary>
@@ -71,6 +90,29 @@ namespace LogScope.Core.Compare
         public string Unit = string.Empty;
 
         public bool HasDifference { get { return OverBuckets > 0; } }
+
+        /// <summary>
+        /// 칸에 적을 값. <b>색을 정하는 것과 같은 값</b>이어야 하므로
+        /// 여기 한 곳에서만 정합니다. 화면이 따로 계산하면 또 어긋납니다.
+        ///
+        ///  - 값으로 견준 줄: 기준을 넘은 표본만의 평균. 기준과 바로 견줄 수 있습니다.
+        ///  - 이름으로 견준 줄: 다른 표본의 비율. 차이 하나하나는 늘 "1" 이라
+        ///    평균을 내 봐야 항상 1 이고, 알고 싶은 것은 "얼마나 자주 달랐나" 입니다.
+        /// </summary>
+        public double ValueOf(HeatCell c)
+        {
+            if (!c.HasData || c.OverSamples == 0) return 0;
+            return ByName ? c.Mean : c.OverMean;
+        }
+
+        /// <summary>
+        /// 기준값을 퍼센트로. 칸에 적히는 퍼센트와 같은 밑값(Range)을 씁니다.
+        /// 나눌 수 없으면 NaN.
+        /// </summary>
+        public double ThresholdPercent
+        {
+            get { return Range > 0 ? Threshold / Range * 100.0 : double.NaN; }
+        }
     }
 
     public sealed class HeatmapOptions
@@ -268,12 +310,24 @@ namespace LogScope.Core.Compare
             row.BeforeIndex = bi;
             row.AfterIndex = ai;
             row.Cells = new HeatCell[buckets];
-            row.Threshold = ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
-
             bool stepped = bc.IsStepped || ac.IsStepped;
             bool byName = bc.Kind == ChannelKind.State || ac.Kind == ChannelKind.State;
 
             row.ByName = byName;
+
+            // 이름으로 견주는 줄에는 허용 오차를 매기지 않습니다.
+            //
+            // 이런 줄의 차이는 "같다(0) / 다르다(1)" 뿐입니다. 여기에 값 범위의
+            // 0.1% 같은 기준을 매기면 그 범위가 상태 번호의 범위(예: 0~2)라서
+            // 기준이 아무 뜻 없는 숫자가 되고, 설명 줄에도 그 숫자가 나와
+            // 위쪽에 적어 둔 허용 오차와 달라 보입니다.
+            //
+            // 더 나쁜 것은 절대 오차를 1 이상으로 적어 둔 경우입니다. 그러면
+            // 1 > 기준 이 거짓이 되어 상태 이름이 통째로 바뀌어도 차이로 세지
+            // 않았습니다. 기준을 0 으로 두어 "이름이 다르면 차이" 로 못박습니다.
+            row.Threshold = byName
+                ? 0.0
+                : ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
             // 이름으로 견준 줄은 차이가 0/1 이므로 밑값이 1 입니다. 그래야
             // 평균 0.25 가 "표본의 25% 가 달랐다" 로 그대로 읽힙니다.
             row.Range = byName ? 1.0 : ToleranceRule.BaseRange(bc, ac);
@@ -285,6 +339,7 @@ namespace LogScope.Core.Compare
 
             var sum = new double[buckets];
             var sumSq = new double[buckets];
+            var overSum = new double[buckets];
 
             int start = before.IndexAtOrBefore(t0);
             if (start < 0) start = 0;
@@ -342,7 +397,7 @@ namespace LogScope.Core.Compare
                 sum[k] += diff;
                 sumSq[k] += diff * diff;
                 if (diff > cell.Max) cell.Max = (float)diff;
-                if (diff > row.Threshold) cell.OverSamples++;
+                if (diff > row.Threshold) { cell.OverSamples++; overSum[k] += diff; }
                 row.Cells[k] = cell;
             }
 
@@ -352,16 +407,22 @@ namespace LogScope.Core.Compare
                 if (cell.Samples == 0) continue;
                 cell.Mean = (float)(sum[k] / cell.Samples);
                 cell.Rms = (float)Math.Sqrt(sumSq[k] / cell.Samples);
+                cell.OverMean = cell.OverSamples > 0 ? (float)(overSum[k] / cell.OverSamples) : 0f;
                 row.Cells[k] = cell;
 
                 if (cell.Max > row.PeakMax) row.PeakMax = cell.Max;
 
                 // "이 구간에서 차이가 났나" 는 한 순간이라도 기준을 넘었는지로
-                // 봅니다. 칸에 적는 숫자는 그 구간의 평균입니다.
+                // 봅니다. 순간의 튐도 차이이고, 평균을 내면 묻혀 버리니까요.
+                //
+                // 그래서 칸에 적는 숫자도 "넘은 표본만의 평균"(ValueOf)입니다.
+                // 색 진하기도 같은 값을 기준으로 해야 숫자와 색이 따로 놀지
+                // 않습니다.
                 if (cell.OverSamples > 0)
                 {
                     row.OverBuckets++;
-                    if (cell.Mean > row.PeakMean) row.PeakMean = cell.Mean;
+                    double shown = row.ValueOf(cell);
+                    if (shown > row.PeakMean) row.PeakMean = shown;
                 }
             }
 

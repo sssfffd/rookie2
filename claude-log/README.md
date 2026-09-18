@@ -14,3 +14,4 @@
 | `05-tolerance.md` | 허용 오차 — 왜 절대값이 아니라 값 범위의 % 인지 |
 | `06-graph-and-sorting.md` | 확대하면 선이 사라지던 버그, 화질, 제목 클릭 정렬 |
 | `07-units-and-percent.md` | 세로축 단위와 상태 이름 눈금, 히트맵의 값/% 고르기 |
+| `08-heatmap-tolerance-mismatch.md` | 허용 오차와 칸의 숫자가 왜 어긋났는지, 어떻게 맞췄는지 |

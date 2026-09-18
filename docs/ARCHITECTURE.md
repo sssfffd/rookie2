@@ -166,8 +166,12 @@ HeatmapBuilder.Build()
 채널 하나가 O(표본 수) 로 끝납니다. 표본마다 탐색하면 채널 200 x 표본 5 만
 = 1000 만 번의 이진 탐색이 됩니다.
 
-칸에 적는 값으로 **절대 차이의 평균**을 쓰는 이유는
-[claude-log/04-heatmap.md](../claude-log/04-heatmap.md) 에 적었습니다.
+칸에 적는 값은 **기준을 넘은 표본만의 절대 차이 평균**(`HeatRow.ValueOf`)
+입니다. 칸의 색도 같은 값으로 냅니다. 이 값을 고른 이유는
+[claude-log/04-heatmap.md](../claude-log/04-heatmap.md),
+허용 오차와 어긋나던 것을 어떻게 맞췄는지는
+[claude-log/08-heatmap-tolerance-mismatch.md](../claude-log/08-heatmap-tolerance-mismatch.md)
+에 적었습니다.
 
 ## 배경 스레드
 

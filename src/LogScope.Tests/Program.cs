@@ -45,6 +45,8 @@ namespace LogScope.Tests
                 HeatmapRelativeTolerance();
                 UnitsFromUnitRowAndName();
                 HeatmapRangeForPercent();
+                HeatmapCellNumberMatchesTolerance();
+                HeatmapStateNamesIgnoreAbsoluteTolerance();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -635,6 +637,102 @@ namespace LogScope.Tests
             // 칸에 적힐 퍼센트: 2 / 100 * 100 = 2%
             Near("퍼센트", row.Cells[2].Mean / row.Range * 100.0, 2, 0.02);
             Check("이름으로 견준 줄이 아님", !row.ByName, null);
+        }
+
+        /// <summary>
+        /// 빨간 칸에 적히는 숫자는 <b>언제나 허용 오차보다 커야 합니다.</b>
+        ///
+        /// 예전에는 칸에 구간 전체의 평균을 적었습니다. 60 표본 중 하나만
+        /// 5 만큼 튀면 평균은 0.083 이라, 기준 0.1 로 잡은 빨간 칸에
+        /// "0.083" 이 적혔습니다. 위에 적어 둔 허용 오차와 아래 칸의 숫자가
+        /// 달라 보이던 것이 이것입니다.
+        /// </summary>
+        private static void HeatmapCellNumberMatchesTolerance()
+        {
+            Console.WriteLine("히트맵 — 칸의 숫자와 허용 오차가 같은 잣대인지");
+
+            // 0~100 채널. 2 분대의 <b>한 표본만</b> 5 만큼 벌어집니다.
+            var a = new StringBuilder("Time,P\n");
+            var b = new StringBuilder("Time,P\n");
+            for (int i = 0; i < 300; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                double v = i * (100.0 / 299.0);
+                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+                double w = v + (i == 150 ? 5.0 : 0.0);
+                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_one_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_one_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new HeatmapOptions();
+            opt.RelativeTolerance = 0.001;      // 0.1% → 값 범위 100 이므로 기준 0.1
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("한 표본만 튀어도 차이로 잡음", r.Rows.Count == 1, "실제 " + r.Rows.Count);
+            if (r.Rows.Count != 1) return;
+
+            HeatRow row = r.Rows[0];
+            HeatCell cell = row.Cells[2];
+
+            Near("기준", row.Threshold, 0.1, 1e-6);
+            Check("넘은 표본은 하나", cell.OverSamples == 1, "실제 " + cell.OverSamples);
+
+            // 구간 전체 평균은 기준보다 작습니다 — 그래서 이걸 적으면 안 됩니다.
+            Check("전체 평균은 기준보다 작음", cell.Mean < row.Threshold,
+                  "전체 평균 " + cell.Mean + ", 기준 " + row.Threshold);
+
+            // 칸에 적히는 값은 기준보다 큽니다.
+            double shown = row.ValueOf(cell);
+            Near("칸에 적히는 값", shown, 5, 5e-3);
+            Check("빨간 칸의 숫자는 늘 기준보다 큼", shown > row.Threshold,
+                  "칸 " + shown + ", 기준 " + row.Threshold);
+
+            // 퍼센트로 봐도 마찬가지여야 합니다 (5 / 100 = 5% > 0.1%).
+            Near("칸의 퍼센트", shown / row.Range * 100.0, 5, 0.02);
+            Near("기준의 퍼센트", row.ThresholdPercent, 0.1, 1e-6);
+            Check("퍼센트로 봐도 칸 > 기준", shown / row.Range * 100.0 > row.ThresholdPercent, null);
+
+            // 정상 칸은 0 입니다.
+            Check("정상 칸은 0", row.ValueOf(row.Cells[0]) == 0, "실제 " + row.ValueOf(row.Cells[0]));
+        }
+
+        /// <summary>
+        /// 이름으로 견주는 줄에는 허용 오차를 매기지 않습니다.
+        /// 절대 오차를 1 이상으로 적어 두면, 예전에는 상태 이름이 통째로
+        /// 바뀌어도 (차이 1.0 &gt; 기준 2.0 이 거짓이라) 차이로 세지 않았습니다.
+        /// </summary>
+        private static void HeatmapStateNamesIgnoreAbsoluteTolerance()
+        {
+            Console.WriteLine("히트맵 — 상태 이름은 허용 오차와 무관");
+
+            var a = new StringBuilder("Time,상태\n");
+            var b = new StringBuilder("Time,상태\n");
+            for (int i = 0; i < 180; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                a.Append(t).Append(",IDLE\n");
+                b.Append(t).Append(i >= 120 ? ",RUN\n" : ",IDLE\n");
+            }
+            LogDataset dsA = Open(WriteCsv("heat_state_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_state_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new HeatmapOptions();
+            opt.AbsoluteTolerance = 2.0;        // 차이 1.0 보다 큽니다
+            opt.RelativeTolerance = 0.001;
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("절대 오차를 크게 잡아도 이름 차이는 잡힘", r.Rows.Count == 1, "실제 " + r.Rows.Count);
+            if (r.Rows.Count != 1) return;
+
+            HeatRow row = r.Rows[0];
+            Check("이름으로 견준 줄", row.ByName, null);
+            Check("기준값 없음", row.Threshold == 0, "실제 " + row.Threshold);
+            Near("퍼센트의 밑값은 1", row.Range, 1, 1e-9);
+
+            // 2 분대는 전부 달랐으므로 100%.
+            Near("다른 표본의 비율", row.ValueOf(row.Cells[2]) * 100.0, 100, 0.01);
+            Check("1 분대는 정상", row.ValueOf(row.Cells[1]) == 0, null);
         }
 
         private static void JsonRoundTrip()

@@ -91,6 +91,7 @@ namespace LogScope.App.ViewModels
                 if (v < 0 || v > 100 || _state.Settings.RelativeTolerancePercent == v) return;
                 _state.Settings.RelativeTolerancePercent = v;
                 Raise();
+                Raise("StaleText");
             }
         }
 
@@ -134,8 +135,8 @@ namespace LogScope.App.ViewModels
             get
             {
                 return ShowPercent
-                    ? "차이 발생 (칸 안의 숫자 = 그 구간의 절대 차이 평균을 값 범위로 나눈 %, 진할수록 큼)"
-                    : "차이 발생 (칸 안의 숫자 = 그 구간의 절대 차이 평균, 진할수록 큼)";
+                    ? "차이 발생 (칸 안의 숫자 = 기준을 넘은 표본들의 평균 차이를 값 범위로 나눈 %. 항상 허용 오차보다 큽니다)"
+                    : "차이 발생 (칸 안의 숫자 = 기준을 넘은 표본들의 평균 차이. 항상 허용 오차보다 큽니다)";
             }
         }
 
@@ -144,6 +145,33 @@ namespace LogScope.App.ViewModels
         {
             get { return _includeUnchanged; }
             set { Set(ref _includeUnchanged, value); }
+        }
+
+        // ---------------- 화면에 떠 있는 히트맵이 최신인지 ----------------
+
+        /// <summary>
+        /// 지금 그려져 있는 히트맵을 만들 때 쓴 허용 오차. 계산은 무거워서
+        /// 값을 고칠 때마다 다시 돌리지 않습니다. 그래서 "위에 적힌 허용 오차" 와
+        /// "화면에 그려진 히트맵" 이 잠깐 어긋날 수 있는데, 그걸 말없이 두면
+        /// 아래 칸의 퍼센트가 위 설정과 안 맞는 것처럼 보입니다.
+        /// 어긋나 있는 동안에는 안내 줄을 띄웁니다.
+        /// </summary>
+        private double _shownRelative = double.NaN;
+        private double _shownAbsolute = double.NaN;
+
+        /// <summary>안내 줄. 최신이면 빈 글자라 줄 자체가 사라집니다.</summary>
+        public string StaleText
+        {
+            get
+            {
+                if (double.IsNaN(_shownRelative)) return string.Empty;
+                if (_shownRelative == _state.Settings.RelativeTolerancePercent
+                    && _shownAbsolute == _state.Settings.AbsoluteTolerance) return string.Empty;
+
+                return "허용 오차를 바꿨습니다. 아래 히트맵은 아직 예전 기준("
+                     + _shownRelative.ToString("0.####", CultureInfo.InvariantCulture)
+                     + "%)으로 그려져 있습니다 — [히트맵 다시 계산] 을 눌러 주세요.";
+            }
         }
 
         public HeatmapOptions BuildOptions()
@@ -177,9 +205,19 @@ namespace LogScope.App.ViewModels
         {
             if (r == null)
             {
+                _shownRelative = double.NaN;
+                _shownAbsolute = double.NaN;
+                Raise("StaleText");
                 Summary = "아직 계산하지 않았습니다.";
                 return;
             }
+
+            // 이 결과를 만든 기준을 적어 둡니다. 이후에 설정이 바뀌면
+            // StaleText 가 그 사실을 알립니다.
+            _shownRelative = _state.Settings.RelativeTolerancePercent;
+            _shownAbsolute = _state.Settings.AbsoluteTolerance;
+            Raise("StaleText");
+
             if (r.Warning.Length > 0 && r.Rows.Count == 0)
             {
                 Summary = r.Warning;

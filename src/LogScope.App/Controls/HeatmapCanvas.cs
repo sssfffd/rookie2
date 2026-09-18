@@ -256,12 +256,14 @@ namespace LogScope.App.Controls
                     else if (hc.OverSamples > 0)
                     {
                         // 차이가 난 칸. 진하기는 그 줄에서 가장 큰 평균 대비입니다.
+                        // 적는 값과 색을 <b>같은 값</b>으로 냅니다 (HeatRow.ValueOf).
+                        double shown = row.ValueOf(hc);
                         double peak = row.PeakMean > 0 ? row.PeakMean : 1;
-                        double f = Math.Min(1.0, hc.Mean / peak);
+                        double f = Math.Min(1.0, shown / peak);
                         Color c1 = Blend(p.HeatLow, p.HeatHigh, 0.25 + 0.75 * f);
                         fill = Frozen(c1);
                         textColor = Readable(c1);
-                        label = showNumbers ? CellText(row, hc.Mean) : null;
+                        label = showNumbers ? CellText(row, shown) : null;
                     }
                     else
                     {
@@ -499,27 +501,38 @@ namespace LogScope.App.Controls
 
             if (!cell.HasData) return row.Name + "   " + when + "   기록 없음";
 
-            string verdict = cell.OverSamples > 0
-                ? "차이 발생 (표본 " + cell.OverSamples + " / " + cell.Samples + ")"
-                : "정상";
+            // 판정에 쓰인 숫자와 기준을 <b>나란히</b> 보여 줍니다. 위쪽 도구 줄의
+            // 허용 오차와 여기 적힌 숫자가 왜 그렇게 나왔는지 바로 보이도록.
+            string shown = Both(row.ValueOf(cell), row);
+            string bar = row.ByName
+                ? "   기준 없음 (이름이 다르면 차이)"
+                : "   기준 " + Both(row.Threshold, row);
 
-            // 설명 줄에서는 값과 퍼센트를 <b>둘 다</b> 보여 줍니다. 칸에는
-            // 고른 쪽만 적히므로, 마우스를 올리면 나머지 한쪽도 바로 보입니다.
-            string mean = WithUnit(cell.Mean, row);
-            string meanPct = Percent(cell.Mean, row.Range);
-            if (meanPct != null) mean = _showPercent ? meanPct + " (" + mean + ")"
-                                                     : mean + " (" + meanPct + ")";
+            if (cell.OverSamples == 0)
+                return row.Name + "   " + when + "   정상"
+                     + "   구간 최대 " + Both(cell.Max, row) + bar
+                     + "   (표본 " + cell.Samples + "개 모두 기준 안)";
 
-            string extra = row.ByName
-                ? "   ※ 상태 이름끼리 견준 줄이라 퍼센트는 '다른 표본의 비율' 입니다."
-                : string.Empty;
+            string what = row.ByName ? "다른 표본의 비율 " : "차이 난 구간의 평균 ";
 
-            return row.Name + "   " + when + "   " + verdict
-                 + "   평균 차이 " + mean
-                 + "   최대 " + WithUnit(cell.Max, row)
-                 + "   RMS " + WithUnit(cell.Rms, row)
-                 + "   기준 " + WithUnit(row.Threshold, row)
-                 + extra;
+            return row.Name + "   " + when + "   차이 발생"
+                 + "   " + what + shown
+                 + "   (기준을 넘은 표본 " + cell.OverSamples + " / " + cell.Samples + ")"
+                 + bar
+                 + "   최대 " + Both(cell.Max, row)
+                 + "   구간 전체 평균 " + Both(cell.Mean, row);
+        }
+
+        /// <summary>
+        /// 값과 퍼센트를 함께. 고른 쪽이 앞, 나머지가 괄호 안입니다.
+        /// 둘을 같이 적어야 위쪽의 허용 오차(%)와 견줄 수 있습니다.
+        /// </summary>
+        private string Both(double v, HeatRow row)
+        {
+            string val = WithUnit(v, row);
+            string pct = Percent(v, row.Range);
+            if (pct == null) return val;
+            return _showPercent ? pct + " (" + val + ")" : val + " (" + pct + ")";
         }
 
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)

@@ -56,6 +56,15 @@
                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                 Padding="12,6">
             <StackPanel>
+                <!-- 허용 오차를 바꾸고 아직 다시 계산하지 않았을 때만 나옵니다. -->
+                <Border Background="{DynamicResource Brush.PanelAlt}"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        Padding="8,4" Margin="0,0,0,6"
+                        Visibility="{Binding StaleText, Converter={StaticResource TextToVisibility}}">
+                    <TextBlock Text="{Binding StaleText}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Brush.Text}" />
+                </Border>
+
                 <TextBlock Text="{Binding Summary}" TextWrapping="Wrap"
                            Foreground="{DynamicResource Brush.Text}" />
                 <WrapPanel Margin="0,6,0,0">
@@ -75,7 +84,7 @@
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
                     <TextBlock Text="기록 없음" Style="{StaticResource Muted}" Margin="0,0,18,0" />
 
-                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. 칸에 마우스를 올리면 값과 %를 모두 보여 줍니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
+                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. 칸에 마우스를 올리면 그 칸의 값·%·기준을 나란히 보여 줍니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
                                Style="{StaticResource Muted}" FontSize="11" />
                 </WrapPanel>
             </StackPanel>

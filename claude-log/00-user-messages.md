@@ -227,3 +227,12 @@
 > 세로축들이 좀 이상하네 일단 세로축에 단위도 적어줘
 
 → 답변: [07-units-and-percent.md](07-units-and-percent.md)
+
+---
+
+## 요청 10 — 히트맵 허용 오차와 퍼센트가 안 맞음
+
+> 이거 히트맵에서 위에 설정하는 허용오차하고 아래 뜨는 오차 퍼센티지가
+> 일치하지 않는 것 같은데?
+
+→ 답변: [08-heatmap-tolerance-mismatch.md](08-heatmap-tolerance-mismatch.md)
