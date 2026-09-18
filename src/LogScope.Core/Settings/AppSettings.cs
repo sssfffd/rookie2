@@ -67,8 +67,8 @@ namespace LogScope.Core.Settings
         public bool SortDescending = true;
 
         /// <summary>
-        /// 차이량이 아니라 이름/구분으로 정렬 중이면 그 값.
-        /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분.
+        /// 차이량이 아니라 이름/구분/기준값으로 정렬 중이면 그 값.
+        /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분, 3 = 기준값.
         /// </summary>
         public int SortColumn;
 
@@ -228,7 +228,7 @@ namespace LogScope.Core.Settings
             if (s.SortMetric == DiffMetric.Area) s.SortMetric = DiffMetric.MaxAbs;
             s.SortDescending = Json.GetBool(root, "sortDescending", true);
             s.SortColumn = Json.GetInt(root, "sortColumn", 0);
-            if (s.SortColumn < 0 || s.SortColumn > 2) s.SortColumn = 0;
+            if (s.SortColumn < 0 || s.SortColumn > 3) s.SortColumn = 0;
             s.HeatmapPercent = Json.GetBool(root, "heatmapPercent", false);
             s.AutoAlign = Json.GetBool(root, "autoAlign", true);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);

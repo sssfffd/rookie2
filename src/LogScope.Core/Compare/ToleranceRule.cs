@@ -13,7 +13,8 @@ namespace LogScope.Core.Compare
     /// 기준값은 두 가지 중 <b>큰 쪽</b>입니다.
     ///
     ///   절대 오차   설정에 적은 값 그대로. 기본 0 (끔).
-    ///   비율 오차   그 채널 값 범위의 몇 %. 기본 0.1%.
+    ///   비율 오차   그 채널 값 크기의 몇 %. 기본 0.1%.
+    ///               "무엇의 몇 %" 인지는 BaseRange 가 정합니다.
     ///
     /// 비율을 쓰는 이유는 채널마다 값의 크기가 다르기 때문입니다.
     /// 0 에서 4000 까지 오르내리는 아날로그 채널에서 1 쯤 흔들리는 것은 잡음이고,
@@ -22,33 +23,57 @@ namespace LogScope.Core.Compare
     /// </summary>
     public static class ToleranceRule
     {
-        /// <summary>기본 비율 오차 (퍼센트). 값 범위의 0.1%.</summary>
+        /// <summary>기본 비율 오차 (퍼센트). 값 크기의 0.1%.</summary>
         public const double DefaultPercent = 0.1;
 
         /// <summary>
         /// 비율을 곱할 밑값.
         ///
-        /// 먼저 값이 오르내린 폭(최대 − 최소)을 봅니다. 그게 "그 채널의 범위" 라는
-        /// 말에 가장 가깝기 때문입니다.
+        /// 두 가지 중 <b>큰 쪽</b>입니다.
         ///
-        /// 로그 내내 값이 한 자리에 머문 채널은 폭이 0 이라 비율 오차가 통째로
-        /// 사라집니다. 3000 에 가만히 있던 값이 3001 이 된 것까지 차이로 세게
-        /// 되는데, 그건 잡음에 가깝습니다. 그래서 폭이 0 이면 값의 크기를
-        /// 대신 씁니다.
+        ///   폭     로그 안에서 값이 오르내린 너비 (최대 − 최소)
+        ///   크기   값 자체의 크기 (절대값 중 가장 큰 것)
+        ///
+        /// 예전에는 폭만 보고, 폭이 <b>정확히 0</b> 일 때만 크기로 물러섰습니다.
+        /// 그런데 실제로 걸린 것은 폭이 0 인 채널이 아니라 <b>폭이 아주 좁은</b>
+        /// 채널이었습니다.
+        ///
+        ///   6466 과 6467 사이만 오가는 채널 → 폭 1
+        ///   허용 오차를 1% 로 잡아도 기준값은 1 x 1% = 0.01
+        ///   6467 과 6466 의 차이 1 은 0.01 보다 크므로 "차이" 로 잡힘
+        ///
+        /// 6467 짜리 값에서 1 이 흔들린 것을 1% 오차로 봐 달라는 말은 누가 봐도
+        /// "6467 의 1%(=64)" 라는 뜻입니다. 폭이 1 인 것은 그 로그가 신호의 좁은
+        /// 한 토막만 담고 있다는 뜻이지, 그 채널이 원래 1 만큼만 움직이는
+        /// 채널이라는 뜻이 아닙니다.
+        ///
+        /// 그래서 둘 중 큰 쪽을 씁니다. 계기 사양에서 정확도를 "풀 스케일의 몇 %"
+        /// 또는 "읽은 값의 몇 %" 로 적는 것과 같은 얘기이고, 여기서는 <b>둘 중
+        /// 느슨한 쪽</b>을 택한 것입니다.
+        ///
+        /// 0/1 만 오가는 디지털 채널은 폭도 1, 크기도 1 이라 예전과 같습니다.
+        /// 0 과 1 의 차이는 그대로 잡힙니다.
+        ///
+        /// 좁은 폭에서 벌어진 작은 차이까지 봐야 한다면 비율을 낮추거나
+        /// (예: 0.01%) 절대 허용 오차를 쓰면 됩니다. 실제로 쓰인 기준값은
+        /// 대시보드의 "기준값" 칸과 그래프·히트맵 설명 줄에 그대로 보입니다.
         /// </summary>
         public static double BaseRange(Channel a, Channel b)
         {
-            double span = 0;
-            if (a != null && !double.IsNaN(a.Min)) span = Math.Max(span, a.Max - a.Min);
-            if (b != null && !double.IsNaN(b.Min)) span = Math.Max(span, b.Max - b.Min);
-            if (span > 0) return span;
+            double span = 0, magnitude = 0;
 
-            double magnitude = 0;
             if (a != null && !double.IsNaN(a.Min))
+            {
+                span = Math.Max(span, a.Max - a.Min);
                 magnitude = Math.Max(magnitude, Math.Max(Math.Abs(a.Min), Math.Abs(a.Max)));
+            }
             if (b != null && !double.IsNaN(b.Min))
+            {
+                span = Math.Max(span, b.Max - b.Min);
                 magnitude = Math.Max(magnitude, Math.Max(Math.Abs(b.Min), Math.Abs(b.Max)));
-            return magnitude;
+            }
+
+            return Math.Max(span, magnitude);
         }
 
         /// <summary>

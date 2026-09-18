@@ -229,12 +229,17 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource ToolGroupCaption}" Text="세로 눈금" />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="원래값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}" />
+                                         Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
+                                         ToolTip="로그에 적힌 값을 그대로 씁니다." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="0–1 정규화" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}" />
+                                         Content="0–1 정규화" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}"
+                                         ToolTip="채널마다 자기 최소~최대를 0~1 로 폅니다.&#x0a;겹쳐보기에서 값 크기가 다른 채널끼리 모양을 견줄 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="변화만" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
-                                         ToolTip="채널마다 첫 값을 빼서, 몇천 중의 1 변화도 보이게 합니다." />
+                                         Content="변화량" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
+                                         ToolTip="채널마다 첫 값을 뺍니다. 6466.3 대신 +0.3 으로 읽힙니다.&#x0a;겹쳐보기에서 값 위치가 다른 채널을 한자리에 모을 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
+                            <TextBlock Text="{Binding ScaleHint}" Style="{StaticResource Muted}"
+                                       FontSize="11" VerticalAlignment="Center" Margin="6,0,2,0"
+                                       Visibility="{Binding ScaleHint, Converter={StaticResource TextToVisibility}}" />
                         </StackPanel>
                     </Border>
 

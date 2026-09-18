@@ -5,6 +5,7 @@ using System.IO;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
 using LogScope.Core.Compare;
+using LogScope.Core.Model;
 using LogScope.Core.Settings;
 
 namespace LogScope.App.ViewModels
@@ -19,6 +20,12 @@ namespace LogScope.App.ViewModels
         public string Rms { get; set; }
         public string TimeRatio { get; set; }
         public string Segments { get; set; }
+
+        /// <summary>
+        /// 이 채널에서 "차이" 로 본 기준값. 목록에 그대로 보여 줍니다.
+        /// 이게 안 보이면 "왜 이게 차이로 떴지" 를 알아낼 방법이 없습니다.
+        /// </summary>
+        public string Threshold { get; set; }
     }
 
     /// <summary>
@@ -27,7 +34,7 @@ namespace LogScope.App.ViewModels
     /// </summary>
     public sealed class ColumnHeaderVm : ObservableObject
     {
-        /// <summary>0 = 차이량(Metric), 1 = IO 이름, 2 = 구분.</summary>
+        /// <summary>0 = 차이량(Metric), 1 = IO 이름, 2 = 구분, 3 = 기준값.</summary>
         public int Kind { get; private set; }
 
         public DiffMetric Metric { get; private set; }
@@ -51,6 +58,11 @@ namespace LogScope.App.ViewModels
         public static ColumnHeaderVm ForKind(string text)
         {
             return new ColumnHeaderVm(2, DiffMetric.MaxAbs, text);
+        }
+
+        public static ColumnHeaderVm ForThreshold(string text)
+        {
+            return new ColumnHeaderVm(3, DiffMetric.MaxAbs, text);
         }
 
         private bool _isSorted;
@@ -196,6 +208,7 @@ namespace LogScope.App.ViewModels
         public ColumnHeaderVm ColRms { get; private set; }
         public ColumnHeaderVm ColTime { get; private set; }
         public ColumnHeaderVm ColSegments { get; private set; }
+        public ColumnHeaderVm ColThreshold { get; private set; }
 
         private List<ColumnHeaderVm> _headers;
 
@@ -208,10 +221,11 @@ namespace LogScope.App.ViewModels
             ColRms = ColumnHeaderVm.ForMetric(DiffMetric.Rms, "RMS");
             ColTime = ColumnHeaderVm.ForMetric(DiffMetric.TimeRatio, "차이 시간");
             ColSegments = ColumnHeaderVm.ForMetric(DiffMetric.SegmentCount, "구간 수");
+            ColThreshold = ColumnHeaderVm.ForThreshold("기준값");
 
             _headers = new List<ColumnHeaderVm>
             {
-                ColName, ColKind, ColMax, ColMean, ColRms, ColTime, ColSegments
+                ColName, ColKind, ColMax, ColMean, ColRms, ColTime, ColSegments, ColThreshold
             };
             MarkSorted();
         }
@@ -247,7 +261,8 @@ namespace LogScope.App.ViewModels
             {
                 s.SortColumn = header.Kind;
                 if (header.Kind == 0) s.SortMetric = header.Metric;
-                s.SortDescending = header.Kind == 0;   // 차이량은 큰 값부터
+                // 숫자 칸은 큰 값부터, 글자 칸은 가나다순부터가 자연스럽습니다.
+                s.SortDescending = header.Kind == 0 || header.Kind == 3;
             }
 
             ApplySort();
@@ -263,6 +278,7 @@ namespace LogScope.App.ViewModels
             {
                 case 1: DiffEngine.SortByName(_state.Comparison.Items, !s.SortDescending); break;
                 case 2: DiffEngine.SortByKind(_state.Comparison.Items, !s.SortDescending); break;
+                case 3: DiffEngine.SortByThreshold(_state.Comparison.Items, s.SortDescending); break;
                 default: DiffEngine.SortByMetric(_state.Comparison.Items, s.SortMetric, s.SortDescending); break;
             }
         }
@@ -340,6 +356,7 @@ namespace LogScope.App.ViewModels
                         Rms = d.Format(DiffMetric.Rms),
                         TimeRatio = d.Format(DiffMetric.TimeRatio),
                         Segments = d.Format(DiffMetric.SegmentCount),
+                        Threshold = d.ByName ? "이름 비교" : NumberText.Plain(d.Threshold),
                     });
                 }
             }

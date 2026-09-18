@@ -693,7 +693,7 @@ namespace LogScope.App.Controls
             return any;
         }
 
-        /// <summary>"변화만" 모드에서 빼 줄 기준값. 채널의 첫 유효 값입니다.</summary>
+        /// <summary>"변화량" 모드에서 빼 줄 기준값. 채널의 첫 유효 값입니다.</summary>
         private double Baseline(IoRowVm vm)
         {
             if (_state == null) return 0;
@@ -1042,7 +1042,7 @@ namespace LogScope.App.Controls
 
         /// <summary>
         /// 세로축이 무엇을 뜻하는지 레인 왼쪽 위에 적습니다.
-        /// 단위가 있으면 단위를, 눈금 모드가 원래값이 아니면 그 모드를 적습니다.
+        /// 단위가 있으면 단위를, 눈금 모드가 기존 값이 아니면 그 모드를 적습니다.
         /// 숫자만 늘어놓으면 무슨 값인지 알 수 없어서 붙였습니다.
         /// </summary>
         private void DrawAxisCaption(DrawingContext dc, Palette p, Rect lane, IoRowVm[] ios)

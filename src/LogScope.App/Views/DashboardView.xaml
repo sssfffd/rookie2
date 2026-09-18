@@ -147,6 +147,12 @@
                                                     Header="{Binding ColSegments}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding Segments}" />
+                                    <!-- 이 줄이 왜 "차이" 로 떴는지 알아보려면
+                                         쓰인 기준값이 보여야 합니다. -->
+                                    <GridViewColumn Width="100"
+                                                    Header="{Binding ColThreshold}"
+                                                    HeaderTemplate="{StaticResource SortHeader}"
+                                                    DisplayMemberBinding="{Binding Threshold}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>

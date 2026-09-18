@@ -145,8 +145,13 @@ namespace LogScope.Core.Compare
 
             // 기준값은 채널마다 다릅니다. 범위가 몇천인 아날로그와 0/1 만 오가는
             // 디지털에 같은 절대값을 들이댈 수 없기 때문입니다.
-            double tol = ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
-            if (byName && tol >= 1.0) tol = 0.0;   // 상태 채널의 차이는 0/1 로만 나옵니다.
+            // 이름으로 견주는 줄에는 허용 오차를 매기지 않습니다. 차이가
+            // "같다(0) / 다르다(1)" 뿐이라 "몇 %" 라는 말이 성립하지 않고,
+            // 절대 오차를 1 이상으로 적어 두면 상태가 통째로 바뀌어도 차이로
+            // 세지 않게 됩니다. 히트맵(Heatmap.BuildRow)도 같은 규칙입니다.
+            double tol = byName
+                ? 0.0
+                : ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
             d.Threshold = tol;
 
             double sum = 0, sumSq = 0, area = 0, maxAbs = 0, overTime = 0, totalTime = 0;
@@ -247,6 +252,23 @@ namespace LogScope.Core.Compare
             {
                 int c = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
                 return ascending ? c : -c;
+            });
+        }
+
+        /// <summary>
+        /// 그 채널에 쓰인 기준값으로 정렬합니다.
+        /// "왜 이게 차이로 떴지" 가 헷갈릴 때, 기준값이 유난히 작은(또는 큰)
+        /// 채널을 바로 찾아볼 수 있게 하려고 둔 것입니다.
+        /// </summary>
+        public static void SortByThreshold(List<ChannelDiff> items, bool descending)
+        {
+            items.Sort(delegate (ChannelDiff a, ChannelDiff b)
+            {
+                int c = descending
+                    ? b.Threshold.CompareTo(a.Threshold)
+                    : a.Threshold.CompareTo(b.Threshold);
+                if (c != 0) return c;
+                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
             });
         }
 

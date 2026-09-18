@@ -44,7 +44,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || S.LaneMode == value) return;   // 라디오는 켤 때만 반응
                 S.LaneMode = true;
-                Raise("LaneMode"); Raise("OverlayMode");
+                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint");
                 Changed();
             }
         }
@@ -56,7 +56,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || !S.LaneMode) return;
                 S.LaneMode = false;
-                Raise("LaneMode"); Raise("OverlayMode");
+                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint");
                 Changed();
             }
         }
@@ -68,7 +68,39 @@ namespace LogScope.App.ViewModels
             if (S.ValueScaleMode == mode) return;
             S.ValueScaleMode = mode;
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
+            Raise("ScaleHint");
             Changed();
+        }
+
+        /// <summary>
+        /// 세로 눈금 모드가 지금 그림을 실제로 바꾸는지 알려 주는 한 줄.
+        ///
+        /// <b>레인 보기에서는 세 모드가 똑같은 그림을 그립니다.</b> 우연이
+        /// 아니라 계산상 반드시 그렇습니다. 레인은 그 채널의 값 범위에 딱
+        /// 맞춰 그려지는데,
+        ///
+        ///   정규화  값에서 (v − 최소) / (최대 − 최소) 를 하고
+        ///           눈금도 0~1 로 바꿈  → 같은 자리에 같은 모양
+        ///   변화량  값에서 첫 값을 빼고
+        ///           눈금도 그만큼 내림  → 같은 자리에 같은 모양
+        ///
+        /// 즉 값과 눈금에 똑같은 변환을 걸어서 화면 좌표가 하나도 안 바뀝니다.
+        /// 바뀌는 것은 <b>눈금에 적히는 숫자</b>뿐입니다. 그것도 쓸모가 있어서
+        /// (6466.3 대신 +0.3 을 읽는 편이 낫습니다) 남겨 두지만, "그래프가
+        /// 안 변한다" 는 것을 화면에서 말해 주지 않으면 고장으로 보입니다.
+        ///
+        /// 겹쳐보기에서는 여러 채널이 눈금 하나를 같이 써서, 채널마다 다른
+        /// 변환이 걸리므로 그림이 실제로 달라집니다.
+        /// </summary>
+        public string ScaleHint
+        {
+            get
+            {
+                if (ScaleRaw) return string.Empty;
+                return S.LaneMode
+                    ? "레인 보기에서는 눈금에 적히는 숫자만 바뀝니다. 그림이 달라지는 것은 겹쳐보기입니다."
+                    : "겹쳐보기라 채널마다 따로 변환됩니다. 값 크기가 다른 채널끼리 모양을 견줄 수 있습니다.";
+            }
         }
 
         public bool ScaleRaw
@@ -188,7 +220,7 @@ namespace LogScope.App.ViewModels
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
             Raise("LaneMode"); Raise("OverlayMode");
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
-            Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
+            Raise("ScaleHint"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
             Raise("RelativeTolerancePercentText"); Raise("ToleranceHint");
         }
     }

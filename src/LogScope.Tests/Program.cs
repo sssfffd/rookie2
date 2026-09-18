@@ -41,6 +41,7 @@ namespace LogScope.Tests
                 CompareMetrics();
                 ExistenceDifference();
                 ToleranceIsRelativeToRange();
+                ToleranceUsesValueSizeNotJustSpan();
                 HeatmapBuckets();
                 HeatmapRelativeTolerance();
                 UnitsFromUnitRowAndName();
@@ -469,7 +470,7 @@ namespace LogScope.Tests
             CompareResult r3 = DiffEngine.Compare(dsA, dsB, opt, null);
             Check("절대 오차가 크면 둘 중 큰 쪽이 기준", r3.ChangedCount == 0, "실제 " + r3.ChangedCount);
 
-            // 값이 한 자리에 머문 채널은 범위가 0 이라, 값의 크기를 대신 씁니다.
+            // 값이 한 자리에 머문 채널도 값의 크기를 밑값으로 씁니다.
             LogDataset flatA = Open(WriteCsv("tol_flat_a.csv", "Time,F\n0,3000\n1,3000\n2,3000\n"), Orientation.Auto);
             LogDataset flatB = Open(WriteCsv("tol_flat_b.csv", "Time,F\n0,3001\n1,3001\n2,3001\n"), Orientation.Auto);
             CompareResult r4 = DiffEngine.Compare(flatA, flatB, new DiffOptions(), null);
@@ -857,6 +858,73 @@ namespace LogScope.Tests
                   r1.Rows[0].OverBuckets != r5.Rows[0].OverBuckets
                   || r1.Rows[1].OverBuckets != r5.Rows[1].OverBuckets,
                   "1분/5분 칸 수가 같게 나왔습니다");
+        }
+
+        /// <summary>
+        /// 비율 오차의 밑값은 "오르내린 폭" 과 "값의 크기" 중 <b>큰 쪽</b>이어야
+        /// 합니다.
+        ///
+        /// 예전에는 폭만 보고, 폭이 정확히 0 일 때만 크기로 물러섰습니다.
+        /// 그래서 6466 과 6467 사이만 오가는 채널은 폭이 1 이라, 허용 오차를
+        /// 1% 로 잡아도 기준값이 1 x 1% = 0.01 이 되어 1 만큼의 차이가
+        /// 그대로 잡혔습니다.
+        /// </summary>
+        private static void ToleranceUsesValueSizeNotJustSpan()
+        {
+            Console.WriteLine("허용 오차 — 밑값은 폭과 크기 중 큰 쪽");
+
+            // NEAR : 6466 과 6467 사이만 오감 (폭 1, 크기 6467)
+            // JUMP : 같은 자리에 있다가 6600 으로 튐
+            // DIG  : 0/1 디지털 (폭 1, 크기 1)
+            var a = new StringBuilder("Time,NEAR,JUMP,DIG\n");
+            var b = new StringBuilder("Time,NEAR,JUMP,DIG\n");
+            for (int i = 0; i < 200; i++)
+            {
+                int baseline = i >= 100 ? 6467 : 6466;
+                a.Append(i).Append(',').Append(baseline)
+                           .Append(',').Append(baseline)
+                           .Append(',').Append(i % 2).Append('\n');
+
+                int near = i >= 100 ? 6466 : 6467;          // 늘 1 만큼 벌어짐
+                int jump = i >= 150 ? 6600 : baseline;      // 크게 튐
+                b.Append(i).Append(',').Append(near)
+                           .Append(',').Append(jump)
+                           .Append(',').Append(1 - (i % 2)).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("tol_span_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("tol_span_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new DiffOptions();
+            opt.RelativeTolerance = ToleranceRule.FromPercent(1.0);   // 1%
+            CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
+
+            ChannelDiff near_ = r.Items.Find(d => d.Name == "NEAR");
+            ChannelDiff jump = r.Items.Find(d => d.Name == "JUMP");
+            ChannelDiff dig = r.Items.Find(d => d.Name == "DIG");
+            Check("세 채널 모두 찾음", near_ != null && jump != null && dig != null, null);
+            if (near_ == null || jump == null || dig == null) return;
+
+            // 폭은 1 이지만 값이 6467 이므로 기준값은 6467 의 1%.
+            Near("NEAR 의 기준값은 6467 의 1%", near_.Threshold, 64.67, 0.05);
+            Check("6467 과 6466 의 차이 1 은 1% 오차 안", !near_.Changed,
+                  "최대 " + near_.MaxAbs.ToString("0.###") + ", 기준 " + near_.Threshold.ToString("0.###"));
+
+            // 그렇다고 아무것도 안 잡히면 안 됩니다. 크게 튄 것은 그대로 잡힙니다.
+            Check("6600 으로 튄 것은 차이 맞음", jump.Changed,
+                  "최대 " + jump.MaxAbs.ToString("0.###") + ", 기준 " + jump.Threshold.ToString("0.###"));
+
+            // 0/1 채널은 폭도 1, 크기도 1 이라 예전과 똑같이 잡힙니다.
+            Near("DIG 의 기준값은 1 의 1%", dig.Threshold, 0.01, 1e-9);
+            Check("0 과 1 의 차이는 그대로 잡힘", dig.Changed, null);
+
+            Check("차이 난 IO 는 둘", r.ChangedCount == 2, "실제 " + r.ChangedCount);
+
+            // 좁은 폭의 작은 차이까지 봐야 하면 비율을 낮추면 됩니다.
+            opt.RelativeTolerance = ToleranceRule.FromPercent(0.001);
+            CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
+            ChannelDiff near2 = r2.Items.Find(d => d.Name == "NEAR");
+            Check("비율을 낮추면 NEAR 도 잡힘", near2 != null && near2.Changed,
+                  near2 != null ? "기준 " + near2.Threshold.ToString("0.######") : "못 찾음");
         }
 
         private static void JsonRoundTrip()
