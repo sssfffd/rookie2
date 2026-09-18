@@ -5,28 +5,22 @@ using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
 
-namespace LogScope.App
+namespace LogScope.App.Services
 {
     /// <summary>
-    /// 창들이 함께 보는 상태. 설정, 열어 둔 로그 두 개, 비교 결과, 그리고
-    /// 왼쪽 목록 모델을 담습니다. 화면은 여기서 값을 읽고 이벤트로 갱신됩니다.
+    /// 화면들이 함께 보는 상태. 설정, 열어 둔 로그 두 개, 비교 결과입니다.
+    /// 여기에는 WPF 타입이 하나도 없습니다 — 화면에 묶이지 않은 순수 상태입니다.
     /// </summary>
     public sealed class AppState
     {
         public AppSettings Settings = new AppSettings();
+
         public LogDataset Before;
         public LogDataset After;
         public CompareResult Comparison;
-        public ChannelView View = new ChannelView();
-
-        public event EventHandler DataChanged;
-        public event EventHandler SelectionChanged;
 
         public string BeforePath = string.Empty;
         public string AfterPath = string.Empty;
-
-        public void RaiseData() { var h = DataChanged; if (h != null) h(this, EventArgs.Empty); }
-        public void RaiseSelection() { var h = SelectionChanged; if (h != null) h(this, EventArgs.Empty); }
 
         public bool HasAny { get { return Before != null || After != null; } }
         public bool HasBoth { get { return Before != null && After != null; } }
@@ -41,43 +35,28 @@ namespace LogScope.App
             return o;
         }
 
-        /// <summary>
-        /// 로그가 바뀐 뒤 목록과 그룹을 다시 맞춥니다. 저장된 그룹이 없으면
-        /// 10 개씩 묶은 기본 그룹을 만들어 둡니다.
-        /// </summary>
-        public void RebuildView()
-        {
-            View.Rebuild(Before, After, Settings.Groups);
-            if (Settings.Groups.Count == 0 && View.Count > 0)
-            {
-                Settings.Groups = View.MakeDefaultGroups(10);
-                View.Rebuild(Before, After, Settings.Groups);
-            }
-            SyncChangedNames();
-            View.RebuildRows();
-        }
-
-        public void SyncChangedNames()
-        {
-            View.ChangedNames.Clear();
-            if (Comparison == null) return;
-            foreach (ChannelDiff d in Comparison.Items) if (d.Changed) View.ChangedNames.Add(d.Name);
-            foreach (ChannelDiff d in Comparison.OnlyBefore) View.ChangedNames.Add(d.Name);
-            foreach (ChannelDiff d in Comparison.OnlyAfter) View.ChangedNames.Add(d.Name);
-        }
-
         public void Recompare(LoadProgress prog)
         {
             Comparison = (Before != null && After != null)
                 ? DiffEngine.Compare(Before, After, BuildDiffOptions(), prog)
                 : null;
-            SyncChangedNames();
+        }
+
+        /// <summary>값이 달라졌거나 한쪽에만 있는 IO 이름들.</summary>
+        public HashSet<string> ChangedNames()
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            if (Comparison == null) return set;
+            foreach (ChannelDiff d in Comparison.Items) if (d.Changed) set.Add(d.Name);
+            foreach (ChannelDiff d in Comparison.OnlyBefore) set.Add(d.Name);
+            foreach (ChannelDiff d in Comparison.OnlyAfter) set.Add(d.Name);
+            return set;
         }
 
         /// <summary>그래프가 쓸 전체 시간 구간. 두 로그를 모두 덮습니다.</summary>
         public void FullTimeRange(out double t0, out double t1)
         {
-            double shift = Comparison != null ? Comparison.AppliedShift : 0.0;
+            double shift = AppliedShift;
             bool any = false;
             t0 = 0; t1 = 1;
             if (Before != null && Before.SampleCount > 0)
@@ -98,19 +77,17 @@ namespace LogScope.App
 
         public double AppliedShift { get { return Comparison != null ? Comparison.AppliedShift : 0.0; } }
 
-        // ---- 그룹 손보기 -------------------------------------------------
+        // ---- 그룹 손보기 ---------------------------------------------------
 
         public void AddGroup(string name)
         {
             Settings.Groups.Add(new GroupDef(string.IsNullOrEmpty(name) ? "새 그룹" : name));
-            View.RebuildRows();
         }
 
         public void RemoveGroup(int index)
         {
             if (index < 0 || index >= Settings.Groups.Count) return;
             Settings.Groups.RemoveAt(index);
-            View.RebuildRows();
         }
 
         public void MoveGroup(int index, int delta)
@@ -121,7 +98,6 @@ namespace LogScope.App
             GroupDef g = Settings.Groups[index];
             Settings.Groups.RemoveAt(index);
             Settings.Groups.Insert(to, g);
-            View.RebuildRows();
         }
 
         /// <summary>IO 를 그룹에 넣습니다. 다른 그룹에 있었다면 거기서 뺍니다.</summary>
@@ -134,14 +110,12 @@ namespace LogScope.App
                 for (int g = 0; g < Settings.Groups.Count; g++) Settings.Groups[g].Members.Remove(n);
                 Settings.Groups[group].Members.Add(n);
             }
-            View.RebuildRows();
         }
 
         public void RemoveFromGroups(IEnumerable<string> names)
         {
             foreach (string n in names)
                 for (int g = 0; g < Settings.Groups.Count; g++) Settings.Groups[g].Members.Remove(n);
-            View.RebuildRows();
         }
     }
 }

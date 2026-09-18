@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- LogScope.App — 화면. 파싱/데이터는 전부 LogScope.Core 에 있습니다.
-     AnyCPU + Prefer32Bit=false 로 64 비트 윈도우에서는 64 비트로 돌아갑니다.
-     1000 만 칸짜리 로그를 두 개(이전/이후) 여는 데 필요합니다. -->
+<!-- LogScope.App — 화면 (WPF).
+     파싱/데이터는 전부 LogScope.Core 에 있고 이 프로젝트는 그것을 참조만 합니다.
+     AnyCPU + Prefer32Bit=false 로 64비트 윈도우에서는 64비트로 돌아갑니다.
+     1000만 칸짜리 로그를 이전/이후 두 개 여는 데 필요합니다. -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}</ProjectGuid>
+    <!-- 첫 번째 GUID 가 "이 프로젝트는 WPF" 라는 표시입니다. 이게 있어야
+         MSBuild 가 .xaml 을 컴파일합니다. -->
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>WinExe</OutputType>
     <RootNamespace>LogScope.App</RootNamespace>
     <AssemblyName>LogScope</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
     <LangVersion>7.3</LangVersion>
     <Deterministic>true</Deterministic>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <WarningLevel>4</WarningLevel>
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -25,40 +29,131 @@
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <!-- 폴더 고르는 창(FolderBrowserDialog) 하나 때문에만 참조합니다.
+         WPF 에는 폴더 선택 창이 없고, 이것은 .NET Framework 에 원래
+         들어 있는 어셈블리입니다 (바깥에서 받아 온 라이브러리가 아닙니다). -->
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Themes\Light.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Themes\Dark.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Themes\Controls.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\ShellWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\DashboardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\GraphView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\HeatmapView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\SettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\LoadingWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\TextInputWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Theme.cs" />
-    <Compile Include="AppState.cs" />
-    <Compile Include="ChannelView.cs" />
-    <Compile Include="Controls\FlowBar.cs" />
-    <Compile Include="Controls\Buttons.cs" />
-    <Compile Include="Controls\ChannelPanel.cs" />
+    <Compile Include="Themes\Palette.cs" />
+    <Compile Include="Themes\ThemeManager.cs" />
+    <Compile Include="Infrastructure\ObservableObject.cs" />
+    <Compile Include="Infrastructure\RelayCommand.cs" />
+    <Compile Include="Infrastructure\Converters.cs" />
+    <Compile Include="Services\AppState.cs" />
+    <Compile Include="Services\BackgroundJob.cs" />
+    <Compile Include="ViewModels\IoRowVm.cs" />
+    <Compile Include="ViewModels\GroupRowVm.cs" />
+    <Compile Include="ViewModels\ChannelListVm.cs" />
+    <Compile Include="ViewModels\GraphVm.cs" />
+    <Compile Include="ViewModels\DashboardVm.cs" />
+    <Compile Include="ViewModels\HeatmapVm.cs" />
+    <Compile Include="ViewModels\SettingsVm.cs" />
+    <Compile Include="ViewModels\ShellVm.cs" />
     <Compile Include="Controls\GraphCanvas.cs" />
-    <Compile Include="Views\DashboardView.cs" />
-    <Compile Include="Views\GraphView.cs" />
-    <Compile Include="Dialogs\LoadingDialog.cs" />
-    <Compile Include="Dialogs\TextInputDialog.cs" />
-    <Compile Include="Dialogs\SettingsDialog.cs" />
-    <Compile Include="MainForm.cs" />
+    <Compile Include="Controls\HeatmapCanvas.cs" />
+    <Compile Include="Views\ShellWindow.xaml.cs">
+      <DependentUpon>ShellWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\DashboardView.xaml.cs">
+      <DependentUpon>DashboardView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\GraphView.xaml.cs">
+      <DependentUpon>GraphView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\HeatmapView.xaml.cs">
+      <DependentUpon>HeatmapView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\SettingsWindow.xaml.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\LoadingWindow.xaml.cs">
+      <DependentUpon>LoadingWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\TextInputWindow.xaml.cs">
+      <DependentUpon>TextInputWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.manifest" />
+    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LogScope.Core\LogScope.Core.csproj">

@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Windows.Forms;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using LogScope.App.Services;
+using LogScope.App.Themes;
+using LogScope.App.ViewModels;
 using LogScope.Core.Model;
 using LogScope.Core.Render;
 
@@ -13,335 +17,503 @@ namespace LogScope.App.Controls
     /// <summary>
     /// 그래프를 직접 그리는 판.
     ///
-    /// 성능의 핵심은 두 가지입니다.
+    /// WPF 컨트롤을 겹쳐 쌓지 않고 FrameworkElement 하나에 OnRender 로 그립니다.
+    /// 채널 200 개에 표본 5 만 개면 컨트롤로는 감당이 안 되기 때문입니다.
+    ///
+    /// 빠른 이유 두 가지:
     ///  - 표본이 픽셀보다 촘촘하면 픽셀 열마다 최소/최대만 뽑아 그립니다
     ///    (Decimator). 표본 5 만 개를 1000 픽셀에 그릴 때 선 긋기가
     ///    5 만 번에서 1000 번으로 줄어듭니다.
-    ///  - 이중 버퍼로 그려서 시간축을 밀 때 깜빡이지 않습니다.
+    ///  - 선 하나를 StreamGeometry 한 덩어리로 만들어 한 번에 넘깁니다.
+    ///    점마다 DrawLine 을 부르지 않습니다.
     ///
-    /// 세로 눈금 글자는 실제로 선을 그릴 때 쓰는 것과 똑같은 변환으로
-    /// 자리를 잡습니다. 그래서 눈금 숫자와 그래프 높이가 어긋날 수 없습니다.
+    /// 세로 눈금 글자는 선을 그을 때 쓰는 것과 똑같은 ValueToY() 를 거칩니다.
+    /// 그래서 눈금 숫자와 그래프 높이가 어긋날 수 없습니다.
     /// </summary>
-    public sealed class GraphCanvas : Control
+    public sealed class GraphCanvas : FrameworkElement
     {
-        private readonly AppState _state;
-        private readonly VScrollBar _vscroll = new VScrollBar();
+        private AppState _state;
+        private List<IoRowVm> _channels = new List<IoRowVm>();
 
         // 보이는 시간 구간
         private double _t0, _t1;
         private bool _timeInit;
 
-        // 채널마다의 세로 상태. 겹쳐보기는 -1 번 자리를 함께 씁니다.
         private sealed class LaneY
         {
             public double Zoom = 1.0;
             public double Center = double.NaN;   // NaN 이면 기준 범위의 한가운데
         }
-        private readonly Dictionary<int, LaneY> _lanes = new Dictionary<int, LaneY>();
 
-        // 커서
+        // 레인마다의 세로 상태를 채널 이름으로 기억합니다. 번호로 기억하면
+        // 그룹 순서를 바꿨을 때 엉뚱한 레인에 배율이 붙습니다.
+        private readonly Dictionary<string, LaneY> _lanes = new Dictionary<string, LaneY>(StringComparer.Ordinal);
+
+        // 겹쳐보기는 레인이 하나뿐이라 이름 대신 이 자리를 씁니다.
+        // IO 이름과 겹치지 않도록 일부러 이상한 글자를 씁니다.
+        private const string OverlayLaneKey = "<< 겹쳐보기 >>";
+
         private double _cursorA = double.NaN;
         private double _cursorB = double.NaN;
 
-        // 끌기
-        private bool _dragging;
+        private bool _dragging, _moved;
         private Point _dragPoint;
-        private double _dragT0, _dragT1;
-        private int _dragLane = -1;
-        private double _dragCenter;
-        private bool _moved;
+        private double _dragT0, _dragT1, _dragCenter;
+        private string _dragLane;
 
         private Decimator.Column[] _colsBefore = new Decimator.Column[0];
         private Decimator.Column[] _colsAfter = new Decimator.Column[0];
-        private PointF[] _pts = new PointF[0];
+        private readonly List<Point> _pts = new List<Point>(4096);
 
-        public GraphCanvas(AppState state)
+        private readonly Typeface _face = new Typeface("Segoe UI");
+        private const double FontNormal = 12.0;
+        private const double FontSmall = 11.0;
+
+        public GraphCanvas()
         {
-            _state = state;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
-                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw
-                     | ControlStyles.Selectable, true);
-            TabStop = true;
-            BackColor = Theme.Current.Window;
-
-            _vscroll.Dock = DockStyle.Right;
-            _vscroll.SmallChange = 1;
-            _vscroll.Visible = false;
-            _vscroll.ValueChanged += delegate { Invalidate(); };
-            Controls.Add(_vscroll);
+            Focusable = true;
+            ClipToBounds = true;
+            // 1 픽셀 선이 흐려지지 않게 합니다. 파형은 또렷해야 읽힙니다.
+            RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
+            ThemeManager.Changed += delegate { InvalidateVisual(); };
         }
 
-        // ---------------- 바깥에서 쓰는 것 ----------------
+        // ---------------- 바깥에서 설정하는 것 ----------------
 
-        public bool LaneMode = true;
-        public ValueScaleMode Scale = ValueScaleMode.Raw;
-        public bool FitVisible;
-        public bool ShadeDifference = true;
-        public bool SeparateTraces;
-        public double Tolerance;
+        public void Attach(AppState state)
+        {
+            _state = state;
+            _timeInit = false;
+            InvalidateVisual();
+        }
 
-        public event EventHandler CursorMoved;
+        /// <summary>그릴 채널들. 왼쪽 목록에 보이는 차례 그대로 들어옵니다.</summary>
+        public void SetChannels(List<IoRowVm> channels)
+        {
+            _channels = channels ?? new List<IoRowVm>();
+            InvalidateVisual();
+        }
+
+        private bool _laneMode = true;
+        public bool LaneMode
+        {
+            get { return _laneMode; }
+            set { if (_laneMode != value) { _laneMode = value; ResetValueZoom(); } }
+        }
+
+        private ValueScaleMode _scale = ValueScaleMode.Raw;
+        public ValueScaleMode Scale
+        {
+            get { return _scale; }
+            set { if (_scale != value) { _scale = value; ResetValueZoom(); } }
+        }
+
+        private bool _fitVisible;
+        public bool FitVisible
+        {
+            get { return _fitVisible; }
+            set { if (_fitVisible != value) { _fitVisible = value; InvalidateVisual(); } }
+        }
+
+        private bool _shade = true;
+        public bool ShadeDifference
+        {
+            get { return _shade; }
+            set { if (_shade != value) { _shade = value; InvalidateVisual(); } }
+        }
+
+        private bool _separate;
+        public bool SeparateTraces
+        {
+            get { return _separate; }
+            set { if (_separate != value) { _separate = value; InvalidateVisual(); } }
+        }
+
+        private double _tolerance;
+        public double Tolerance
+        {
+            get { return _tolerance; }
+            set { if (_tolerance != value) { _tolerance = value; InvalidateVisual(); } }
+        }
+
+        /// <summary>커서나 보이는 구간이 바뀌면 알립니다. 아래 띠의 글자를 고쳐 씁니다.</summary>
+        public event EventHandler ViewChanged;
+
+        private void RaiseViewChanged()
+        {
+            EventHandler h = ViewChanged;
+            if (h != null) h(this, EventArgs.Empty);
+        }
 
         public double CursorA { get { return _cursorA; } }
         public double CursorB { get { return _cursorB; } }
         public double VisibleStart { get { return _t0; } }
         public double VisibleEnd { get { return _t1; } }
 
+        // ---------------- 세로 스크롤 (레인이 많을 때) ----------------
+
+        public static readonly DependencyProperty VerticalOffsetProperty =
+            DependencyProperty.Register("VerticalOffset", typeof(double), typeof(GraphCanvas),
+                new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public double VerticalOffset
+        {
+            get { return (double)GetValue(VerticalOffsetProperty); }
+            set { SetValue(VerticalOffsetProperty, value); }
+        }
+
+        public static readonly DependencyProperty ScrollMaximumProperty =
+            DependencyProperty.Register("ScrollMaximum", typeof(double), typeof(GraphCanvas),
+                new PropertyMetadata(0.0));
+
+        public double ScrollMaximum
+        {
+            get { return (double)GetValue(ScrollMaximumProperty); }
+            private set { SetValue(ScrollMaximumProperty, value); }
+        }
+
+        public static readonly DependencyProperty ScrollViewportProperty =
+            DependencyProperty.Register("ScrollViewport", typeof(double), typeof(GraphCanvas),
+                new PropertyMetadata(1.0));
+
+        public double ScrollViewport
+        {
+            get { return (double)GetValue(ScrollViewportProperty); }
+            private set { SetValue(ScrollViewportProperty, value); }
+        }
+
+        // ---------------- 확대 / 이동 ----------------
+
         public void ResetTime()
         {
-            _state.FullTimeRange(out _t0, out _t1);
+            if (_state == null) { _t0 = 0; _t1 = 1; }
+            else _state.FullTimeRange(out _t0, out _t1);
             _timeInit = true;
-            Invalidate();
+            InvalidateVisual();
+            RaiseViewChanged();
         }
 
         public void ResetValueZoom()
         {
             _lanes.Clear();
-            Invalidate();
+            InvalidateVisual();
+        }
+
+        /// <summary>보이는 시간 구간을 그대로 정합니다. 히트맵에서 칸을 눌러
+        /// 넘어올 때 그 구간으로 맞추는 데 씁니다.</summary>
+        public void SetTimeRange(double t0, double t1)
+        {
+            if (!(t1 > t0)) return;
+            _t0 = t0;
+            _t1 = t1;
+            _timeInit = true;
+            InvalidateVisual();
+            RaiseViewChanged();
         }
 
         public void ZoomTime(double factor)
         {
-            double mid = (_t0 + _t1) * 0.5;
-            ZoomTimeAround(mid, factor);
+            ZoomTimeAround((_t0 + _t1) * 0.5, factor);
+            InvalidateVisual();
+            RaiseViewChanged();
         }
 
         public void ZoomValue(double factor)
         {
-            foreach (KeyValuePair<int, LaneY> kv in _lanes) kv.Value.Zoom *= factor;
-            if (_lanes.Count == 0) LaneFor(LaneMode ? FirstDrawn() : -1).Zoom *= factor;
+            if (_lanes.Count == 0)
+            {
+                // 아직 손대지 않았으면 지금 보이는 레인들을 먼저 만들어 둡니다.
+                if (_laneMode) { foreach (IoRowVm vm in _channels) LaneFor(vm.Name); }
+                else LaneFor(OverlayLaneKey);
+            }
+            foreach (KeyValuePair<string, LaneY> kv in _lanes) kv.Value.Zoom *= factor;
             ClampZooms();
-            Invalidate();
-        }
-
-        private int FirstDrawn()
-        {
-            List<int> order = _state.View.DrawOrder();
-            return order.Count > 0 ? order[0] : -1;
+            InvalidateVisual();
         }
 
         private void ClampZooms()
         {
-            foreach (KeyValuePair<int, LaneY> kv in _lanes)
+            foreach (KeyValuePair<string, LaneY> kv in _lanes)
             {
                 if (kv.Value.Zoom < 1e-4) kv.Value.Zoom = 1e-4;
                 if (kv.Value.Zoom > 1e7) kv.Value.Zoom = 1e7;
             }
         }
 
-        private LaneY LaneFor(int io)
+        private LaneY LaneFor(string key)
         {
             LaneY y;
-            if (!_lanes.TryGetValue(io, out y)) { y = new LaneY(); _lanes[io] = y; }
+            if (!_lanes.TryGetValue(key, out y)) { y = new LaneY(); _lanes[key] = y; }
             return y;
         }
 
-        // ---------------- 자리 계산 ----------------
+        private void ZoomTimeAround(double anchor, double factor)
+        {
+            double span = (_t1 - _t0) / factor;
+            double full0, full1;
+            if (_state != null) _state.FullTimeRange(out full0, out full1);
+            else { full0 = 0; full1 = 1; }
 
-        private int GutterW { get { return Dpi.S(68); } }
-        private int AxisH { get { return Dpi.S(26); } }
-        private int HeaderH { get { return Dpi.S(22); } }
-        private int MinLaneH { get { return Dpi.S(62); } }
+            double minSpan = (full1 - full0) * 1e-7;
+            if (minSpan <= 0) minSpan = 1e-9;
+            if (span < minSpan) span = minSpan;
+            double maxSpan = (full1 - full0) * 20.0;
+            if (span > maxSpan) span = maxSpan;
 
-        private Rectangle PlotArea
+            double f = (_t1 - _t0) > 0 ? (anchor - _t0) / (_t1 - _t0) : 0.5;
+            _t0 = anchor - f * span;
+            _t1 = _t0 + span;
+        }
+
+        // ---------------- 자리 ----------------
+
+        private const double GutterW = 66;
+        private const double AxisH = 26;
+        private const double HeaderH = 21;
+        private const double MinLaneH = 64;
+
+        private Rect PlotArea
         {
             get
             {
-                int right = _vscroll.Visible ? _vscroll.Width : 0;
-                return new Rectangle(GutterW, 0,
-                    Math.Max(10, ClientSize.Width - GutterW - right - Dpi.S(8)),
-                    Math.Max(10, ClientSize.Height - AxisH));
+                double w = Math.Max(10, ActualWidth - GutterW - 6);
+                double h = Math.Max(10, ActualHeight - AxisH);
+                return new Rect(GutterW, 0, w, h);
             }
         }
 
-        private double XToTime(int x)
+        private double XToTime(double x)
         {
-            Rectangle p = PlotArea;
+            Rect p = PlotArea;
             if (p.Width <= 0) return _t0;
             return _t0 + (x - p.Left) * (_t1 - _t0) / p.Width;
         }
 
-        private float TimeToX(double t)
+        private double TimeToX(double t)
         {
-            Rectangle p = PlotArea;
+            Rect p = PlotArea;
             double span = _t1 - _t0;
             if (span <= 0) return p.Left;
-            return (float)(p.Left + (t - _t0) * p.Width / span);
+            return p.Left + (t - _t0) * p.Width / span;
+        }
+
+        private static double ValueToY(double v, Rect inner, double vlo, double vhi)
+        {
+            double span = vhi - vlo;
+            if (!(span > 0)) span = 1;
+            return inner.Bottom - (v - vlo) / span * inner.Height;
         }
 
         // ---------------- 그리기 ----------------
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnRender(DrawingContext dc)
         {
-            Theme th = Theme.Current;
-            Graphics g = e.Graphics;
-            g.Clear(th.Window);
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            Palette p = ThemeManager.Palette;
 
-            if (!_timeInit)
+            // 바탕을 칠해 두어야 이 요소가 마우스를 받습니다.
+            dc.DrawRectangle(Frozen(p.Window), null, new Rect(0, 0, ActualWidth, ActualHeight));
+
+            if (!_timeInit && _state != null)
             {
-                // 그리는 중이므로 Invalidate 는 부르지 않습니다.
                 _state.FullTimeRange(out _t0, out _t1);
                 _timeInit = true;
             }
 
-            List<int> order = _state.View.DrawOrder();
-            if (order.Count == 0)
+            if (_channels.Count == 0)
             {
-                DrawEmpty(g, th);
+                DrawEmpty(dc, p);
+                UpdateScrollInfo(0, 1);
                 return;
             }
 
-            Rectangle plot = PlotArea;
-            int lanes = LaneMode ? order.Count : 1;
-            int laneH = LaneMode ? Math.Max(MinLaneH, plot.Height / Math.Max(1, lanes)) : plot.Height;
+            Rect plot = PlotArea;
+            int lanes = _laneMode ? _channels.Count : 1;
+            double laneH = _laneMode ? Math.Max(MinLaneH, plot.Height / Math.Max(1, lanes)) : plot.Height;
+            double needed = _laneMode ? laneH * lanes : plot.Height;
 
-            int needed = LaneMode ? laneH * lanes : plot.Height;
-            bool needScroll = needed > plot.Height;
-            if (needScroll != _vscroll.Visible)
+            UpdateScrollInfo(needed, plot.Height);
+            double scrollY = needed > plot.Height ? VerticalOffset : 0;
+
+            int columns = (int)Math.Max(1, Math.Floor(plot.Width));
+            EnsureBuffers(columns);
+
+            dc.PushClip(new RectangleGeometry(new Rect(0, 0, ActualWidth, plot.Bottom)));
+            if (_laneMode)
             {
-                _vscroll.Visible = needScroll;
-                plot = PlotArea;
-                laneH = LaneMode ? Math.Max(MinLaneH, plot.Height / Math.Max(1, lanes)) : plot.Height;
-                needed = LaneMode ? laneH * lanes : plot.Height;
-            }
-            if (needScroll)
-            {
-                _vscroll.Minimum = 0;
-                _vscroll.Maximum = Math.Max(0, needed - 1);
-                _vscroll.LargeChange = Math.Max(1, plot.Height);
-                if (_vscroll.Value > _vscroll.Maximum - _vscroll.LargeChange + 1)
-                    _vscroll.Value = Math.Max(0, _vscroll.Maximum - _vscroll.LargeChange + 1);
-            }
-            int scrollY = needScroll ? _vscroll.Value : 0;
-
-            EnsureBuffers(plot.Width);
-
-            Region old = g.Clip;
-            g.SetClip(new Rectangle(0, 0, ClientSize.Width, plot.Bottom));
-
-            if (LaneMode)
-            {
-                for (int i = 0; i < order.Count; i++)
+                for (int i = 0; i < _channels.Count; i++)
                 {
-                    int top = i * laneH - scrollY;
+                    double top = i * laneH - scrollY;
                     if (top + laneH < 0 || top > plot.Height) continue;
-                    var rect = new Rectangle(plot.Left, top, plot.Width, laneH);
-                    DrawLane(g, th, rect, new[] { order[i] }, order[i]);
+                    var rect = new Rect(plot.Left, top, plot.Width, laneH);
+                    DrawLane(dc, p, rect, new[] { _channels[i] }, _channels[i].Name, columns);
                 }
             }
             else
             {
-                var rect = new Rectangle(plot.Left, 0, plot.Width, plot.Height);
-                DrawLane(g, th, rect, order.ToArray(), -1);
+                var rect = new Rect(plot.Left, 0, plot.Width, plot.Height);
+                DrawLane(dc, p, rect, _channels.ToArray(), OverlayLaneKey, columns);
             }
+            dc.Pop();
 
-            g.Clip = old;
-
-            DrawTimeAxis(g, th, plot);
-            DrawCursors(g, th, plot);
+            DrawTimeAxis(dc, p, plot);
+            DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
+            DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
         }
 
-        private void DrawEmpty(Graphics g, Theme th)
+        private static Brush Frozen(Color c)
         {
-            string msg = _state.HasAny
+            var b = new SolidColorBrush(c);
+            b.Freeze();
+            return b;
+        }
+
+        private void UpdateScrollInfo(double extent, double viewport)
+        {
+            double max = Math.Max(0, extent - viewport);
+            if (Math.Abs(ScrollMaximum - max) > 0.5) ScrollMaximum = max;
+            if (Math.Abs(ScrollViewport - viewport) > 0.5) ScrollViewport = Math.Max(1, viewport);
+            if (VerticalOffset > max) VerticalOffset = max;
+        }
+
+        private void DrawEmpty(DrawingContext dc, Palette p)
+        {
+            string msg = (_state != null && _state.HasAny)
                 ? "왼쪽 목록에서 IO 를 골라 주세요.\n처음에는 아무것도 선택되어 있지 않습니다."
                 : "위쪽 메뉴의 '이전 로그 열기' / '이후 로그 열기' 로 파일을 열어 주세요.";
-            TextRenderer.DrawText(g, msg, Theme.Ui,
-                new Rectangle(Dpi.S(24), Dpi.S(24), ClientSize.Width - Dpi.S(48), Dpi.S(120)),
-                th.Muted, TextFormatFlags.WordBreak);
+            FormattedText ft = Text(msg, FontNormal, p.MutedBrush);
+            ft.MaxTextWidth = Math.Max(100, ActualWidth - 48);
+            dc.DrawText(ft, new Point(24, 24));
         }
 
-        private void EnsureBuffers(int width)
+        private void EnsureBuffers(int columns)
         {
-            if (_colsBefore.Length < width)
+            if (_colsBefore.Length < columns)
             {
-                _colsBefore = new Decimator.Column[width];
-                _colsAfter = new Decimator.Column[width];
-                _pts = new PointF[width * 4 + 8];
+                _colsBefore = new Decimator.Column[columns];
+                _colsAfter = new Decimator.Column[columns];
             }
         }
 
-        /// <summary>한 레인(또는 겹쳐보기 전체)을 그립니다.</summary>
-        private void DrawLane(Graphics g, Theme th, Rectangle rect, int[] ios, int laneKey)
+        private FormattedText Text(string s, double size, Brush brush)
         {
-            using (var back = new SolidBrush(th.Plot)) g.FillRectangle(back, rect);
-            using (var p = new Pen(th.GridStrong)) g.DrawRectangle(p, rect.X, rect.Y, rect.Width - 1, rect.Height - 1);
+            return new FormattedText(s ?? string.Empty, CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight, _face, size, brush);
+        }
 
-            Rectangle inner = new Rectangle(rect.X, rect.Y + HeaderH, rect.Width, Math.Max(8, rect.Height - HeaderH - Dpi.S(4)));
+        /// <summary>레인 하나(겹쳐보기면 전체)를 그립니다.</summary>
+        private void DrawLane(DrawingContext dc, Palette p, Rect rect, IoRowVm[] ios, string laneKey, int columns)
+        {
+            dc.DrawRectangle(p.PlotBrush, p.BorderPen, rect);
+
+            var inner = new Rect(rect.X, rect.Y + HeaderH, rect.Width,
+                                 Math.Max(8, rect.Height - HeaderH - 4));
 
             double lo, hi;
             BaseRange(ios, out lo, out hi);
+
             LaneY ly = LaneFor(laneKey);
             double span = (hi - lo) / ly.Zoom;
             if (!(span > 0)) span = 1;
             double center = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
             double vlo = center - span * 0.5, vhi = center + span * 0.5;
 
-            DrawValueAxis(g, th, inner, vlo, vhi);
+            DrawValueAxis(dc, p, inner, vlo, vhi);
 
             for (int k = 0; k < ios.Length; k++)
             {
-                int io = ios[k];
-                IoRef r = _state.View.All[io];
-                Color cBefore = LaneMode ? th.Before : th.SeriesColor(k);
-                Color cAfter = LaneMode ? th.After : ControlPaint.Dark(th.SeriesColor(k), 0.25f);
-                DrawChannel(g, th, inner, io, r, vlo, vhi, cBefore, cAfter);
+                Pen before = _laneMode ? p.BeforePen : p.SeriesPen(k);
+                Pen after = _laneMode ? p.AfterPen : PairPen(p, k);
+                DrawChannel(dc, p, inner, ios[k], vlo, vhi, before, after, columns);
             }
 
-            DrawLaneHeader(g, th, rect, ios);
+            DrawLaneHeader(dc, p, rect, ios);
         }
 
-        private void DrawLaneHeader(Graphics g, Theme th, Rectangle rect, int[] ios)
+        private readonly Dictionary<int, Pen> _pairPens = new Dictionary<int, Pen>();
+
+        /// <summary>겹쳐보기에서 "이후" 쪽 선. 같은 계열의 다른 밝기로 구분합니다.</summary>
+        private Pen PairPen(Palette p, int index)
         {
-            var head = new Rectangle(rect.X + Dpi.S(6), rect.Y + Dpi.S(3), rect.Width - Dpi.S(12), HeaderH - Dpi.S(4));
+            Pen pen;
+            if (_pairPens.TryGetValue(index, out pen)) return pen;
+
+            Color c = p.SeriesColor(index);
+            Color paired = p.IsDark
+                ? Color.FromRgb(Mix(c.R, 255), Mix(c.G, 255), Mix(c.B, 255))
+                : Color.FromRgb((byte)(c.R * 0.55), (byte)(c.G * 0.55), (byte)(c.B * 0.55));
+
+            var brush = new SolidColorBrush(paired);
+            brush.Freeze();
+            pen = new Pen(brush, 1.4);
+            pen.Freeze();
+            _pairPens[index] = pen;
+            return pen;
+        }
+
+        private static byte Mix(byte a, byte b)
+        {
+            return (byte)((a + b) / 2);
+        }
+
+        private void DrawLaneHeader(DrawingContext dc, Palette p, Rect rect, IoRowVm[] ios)
+        {
+            double x = rect.X + 7;
+            double y = rect.Y + 3;
+            double right = rect.Right - 8;
+
             if (ios.Length == 1)
             {
-                IoRef r = _state.View.All[ios[0]];
+                IoRowVm vm = ios[0];
                 string extra = string.Empty;
-                if (!r.InAfter && _state.After != null) extra = "  (이후 로그에 없음)";
-                else if (!r.InBefore && _state.Before != null) extra = "  (이전 로그에 없음)";
-                TextRenderer.DrawText(g, r.Name + extra, Theme.UiBold, head, th.Text,
-                    TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                if (!vm.InAfter && _state != null && _state.After != null) extra = "   (이후 로그에 없음)";
+                else if (!vm.InBefore && _state != null && _state.Before != null) extra = "   (이전 로그에 없음)";
 
-                string vals = ValueReadout(ios[0]);
-                if (!string.IsNullOrEmpty(vals))
-                    TextRenderer.DrawText(g, vals, Theme.Small, head, th.Muted,
-                        TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.NoPrefix);
-            }
-            else
-            {
-                int x = head.X;
-                for (int k = 0; k < ios.Length && k < 24; k++)
+                FormattedText name = Text(vm.Name + extra, FontNormal, p.TextBrush);
+                name.SetFontWeight(FontWeights.SemiBold);
+                name.MaxTextWidth = Math.Max(40, right - x - 210);
+                name.MaxLineCount = 1;
+                name.Trimming = TextTrimming.CharacterEllipsis;
+                dc.DrawText(name, new Point(x, y));
+
+                string readout = ValueReadout(vm);
+                if (readout.Length > 0)
                 {
-                    IoRef r = _state.View.All[ios[k]];
-                    Color c = th.SeriesColor(k);
-                    using (var b = new SolidBrush(c))
-                        g.FillRectangle(b, x, head.Y + head.Height / 2 - Dpi.S(4), Dpi.S(10), Dpi.S(8));
-                    x += Dpi.S(13);
-                    Size sz = TextRenderer.MeasureText(g, r.Name, Theme.Small);
-                    TextRenderer.DrawText(g, r.Name, Theme.Small,
-                        new Rectangle(x, head.Y, Math.Min(sz.Width + Dpi.S(2), head.Right - x), head.Height),
-                        th.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-                    x += sz.Width + Dpi.S(12);
-                    if (x > head.Right - Dpi.S(40)) break;
+                    FormattedText ft = Text(readout, FontSmall, p.MutedBrush);
+                    ft.MaxLineCount = 1;
+                    double rx = Math.Max(x + name.Width + 12, right - ft.Width);
+                    if (rx + ft.Width <= right + 1) dc.DrawText(ft, new Point(rx, y + 1));
                 }
+                return;
+            }
+
+            // 겹쳐보기: 색 표시와 이름을 나란히
+            for (int k = 0; k < ios.Length && x < right - 60; k++)
+            {
+                var swatch = new Rect(x, y + 4, 11, 8);
+                dc.DrawRectangle(Frozen(p.SeriesColor(k)), null, swatch);
+                x += 15;
+
+                FormattedText ft = Text(ios[k].Name, FontSmall, p.TextBrush);
+                ft.MaxLineCount = 1;
+                dc.DrawText(ft, new Point(x, y + 1));
+                x += ft.Width + 14;
             }
         }
 
-        private string ValueReadout(int io)
+        private string ValueReadout(IoRowVm vm)
         {
-            if (double.IsNaN(_cursorA)) return string.Empty;
-            IoRef r = _state.View.All[io];
+            if (double.IsNaN(_cursorA) || _state == null) return string.Empty;
             string s = string.Empty;
-            if (r.InBefore && _state.Before != null)
-                s += "이전 " + _state.Before.Channels[r.BeforeIndex]
-                        .FormatValue(_state.Before.SampleAt(r.BeforeIndex, _cursorA));
-            if (r.InAfter && _state.After != null)
+            if (vm.InBefore && _state.Before != null)
             {
-                if (s.Length > 0) s += "   ";
-                s += "이후 " + _state.After.Channels[r.AfterIndex]
-                        .FormatValue(_state.After.SampleAt(r.AfterIndex, _cursorA - _state.AppliedShift));
+                Channel c = _state.Before.Channels[vm.BeforeIndex];
+                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA));
+            }
+            if (vm.InAfter && _state.After != null)
+            {
+                if (s.Length > 0) s += "    ";
+                Channel c = _state.After.Channels[vm.AfterIndex];
+                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, _cursorA - _state.AppliedShift));
             }
             return s;
         }
@@ -349,21 +521,20 @@ namespace LogScope.App.Controls
         /// <summary>
         /// 레인의 기준 세로 범위. 기본은 채널 전체 범위라서 시간축을 밀어도
         /// 세로 배율이 갑자기 풀리지 않습니다. "보이는 구간에 맞춤" 을 켰을
-        /// 때만 지금 보이는 구간으로 다시 잡습니다.
+        /// 때만 지금 보이는 구간으로 다시 잡습니다. (요구사항 2번)
         /// </summary>
-        private void BaseRange(int[] ios, out double lo, out double hi)
+        private void BaseRange(IoRowVm[] ios, out double lo, out double hi)
         {
-            if (Scale == ValueScaleMode.Normalized) { lo = -0.05; hi = 1.05; return; }
+            if (_scale == ValueScaleMode.Normalized) { lo = -0.05; hi = 1.05; return; }
 
             double a = double.PositiveInfinity, b = double.NegativeInfinity;
             for (int k = 0; k < ios.Length; k++)
             {
-                IoRef r = _state.View.All[ios[k]];
                 double clo, chi;
-                if (!ChannelRange(r, out clo, out chi)) continue;
-                if (Scale == ValueScaleMode.Delta)
+                if (!ChannelRange(ios[k], out clo, out chi)) continue;
+                if (_scale == ValueScaleMode.Delta)
                 {
-                    double bas = Baseline(r);
+                    double bas = Baseline(ios[k]);
                     clo -= bas; chi -= bas;
                 }
                 if (clo < a) a = clo;
@@ -376,57 +547,59 @@ namespace LogScope.App.Controls
             lo = a - pad; hi = b + pad;
         }
 
-        private bool ChannelRange(IoRef r, out double lo, out double hi)
+        private bool ChannelRange(IoRowVm vm, out double lo, out double hi)
         {
             lo = double.PositiveInfinity; hi = double.NegativeInfinity;
+            if (_state == null) return false;
             bool any = false;
+            double x0, x1;
 
-            if (FitVisible)
+            if (_fitVisible)
             {
-                double x0, x1;
-                if (r.InBefore && _state.Before != null
-                    && Decimator.RangeIn(_state.Before, r.BeforeIndex, _t0, _t1, out x0, out x1))
+                if (vm.InBefore && _state.Before != null
+                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
-                if (r.InAfter && _state.After != null
-                    && Decimator.RangeIn(_state.After, r.AfterIndex,
+                if (vm.InAfter && _state.After != null
+                    && Decimator.RangeIn(_state.After, vm.AfterIndex,
                         _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (any) return true;
             }
 
-            if (r.InBefore && _state.Before != null)
+            if (vm.InBefore && _state.Before != null)
             {
-                Channel c = _state.Before.Channels[r.BeforeIndex];
+                Channel c = _state.Before.Channels[vm.BeforeIndex];
                 if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
             }
-            if (r.InAfter && _state.After != null)
+            if (vm.InAfter && _state.After != null)
             {
-                Channel c = _state.After.Channels[r.AfterIndex];
+                Channel c = _state.After.Channels[vm.AfterIndex];
                 if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
             }
             return any;
         }
 
         /// <summary>"변화만" 모드에서 빼 줄 기준값. 채널의 첫 유효 값입니다.</summary>
-        private double Baseline(IoRef r)
+        private double Baseline(IoRowVm vm)
         {
-            if (r.InBefore && _state.Before != null)
+            if (_state == null) return 0;
+            if (vm.InBefore && _state.Before != null)
             {
-                float[] v = _state.Before.Channels[r.BeforeIndex].Values;
+                float[] v = _state.Before.Channels[vm.BeforeIndex].Values;
                 for (int i = 0; i < v.Length; i++) if (!float.IsNaN(v[i])) return v[i];
             }
-            if (r.InAfter && _state.After != null)
+            if (vm.InAfter && _state.After != null)
             {
-                float[] v = _state.After.Channels[r.AfterIndex].Values;
+                float[] v = _state.After.Channels[vm.AfterIndex].Values;
                 for (int i = 0; i < v.Length; i++) if (!float.IsNaN(v[i])) return v[i];
             }
             return 0;
         }
 
-        private double Transform(IoRef r, double v, double chLo, double chHi, double baseline)
+        private double Transform(double v, double chLo, double chHi, double baseline)
         {
             if (double.IsNaN(v)) return double.NaN;
-            switch (Scale)
+            switch (_scale)
             {
                 case ValueScaleMode.Normalized:
                     return (chHi - chLo) > 1e-12 ? (v - chLo) / (chHi - chLo) : 0.5;
@@ -437,150 +610,158 @@ namespace LogScope.App.Controls
             }
         }
 
-        private void DrawChannel(Graphics g, Theme th, Rectangle inner, int io, IoRef r,
-                                 double vlo, double vhi, Color cBefore, Color cAfter)
+        private void DrawChannel(DrawingContext dc, Palette p, Rect inner, IoRowVm vm,
+                                 double vlo, double vhi, Pen beforePen, Pen afterPen, int columns)
         {
+            if (_state == null || inner.Width <= 1) return;
+
             double chLo, chHi;
-            if (!ChannelRange(r, out chLo, out chHi)) { chLo = 0; chHi = 1; }
-            double baseline = Scale == ValueScaleMode.Delta ? Baseline(r) : 0;
+            if (!ChannelRange(vm, out chLo, out chHi)) { chLo = 0; chHi = 1; }
+            double baseline = _scale == ValueScaleMode.Delta ? Baseline(vm) : 0;
 
-            int width = inner.Width;
-            if (width <= 1) return;
+            bool haveB = vm.InBefore && _state.Before != null;
+            bool haveA = vm.InAfter && _state.After != null;
 
-            bool haveB = r.InBefore && _state.Before != null;
-            bool haveA = r.InAfter && _state.After != null;
+            if (haveB) Decimator.Build(_state.Before, vm.BeforeIndex, _t0, _t1, _colsBefore, columns);
+            if (haveA) Decimator.Build(_state.After, vm.AfterIndex,
+                                       _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, _colsAfter, columns);
 
-            if (haveB) Decimator.Build(_state.Before, r.BeforeIndex, _t0, _t1, _colsBefore, width);
-            if (haveA) Decimator.Build(_state.After, r.AfterIndex,
-                                       _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, _colsAfter, width);
+            double sep = _separate ? inner.Height * 0.02 : 0.0;
 
-            float sep = SeparateTraces ? inner.Height * 0.02f : 0f;
+            if (_shade && haveB && haveA)
+                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep);
 
-            if (ShadeDifference && haveB && haveA)
-                ShadeGap(g, th, inner, width, vlo, vhi, r, chLo, chHi, baseline, sep);
-
-            if (haveB) DrawTrace(g, inner, _colsBefore, width, vlo, vhi, r, chLo, chHi, baseline, cBefore, -sep);
-            if (haveA) DrawTrace(g, inner, _colsAfter, width, vlo, vhi, r, chLo, chHi, baseline, cAfter, +sep);
+            if (haveB) DrawTrace(dc, inner, _colsBefore, columns, vlo, vhi, chLo, chHi, baseline, beforePen, -sep);
+            if (haveA) DrawTrace(dc, inner, _colsAfter, columns, vlo, vhi, chLo, chHi, baseline, afterPen, +sep);
         }
 
-        private float ValueToY(double v, Rectangle inner, double vlo, double vhi)
+        /// <summary>
+        /// 열 요약을 선 하나로 만들어 그립니다. 값이 끊긴 자리(NaN)에서는
+        /// 도형을 끊어 선을 잇지 않습니다.
+        /// </summary>
+        private void DrawTrace(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns,
+                               double vlo, double vhi, double chLo, double chHi,
+                               double baseline, Pen pen, double dy)
         {
-            double span = vhi - vlo;
-            if (!(span > 0)) span = 1;
-            double f = (v - vlo) / span;
-            return (float)(inner.Bottom - f * inner.Height);
-        }
+            double top = inner.Top - 4, bottom = inner.Bottom + 4;
+            var geo = new StreamGeometry();
 
-        private void DrawTrace(Graphics g, Rectangle inner, Decimator.Column[] cols, int width,
-                               double vlo, double vhi, IoRef r, double chLo, double chHi,
-                               double baseline, Color color, float dy)
-        {
-            int n = 0;
-            float top = inner.Top - 4, bottom = inner.Bottom + 4;
-
-            using (var pen = new Pen(color, Math.Max(1f, Dpi.F(1.2f))))
+            using (StreamGeometryContext ctx = geo.Open())
             {
-                pen.LineJoin = LineJoin.Bevel;
-                for (int x = 0; x < width; x++)
+                bool open = false;
+                _pts.Clear();
+
+                for (int x = 0; x < columns; x++)
                 {
                     Decimator.Column c = cols[x];
                     if (!c.HasValue)
                     {
-                        // 값이 끊긴 자리. 여기까지 그린 뒤 선을 끊습니다.
-                        if (n > 1) g.DrawLines(pen, Slice(n));
-                        n = 0;
+                        if (open) Flush(ctx, ref open);
                         continue;
                     }
 
-                    float px = inner.Left + x;
+                    double px = inner.Left + x;
                     // 화면 y 는 값이 클수록 작아집니다. yTop 이 c.Max, yBottom 이 c.Min.
-                    float yFirst = ValueToY(Transform(r, c.First, chLo, chHi, baseline), inner, vlo, vhi) + dy;
-                    float yTop = ValueToY(Transform(r, c.Max, chLo, chHi, baseline), inner, vlo, vhi) + dy;
-                    float yBottom = ValueToY(Transform(r, c.Min, chLo, chHi, baseline), inner, vlo, vhi) + dy;
-                    float yLast = ValueToY(Transform(r, c.Last, chLo, chHi, baseline), inner, vlo, vhi) + dy;
+                    double yFirst = Clamp(ValueToY(Transform(c.First, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
+                    double yTop = Clamp(ValueToY(Transform(c.Max, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
+                    double yBottom = Clamp(ValueToY(Transform(c.Min, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
+                    double yLast = Clamp(ValueToY(Transform(c.Last, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
 
-                    Add(ref n, px, Clamp(yFirst, top, bottom));
-                    if (yTop != yFirst) Add(ref n, px, Clamp(yTop, top, bottom));
-                    if (yBottom != yTop) Add(ref n, px, Clamp(yBottom, top, bottom));
-                    if (yLast != yBottom) Add(ref n, px, Clamp(yLast, top, bottom));
+                    if (!open)
+                    {
+                        ctx.BeginFigure(new Point(px, yFirst), false, false);
+                        open = true;
+                    }
+                    else _pts.Add(new Point(px, yFirst));
 
-                    if (n >= _pts.Length - 8) { g.DrawLines(pen, Slice(n)); PointF keep = _pts[n - 1]; n = 0; Add(ref n, keep.X, keep.Y); }
+                    if (yTop != yFirst) _pts.Add(new Point(px, yTop));
+                    if (yBottom != yTop) _pts.Add(new Point(px, yBottom));
+                    if (yLast != yBottom) _pts.Add(new Point(px, yLast));
                 }
-                if (n > 1) g.DrawLines(pen, Slice(n));
+                if (open) Flush(ctx, ref open);
             }
+
+            geo.Freeze();
+            dc.DrawGeometry(null, pen, geo);
         }
 
-        private static float Clamp(float v, float lo, float hi)
+        private void Flush(StreamGeometryContext ctx, ref bool open)
         {
-            if (float.IsNaN(v)) return lo;
+            if (_pts.Count > 0)
+            {
+                ctx.PolyLineTo(_pts, true, false);
+                _pts.Clear();
+            }
+            open = false;
+        }
+
+        private static double Clamp(double v, double lo, double hi)
+        {
+            if (double.IsNaN(v)) return lo;
             return v < lo ? lo : (v > hi ? hi : v);
         }
 
-        private void Add(ref int n, float x, float y)
-        {
-            if (n >= _pts.Length) return;
-            _pts[n].X = x; _pts[n].Y = y; n++;
-        }
-
-        // DrawLines 는 길이가 딱 맞는 배열을 요구합니다. 매 프레임 새로
-        // 잡으면 쓰레기가 쌓이므로, 길이가 같은 동안은 같은 배열을 다시 씁니다.
-        // DrawLines 는 배열을 붙들고 있지 않으므로 안전합니다.
-        private PointF[] _slice = new PointF[0];
-        private PointF[] Slice(int n)
-        {
-            if (_slice.Length != n) _slice = new PointF[n];
-            Array.Copy(_pts, _slice, n);
-            return _slice;
-        }
-
         /// <summary>
-        /// 이전과 이후가 벌어진 구간을 옅은 색으로 채웁니다. 점선을 쓰지
-        /// 않는 이유는, 점선이 파형의 빈 구간과 섞여 파형을 읽기 어렵게
-        /// 만들기 때문입니다.
+        /// 이전과 이후가 벌어진 구간을 옅은 색으로 채웁니다.
+        /// 점선을 쓰지 않는 이유는, 점선이 파형의 빈 구간과 섞여 파형을
+        /// 읽기 어렵게 만들기 때문입니다. (요구사항 5번)
+        ///
+        /// 1 픽셀짜리 네모를 열마다 하나씩 담되, 전부 한 도형에 모아
+        /// 한 번에 칠합니다. 붙어 있는 네모들이 모여 자연스러운 띠가 됩니다.
         /// </summary>
-        private void ShadeGap(Graphics g, Theme th, Rectangle inner, int width,
-                              double vlo, double vhi, IoRef r, double chLo, double chHi,
-                              double baseline, float sep)
+        private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns,
+                              double vlo, double vhi, double chLo, double chHi,
+                              double baseline, double sep)
         {
-            using (var b = new SolidBrush(th.DiffShade))
+            var geo = new StreamGeometry();
+            bool any = false;
+
+            using (StreamGeometryContext ctx = geo.Open())
             {
-                for (int x = 0; x < width; x++)
+                for (int x = 0; x < columns; x++)
                 {
                     Decimator.Column cb = _colsBefore[x], ca = _colsAfter[x];
                     if (!cb.HasValue || !ca.HasValue) continue;
-                    if (Math.Abs(cb.Last - ca.Last) <= Tolerance) continue;
+                    if (Math.Abs(cb.Last - ca.Last) <= _tolerance) continue;
 
-                    float y1 = ValueToY(Transform(r, cb.Last, chLo, chHi, baseline), inner, vlo, vhi) - sep;
-                    float y2 = ValueToY(Transform(r, ca.Last, chLo, chHi, baseline), inner, vlo, vhi) + sep;
-                    float top = Clamp(Math.Min(y1, y2), inner.Top, inner.Bottom);
-                    float bot = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
-                    if (bot - top < 1f) bot = top + 1f;
-                    g.FillRectangle(b, inner.Left + x, top, 1f, bot - top);
+                    double y1 = ValueToY(Transform(cb.Last, chLo, chHi, baseline), inner, vlo, vhi) - sep;
+                    double y2 = ValueToY(Transform(ca.Last, chLo, chHi, baseline), inner, vlo, vhi) + sep;
+                    double t = Clamp(Math.Min(y1, y2), inner.Top, inner.Bottom);
+                    double b = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
+                    if (b - t < 1) b = t + 1;
+
+                    double px = inner.Left + x;
+                    ctx.BeginFigure(new Point(px, t), true, true);
+                    ctx.LineTo(new Point(px + 1, t), false, false);
+                    ctx.LineTo(new Point(px + 1, b), false, false);
+                    ctx.LineTo(new Point(px, b), false, false);
+                    any = true;
                 }
             }
+            if (!any) return;
+            geo.Freeze();
+            dc.DrawGeometry(p.DiffBrush, null, geo);
         }
 
         // ---------------- 눈금 ----------------
 
-        private void DrawValueAxis(Graphics g, Theme th, Rectangle inner, double vlo, double vhi)
+        private void DrawValueAxis(DrawingContext dc, Palette p, Rect inner, double vlo, double vhi)
         {
-            double step = NiceStep(vhi - vlo, Math.Max(2, inner.Height / Dpi.S(34)));
+            double step = NiceStep(vhi - vlo, Math.Max(2, (int)(inner.Height / 34)));
             if (!(step > 0)) return;
 
             double first = Math.Ceiling(vlo / step) * step;
-            using (var grid = new Pen(th.Grid))
+            for (double v = first; v <= vhi + step * 0.001; v += step)
             {
-                for (double v = first; v <= vhi + step * 0.001; v += step)
-                {
-                    float y = ValueToY(v, inner, vlo, vhi);
-                    if (y < inner.Top - 1 || y > inner.Bottom + 1) continue;
-                    g.DrawLine(grid, inner.Left + 1, y, inner.Right - 2, y);
-                    // 눈금 글자는 선을 그은 바로 그 y 에 붙입니다. 그래서
-                    // 숫자와 그래프 높이가 어긋날 수 없습니다.
-                    TextRenderer.DrawText(g, FormatTick(v, step), Theme.Small,
-                        new Rectangle(0, (int)y - Dpi.S(8), GutterW - Dpi.S(6), Dpi.S(16)),
-                        th.Muted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-                }
+                double y = ValueToY(v, inner, vlo, vhi);
+                if (y < inner.Top - 1 || y > inner.Bottom + 1) continue;
+
+                dc.DrawLine(p.GridPen, new Point(inner.Left + 1, y), new Point(inner.Right - 2, y));
+
+                // 눈금 글자는 선을 그은 바로 그 y 에 붙입니다. 그래서 숫자와
+                // 그래프 높이가 어긋날 수 없습니다. (요구사항 2번)
+                FormattedText ft = Text(FormatTick(v, step), FontSmall, p.MutedBrush);
+                dc.DrawText(ft, new Point(Math.Max(2, GutterW - 8 - ft.Width), y - ft.Height * 0.5));
             }
         }
 
@@ -605,106 +786,89 @@ namespace LogScope.App.Controls
             return nice * mag;
         }
 
-        private void DrawTimeAxis(Graphics g, Theme th, Rectangle plot)
+        private void DrawTimeAxis(DrawingContext dc, Palette p, Rect plot)
         {
-            var strip = new Rectangle(0, plot.Bottom, ClientSize.Width, AxisH);
-            using (var b = new SolidBrush(th.Panel)) g.FillRectangle(b, strip);
-            using (var p = new Pen(th.Border)) g.DrawLine(p, 0, strip.Top, strip.Right, strip.Top);
+            var strip = new Rect(0, plot.Bottom, ActualWidth, AxisH);
+            dc.DrawRectangle(p.AxisStripBrush, null, strip);
+            dc.DrawLine(p.BorderPen, new Point(0, strip.Top), new Point(strip.Right, strip.Top));
 
-            LogDataset refDs = _state.TimeReference;
+            LogDataset refDs = _state != null ? _state.TimeReference : null;
             double span = _t1 - _t0;
             if (!(span > 0)) return;
 
-            int wanted = Math.Max(2, plot.Width / Dpi.S(110));
+            int wanted = Math.Max(2, (int)(plot.Width / 110));
             double step = NiceStep(span, wanted);
             if (!(step > 0)) return;
 
             double first = Math.Ceiling(_t0 / step) * step;
-            using (var grid = new Pen(th.Grid))
-            using (var tick = new Pen(th.Border))
+            for (double t = first; t <= _t1; t += step)
             {
-                for (double t = first; t <= _t1; t += step)
-                {
-                    float x = TimeToX(t);
-                    if (x < plot.Left || x > plot.Right) continue;
-                    g.DrawLine(grid, x, plot.Top, x, plot.Bottom);
-                    g.DrawLine(tick, x, strip.Top, x, strip.Top + Dpi.S(4));
-                    string label = refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
-                    TextRenderer.DrawText(g, label, Theme.Small,
-                        new Rectangle((int)x - Dpi.S(55), strip.Top + Dpi.S(5), Dpi.S(110), Dpi.S(16)),
-                        th.Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPrefix);
-                }
+                double x = TimeToX(t);
+                if (x < plot.Left || x > plot.Right) continue;
+
+                dc.DrawLine(p.GridPen, new Point(x, plot.Top), new Point(x, plot.Bottom));
+                dc.DrawLine(p.BorderPen, new Point(x, strip.Top), new Point(x, strip.Top + 4));
+
+                string label = refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
+                FormattedText ft = Text(label, FontSmall, p.MutedBrush);
+                dc.DrawText(ft, new Point(x - ft.Width * 0.5, strip.Top + 5));
             }
         }
 
-        private void DrawCursors(Graphics g, Theme th, Rectangle plot)
-        {
-            DrawCursor(g, th, plot, _cursorA, th.CursorA, "A");
-            DrawCursor(g, th, plot, _cursorB, th.CursorB, "B");
-        }
-
-        private void DrawCursor(Graphics g, Theme th, Rectangle plot, double t, Color c, string tag)
+        private void DrawCursor(DrawingContext dc, Palette p, Rect plot, double t, Pen pen, Color color, string tag)
         {
             if (double.IsNaN(t) || t < _t0 || t > _t1) return;
-            float x = TimeToX(t);
-            using (var p = new Pen(c, Math.Max(1f, Dpi.F(1.2f))))
-                g.DrawLine(p, x, plot.Top, x, plot.Bottom);
-            var box = new Rectangle((int)x - Dpi.S(8), plot.Top + Dpi.S(1), Dpi.S(16), Dpi.S(14));
-            using (var b = new SolidBrush(c)) g.FillRectangle(b, box);
-            TextRenderer.DrawText(g, tag, Theme.SmallBold, box, Color.White,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            double x = TimeToX(t);
+            dc.DrawLine(pen, new Point(x, plot.Top), new Point(x, plot.Bottom));
+
+            var box = new Rect(x - 9, plot.Top + 1, 18, 15);
+            dc.DrawRectangle(Frozen(color), null, box);
+
+            FormattedText ft = Text(tag, FontSmall, Brushes.White);
+            ft.SetFontWeight(FontWeights.Bold);
+            dc.DrawText(ft, new Point(box.Left + (box.Width - ft.Width) * 0.5,
+                                      box.Top + (box.Height - ft.Height) * 0.5));
         }
 
         // ---------------- 마우스 ----------------
 
-        protected override void OnMouseWheel(MouseEventArgs e)
+        protected override void OnMouseWheel(MouseWheelEventArgs e)
         {
             base.OnMouseWheel(e);
+            if (_state == null) return;
+
             int notches = e.Delta / 120;
             if (notches == 0) notches = Math.Sign(e.Delta);
 
-            // 한 칸에 너무 많이 커지지 않게 아주 조금씩 바꿉니다.
+            // 한 칸에 너무 많이 커지지 않게 아주 조금씩 바꿉니다. (요구사항 2번)
             double factor = Math.Pow(1.14, notches);
+            Point at = e.GetPosition(this);
 
-            if ((ModifierKeys & Keys.Shift) != 0) ZoomValueAt(e.Location, factor);
-            else ZoomTimeAround(XToTime(e.X), factor);
-            Invalidate();
-        }
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) ZoomValueAt(at, factor);
+            else ZoomTimeAround(XToTime(at.X), factor);
 
-        private void ZoomTimeAround(double anchor, double factor)
-        {
-            double span = (_t1 - _t0) / factor;
-            double full0, full1;
-            _state.FullTimeRange(out full0, out full1);
-            double minSpan = (full1 - full0) * 1e-7;
-            if (minSpan <= 0) minSpan = 1e-9;
-            if (span < minSpan) span = minSpan;
-            double maxSpan = (full1 - full0) * 20.0;
-            if (span > maxSpan) span = maxSpan;
-
-            double f = (_t1 - _t0) > 0 ? (anchor - _t0) / (_t1 - _t0) : 0.5;
-            _t0 = anchor - f * span;
-            _t1 = _t0 + span;
+            InvalidateVisual();
+            RaiseViewChanged();
+            e.Handled = true;
         }
 
         /// <summary>
         /// Shift + 휠. 커서가 가리키던 값이 그 자리에 그대로 남도록
-        /// 가운데를 다시 잡습니다.
+        /// 가운데를 다시 잡습니다. (요구사항 2번)
         /// </summary>
         private void ZoomValueAt(Point at, double factor)
         {
-            int laneKey; Rectangle inner;
-            if (!LaneAt(at, out laneKey, out inner)) return;
+            string key; Rect inner; IoRowVm[] ios;
+            if (!LaneAt(at, out key, out inner, out ios)) return;
 
-            int[] ios = IosForLane(laneKey);
             double lo, hi;
             BaseRange(ios, out lo, out hi);
 
-            LaneY ly = LaneFor(laneKey);
+            LaneY ly = LaneFor(key);
             double span = (hi - lo) / ly.Zoom;
             double center = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
 
-            double f = inner.Height > 0 ? (double)(inner.Bottom - at.Y) / inner.Height : 0.5;
+            double f = inner.Height > 0 ? (inner.Bottom - at.Y) / inner.Height : 0.5;
             double valueAt = center - span * 0.5 + f * span;
 
             ly.Zoom *= factor;
@@ -713,61 +877,61 @@ namespace LogScope.App.Controls
             ly.Center = valueAt - (f - 0.5) * newSpan;
         }
 
-        private int[] IosForLane(int laneKey)
+        private bool LaneAt(Point at, out string key, out Rect inner, out IoRowVm[] ios)
         {
-            if (laneKey >= 0) return new[] { laneKey };
-            return _state.View.DrawOrder().ToArray();
-        }
+            key = OverlayLaneKey;
+            inner = Rect.Empty;
+            ios = new IoRowVm[0];
 
-        private bool LaneAt(Point at, out int laneKey, out Rectangle inner)
-        {
-            laneKey = -1;
-            inner = Rectangle.Empty;
-            Rectangle plot = PlotArea;
-            if (!plot.Contains(at)) return false;
+            Rect plot = PlotArea;
+            if (!plot.Contains(at) || _channels.Count == 0) return false;
 
-            List<int> order = _state.View.DrawOrder();
-            if (order.Count == 0) return false;
-
-            if (!LaneMode)
+            if (!_laneMode)
             {
-                inner = new Rectangle(plot.Left, plot.Top + HeaderH, plot.Width,
-                                      Math.Max(8, plot.Height - HeaderH - Dpi.S(4)));
-                laneKey = -1;
+                inner = new Rect(plot.Left, plot.Top + HeaderH, plot.Width,
+                                 Math.Max(8, plot.Height - HeaderH - 4));
+                ios = _channels.ToArray();
                 return true;
             }
 
-            int laneH = Math.Max(MinLaneH, plot.Height / Math.Max(1, order.Count));
-            int scrollY = _vscroll.Visible ? _vscroll.Value : 0;
-            int idx = (at.Y + scrollY) / laneH;
-            if (idx < 0 || idx >= order.Count) return false;
+            double laneH = Math.Max(MinLaneH, plot.Height / Math.Max(1, _channels.Count));
+            double needed = laneH * _channels.Count;
+            double scrollY = needed > plot.Height ? VerticalOffset : 0;
 
-            int top = idx * laneH - scrollY;
-            laneKey = order[idx];
-            inner = new Rectangle(plot.Left, top + HeaderH, plot.Width, Math.Max(8, laneH - HeaderH - Dpi.S(4)));
+            int idx = (int)((at.Y + scrollY) / laneH);
+            if (idx < 0 || idx >= _channels.Count) return false;
+
+            double top = idx * laneH - scrollY;
+            key = _channels[idx].Name;
+            inner = new Rect(plot.Left, top + HeaderH, plot.Width, Math.Max(8, laneH - HeaderH - 4));
+            ios = new[] { _channels[idx] };
             return true;
         }
 
-        protected override void OnMouseDown(MouseEventArgs e)
+        protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
         {
-            base.OnMouseDown(e);
+            base.OnMouseLeftButtonDown(e);
             Focus();
-            if (e.Button != MouseButtons.Left) return;
+            if (_state == null) return;
 
             _dragging = true;
             _moved = false;
-            _dragPoint = e.Location;
+            _dragPoint = e.GetPosition(this);
             _dragT0 = _t0; _dragT1 = _t1;
 
-            Rectangle inner;
-            if (LaneAt(e.Location, out _dragLane, out inner))
+            string key; Rect inner; IoRowVm[] ios;
+            if (LaneAt(_dragPoint, out key, out inner, out ios))
             {
-                LaneY ly = LaneFor(_dragLane);
+                _dragLane = key;
                 double lo, hi;
-                BaseRange(IosForLane(_dragLane), out lo, out hi);
+                BaseRange(ios, out lo, out hi);
+                LaneY ly = LaneFor(key);
                 _dragCenter = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
             }
-            else _dragLane = int.MinValue;
+            else _dragLane = null;
+
+            CaptureMouse();
+            e.Handled = true;
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -775,11 +939,12 @@ namespace LogScope.App.Controls
             base.OnMouseMove(e);
             if (!_dragging) return;
 
-            int dx = e.X - _dragPoint.X, dy = e.Y - _dragPoint.Y;
+            Point now = e.GetPosition(this);
+            double dx = now.X - _dragPoint.X, dy = now.Y - _dragPoint.Y;
             if (!_moved && Math.Abs(dx) < 3 && Math.Abs(dy) < 3) return;
             _moved = true;
 
-            Rectangle plot = PlotArea;
+            Rect plot = PlotArea;
             if (plot.Width > 0)
             {
                 double span = _dragT1 - _dragT0;
@@ -788,57 +953,54 @@ namespace LogScope.App.Controls
                 _t1 = _dragT1 + shift;
             }
 
-            if (_dragLane != int.MinValue)
+            if (_dragLane != null)
             {
-                int laneKey; Rectangle inner;
-                if (LaneAt(_dragPoint, out laneKey, out inner) && inner.Height > 0)
+                string key; Rect inner; IoRowVm[] ios;
+                if (LaneAt(_dragPoint, out key, out inner, out ios) && inner.Height > 0)
                 {
                     double lo, hi;
-                    BaseRange(IosForLane(laneKey), out lo, out hi);
-                    LaneY ly = LaneFor(laneKey);
+                    BaseRange(ios, out lo, out hi);
+                    LaneY ly = LaneFor(key);
                     double vspan = (hi - lo) / ly.Zoom;
                     ly.Center = _dragCenter + dy * vspan / inner.Height;
                 }
             }
-            Invalidate();
+
+            InvalidateVisual();
+            RaiseViewChanged();
         }
 
-        protected override void OnMouseUp(MouseEventArgs e)
+        protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
         {
-            base.OnMouseUp(e);
-            if (!_dragging) { return; }
+            base.OnMouseLeftButtonUp(e);
+            if (!_dragging) return;
             _dragging = false;
+            ReleaseMouseCapture();
             if (_moved) return;
 
             // 끌지 않고 그냥 눌렀으면 커서를 놓습니다.
-            double t = XToTime(e.X);
-            if ((ModifierKeys & Keys.Shift) != 0) _cursorB = t; else _cursorA = t;
-            var h = CursorMoved; if (h != null) h(this, EventArgs.Empty);
-            Invalidate();
-        }
-
-        protected override bool IsInputKey(Keys keyData)
-        {
-            switch (keyData)
-            {
-                case Keys.Left: case Keys.Right: case Keys.Up: case Keys.Down:
-                case Keys.Home: case Keys.End: return true;
-                default: return base.IsInputKey(keyData);
-            }
+            double t = XToTime(e.GetPosition(this).X);
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) _cursorB = t; else _cursorA = t;
+            InvalidateVisual();
+            RaiseViewChanged();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
             double span = _t1 - _t0;
-            switch (e.KeyCode)
+            switch (e.Key)
             {
-                case Keys.Left: _t0 -= span * 0.1; _t1 -= span * 0.1; Invalidate(); break;
-                case Keys.Right: _t0 += span * 0.1; _t1 += span * 0.1; Invalidate(); break;
-                case Keys.Home: ResetTime(); break;
-                case Keys.Add: case Keys.Oemplus: ZoomTime(1.3); Invalidate(); break;
-                case Keys.Subtract: case Keys.OemMinus: ZoomTime(1 / 1.3); Invalidate(); break;
+                case Key.Left: _t0 -= span * 0.1; _t1 -= span * 0.1; break;
+                case Key.Right: _t0 += span * 0.1; _t1 += span * 0.1; break;
+                case Key.Home: ResetTime(); e.Handled = true; return;
+                case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;
+                case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.3); e.Handled = true; return;
+                default: return;
             }
+            e.Handled = true;
+            InvalidateVisual();
+            RaiseViewChanged();
         }
     }
 }

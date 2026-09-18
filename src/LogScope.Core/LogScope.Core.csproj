@@ -61,6 +61,7 @@
     <Compile Include="Render\Decimator.cs" />
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\DiffEngine.cs" />
+    <Compile Include="Compare\Heatmap.cs" />
     <Compile Include="Settings\Json.cs" />
     <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Settings\SettingsStore.cs" />

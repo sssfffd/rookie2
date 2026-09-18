@@ -1,0 +1,16 @@
+<Application x:Class="LogScope.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- 0 번 자리는 색 사전입니다. ThemeManager 가 이 자리를 통째로
+                     갈아 끼워서 테마를 바꿉니다. 순서를 바꾸지 마세요. -->
+                <ResourceDictionary Source="Themes/Light.xaml" />
+                <!-- 1 번 자리는 컨트롤 모양입니다. 위의 색 사전을 참조합니다. -->
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

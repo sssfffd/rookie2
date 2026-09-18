@@ -1,0 +1,31 @@
+<!-- 밝은 테마. 바탕은 흰색, 위쪽 메뉴 줄은 진한 파랑. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="Brush.Window"       Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="Brush.Panel"        Color="#FFF5F7FA" />
+    <SolidColorBrush x:Key="Brush.PanelAlt"     Color="#FFECF0F6" />
+    <SolidColorBrush x:Key="Brush.Field"        Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="Brush.Border"       Color="#FFD6DDE6" />
+    <SolidColorBrush x:Key="Brush.Text"         Color="#FF1B2733" />
+    <SolidColorBrush x:Key="Brush.Muted"        Color="#FF69737F" />
+    <SolidColorBrush x:Key="Brush.Accent"       Color="#FF1E5AA8" />
+    <SolidColorBrush x:Key="Brush.AccentSoft"   Color="#FFE3ECF8" />
+    <SolidColorBrush x:Key="Brush.AccentText"   Color="#FFFFFFFF" />
+
+    <SolidColorBrush x:Key="Brush.TopBar"       Color="#FF103562" />
+    <SolidColorBrush x:Key="Brush.TopBarText"   Color="#FFF2F6FB" />
+    <SolidColorBrush x:Key="Brush.TopBarMuted"  Color="#FFA9BEDA" />
+    <SolidColorBrush x:Key="Brush.TopBarActive" Color="#FF1E5AA8" />
+    <SolidColorBrush x:Key="Brush.TopBarHover"  Color="#FF1A4C8C" />
+
+    <SolidColorBrush x:Key="Brush.Good"         Color="#FF1E8E3E" />
+    <SolidColorBrush x:Key="Brush.Warn"         Color="#FFC77D00" />
+    <SolidColorBrush x:Key="Brush.Bad"          Color="#FFC5291A" />
+
+    <SolidColorBrush x:Key="Brush.Before"       Color="#FF1662C9" />
+    <SolidColorBrush x:Key="Brush.After"        Color="#FFE0620D" />
+
+    <SolidColorBrush x:Key="Brush.RowHover"     Color="#FFF2F5F9" />
+    <SolidColorBrush x:Key="Brush.DropTarget"   Color="#FFCFE2FA" />
+</ResourceDictionary>

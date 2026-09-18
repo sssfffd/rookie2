@@ -39,6 +39,8 @@ namespace LogScope.Tests
                 DecimationKeepsExtremes();
                 CompareMetrics();
                 ExistenceDifference();
+                HeatmapBuckets();
+                HeatmapRelativeTolerance();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -337,6 +339,87 @@ namespace LogScope.Tests
             Check("이후에만 있는 IO 는 C", r.OnlyAfter.Count == 1 && r.OnlyAfter[0].Name == "C",
                   r.OnlyAfter.Count.ToString());
             Check("공통은 B 하나", r.CommonCount == 1, "실제 " + r.CommonCount);
+        }
+
+        private static void HeatmapBuckets()
+        {
+            Console.WriteLine("히트맵 — 1분 칸으로 자르기");
+
+            // 5 분치, 1 초 간격. 2 분대(120~179초)에서만 SMALL 이 10 만큼 벌어집니다.
+            var a = new StringBuilder("Time,SMALL\n");
+            var b = new StringBuilder("Time,SMALL\n");
+            for (int i = 0; i < 300; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                a.Append(t).Append(",100\n");
+                b.Append(t).Append(',').Append(i >= 120 && i < 180 ? 110 : 100).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_b.csv", b.ToString()), Orientation.Auto);
+
+            Check("시각으로 읽음", dsA.TimeKind == TimeKind.ClockMs, dsA.TimeKind.ToString());
+
+            var opt = new HeatmapOptions();
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Near("칸 폭이 1분", r.BucketSpan, 60000, 1e-6);
+            Check("칸 5개", r.BucketCount == 5, "실제 " + r.BucketCount);
+            Check("차이가 난 IO 한 줄", r.Rows.Count == 1, "실제 " + r.Rows.Count);
+
+            HeatRow row = r.Rows[0];
+            Check("2분대 칸만 차이 발생", row.OverBuckets == 1, "실제 " + row.OverBuckets);
+            Check("차이가 난 칸은 세 번째 (0부터)", HeatmapBuilder.IsOver(row, 2), null);
+            Check("1분대는 정상", !HeatmapBuilder.IsOver(row, 1), null);
+            Check("3분대는 정상", !HeatmapBuilder.IsOver(row, 3), null);
+
+            // 칸에 적히는 값은 "그 구간의 절대 차이 평균" 입니다.
+            // 합계로 하면 구간이 길수록 무조건 커지고, 부호를 살리면
+            // +1/-1 진동이 0 으로 지워집니다.
+            Near("2분대 평균 차이", row.Cells[2].Mean, 10, 1e-3);
+            Near("1분대 평균 차이", row.Cells[1].Mean, 0, 1e-6);
+            Check("1분대에도 기록은 있음", row.Cells[1].HasData, null);
+        }
+
+        private static void HeatmapRelativeTolerance()
+        {
+            Console.WriteLine("히트맵 — 값 범위의 0.1% 는 오류로 세지 않음");
+
+            // BIG 은 0 에서 5000 까지 올라가는 채널입니다. 범위가 5000 이므로
+            // 0.1% = 5. 2 만큼 벌어지는 것은 오류가 아닙니다.
+            var a = new StringBuilder("Time,BIG\n");
+            var b = new StringBuilder("Time,BIG\n");
+            for (int i = 0; i < 300; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                double v = i * (5000.0 / 299.0);
+                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+                double w = v + (i >= 120 && i < 180 ? 2.0 : 0.0);
+                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_rel_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_rel_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new HeatmapOptions();
+            opt.RelativeTolerance = 0.001;      // 0.1%
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+            Check("0.1% 안쪽은 차이로 세지 않음", r.Rows.Count == 0, "실제 " + r.Rows.Count);
+
+            // 기준을 0.01% 로 낮추면 같은 2 가 차이로 잡힙니다.
+            opt.RelativeTolerance = 0.0001;
+            HeatmapResult r2 = HeatmapBuilder.Build(dsA, dsB, opt, null);
+            Check("기준을 낮추면 잡힘", r2.Rows.Count == 1, "실제 " + r2.Rows.Count);
+            if (r2.Rows.Count == 1)
+            {
+                Check("2분대 한 칸만", r2.Rows[0].OverBuckets == 1, "실제 " + r2.Rows[0].OverBuckets);
+                Near("그 칸의 평균 차이", r2.Rows[0].Cells[2].Mean, 2, 5e-3);
+            }
+
+            // 차이가 없는 IO 도 보기로 하면 줄이 나옵니다.
+            opt.RelativeTolerance = 0.001;
+            opt.IncludeUnchanged = true;
+            HeatmapResult r3 = HeatmapBuilder.Build(dsA, dsB, opt, null);
+            Check("차이 없는 IO도 보기", r3.Rows.Count == 1 && r3.Rows[0].OverBuckets == 0,
+                  "줄 " + r3.Rows.Count);
         }
 
         private static void JsonRoundTrip()

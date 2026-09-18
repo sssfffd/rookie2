@@ -15,8 +15,8 @@ NuGet 패키지가 하나도 없습니다. `packages.config` 도, `PackageRefere
 | `System`, `System.Core` | 기본 |
 | `System.IO.Compression` | .xlsx 의 zip 풀기 |
 | `System.Xml` | .xlsx 안의 XML 읽기 |
-| `System.Drawing` | 그래프 그리기 (GDI+) |
-| `System.Windows.Forms` | 창과 컨트롤 |
+| `WindowsBase`, `PresentationCore`, `PresentationFramework`, `System.Xaml` | WPF (창, 컨트롤, 그리기) |
+| `System.Windows.Forms` | 폴더 고르는 창 하나에만 (아래 5번) |
 
 ## 2. 신뢰할 수 없는 파일을 다루는 자리
 
@@ -76,7 +76,20 @@ zip 을 폴더에 푸는 코드가 이 저장소에 없습니다.
   반쪽으로 남지 않습니다.
 - 저장 위치: 실행 파일 옆에 쓸 수 있으면 거기, 아니면 `%APPDATA%\LogScope\`.
 
-## 4. 선택 기능: 파이썬 AI 모듈
+## 4. 폴더 고르는 창 때문에 참조하는 System.Windows.Forms
+
+WPF 에는 폴더를 고르는 창이 없습니다. 설정 창의 "폴더 고르기" 버튼 두 개에서만
+`System.Windows.Forms.FolderBrowserDialog` 를 씁니다
+(`src/LogScope.App/Views/SettingsWindow.xaml.cs`).
+
+- **바깥에서 받아 온 라이브러리가 아닙니다.** .NET Framework 에 원래 들어 있는
+  어셈블리이고, 윈도우 7 / 10 / 11 어디에나 이미 있습니다.
+- 하는 일은 셸의 폴더 선택 대화상자를 띄우는 것뿐입니다. 그 창이 돌려주는
+  경로 문자열만 받아 설정에 넣습니다.
+- 다른 곳에서는 쓰지 않습니다. 파일을 고르는 창은 WPF 에 있는
+  `Microsoft.Win32.OpenFileDialog` 를 씁니다.
+
+## 5. 선택 기능: 파이썬 AI 모듈
 
 `src/LogScope.Core/Ai/AiBridge.cs` + `ai/analyze.py`.
 
@@ -95,7 +108,13 @@ zip 을 폴더에 푸는 코드가 이 저장소에 없습니다.
 - 응답을 기다리는 시간에 상한이 있고, 넘으면 자식 프로세스를 끝냅니다.
 - 이 기능이 필요 없으면 `ai/` 폴더를 지워도 나머지는 그대로 돕니다.
 
-## 5. 관리자 권한
+## 6. 히트맵
+
+`Compare/Heatmap.cs` 는 이미 메모리에 올라온 두 데이터셋만 읽습니다.
+파일을 다시 열지 않고, 디스크에 쓰지 않고, 바깥으로 아무것도 보내지 않습니다.
+새로 생긴 위험한 자리는 없습니다.
+
+## 7. 관리자 권한
 
 필요 없습니다. `app.manifest` 에 `asInvoker` 로 적어 두었습니다.
 설치 프로그램이 없고, 레지스트리를 건드리지 않고, `Program Files` 에

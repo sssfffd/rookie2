@@ -1,0 +1,19 @@
+<Window x:Class="LogScope.App.Views.LoadingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="읽는 중" Width="470" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False" WindowStyle="ToolWindow"
+        Background="{DynamicResource Brush.Window}"
+        Foreground="{DynamicResource Brush.Text}"
+        FontFamily="Segoe UI" FontSize="12">
+    <StackPanel Margin="20,18,20,16">
+        <TextBlock x:Name="StageText" Style="{StaticResource H2}" Text="준비하는 중…" />
+        <TextBlock x:Name="DetailText" Style="{StaticResource Muted}" Margin="0,6,0,0"
+                   TextTrimming="CharacterEllipsis" Height="18" />
+        <ProgressBar x:Name="Bar" Height="16" Margin="0,12,0,0" IsIndeterminate="True"
+                     Minimum="0" Maximum="1000" />
+        <Button x:Name="CancelButton" Content="취소" HorizontalAlignment="Right"
+                Margin="0,14,0,0" MinWidth="96" Click="OnCancel" />
+    </StackPanel>
+</Window>

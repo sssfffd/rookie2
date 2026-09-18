@@ -7,15 +7,17 @@
 
 ```
 LogScope.exe  ──참조──▶  LogScope.Core.dll
- (WinForms)                (파싱 / 데이터 / 비교 / 설정)
+   (WPF)                   (파싱 / 데이터 / 비교 / 히트맵 / 설정)
 ```
 
-`LogScope.Core` 는 `System.Windows.Forms` 도 `System.Drawing` 도 참조하지
-않습니다. 그래서 다음이 가능합니다.
+`LogScope.Core` 는 WPF 어셈블리를 하나도 참조하지 않습니다.
+그래서 다음이 가능합니다.
 
 - 콘솔에서 테스트를 돌릴 수 있습니다 (`LogScope.Tests`). 창을 띄우지 않습니다.
 - 나중에 화면을 갈아엎어도 파싱 코드는 그대로 씁니다.
 - "이 버그가 파싱 쪽이냐 화면 쪽이냐" 를 어셈블리 경계로 가를 수 있습니다.
+- **화면 기술을 통째로 바꿀 수 있습니다.** 실제로 WinForms 에서 WPF 로
+  옮기면서 `LogScope.Core` 는 한 줄도 고치지 않았습니다.
 
 C++ 때와 달리 **C ABI 를 따로 만들지 않았습니다.** .NET 어셈블리끼리는 타입을
 그대로 주고받아도 힙이 어긋나지 않기 때문에, `extern "C"` 로 납작하게 펴는
@@ -74,12 +76,17 @@ float 의 유효자리(약 7자리)로 충분합니다.
 ## 그리기
 
 ```
-GraphCanvas.OnPaint
+GraphCanvas.OnRender
       │
-      ├─ Decimator.Build(...)   픽셀 열마다 min/max/first/last 만 뽑기
+      ├─ Decimator.Build(...)    픽셀 열마다 min/max/first/last 만 뽑기
       │
-      └─ GDI+ DrawLines         열마다 최대 4 점
+      └─ StreamGeometry          선 하나를 한 덩어리로 (점마다 DrawLine 아님)
 ```
+
+WPF 라고 `Polyline` 같은 요소로 수만 점을 올릴 수는 없습니다. 요소 하나하나가
+시각 트리에 남아 메모리와 레이아웃 시간을 잡아먹기 때문에, `FrameworkElement`
+하나에 `OnRender` 로 직접 그립니다. 히트맵(`HeatmapCanvas`)도 같은 이유로
+같은 방식입니다.
 
 표본 5만 개를 1000 픽셀에 그릴 때 선 긋기가 5만 번에서 1000 번으로 줄어듭니다.
 `Decimator` 는 화면에 기대지 않는 순수 계산이라 `Core` 에 있고, 테스트에서
@@ -110,9 +117,27 @@ Shift+휠(값 확대)은 `LaneY.Zoom` 과 `LaneY.Center` 만 바꿉니다. 커�
 그룹 구성원은 채널 번호가 아니라 **IO 이름**으로 저장합니다. 그래서 다른
 파일을 열어도 같은 이름의 IO 에 그대로 붙습니다.
 
+## 히트맵
+
+```
+HeatmapBuilder.Build()
+      │
+      ├─ 칸 폭 정하기        시각 로그면 1분, 아니면 전체를 60칸
+      ├─ 채널마다 BuildRow()  이전 표본을 훑으며 이후 자리를 같이 앞으로 밈
+      └─ 많이 벌어진 순으로 정렬
+```
+
+`BuildRow` 가 이진 탐색을 쓰지 않는 것이 핵심입니다. 이전 로그의 표본은
+시간 순서대로 들어오므로, 이후 로그의 자리도 뒤로 갈 일이 없습니다. 그래서
+채널 하나가 O(표본 수) 로 끝납니다. 표본마다 탐색하면 채널 200 x 표본 5 만
+= 1000 만 번의 이진 탐색이 됩니다.
+
+칸에 적는 값으로 **절대 차이의 평균**을 쓰는 이유는
+[claude-log/04-heatmap.md](../claude-log/04-heatmap.md) 에 적었습니다.
+
 ## 배경 스레드
 
-로그 읽기와 비교는 `LoadingDialog` 가 배경 스레드에서 돌립니다.
-진행 상황은 `LoadProgress` 로 올라오고, 화면 갱신은 `BeginInvoke` 로
-UI 스레드에 넘깁니다. 취소는 `LoadProgress.Cancel()` 로 깃발을 세우고,
+로그 읽기와 비교, 히트맵 계산은 `BackgroundJob` 이 배경 스레드에서 돌립니다.
+진행 상황은 `LoadProgress` 로 올라오고, 화면 갱신은 `Dispatcher.BeginInvoke`
+로 UI 스레드에 넘깁니다. 취소는 `LoadProgress.Cancel()` 로 깃발을 세우고,
 파싱 쪽이 `ThrowIfCancelled()` 에서 멈춥니다.
