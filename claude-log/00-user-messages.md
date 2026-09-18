@@ -283,3 +283,11 @@
 > 대신 변화량으로 해줘 원래값 대신 기존 값으로 해주고
 
 → 답변: [12-tolerance-base.md](12-tolerance-base.md)
+
+---
+
+## 요청 16 — jump 가 선언 안 됐다는 오류
+
+> jump라는 local이나 parameter가 선언 안되었다는데
+
+→ 답변: [13-shadowing-check.md](13-shadowing-check.md)

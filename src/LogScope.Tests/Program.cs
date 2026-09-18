@@ -885,10 +885,13 @@ namespace LogScope.Tests
                            .Append(',').Append(baseline)
                            .Append(',').Append(i % 2).Append('\n');
 
-                int near = i >= 100 ? 6466 : 6467;          // 늘 1 만큼 벌어짐
-                int jump = i >= 150 ? 6600 : baseline;      // 크게 튐
-                b.Append(i).Append(',').Append(near)
-                           .Append(',').Append(jump)
+                // 이후 로그 쪽 값. 아래에서 쓰는 결과 변수와 이름이 겹치지
+                // 않도록 v 를 붙입니다 (같은 메서드 안에서 안쪽 블록과 바깥
+                // 블록이 같은 이름을 쓰면 C# 이 CS0136 으로 막습니다).
+                int vNear = i >= 100 ? 6466 : 6467;          // 늘 1 만큼 벌어짐
+                int vJump = i >= 150 ? 6600 : baseline;      // 크게 튐
+                b.Append(i).Append(',').Append(vNear)
+                           .Append(',').Append(vJump)
                            .Append(',').Append(1 - (i % 2)).Append('\n');
             }
             LogDataset dsA = Open(WriteCsv("tol_span_a.csv", a.ToString()), Orientation.Auto);
@@ -898,16 +901,16 @@ namespace LogScope.Tests
             opt.RelativeTolerance = ToleranceRule.FromPercent(1.0);   // 1%
             CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
 
-            ChannelDiff near_ = r.Items.Find(d => d.Name == "NEAR");
+            ChannelDiff near = r.Items.Find(d => d.Name == "NEAR");
             ChannelDiff jump = r.Items.Find(d => d.Name == "JUMP");
             ChannelDiff dig = r.Items.Find(d => d.Name == "DIG");
-            Check("세 채널 모두 찾음", near_ != null && jump != null && dig != null, null);
-            if (near_ == null || jump == null || dig == null) return;
+            Check("세 채널 모두 찾음", near != null && jump != null && dig != null, null);
+            if (near == null || jump == null || dig == null) return;
 
             // 폭은 1 이지만 값이 6467 이므로 기준값은 6467 의 1%.
-            Near("NEAR 의 기준값은 6467 의 1%", near_.Threshold, 64.67, 0.05);
-            Check("6467 과 6466 의 차이 1 은 1% 오차 안", !near_.Changed,
-                  "최대 " + near_.MaxAbs.ToString("0.###") + ", 기준 " + near_.Threshold.ToString("0.###"));
+            Near("NEAR 의 기준값은 6467 의 1%", near.Threshold, 64.67, 0.05);
+            Check("6467 과 6466 의 차이 1 은 1% 오차 안", !near.Changed,
+                  "최대 " + near.MaxAbs.ToString("0.###") + ", 기준 " + near.Threshold.ToString("0.###"));
 
             // 그렇다고 아무것도 안 잡히면 안 됩니다. 크게 튄 것은 그대로 잡힙니다.
             Check("6600 으로 튄 것은 차이 맞음", jump.Changed,
