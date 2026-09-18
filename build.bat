@@ -1,22 +1,30 @@
 @echo off
-setlocal enabledelayedexpansion
 rem ===================================================================
-rem  LogScope 빌드
+rem  LogScope build script.
 rem
-rem  쓰는 법:
-rem     build.bat              Release 로 빌드하고 테스트까지 돌립니다
-rem     build.bat Debug        Debug 로 빌드
-rem     build.bat Release nt   테스트 건너뛰기
+rem  NOTE ON ENCODING (read this before editing):
+rem    This file is saved as UTF-8 WITHOUT a BOM, and the messages below
+rem    are in Korean. A Korean Windows console starts on code page 949,
+rem    so it would print those bytes as garbage. The "chcp 65001" a few
+rem    lines down switches the console to UTF-8 first, and the original
+rem    code page is put back at the end.
 rem
-rem  확장 프로그램이나 NuGet 복원이 필요 없습니다.
-rem  Visual Studio 2017 (Community 포함) 이 깔려 있으면 그대로 됩니다.
+rem    Keep this file UTF-8 without BOM. cmd.exe chokes on a BOM, and a
+rem    BOM would also be printed as stray characters on the first line.
 rem
-rem  결과물:
-rem     out\LogScope.exe                        <- 이 폴더를 통째로 복사하면 됩니다
+rem  Usage:
+rem     build.bat              Release, then run the self tests
+rem     build.bat Debug        Debug
+rem     build.bat Release nt   skip the tests
+rem
+rem  Output:
+rem     out\LogScope.exe                          <- copy this folder as-is
 rem     src\LogScope.App\bin\Release\LogScope.exe
 rem
-rem  모든 출력은 build.log 에도 남습니다. 창이 닫혀 버려도 그 파일을 보면 됩니다.
+rem  Everything is also written to build.log.
 rem ===================================================================
+
+setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0"
 set "CONFIG=%~1"
@@ -24,23 +32,25 @@ if "%CONFIG%"=="" set "CONFIG=Release"
 set "SKIPTEST=%~2"
 set "LOG=%ROOT%build.log"
 
-rem 더블클릭으로 띄운 경우에는 끝나고 창을 붙들어 둡니다.
-rem (그냥 닫히면 오류 메시지를 읽을 수가 없습니다.)
+rem ---- keep the window open when started by double-click ------------
+rem  Done before chcp, while the console is still on its default page,
+rem  so a non-ASCII path cannot upset the comparison.
 set "HOLD="
 echo %cmdcmdline% 2>nul | find /i "%~nx0" >nul 2>nul && set "HOLD=1"
 
-echo.
-echo   LogScope 빌드  (%CONFIG%)
-echo   ------------------------------------------------------------
-
-rem ---- MSBuild 찾기 -------------------------------------------------
+rem ---- find MSBuild -------------------------------------------------
+rem  Done before chcp as well. "for /f" over a command's output is the
+rem  one thing that has historically misbehaved under code page 65001,
+rem  so the vswhere result goes through a temp file and "set /p" instead.
 set "MSBUILD="
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
 if exist "%VSWHERE%" (
-  for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -prerelease -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe 2^>nul`) do (
-    if not defined MSBUILD set "MSBUILD=%%i"
+  "%VSWHERE%" -latest -prerelease -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe > "%TEMP%\logscope_msbuild.txt" 2>nul
+  if exist "%TEMP%\logscope_msbuild.txt" (
+    set /p MSBUILD=<"%TEMP%\logscope_msbuild.txt"
+    del "%TEMP%\logscope_msbuild.txt" >nul 2>nul
   )
 )
 
@@ -52,32 +62,47 @@ if not defined MSBUILD (
   )
 )
 
-rem 마지막 수단: .NET Framework 에 딸려 오는 MSBuild.
-rem C# 7.3 과 WPF(.xaml) 를 못 다룰 수 있습니다. 그때는 VS2017 을 쓰세요.
+rem  Last resort: the MSBuild that ships with the .NET Framework.
+rem  It may not understand C# 7.3 or WPF (.xaml). Use VS2017 if so.
 if not defined MSBUILD (
   if exist "%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe" (
     set "MSBUILD=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe"
   )
 )
 
+rem ---- switch the console to UTF-8 ----------------------------------
+rem  Remember the current code page so it can be restored on the way out.
+set "OLDCP="
+for /f "tokens=2 delims=:" %%a in ('chcp') do set "OLDCP=%%a"
+set "OLDCP=%OLDCP: =%"
+set "OLDCP=%OLDCP:.=%"
+chcp 65001 >nul 2>nul
+
+rem  From here on the Korean text below prints correctly.
+
+echo.
+echo   LogScope 빌드  (%CONFIG%)
+echo   ------------------------------------------------------------
+
 if not defined MSBUILD (
   echo.
   echo   [오류] MSBuild 를 찾지 못했습니다.
-  echo          Visual Studio 2017 또는 Build Tools for Visual Studio 2017 을 설치해 주세요.
+  echo          Visual Studio 2017 또는 Build Tools for Visual Studio 2017 을
+  echo          설치해 주세요.
   goto :fail
 )
 echo   MSBuild : %MSBUILD%
 echo   로그    : %LOG%
 echo.
 
-rem ---- 빌드 ---------------------------------------------------------
-rem /fl 로 build.log 에 전부 남깁니다. 화면에는 요점만 나옵니다.
-"%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl "/flp:logfile=%LOG%;verbosity=normal"
+rem ---- build --------------------------------------------------------
+rem  /fl writes the whole thing to build.log. The console stays terse.
+"%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl "/flp:logfile=%LOG%;verbosity=normal;encoding=UTF-8"
 
 if errorlevel 1 (
   echo.
   echo   ============================================================
-  echo    빌드 실패. 오류만 추려 보면:
+  echo    빌드 실패. 오류 줄만 추려 보면:
   echo   ============================================================
   findstr /i /c:": error" "%LOG%"
   echo   ------------------------------------------------------------
@@ -85,7 +110,7 @@ if errorlevel 1 (
   goto :fail
 )
 
-rem ---- 테스트 -------------------------------------------------------
+rem ---- tests --------------------------------------------------------
 if /i "%SKIPTEST%"=="nt" goto :collect
 echo.
 echo   테스트
@@ -98,7 +123,7 @@ if errorlevel 1 (
 )
 
 :collect
-rem ---- 결과 모으기 ---------------------------------------------------
+rem ---- gather the output --------------------------------------------
 set "OUT=%ROOT%out"
 if not exist "%OUT%" mkdir "%OUT%"
 copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe"      "%OUT%\" >nul
@@ -118,12 +143,20 @@ echo    실행 파일 : %OUT%\LogScope.exe
 echo    out 폴더를 통째로 복사해서 쓰면 됩니다. 설치 프로그램은 필요 없습니다.
 echo   ============================================================
 echo.
-if defined HOLD pause
+if defined HOLD (
+  echo   아무 키나 누르면 이 창이 닫힙니다.
+  pause >nul
+)
+if defined OLDCP chcp %OLDCP% >nul 2>nul
 endlocal
 exit /b 0
 
 :fail
 echo.
-if defined HOLD pause
+if defined HOLD (
+  echo   아무 키나 누르면 이 창이 닫힙니다.
+  pause >nul
+)
+if defined OLDCP chcp %OLDCP% >nul 2>nul
 endlocal
 exit /b 1
