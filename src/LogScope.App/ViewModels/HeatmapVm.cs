@@ -99,6 +99,46 @@ namespace LogScope.App.ViewModels
             get { return ToleranceRule.FromPercent(_state.Settings.RelativeTolerancePercent); }
         }
 
+        // ---------------- 값 / 퍼센트 ----------------
+
+        /// <summary>
+        /// 칸에 적는 차이를 퍼센트로 볼지, 값 그대로 볼지.
+        ///
+        /// 라디오 단추 두 개에 묶으려고 짝이 되는 속성을 둘 다 둡니다
+        /// (그래프 화면의 세로 눈금 고르기와 같은 방식입니다).
+        /// 고른 값은 설정에 남아 다음에 열 때도 그대로입니다.
+        /// </summary>
+        public bool ShowPercent
+        {
+            get { return _state.Settings.HeatmapPercent; }
+            set
+            {
+                if (_state.Settings.HeatmapPercent == value) return;
+                _state.Settings.HeatmapPercent = value;
+                Raise("ShowPercent");
+                Raise("ShowValue");
+                Raise("LegendText");
+            }
+        }
+
+        /// <summary>ShowPercent 의 반대. 라디오 단추 "값" 쪽에 묶습니다.</summary>
+        public bool ShowValue
+        {
+            get { return !ShowPercent; }
+            set { if (value) ShowPercent = false; }
+        }
+
+        /// <summary>색 설명 줄에 적을 글. 무엇이 칸에 적히는지 알려 줍니다.</summary>
+        public string LegendText
+        {
+            get
+            {
+                return ShowPercent
+                    ? "차이 발생 (칸 안의 숫자 = 그 구간의 절대 차이 평균을 값 범위로 나눈 %, 진할수록 큼)"
+                    : "차이 발생 (칸 안의 숫자 = 그 구간의 절대 차이 평균, 진할수록 큼)";
+            }
+        }
+
         private bool _includeUnchanged;
         public bool IncludeUnchanged
         {

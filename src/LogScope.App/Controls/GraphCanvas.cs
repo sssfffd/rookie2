@@ -295,7 +295,7 @@ namespace LogScope.App.Controls
 
         // ---------------- 자리 ----------------
 
-        private const double GutterW = 66;
+        private const double GutterW = 80;
         private const double AxisH = 26;
         private const double HeaderH = 21;
         private const double MinLaneH = 64;
@@ -473,7 +473,7 @@ namespace LogScope.App.Controls
             double center = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
             double vlo = center - span * 0.5, vhi = center + span * 0.5;
 
-            DrawValueAxis(dc, p, inner, vlo, vhi);
+            DrawValueAxis(dc, p, rect, inner, vlo, vhi, ios);
 
             for (int k = 0; k < ios.Length; k++)
             {
@@ -893,25 +893,158 @@ namespace LogScope.App.Controls
 
         // ---------------- 눈금 ----------------
 
-        private void DrawValueAxis(DrawingContext dc, Palette p, Rect inner, double vlo, double vhi)
+        /// <summary>
+        /// 세로 눈금.
+        ///
+        /// 눈금 글자는 선을 그은 바로 그 y 에 붙입니다. 그래서 숫자와 그래프
+        /// 높이가 어긋날 수 없습니다. (요구사항 2번)
+        ///
+        /// 채널 종류에 따라 눈금을 다르게 답니다.
+        ///  - 상태 채널: 숫자 대신 <b>상태 이름</b>. 값이 상태 표의 번호라서
+        ///    0, 1, 2 를 적어 봐야 아무 뜻이 없습니다.
+        ///  - 디지털 채널: 0 과 1 에만. 0.5 같은 눈금은 있을 수 없는 값입니다.
+        ///  - 그 밖: 보기 좋은 간격으로 숫자.
+        /// </summary>
+        private void DrawValueAxis(DrawingContext dc, Palette p, Rect lane, Rect inner,
+                                   double vlo, double vhi, IoRowVm[] ios)
         {
+            DrawAxisCaption(dc, p, lane, ios);
+
+            Channel single = SingleChannel(ios);
+
+            // 눈금이 하나도 안 걸릴 만큼 확대했을 수 있습니다. 그러면 눈금선이
+            // 통째로 사라져 버리니, 아래의 보통 숫자 눈금으로 넘어갑니다.
+            if (_scale == ValueScaleMode.Raw && single != null)
+            {
+                if (single.Kind == ChannelKind.State && single.States != null
+                    && single.States.Length > 0 && single.States.Length <= 12)
+                {
+                    if (DrawStateTicks(dc, p, inner, vlo, vhi, single)) return;
+                }
+                else if (single.Kind == ChannelKind.Digital)
+                {
+                    int drawn = 0;
+                    if (DrawTick(dc, p, inner, vlo, vhi, 0, "0")) drawn++;
+                    if (DrawTick(dc, p, inner, vlo, vhi, 1, "1")) drawn++;
+                    if (drawn > 0) return;
+                }
+            }
+
             double step = NiceStep(vhi - vlo, Math.Max(2, (int)(inner.Height / 34)));
             if (!(step > 0)) return;
 
             double first = Math.Ceiling(vlo / step) * step;
             for (double v = first; v <= vhi + step * 0.001; v += step)
+                DrawTick(dc, p, inner, vlo, vhi, v, FormatTick(v, step));
+        }
+
+        /// <summary>레인에 채널이 하나일 때 그 채널. 겹쳐보기면 null.</summary>
+        private Channel SingleChannel(IoRowVm[] ios)
+        {
+            if (_state == null || ios == null || ios.Length != 1) return null;
+            IoRowVm vm = ios[0];
+            if (vm.InBefore && _state.Before != null) return _state.Before.Channels[vm.BeforeIndex];
+            if (vm.InAfter && _state.After != null) return _state.After.Channels[vm.AfterIndex];
+            return null;
+        }
+
+        /// <summary>눈금 하나. 보이는 자리가 아니면 그리지 않고 거짓을 돌려줍니다.</summary>
+        private bool DrawTick(DrawingContext dc, Palette p, Rect inner,
+                              double vlo, double vhi, double value, string label)
+        {
+            double y = ValueToY(value, inner, vlo, vhi);
+            if (y < inner.Top - 1 || y > inner.Bottom + 1) return false;
+
+            double gy = Snap(y);
+            dc.DrawLine(p.GridPen, new Point(inner.Left + 1, gy), new Point(inner.Right - 2, gy));
+
+            FormattedText ft = Text(label, FontSmall, p.MutedBrush);
+            ft.MaxTextWidth = GutterW - 10;
+            ft.MaxLineCount = 1;
+            ft.Trimming = TextTrimming.CharacterEllipsis;
+
+            // 글자가 레인 밖으로 삐져나가지 않게 가둡니다.
+            double ty = gy - ft.Height * 0.5;
+            if (ty < inner.Top) ty = inner.Top;
+            if (ty + ft.Height > inner.Bottom) ty = inner.Bottom - ft.Height;
+
+            dc.DrawText(ft, new Point(Math.Max(2, GutterW - 8 - ft.Width), ty));
+            return true;
+        }
+
+        /// <summary>상태 이름을 눈금 글자로. 하나라도 그렸으면 참.</summary>
+        private bool DrawStateTicks(DrawingContext dc, Palette p, Rect inner,
+                                    double vlo, double vhi, Channel c)
+        {
+            int drawn = 0;
+            for (int i = 0; i < c.States.Length; i++)
+                if (DrawTick(dc, p, inner, vlo, vhi, i, c.States[i])) drawn++;
+            return drawn > 0;
+        }
+
+        /// <summary>
+        /// 세로축이 무엇을 뜻하는지 레인 왼쪽 위에 적습니다.
+        /// 단위가 있으면 단위를, 눈금 모드가 원래값이 아니면 그 모드를 적습니다.
+        /// 숫자만 늘어놓으면 무슨 값인지 알 수 없어서 붙였습니다.
+        /// </summary>
+        private void DrawAxisCaption(DrawingContext dc, Palette p, Rect lane, IoRowVm[] ios)
+        {
+            string caption = AxisCaption(ios);
+            if (caption.Length == 0) return;
+
+            FormattedText ft = Text(caption, FontSmall, p.MutedBrush);
+            ft.MaxTextWidth = GutterW - 10;
+            ft.MaxLineCount = 1;
+            ft.Trimming = TextTrimming.CharacterEllipsis;
+
+            // 눈금 숫자와 오른쪽 끝을 맞춥니다. 레인 머리글(채널 이름)은 이
+            // 자리보다 오른쪽, 눈금 글자는 이 자리보다 아래라 겹치지 않습니다.
+            dc.DrawText(ft, new Point(Math.Max(2, GutterW - 8 - ft.Width), lane.Y + 4));
+        }
+
+        private string AxisCaption(IoRowVm[] ios)
+        {
+            switch (_scale)
             {
-                double y = ValueToY(v, inner, vlo, vhi);
-                if (y < inner.Top - 1 || y > inner.Bottom + 1) continue;
-
-                double gy = Snap(y);
-                dc.DrawLine(p.GridPen, new Point(inner.Left + 1, gy), new Point(inner.Right - 2, gy));
-
-                // 눈금 글자는 선을 그은 바로 그 y 에 붙입니다. 그래서 숫자와
-                // 그래프 높이가 어긋날 수 없습니다. (요구사항 2번)
-                FormattedText ft = Text(FormatTick(v, step), FontSmall, p.MutedBrush);
-                dc.DrawText(ft, new Point(Math.Max(2, GutterW - 8 - ft.Width), y - ft.Height * 0.5));
+                case ValueScaleMode.Normalized:
+                    return "0–1 정규화";
+                case ValueScaleMode.Delta:
+                    {
+                        string u = UnitOf(ios);
+                        return u.Length > 0 ? "Δ " + u : "변화량";
+                    }
+                default:
+                    {
+                        string u = UnitOf(ios);
+                        if (u.Length > 0) return u;
+                        Channel single = SingleChannel(ios);
+                        if (single != null && single.Kind == ChannelKind.State) return "상태";
+                        return ios != null && ios.Length > 1 ? "여러 채널" : string.Empty;
+                    }
             }
+        }
+
+        /// <summary>
+        /// 레인의 단위. 여러 채널이 한 눈금을 쓰는데 단위가 서로 다르면,
+        /// 어느 하나를 적으면 거짓말이 되므로 아무것도 적지 않습니다.
+        /// </summary>
+        private string UnitOf(IoRowVm[] ios)
+        {
+            if (_state == null || ios == null || ios.Length == 0) return string.Empty;
+
+            string unit = null;
+            for (int k = 0; k < ios.Length; k++)
+            {
+                IoRowVm vm = ios[k];
+                string u = string.Empty;
+                if (vm.InBefore && _state.Before != null) u = _state.Before.Channels[vm.BeforeIndex].Unit;
+                if (u.Length == 0 && vm.InAfter && _state.After != null) u = _state.After.Channels[vm.AfterIndex].Unit;
+                if (u.Length == 0) continue;
+
+                if (unit == null) unit = u;
+                else if (!string.Equals(unit, u, StringComparison.Ordinal)) return string.Empty;
+            }
+            return unit ?? string.Empty;
         }
 
         private static string FormatTick(double v, double step)

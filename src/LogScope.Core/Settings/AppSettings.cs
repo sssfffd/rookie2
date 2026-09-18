@@ -71,6 +71,13 @@ namespace LogScope.Core.Settings
         /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분.
         /// </summary>
         public int SortColumn;
+
+        /// <summary>
+        /// 히트맵 칸에 차이를 퍼센트로 적을지. 거짓이면 값 그대로 적습니다.
+        /// 기본은 값입니다. "몇 도 틀어졌나" 가 먼저 궁금한 경우가 많아서입니다.
+        /// </summary>
+        public bool HeatmapPercent;
+
         public bool AutoAlign = true;
         public double ManualShift;
         public bool ShadeDifference = true;
@@ -148,6 +155,7 @@ namespace LogScope.Core.Settings
             root["sortMetric"] = (double)(int)SortMetric;
             root["sortDescending"] = SortDescending;
             root["sortColumn"] = (double)SortColumn;
+            root["heatmapPercent"] = HeatmapPercent;
             root["autoAlign"] = AutoAlign;
             root["manualShift"] = ManualShift;
             root["shadeDifference"] = ShadeDifference;
@@ -218,6 +226,7 @@ namespace LogScope.Core.Settings
             s.SortDescending = Json.GetBool(root, "sortDescending", true);
             s.SortColumn = Json.GetInt(root, "sortColumn", 0);
             if (s.SortColumn < 0 || s.SortColumn > 2) s.SortColumn = 0;
+            s.HeatmapPercent = Json.GetBool(root, "heatmapPercent", false);
             s.AutoAlign = Json.GetBool(root, "autoAlign", true);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);
             s.ShadeDifference = Json.GetBool(root, "shadeDifference", true);

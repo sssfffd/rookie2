@@ -32,6 +32,17 @@
                 <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 없는 IO도 보기"
                               IsChecked="{Binding IncludeUnchanged, Mode=TwoWay}" Margin="12,3,3,3" />
 
+                <!-- 칸에 적을 숫자를 값으로 볼지 퍼센트로 볼지 -->
+                <TextBlock Text="칸에 적을 값" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
+                <RadioButton GroupName="heatunit" Style="{StaticResource SegmentButton}"
+                             Content="값 그대로" Checked="OnUnitChanged"
+                             IsChecked="{Binding ShowValue, Mode=TwoWay}"
+                             ToolTip="그 구간의 절대 차이 평균을 값 그대로 적습니다." />
+                <RadioButton GroupName="heatunit" Style="{StaticResource SegmentButton}"
+                             Content="% (값 범위 대비)" Checked="OnUnitChanged"
+                             IsChecked="{Binding ShowPercent, Mode=TwoWay}"
+                             ToolTip="같은 차이 3 이라도 0~5 인 IO 와 0~4000 인 IO 는 뜻이 다릅니다. 값 범위로 나눈 %로 보면 IO 끼리 견줄 수 있습니다. 허용 오차와 같은 밑값을 써서 0.1% 기준이 그대로 읽힙니다." />
+
                 <TextBlock Text="칸 크기" Style="{StaticResource FieldLabel}" Margin="12,0,8,0" />
                 <Button Content="칸 넓게" Click="OnWider" />
                 <Button Content="칸 좁게" Click="OnNarrower" />
@@ -51,7 +62,7 @@
                     <Border Width="16" Height="12" Margin="0,0,6,0"
                             Background="{DynamicResource Brush.Bad}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
-                    <TextBlock Text="차이 발생 (칸 안의 숫자 = 그 구간의 절대 차이 평균, 진할수록 큼)"
+                    <TextBlock Text="{Binding LegendText}"
                                Style="{StaticResource Muted}" Margin="0,0,18,0" />
 
                     <Border Width="16" Height="12" Margin="0,0,6,0"
@@ -64,7 +75,7 @@
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
                     <TextBlock Text="기록 없음" Style="{StaticResource Muted}" Margin="0,0,18,0" />
 
-                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
+                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. 칸에 마우스를 올리면 값과 %를 모두 보여 줍니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
                                Style="{StaticResource Muted}" FontSize="11" />
                 </WrapPanel>
             </StackPanel>

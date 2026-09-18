@@ -85,6 +85,30 @@ namespace LogScope.App.Controls
             }
         }
 
+        private bool _showPercent;
+
+        /// <summary>
+        /// 칸에 적는 차이를 퍼센트로 바꿉니다.
+        ///
+        /// 같은 "평균 차이 3" 이라도 0~5 를 오가는 IO 에서는 큰 차이고
+        /// 0~4000 인 IO 에서는 아무것도 아닙니다. 퍼센트로 보면 줄끼리
+        /// 견줄 수 있습니다. 반대로 "몇 도 틀어졌나" 처럼 값 자체가 알고
+        /// 싶을 때가 있어서 둘 다 볼 수 있게 두었습니다.
+        ///
+        /// 나누는 밑값은 허용 오차와 같은 값 범위(HeatRow.Range)입니다.
+        /// 그래서 기본 허용 오차 0.1% 는 이 화면에서 그대로 0.1% 로 읽힙니다.
+        /// </summary>
+        public bool ShowPercent
+        {
+            get { return _showPercent; }
+            set
+            {
+                if (_showPercent == value) return;
+                _showPercent = value;
+                InvalidateVisual();
+            }
+        }
+
         /// <summary>마우스가 칸 위에 올라갔을 때의 설명 글.</summary>
         public event EventHandler<string> HoverTextChanged;
 
@@ -237,7 +261,7 @@ namespace LogScope.App.Controls
                         Color c1 = Blend(p.HeatLow, p.HeatHigh, 0.25 + 0.75 * f);
                         fill = Frozen(c1);
                         textColor = Readable(c1);
-                        label = showNumbers ? Compact(hc.Mean) : null;
+                        label = showNumbers ? CellText(row, hc.Mean) : null;
                     }
                     else
                     {
@@ -368,6 +392,40 @@ namespace LogScope.App.Controls
             return lum > 0.55 ? Color.FromRgb(0x20, 0x20, 0x20) : Colors.White;
         }
 
+        /// <summary>
+        /// 칸 안에 적을 글자. 단위는 칸이 좁아 넣지 않고 설명 줄에만 적습니다.
+        /// </summary>
+        private string CellText(HeatRow row, double v)
+        {
+            if (!_showPercent) return Compact(v);
+            string pct = Percent(v, row.Range);
+            return pct ?? Compact(v);   // 값 범위가 0 이면 나눌 수가 없습니다.
+        }
+
+        /// <summary>
+        /// 값 범위 대비 퍼센트. 나눌 밑값이 없으면 null 을 돌려줍니다
+        /// (그럴 때 0% 라고 적으면 "차이 없음" 으로 잘못 읽힙니다).
+        /// </summary>
+        private static string Percent(double v, double range)
+        {
+            if (!(range > 0) || double.IsNaN(range)) return null;
+
+            double a = Math.Abs(v) / range * 100.0;
+            if (a == 0) return "0%";
+            if (a >= 100) return a.ToString("0", CultureInfo.InvariantCulture) + "%";
+            if (a >= 10) return a.ToString("0.#", CultureInfo.InvariantCulture) + "%";
+            if (a >= 0.1) return a.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+            if (a >= 0.001) return a.ToString("0.###", CultureInfo.InvariantCulture) + "%";
+            return "<0.001%";
+        }
+
+        /// <summary>설명 줄에 쓸, 값과 단위를 붙인 글자.</summary>
+        private static string WithUnit(double v, HeatRow row)
+        {
+            string s = Compact(v);
+            return row.Unit.Length > 0 ? s + " " + row.Unit : s;
+        }
+
         /// <summary>칸에 들어갈 만큼 짧게.</summary>
         private static string Compact(double v)
         {
@@ -445,11 +503,23 @@ namespace LogScope.App.Controls
                 ? "차이 발생 (표본 " + cell.OverSamples + " / " + cell.Samples + ")"
                 : "정상";
 
+            // 설명 줄에서는 값과 퍼센트를 <b>둘 다</b> 보여 줍니다. 칸에는
+            // 고른 쪽만 적히므로, 마우스를 올리면 나머지 한쪽도 바로 보입니다.
+            string mean = WithUnit(cell.Mean, row);
+            string meanPct = Percent(cell.Mean, row.Range);
+            if (meanPct != null) mean = _showPercent ? meanPct + " (" + mean + ")"
+                                                     : mean + " (" + meanPct + ")";
+
+            string extra = row.ByName
+                ? "   ※ 상태 이름끼리 견준 줄이라 퍼센트는 '다른 표본의 비율' 입니다."
+                : string.Empty;
+
             return row.Name + "   " + when + "   " + verdict
-                 + "   평균 차이 " + Compact(cell.Mean)
-                 + "   최대 " + Compact(cell.Max)
-                 + "   RMS " + Compact(cell.Rms)
-                 + "   기준 " + Compact(row.Threshold);
+                 + "   평균 차이 " + mean
+                 + "   최대 " + WithUnit(cell.Max, row)
+                 + "   RMS " + WithUnit(cell.Rms, row)
+                 + "   기준 " + WithUnit(row.Threshold, row)
+                 + extra;
         }
 
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)

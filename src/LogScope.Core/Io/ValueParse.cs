@@ -194,6 +194,40 @@ namespace LogScope.Core.Io
             }
         }
 
+        /// <summary>
+        /// 이름 끝의 괄호에서 단위를 꺼냅니다.
+        ///   "압력 PT-01 [bar]"  ->  "bar"
+        ///   "AI_TEMP(℃)"        ->  "℃"
+        ///   "Flow {m3/h}"       ->  "m3/h"
+        /// 괄호가 없거나 안이 비었으면 빈 글자입니다. 이름 자체는 건드리지
+        /// 않습니다 — 엑셀에 적힌 이름을 그대로 쓴다는 약속이 있습니다.
+        /// </summary>
+        public static string ExtractUnit(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            string s = name.TrimEnd();
+            if (s.Length < 3) return string.Empty;
+
+            char close = s[s.Length - 1];
+            char open;
+            if (close == ']') open = '[';
+            else if (close == ')') open = '(';
+            else if (close == '}') open = '{';
+            else return string.Empty;
+
+            int start = s.LastIndexOf(open);
+            if (start < 0) return string.Empty;
+
+            string inner = s.Substring(start + 1, s.Length - start - 2).Trim();
+            if (inner.Length == 0 || inner.Length > 16) return string.Empty;
+
+            // 괄호 안이 숫자면 단위가 아니라 번호입니다 ("밸브(2)").
+            double ignored;
+            if (TryNumber(inner, out ignored)) return string.Empty;
+
+            return inner;
+        }
+
         /// <summary>엑셀 numFmt 코드가 날짜/시각 서식인지.</summary>
         public static bool IsDateFormat(int builtinId, string formatCode)
         {

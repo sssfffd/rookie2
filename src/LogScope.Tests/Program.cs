@@ -43,6 +43,8 @@ namespace LogScope.Tests
                 ToleranceIsRelativeToRange();
                 HeatmapBuckets();
                 HeatmapRelativeTolerance();
+                UnitsFromUnitRowAndName();
+                HeatmapRangeForPercent();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -550,6 +552,89 @@ namespace LogScope.Tests
             HeatmapResult r3 = HeatmapBuilder.Build(dsA, dsB, opt, null);
             Check("차이 없는 IO도 보기", r3.Rows.Count == 1 && r3.Rows[0].OverBuckets == 0,
                   "줄 " + r3.Rows.Count);
+        }
+
+        /// <summary>
+        /// 세로 눈금에 적을 단위가 두 갈래 모두에서 들어오는지.
+        ///  (1) 머리 행 아래의 단위 줄
+        ///  (2) 이름 끝의 대괄호/소괄호
+        /// 이름 자체는 엑셀에 적힌 그대로여야 합니다.
+        /// </summary>
+        private static void UnitsFromUnitRowAndName()
+        {
+            Console.WriteLine("세로축 단위");
+
+            // (1) 단위 줄이 따로 있는 경우
+            string p1 = WriteCsv("unit_row.csv",
+                "Time,PT01,TT01\n" +
+                "sec,bar,degC\n" +
+                "0.0,1,20\n" +
+                "0.1,2,21\n" +
+                "0.2,3,22\n");
+            LogDataset a = Open(p1, Orientation.Auto);
+
+            Check("단위 줄을 값으로 읽지 않음", a.SampleCount == 3, "실제 " + a.SampleCount);
+            Check("단위 줄에서 단위를 가져옴",
+                  a.Channels[a.FindChannel("PT01")].Unit == "bar",
+                  "실제 '" + a.Channels[a.FindChannel("PT01")].Unit + "'");
+            Check("둘째 열의 단위도", a.Channels[a.FindChannel("TT01")].Unit == "degC", null);
+
+            // (2) 단위 줄이 없고 이름 끝에 붙은 경우
+            string p2 = WriteCsv("unit_name.csv",
+                "Time,압력 PT-01 [bar],밸브(2)\n" +
+                "0.0,1,0\n" +
+                "0.1,2,1\n" +
+                "0.2,3,1\n");
+            LogDataset b = Open(p2, Orientation.Auto);
+
+            Check("이름은 엑셀에 적힌 그대로", b.FindChannel("압력 PT-01 [bar]") >= 0, null);
+            Check("이름 끝 대괄호에서 단위를 가져옴",
+                  b.Channels[b.FindChannel("압력 PT-01 [bar]")].Unit == "bar",
+                  "실제 '" + b.Channels[b.FindChannel("압력 PT-01 [bar]")].Unit + "'");
+            Check("괄호 안이 숫자면 단위가 아님",
+                  b.Channels[b.FindChannel("밸브(2)")].Unit.Length == 0,
+                  "실제 '" + b.Channels[b.FindChannel("밸브(2)")].Unit + "'");
+        }
+
+        /// <summary>
+        /// 히트맵에서 차이를 퍼센트로 보여 줄 때 나눌 밑값(HeatRow.Range)이
+        /// 허용 오차와 같은 값 범위인지. 여기가 어긋나면 "허용 오차 0.1%" 와
+        /// 칸에 적히는 "%" 가 서로 다른 뜻이 됩니다.
+        /// </summary>
+        private static void HeatmapRangeForPercent()
+        {
+            Console.WriteLine("히트맵 — 퍼센트로 볼 때의 밑값");
+
+            // 0 에서 100 까지 오르는 채널. 2 분대에서만 2 만큼 벌어집니다.
+            var a = new StringBuilder("Time,P\n");
+            var b = new StringBuilder("Time,P\n");
+            for (int i = 0; i < 300; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                double v = i * (100.0 / 299.0);
+                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+                double w = v + (i >= 120 && i < 180 ? 2.0 : 0.0);
+                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_pct_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_pct_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new HeatmapOptions();
+            opt.RelativeTolerance = 0.0001;     // 0.01% = 0.01. 2 는 차이로 잡힙니다.
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("줄 하나", r.Rows.Count == 1, "실제 " + r.Rows.Count);
+            if (r.Rows.Count != 1) return;
+
+            HeatRow row = r.Rows[0];
+            Near("밑값은 값 범위", row.Range, 100, 0.5);
+            Near("허용 오차와 같은 규칙",
+                 row.Threshold, ToleranceRule.For(dsA.Channels[0], dsB.Channels[0], 0, 0.0001), 1e-9);
+            Near("평균 차이", row.Cells[2].Mean, 2, 5e-3);
+
+            // 칸에 적힐 퍼센트: 2 / 100 * 100 = 2%
+            Near("퍼센트", row.Cells[2].Mean / row.Range * 100.0, 2, 0.02);
+            Check("이름으로 견준 줄이 아님", !row.ByName, null);
         }
 
         private static void JsonRoundTrip()

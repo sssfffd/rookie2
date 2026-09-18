@@ -53,6 +53,23 @@ namespace LogScope.Core.Compare
         /// <summary>줄 전체에서 가장 크게 벌어진 순간.</summary>
         public double PeakMax;
 
+        /// <summary>
+        /// 차이를 퍼센트로 바꿀 때 나눌 밑값. 그 채널의 값 범위입니다
+        /// (ToleranceRule.BaseRange 와 같은 값이라 허용 오차 0.1% 와 눈금이 맞습니다).
+        /// 0 이면 나눌 수 없어서 퍼센트를 적지 않습니다.
+        /// </summary>
+        public double Range;
+
+        /// <summary>
+        /// 값이 아니라 이름(상태 문자열)으로 견준 줄인지.
+        /// 이런 줄은 차이가 0 또는 1 이라 평균이 곧 "다른 표본의 비율" 입니다.
+        /// 그래서 퍼센트가 바로 뜻이 통하고, 단위 붙은 값은 뜻이 없습니다.
+        /// </summary>
+        public bool ByName;
+
+        /// <summary>값의 단위. 칸 설명에 같이 적습니다. 없으면 빈 문자열.</summary>
+        public string Unit = string.Empty;
+
         public bool HasDifference { get { return OverBuckets > 0; } }
     }
 
@@ -255,6 +272,12 @@ namespace LogScope.Core.Compare
 
             bool stepped = bc.IsStepped || ac.IsStepped;
             bool byName = bc.Kind == ChannelKind.State || ac.Kind == ChannelKind.State;
+
+            row.ByName = byName;
+            // 이름으로 견준 줄은 차이가 0/1 이므로 밑값이 1 입니다. 그래야
+            // 평균 0.25 가 "표본의 25% 가 달랐다" 로 그대로 읽힙니다.
+            row.Range = byName ? 1.0 : ToleranceRule.BaseRange(bc, ac);
+            row.Unit = byName ? string.Empty : (bc.Unit.Length > 0 ? bc.Unit : ac.Unit);
 
             double[] bt = before.Times, at = after.Times;
             float[] bv = bc.Values, av = ac.Values;

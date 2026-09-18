@@ -13,6 +13,9 @@ namespace LogScope.Core.Io
     public sealed class ChannelAccum
     {
         public string Name;
+
+        /// <summary>단위. 단위 줄에서 읽었거나 이름 끝 괄호에서 꺼낸 값.</summary>
+        public string Unit = string.Empty;
         private FloatBuffer _values;
 
         private bool _sawNumber;
@@ -145,6 +148,7 @@ namespace LogScope.Core.Io
             b.PadTo(sampleCount);
 
             var ch = new Channel(Name, 0);
+            ch.Unit = Unit ?? string.Empty;
             ch.Values = b.ToArray();
             if (ch.Values.Length > sampleCount)
             {

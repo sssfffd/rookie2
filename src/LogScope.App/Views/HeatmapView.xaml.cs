@@ -49,6 +49,23 @@ namespace LogScope.App.Views
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             _vm = DataContext as HeatmapVm;
+            SyncUnit();
+        }
+
+        /// <summary>
+        /// 값/퍼센트 고르기를 판에 알립니다.
+        ///
+        /// 판(HeatmapCanvas)은 직접 그리는 요소라 라디오 단추에 바로 묶지
+        /// 않고, 화면이 값을 받아 넘겨 줍니다. 저장은 설정이 맡습니다.
+        /// </summary>
+        private void OnUnitChanged(object sender, RoutedEventArgs e)
+        {
+            SyncUnit();
+        }
+
+        private void SyncUnit()
+        {
+            if (_vm != null) Map.ShowPercent = _vm.ShowPercent;
         }
 
         private void OnHoverTextChanged(object sender, string text)

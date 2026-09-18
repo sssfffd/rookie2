@@ -17,6 +17,14 @@ namespace LogScope.Core.Model
         /// <summary>Kind == State 일 때만 채워집니다. Values 는 이 배열의 인덱스.</summary>
         public string[] States;
 
+        /// <summary>
+        /// 단위 ("bar", "℃", "mm" 등). 못 찾으면 빈 글자.
+        /// 엑셀 머리 행 아래의 단위 줄에서 가져오고, 없으면 이름 끝의
+        /// 괄호에서 찾습니다 ("압력 PT-01 [bar]").
+        /// 세로 눈금 옆에 적는 데 씁니다.
+        /// </summary>
+        public string Unit = string.Empty;
+
         /// <summary>NaN 을 뺀 최소/최대. 값이 하나도 없으면 둘 다 NaN.</summary>
         public double Min;
         public double Max;
@@ -25,6 +33,7 @@ namespace LogScope.Core.Model
         {
             Name = name ?? string.Empty;
             Kind = ChannelKind.Analog;
+            Unit = string.Empty;
             Values = new float[sampleCount];
             States = null;
             Min = double.NaN;

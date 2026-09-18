@@ -184,10 +184,14 @@ namespace LogScope.Core.Io
             int timeCol = PickTimeColumn(probe, r0, c0, header);
 
             int dataStart = r0 + 1;
+            Cell[] unitRow = null;
             if (IsUnitRow(probe, dataStart, c0, timeCol))
             {
+                // 값이 아니라 단위가 적힌 줄입니다. 표에서는 빼되 버리지는
+                // 않습니다 — 세로 눈금에 단위를 적는 데 씁니다.
+                unitRow = probe[dataStart];
                 dataStart++;
-                ds.AddNote("머리 행 아래의 단위 줄 한 줄을 건너뛰었습니다.");
+                ds.AddNote("머리 행 아래의 단위 줄에서 단위를 가져왔습니다.");
             }
 
             // 채널 이름은 머리 행에 적힌 그대로 씁니다.
@@ -209,7 +213,10 @@ namespace LogScope.Core.Io
                 }
                 name = Unique(used, name);
                 if (opt.MaxChannels > 0 && accs.Count >= opt.MaxChannels) break;
-                accs.Add(new ChannelAccum(name, 1024, opt.MaxStateValues));
+
+                var acc = new ChannelAccum(name, 1024, opt.MaxStateValues);
+                acc.Unit = UnitFor(unitRow, j, name);
+                accs.Add(acc);
                 colOf.Add(j);
             }
             if (blanks > 0) ds.AddNote("머리 행에 이름이 없는 열 " + blanks + " 개를 열 문자로 이름 붙였습니다.");
@@ -333,6 +340,20 @@ namespace LogScope.Core.Io
             return best;
         }
 
+        /// <summary>
+        /// 이 열의 단위. 단위 줄이 있으면 거기서, 없으면 이름 끝의 괄호에서
+        /// 찾습니다. 둘 다 없으면 빈 글자입니다.
+        /// </summary>
+        private static string UnitFor(Cell[] unitRow, int column, string name)
+        {
+            if (unitRow != null && column < unitRow.Length)
+            {
+                string u = unitRow[column].Display();
+                if (!string.IsNullOrEmpty(u) && u.Length <= 16) return u;
+            }
+            return ValueParse.ExtractUnit(name);
+        }
+
         /// <summary>머리 행 바로 아래가 단위 줄("mm", "V", "℃" 등)인지.</summary>
         private static bool IsUnitRow(List<Cell[]> probe, int idx, int c0, int timeCol)
         {
@@ -391,6 +412,9 @@ namespace LogScope.Core.Io
                 name = Unique(used, name);
 
                 var acc = new ChannelAccum(name, sample, opt.MaxStateValues);
+                // 행이 IO 인 배치에는 단위 줄이라는 게 없습니다. 이름 끝의
+                // 괄호에서만 찾습니다.
+                acc.Unit = ValueParse.ExtractUnit(name);
                 for (int m = 0; m < sample; m++)
                 {
                     int j = tStart + m;
