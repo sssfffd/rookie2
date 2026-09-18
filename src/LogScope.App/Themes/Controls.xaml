@@ -61,8 +61,11 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="11,5" />
-        <Setter Property="Margin" Value="3" />
+        <!-- SegmentButton / ToolToggle 과 같은 여백. 도구 줄에 나란히 놓았을 때
+             버튼만 옆으로 밀려 보이지 않게 맞춰 둡니다. -->
+        <Setter Property="Margin" Value="0,3,2,3" />
         <Setter Property="MinHeight" Value="28" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -173,8 +176,9 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
         <Setter Property="Padding" Value="11,5" />
-        <Setter Property="Margin" Value="3" />
+        <Setter Property="Margin" Value="0,3,2,3" />
         <Setter Property="MinHeight" Value="28" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -208,6 +212,7 @@
         <Setter Property="Padding" Value="11,5" />
         <Setter Property="Margin" Value="0,3,2,3" />
         <Setter Property="MinHeight" Value="28" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -242,7 +247,9 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Margin" Value="0,3,2,3" />
         <Setter Property="MinHeight" Value="28" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
@@ -301,7 +308,8 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
         <Setter Property="MinHeight" Value="28" />
-        <Setter Property="Margin" Value="3" />
+        <Setter Property="Margin" Value="0,3,2,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -500,6 +508,30 @@
     </Style>
 
     <!-- ===================== 네모 칸 ===================== -->
+
+    <!-- ===================== 도구 줄 묶음 ===================== -->
+    <!--
+      도구 줄이 길어서 WrapPanel 에 버튼을 그냥 늘어놓으면, 줄이 바뀌는 자리가
+      묶음 한가운데가 되어 "시간축" 이라는 글자와 그 버튼들이 서로 다른 줄에
+      떨어집니다. 묶음마다 이 테두리로 싸 두면 <b>묶음째로</b> 줄이 바뀌고,
+      어느 버튼이 어느 갈래인지도 눈에 보입니다.
+    -->
+    <Style x:Key="ToolGroup" TargetType="{x:Type Border}">
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelAlt}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="8,0,6,0" />
+        <Setter Property="Margin" Value="0,3,8,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="ToolGroupCaption" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
 
     <Style x:Key="Tile" TargetType="{x:Type Border}">
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />

@@ -239,6 +239,64 @@ namespace LogScope.App.Controls
             RaiseViewChanged();
         }
 
+        /// <summary>
+        /// 지금 보이는 시간 구간에 세로 눈금을 <b>한 번</b> 맞춥니다.
+        ///
+        /// "보이는 구간에 맞춤" 토글과 다릅니다. 토글은 계속 따라다니면서
+        /// 시간축을 밀 때마다 세로 배율을 바꿔 버립니다. 이건 한 번 맞춰 놓고
+        /// 손을 떼서, 그 뒤로는 사용자가 잡은 배율이 유지됩니다.
+        ///
+        /// 히트맵에서 칸을 눌러 넘어올 때 씁니다. 가로축만 그 구간으로
+        /// 맞춰 주고 세로축을 로그 전체 범위에 둬 버리면, 4000 짜리 채널에서
+        /// 3 벌어진 것은 선 두 개가 딱 붙어 보여서 아무것도 알 수 없습니다.
+        /// </summary>
+        public void FitValueToVisibleOnce()
+        {
+            if (_channels.Count == 0) return;
+
+            if (_laneMode)
+            {
+                for (int i = 0; i < _channels.Count; i++)
+                    FitLaneToVisible(new[] { _channels[i] }, _channels[i].Name);
+            }
+            else
+            {
+                FitLaneToVisible(_channels.ToArray(), OverlayLaneKey);
+            }
+
+            ClampZooms();
+            InvalidateVisual();
+        }
+
+        /// <summary>
+        /// 레인 하나를 보이는 구간에 맞춥니다.
+        ///
+        /// 그리는 쪽은 "기준 범위를 Zoom 으로 나누고 Center 에 놓는다" 로
+        /// 돼 있습니다(DrawLane). 그래서 여기서도 <b>같은 식을 거꾸로</b> 풀어
+        /// Zoom 과 Center 를 냅니다. 따로 계산하면 화면과 어긋납니다.
+        /// </summary>
+        private void FitLaneToVisible(IoRowVm[] ios, string key)
+        {
+            double lo, hi;
+            bool saved = _fitVisible;
+
+            _fitVisible = false;
+            BaseRange(ios, out lo, out hi);        // 기준 범위 (배율 1 일 때)
+            double full = hi - lo;
+
+            double vlo, vhi;
+            _fitVisible = true;
+            BaseRange(ios, out vlo, out vhi);      // 지금 보이는 구간의 범위
+            _fitVisible = saved;
+
+            double span = vhi - vlo;
+            if (!(full > 0) || !(span > 0)) return;
+
+            LaneY ly = LaneFor(key);
+            ly.Center = (vlo + vhi) * 0.5;
+            ly.Zoom = full / span;
+        }
+
         public void ZoomTime(double factor)
         {
             ZoomTimeAround((_t0 + _t1) * 0.5, factor);
@@ -1050,11 +1108,16 @@ namespace LogScope.App.Controls
         private static string FormatTick(double v, double step)
         {
             if (Math.Abs(v) < step * 1e-9) v = 0;
+
+            // 눈금 간격에 맞춰 소수점 자리를 정합니다. 지수 표기로는 절대
+            // 바뀌지 않습니다 — 눈금에 "1.2e+06" 이 적히면 읽을 수가 없습니다.
             double a = Math.Abs(v);
-            if (a != 0 && (a >= 1e6 || a < 1e-3)) return v.ToString("G4");
+            if (a >= 1e6) return NumberText.Plain(v);
+            if (a != 0 && a < 1e-3) return NumberText.Plain(v);
+
             int dec = 0;
-            double s = Math.Abs(step);
-            while (s < 1 && dec < 6) { s *= 10; dec++; }
+            double st = Math.Abs(step);
+            while (st < 1 && dec < 6) { st *= 10; dec++; }
             return v.ToString("N" + dec);
         }
 

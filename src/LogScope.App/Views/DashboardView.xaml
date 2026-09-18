@@ -97,9 +97,11 @@
         <!-- 아래쪽: 차이가 난 IO 목록 + 한쪽에만 있는 IO 목록 -->
         <Grid Grid.Row="3">
             <Grid.RowDefinitions>
-                <RowDefinition Height="3*" MinHeight="120" />
+                <!-- 차이가 난 IO 목록이 본론이라 자리를 많이 줍니다.
+                     한쪽에만 있는 IO 는 이름만 훑으면 되는 칸이라 작게. -->
+                <RowDefinition Height="5*" MinHeight="140" />
                 <RowDefinition Height="6" />
-                <RowDefinition Height="2*" MinHeight="90" />
+                <RowDefinition Height="1*" MinHeight="62" MaxHeight="220" />
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Style="{StaticResource SectionBox}">
@@ -137,10 +139,6 @@
                                                     Header="{Binding ColRms}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding Rms}" />
-                                    <GridViewColumn Width="110"
-                                                    Header="{Binding ColArea}"
-                                                    HeaderTemplate="{StaticResource SortHeader}"
-                                                    DisplayMemberBinding="{Binding Area}" />
                                     <GridViewColumn Width="95"
                                                     Header="{Binding ColTime}"
                                                     HeaderTemplate="{StaticResource SortHeader}"

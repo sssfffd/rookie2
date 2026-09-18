@@ -47,6 +47,7 @@
     <Compile Include="Model\TimeKind.cs" />
     <Compile Include="Model\Channel.cs" />
     <Compile Include="Model\LogDataset.cs" />
+    <Compile Include="Model\NumberText.cs" />
     <Compile Include="Io\Cell.cs" />
     <Compile Include="Io\RowSource.cs" />
     <Compile Include="Io\FloatBuffer.cs" />

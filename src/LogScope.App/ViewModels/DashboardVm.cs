@@ -17,7 +17,6 @@ namespace LogScope.App.ViewModels
         public string MaxAbs { get; set; }
         public string MeanAbs { get; set; }
         public string Rms { get; set; }
-        public string Area { get; set; }
         public string TimeRatio { get; set; }
         public string Segments { get; set; }
     }
@@ -160,10 +159,32 @@ namespace LogScope.App.ViewModels
 
         // ---- 정렬 기준 ----
 
-        public static readonly string[] MetricNames =
+        /// <summary>
+        /// 화면에 내놓는 차이량들.
+        ///
+        /// "차이 면적"(차이 x 시간)은 뺐습니다. 단위가 "값 x 시간" 이라 채널끼리
+        /// 견줄 수가 없고, 오래 벌어졌는지는 "차이 시간" 이, 크게 벌어졌는지는
+        /// "최대 차이" 가 이미 알려 줍니다. 계산은 Core 에 그대로 남아 있어서
+        /// 나중에 다시 꺼내 쓸 수 있습니다.
+        ///
+        /// 이 차례가 곧 설정 창 콤보의 차례입니다.
+        /// </summary>
+        public static readonly DiffMetric[] ShownMetrics =
         {
-            "최대 차이", "평균 차이", "RMS", "차이 면적", "차이 시간 비율", "차이 표본 수", "차이 구간 수"
+            DiffMetric.MaxAbs, DiffMetric.MeanAbs, DiffMetric.Rms,
+            DiffMetric.TimeRatio, DiffMetric.SampleCount, DiffMetric.SegmentCount,
         };
+
+        public static string[] MetricNames
+        {
+            get
+            {
+                var names = new string[ShownMetrics.Length];
+                for (int i = 0; i < ShownMetrics.Length; i++)
+                    names[i] = ChannelDiff.MetricLabel(ShownMetrics[i]);
+                return names;
+            }
+        }
 
         public IEnumerable<string> Metrics { get { return MetricNames; } }
 
@@ -173,7 +194,6 @@ namespace LogScope.App.ViewModels
         public ColumnHeaderVm ColMax { get; private set; }
         public ColumnHeaderVm ColMean { get; private set; }
         public ColumnHeaderVm ColRms { get; private set; }
-        public ColumnHeaderVm ColArea { get; private set; }
         public ColumnHeaderVm ColTime { get; private set; }
         public ColumnHeaderVm ColSegments { get; private set; }
 
@@ -186,13 +206,12 @@ namespace LogScope.App.ViewModels
             ColMax = ColumnHeaderVm.ForMetric(DiffMetric.MaxAbs, "최대 차이");
             ColMean = ColumnHeaderVm.ForMetric(DiffMetric.MeanAbs, "평균 차이");
             ColRms = ColumnHeaderVm.ForMetric(DiffMetric.Rms, "RMS");
-            ColArea = ColumnHeaderVm.ForMetric(DiffMetric.Area, "차이 면적");
             ColTime = ColumnHeaderVm.ForMetric(DiffMetric.TimeRatio, "차이 시간");
             ColSegments = ColumnHeaderVm.ForMetric(DiffMetric.SegmentCount, "구간 수");
 
             _headers = new List<ColumnHeaderVm>
             {
-                ColName, ColKind, ColMax, ColMean, ColRms, ColArea, ColTime, ColSegments
+                ColName, ColKind, ColMax, ColMean, ColRms, ColTime, ColSegments
             };
             MarkSorted();
         }
@@ -319,7 +338,6 @@ namespace LogScope.App.ViewModels
                         MaxAbs = d.Format(DiffMetric.MaxAbs),
                         MeanAbs = d.Format(DiffMetric.MeanAbs),
                         Rms = d.Format(DiffMetric.Rms),
-                        Area = d.Format(DiffMetric.Area),
                         TimeRatio = d.Format(DiffMetric.TimeRatio),
                         Segments = d.Format(DiffMetric.SegmentCount),
                     });

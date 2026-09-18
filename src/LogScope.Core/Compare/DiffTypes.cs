@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using LogScope.Core.Model;
 
 namespace LogScope.Core.Compare
 {
@@ -129,11 +130,8 @@ namespace LogScope.Core.Compare
                 case DiffMetric.SampleCount:
                 case DiffMetric.SegmentCount: return ((long)v).ToString("N0");
                 default:
-                    {
-                        double a = Math.Abs(v);
-                        if (a != 0 && (a < 0.001 || a >= 1e6)) return v.ToString("G4");
-                        return v.ToString("0.####");
-                    }
+                    // 지수 표기(1.2e+07)를 쓰지 않습니다 — NumberText 참고.
+                    return NumberText.Plain(v);
             }
         }
     }

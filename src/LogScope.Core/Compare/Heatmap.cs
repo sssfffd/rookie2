@@ -63,13 +63,28 @@ namespace LogScope.Core.Compare
         /// <summary>이 채널에서 "차이"로 볼 기준값. ToleranceRule 이 정합니다.</summary>
         public double Threshold;
 
-        /// <summary>차이가 난 칸들 중 가장 큰 평균값. 색 진하기의 기준입니다.</summary>
+        /// <summary>
+        /// 차이가 난 칸들 중 가장 큰 값(ValueOf 기준). <b>색 진하기에만</b> 씁니다.
+        ///
+        /// 한 줄 안에서 "어느 시간대가 제일 심한가" 를 색으로 보여 주는 값이라
+        /// 칸 폭이 바뀌면 같이 바뀝니다 — 1 분씩 따로 세던 것을 5 분으로 묶어
+        /// 평균 내면 봉우리가 낮아집니다. 줄 차례를 매기는 데 쓰면 안 됩니다.
+        /// </summary>
         public double PeakMean;
 
-        /// <summary>차이가 난 칸의 개수.</summary>
+        /// <summary>
+        /// 차이가 난 칸의 개수.
+        /// <b>칸 폭에 따라 달라집니다</b> — 1 분 칸 5 개가 5 분 칸 1 개가 되면
+        /// 이 값은 5 분의 1 이 됩니다. 그래서 줄 차례를 매기는 데 쓰면 안 됩니다.
+        /// </summary>
         public int OverBuckets;
 
-        /// <summary>줄 전체에서 가장 크게 벌어진 순간.</summary>
+        /// <summary>
+        /// 기준을 넘은 표본의 총 개수. 칸을 어떻게 자르든 같습니다.
+        /// </summary>
+        public int TotalOverSamples;
+
+        /// <summary>줄 전체에서 가장 크게 벌어진 순간. 칸을 어떻게 자르든 같습니다.</summary>
         public double PeakMax;
 
         /// <summary>
@@ -103,6 +118,24 @@ namespace LogScope.Core.Compare
         {
             if (!c.HasData || c.OverSamples == 0) return 0;
             return ByName ? c.Mean : c.OverMean;
+        }
+
+        /// <summary>
+        /// 이 IO 를 얼마나 먼저 봐야 하는지. 줄 차례를 매기는 값입니다.
+        ///
+        /// 가장 크게 벌어진 순간을 그 채널의 값 범위로 나눈 것입니다.
+        /// 두 가지를 동시에 만족해야 해서 이렇게 골랐습니다.
+        ///
+        ///  - <b>칸 폭과 무관해야 합니다.</b> 1 분으로 보든 5 분으로 보든
+        ///    같은 로그이므로 줄 차례가 바뀌면 안 됩니다. PeakMax 는 표본
+        ///    하나하나에서 나온 값이라 칸을 어떻게 자르든 같습니다.
+        ///  - <b>IO 끼리 견줄 수 있어야 합니다.</b> 0~5 채널의 3 과
+        ///    0~4000 채널의 3 은 전혀 다른 일이라, 값 그대로 줄을 세우면
+        ///    값이 큰 채널만 위로 몰립니다. 그래서 범위로 나눕니다.
+        /// </summary>
+        public double Severity
+        {
+            get { return Range > 0 ? PeakMax / Range : PeakMax; }
         }
 
         /// <summary>
@@ -229,11 +262,18 @@ namespace LogScope.Core.Compare
             res.ChangedChannels = changed;
 
             // 많이 벌어진 IO 가 위로 오게.
+            //
+            // 기준은 <b>칸 폭과 무관한 값</b>만 씁니다. 예전에는 PeakMean(칸들
+            // 중 가장 큰 값)과 OverBuckets(차이 난 칸 수)로 줄을 세웠는데,
+            // 둘 다 칸을 어떻게 잘랐는지에 딸린 값입니다. 그래서 같은 로그인데
+            // 1 분으로 보다가 5 분으로 바꾸면 IO 차례가 뒤바뀌었습니다.
+            // 5 분으로 묶으면 1 분짜리 봉우리가 이웃한 0 들과 평균되어 낮아지고,
+            // 차이 난 칸 수도 통째로 줄어들기 때문입니다.
             res.Rows.Sort(delegate (HeatRow a, HeatRow b)
             {
-                int c = b.PeakMean.CompareTo(a.PeakMean);
+                int c = b.Severity.CompareTo(a.Severity);
                 if (c != 0) return c;
-                c = b.OverBuckets.CompareTo(a.OverBuckets);
+                c = b.TotalOverSamples.CompareTo(a.TotalOverSamples);
                 if (c != 0) return c;
                 return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
             });
@@ -290,7 +330,7 @@ namespace LogScope.Core.Compare
                 return (span / 1000.0).ToString("0.##") + "초";
             }
             if (kind == TimeKind.Index) return span.ToString("0.##") + "표본";
-            return span.ToString("G4");
+            return NumberText.Plain(span);
         }
 
         /// <summary>
@@ -421,6 +461,7 @@ namespace LogScope.Core.Compare
                 if (cell.OverSamples > 0)
                 {
                     row.OverBuckets++;
+                    row.TotalOverSamples += cell.OverSamples;
                     double shown = row.ValueOf(cell);
                     if (shown > row.PeakMean) row.PeakMean = shown;
                 }

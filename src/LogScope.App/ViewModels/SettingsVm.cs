@@ -154,13 +154,21 @@ namespace LogScope.App.ViewModels
 
         public IEnumerable<string> Metrics { get { return DashboardVm.MetricNames; } }
 
+        /// <summary>
+        /// 콤보의 몇 번째인지. 차이량 enum 값을 그대로 쓰지 않습니다 —
+        /// 화면에 안 내놓는 차이량(차이 면적)이 있어서 번호가 어긋납니다.
+        /// </summary>
         public int SortMetricIndex
         {
-            get { return (int)_s.SortMetric; }
+            get
+            {
+                int i = Array.IndexOf(DashboardVm.ShownMetrics, _s.SortMetric);
+                return i < 0 ? 0 : i;
+            }
             set
             {
-                if (value < 0 || value > 6) return;
-                _s.SortMetric = (DiffMetric)value;
+                if (value < 0 || value >= DashboardVm.ShownMetrics.Length) return;
+                _s.SortMetric = DashboardVm.ShownMetrics[value];
                 Raise();
             }
         }

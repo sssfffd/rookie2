@@ -428,17 +428,12 @@ namespace LogScope.App.Controls
             return row.Unit.Length > 0 ? s + " " + row.Unit : s;
         }
 
-        /// <summary>칸에 들어갈 만큼 짧게.</summary>
+        /// <summary>
+        /// 칸에 들어갈 만큼 짧게. 지수 표기는 쓰지 않습니다 (NumberText 참고).
+        /// </summary>
         private static string Compact(double v)
         {
-            double a = Math.Abs(v);
-            if (a == 0) return "0";
-            if (a >= 100000) return v.ToString("0.#e+0", CultureInfo.InvariantCulture);
-            if (a >= 100) return v.ToString("0", CultureInfo.InvariantCulture);
-            if (a >= 10) return v.ToString("0.#", CultureInfo.InvariantCulture);
-            if (a >= 1) return v.ToString("0.##", CultureInfo.InvariantCulture);
-            if (a >= 0.001) return v.ToString("0.###", CultureInfo.InvariantCulture);
-            return v.ToString("0.#e+0", CultureInfo.InvariantCulture);
+            return NumberText.Short(v);
         }
 
         // ---------------- 마우스 ----------------

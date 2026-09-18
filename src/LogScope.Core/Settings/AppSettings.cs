@@ -223,6 +223,9 @@ namespace LogScope.Core.Settings
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 6) metric = 0;
             s.SortMetric = (DiffMetric)metric;
+            // 차이 면적은 화면에서 뺐습니다. 예전 설정에 남아 있으면
+            // 아무 칸에도 삼각형이 붙지 않으므로 기본값으로 돌립니다.
+            if (s.SortMetric == DiffMetric.Area) s.SortMetric = DiffMetric.MaxAbs;
             s.SortDescending = Json.GetBool(root, "sortDescending", true);
             s.SortColumn = Json.GetInt(root, "sortColumn", 0);
             if (s.SortColumn < 0 || s.SortColumn > 2) s.SortColumn = 0;

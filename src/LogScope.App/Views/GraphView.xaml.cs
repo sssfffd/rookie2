@@ -131,10 +131,15 @@ namespace LogScope.App.Views
             PushChannels();
         }
 
-        /// <summary>히트맵에서 칸을 눌러 넘어왔을 때 그 시간대로 맞춥니다.</summary>
+        /// <summary>
+        /// 히트맵에서 칸을 눌러 넘어왔을 때 그 시간대로 맞춥니다.
+        /// 가로축뿐 아니라 <b>세로축도</b> 그 구간에 맞춥니다 — 그러지 않으면
+        /// 값이 큰 채널에서 차이가 선 굵기에 묻혀 보이지 않습니다.
+        /// </summary>
         public void SetTimeRange(double t0, double t1)
         {
             Plot.SetTimeRange(t0, t1);
+            Plot.FitValueToVisibleOnce();
         }
 
         // ---------------- 왼쪽 위: 검색과 선택 ----------------
@@ -342,5 +347,11 @@ namespace LogScope.App.Views
         private void OnZoomValueIn(object sender, RoutedEventArgs e) { Plot.ZoomValue(1.35); }
         private void OnZoomValueOut(object sender, RoutedEventArgs e) { Plot.ZoomValue(1 / 1.35); }
         private void OnResetValueZoom(object sender, RoutedEventArgs e) { Plot.ResetValueZoom(); }
+
+        /// <summary>
+        /// 지금 보이는 시간 구간에 세로 눈금을 한 번 맞춥니다.
+        /// 옆의 "계속 맞춤" 토글과 달리 한 번만 맞추고 손을 뗍니다.
+        /// </summary>
+        private void OnFitValueOnce(object sender, RoutedEventArgs e) { Plot.FitValueToVisibleOnce(); }
     }
 }

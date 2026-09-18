@@ -45,8 +45,10 @@ namespace LogScope.Tests
                 HeatmapRelativeTolerance();
                 UnitsFromUnitRowAndName();
                 HeatmapRangeForPercent();
+                NumberTextHasNoExponent();
                 HeatmapCellNumberMatchesTolerance();
                 HeatmapStateNamesIgnoreAbsoluteTolerance();
+                HeatmapOrderIsSameForEveryBucketWidth();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -506,11 +508,12 @@ namespace LogScope.Tests
             Check("1분대는 정상", !HeatmapBuilder.IsOver(row, 1), null);
             Check("3분대는 정상", !HeatmapBuilder.IsOver(row, 3), null);
 
-            // 칸에 적히는 값은 "그 구간의 절대 차이 평균" 입니다.
-            // 합계로 하면 구간이 길수록 무조건 커지고, 부호를 살리면
-            // +1/-1 진동이 0 으로 지워집니다.
+            // 칸에 적히는 값은 "기준을 넘은 표본들의 평균" 입니다. 여기서는
+            // 2 분대 60 표본이 모두 10 만큼 벌어져서 구간 전체 평균과 같습니다.
             Near("2분대 평균 차이", row.Cells[2].Mean, 10, 1e-3);
+            Near("2분대 칸에 적히는 값", row.ValueOf(row.Cells[2]), 10, 1e-3);
             Near("1분대 평균 차이", row.Cells[1].Mean, 0, 1e-6);
+            Check("1분대 칸에 적히는 값은 0", row.ValueOf(row.Cells[1]) == 0, null);
             Check("1분대에도 기록은 있음", row.Cells[1].HasData, null);
         }
 
@@ -733,6 +736,127 @@ namespace LogScope.Tests
             // 2 분대는 전부 달랐으므로 100%.
             Near("다른 표본의 비율", row.ValueOf(row.Cells[2]) * 100.0, 100, 0.01);
             Check("1 분대는 정상", row.ValueOf(row.Cells[1]) == 0, null);
+        }
+
+        /// <summary>
+        /// 숫자를 글자로 바꿀 때 지수 표기(1.2e+07)가 나오지 않아야 합니다.
+        /// .NET 의 "G4" 가 자리 수에 따라 멋대로 지수로 바꾸던 것을 막은 것이라,
+        /// 경계가 되는 값들을 직접 넣어 봅니다.
+        /// </summary>
+        private static void NumberTextHasNoExponent()
+        {
+            Console.WriteLine("숫자 표기 — 지수 표기 안 씀");
+
+            double[] probes =
+            {
+                0, 1, -1, 0.5, 12.34, 999.99, 1000, 123456, 999999,
+                1000000, 12345678, 1.5e9, -2.5e7,
+                0.001, 0.0005, 0.000123, 1e-6, -1e-6, 1e-9,
+            };
+
+            bool clean = true;
+            string bad = null;
+            for (int i = 0; i < probes.Length; i++)
+            {
+                string a = NumberText.Plain(probes[i]);
+                string b = NumberText.Short(probes[i]);
+                if (HasExponent(a)) { clean = false; bad = probes[i] + " -> " + a; break; }
+                if (HasExponent(b)) { clean = false; bad = probes[i] + " -> " + b; break; }
+            }
+            Check("어떤 값에서도 e / E 가 안 나옴", clean, bad);
+
+            Check("큰 수는 천 단위로 끊음", NumberText.Plain(12345678) == "12,345,678",
+                  "실제 " + NumberText.Plain(12345678));
+            Check("작은 수도 자리를 살림", NumberText.Plain(0.000123) == "0.000123",
+                  "실제 " + NumberText.Plain(0.000123));
+            Check("0 은 그냥 0", NumberText.Plain(0) == "0", "실제 " + NumberText.Plain(0));
+
+            // 대시보드 목록도 같은 서식을 씁니다.
+            var d = new ChannelDiff();
+            d.MaxAbs = 1234567.0;
+            Check("대시보드 칸도 지수 표기 안 씀",
+                  !HasExponent(d.Format(DiffMetric.MaxAbs)), d.Format(DiffMetric.MaxAbs));
+        }
+
+        private static bool HasExponent(string s)
+        {
+            return s != null && (s.IndexOf('e') >= 0 || s.IndexOf('E') >= 0);
+        }
+
+        /// <summary>
+        /// 칸 폭을 1 분에서 5 분으로 바꿔도 IO 차례가 같아야 합니다.
+        ///
+        /// 예전에는 "칸들 중 가장 큰 평균" 과 "차이 난 칸 수" 로 줄을 세웠는데,
+        /// 둘 다 칸을 어떻게 잘랐는지에 딸린 값이라 폭을 바꾸면 차례가
+        /// 뒤바뀌었습니다.
+        /// </summary>
+        private static void HeatmapOrderIsSameForEveryBucketWidth()
+        {
+            Console.WriteLine("히트맵 — 칸 폭을 바꿔도 IO 차례가 같은지");
+
+            // 세 채널. 벌어지는 모양을 일부러 다르게 둡니다.
+            //   SPIKE : 딱 한 순간만 크게 (한 칸 안에서도 평균이 묻히는 모양)
+            //   WIDE  : 오래 조금씩 (칸을 넓히면 평균이 잘 살아남는 모양)
+            //   SMALL : 아주 조금
+            // 세 채널 모두 0~100 을 오르내려서 값 범위가 같습니다. 그래야
+            // 차례를 정하는 것이 "얼마나 벌어졌나" 하나로 좁혀집니다.
+            var a = new StringBuilder("Time,SPIKE,WIDE,SMALL\n");
+            var b = new StringBuilder("Time,SPIKE,WIDE,SMALL\n");
+            for (int i = 0; i < 600; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                double v = i * (100.0 / 599.0);
+                string vs = v.ToString("0.###", CultureInfo.InvariantCulture);
+                a.Append(t).Append(',').Append(vs).Append(',').Append(vs)
+                 .Append(',').Append(vs).Append('\n');
+
+                double spike = v + (i == 130 ? 40.0 : 0.0);   // 한 표본만 크게
+                double wide = v + (i >= 60 && i < 360 ? 8.0 : 0.0);   // 오래 조금씩
+                double small = v + (i >= 200 && i < 260 ? 2.0 : 0.0);  // 잠깐 아주 조금
+                b.Append(t).Append(',')
+                 .Append(spike.ToString("0.###", CultureInfo.InvariantCulture)).Append(',')
+                 .Append(wide.ToString("0.###", CultureInfo.InvariantCulture)).Append(',')
+                 .Append(small.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_order_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_order_b.csv", b.ToString()), Orientation.Auto);
+
+            var one = new HeatmapOptions();
+            one.BucketSpan = 60000.0;           // 1 분
+            HeatmapResult r1 = HeatmapBuilder.Build(dsA, dsB, one, null);
+
+            var five = new HeatmapOptions();
+            five.BucketSpan = 5 * 60000.0;      // 5 분
+            HeatmapResult r5 = HeatmapBuilder.Build(dsA, dsB, five, null);
+
+            Check("두 폭 모두 세 줄", r1.Rows.Count == 3 && r5.Rows.Count == 3,
+                  "1분 " + r1.Rows.Count + ", 5분 " + r5.Rows.Count);
+            if (r1.Rows.Count != 3 || r5.Rows.Count != 3) return;
+
+            string n1 = r1.Rows[0].Name + "," + r1.Rows[1].Name + "," + r1.Rows[2].Name;
+            string n5 = r5.Rows[0].Name + "," + r5.Rows[1].Name + "," + r5.Rows[2].Name;
+            Check("칸 폭이 달라도 IO 차례가 같음", n1 == n5, "1분 [" + n1 + "], 5분 [" + n5 + "]");
+
+            // 가장 크게 벌어진 순간이 큰 쪽이 위입니다. WIDE 는 벌어진 표본이
+            // 300 개로 훨씬 많지만, 벌어진 크기는 SPIKE 가 5 배입니다.
+            Check("제일 크게 튄 IO 가 맨 위", n1 == "SPIKE,WIDE,SMALL", "실제 " + n1);
+
+            // 차례를 정하는 값 자체가 칸 폭과 무관한지도 직접 봅니다.
+            for (int i = 0; i < 3; i++)
+            {
+                HeatRow x = r1.Rows[i], y = r5.Rows[i];
+                Near(x.Name + " 의 최대 차이가 폭과 무관", x.PeakMax, y.PeakMax, 1e-6);
+                Check(x.Name + " 의 넘은 표본 수가 폭과 무관",
+                      x.TotalOverSamples == y.TotalOverSamples,
+                      "1분 " + x.TotalOverSamples + ", 5분 " + y.TotalOverSamples);
+            }
+
+            // 반대로, 칸 폭에 딸린 값은 실제로 달라집니다 — 그래서 정렬에
+            // 쓰면 안 된다는 것을 여기서 못박아 둡니다.
+            Check("차이 난 칸 수는 폭에 따라 달라짐",
+                  r1.Rows[0].OverBuckets != r5.Rows[0].OverBuckets
+                  || r1.Rows[1].OverBuckets != r5.Rows[1].OverBuckets,
+                  "1분/5분 칸 수가 같게 나왔습니다");
         }
 
         private static void JsonRoundTrip()

@@ -210,53 +210,87 @@
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                     Padding="8,4">
                 <WrapPanel>
-                    <TextBlock Text="보기 방식" Style="{StaticResource FieldLabel}" />
-                    <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                 Content="레인 (채널마다 한 줄)"
-                                 IsChecked="{Binding LaneMode, Mode=TwoWay}" />
-                    <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                 Content="겹쳐보기 (눈금 공유)"
-                                 IsChecked="{Binding OverlayMode, Mode=TwoWay}" />
 
-                    <TextBlock Text="세로 눈금" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
-                    <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                 Content="원래값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}" />
-                    <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                 Content="0–1 정규화" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}" />
-                    <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                 Content="변화만" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
-                                 ToolTip="채널마다 첫 값을 빼서, 몇천 중의 1 변화도 보이게 합니다." />
+                    <!-- 무엇을 어떻게 늘어놓을지 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="보기 방식" />
+                            <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
+                                         Content="레인 (채널마다 한 줄)"
+                                         IsChecked="{Binding LaneMode, Mode=TwoWay}" />
+                            <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
+                                         Content="겹쳐보기 (눈금 공유)"
+                                         IsChecked="{Binding OverlayMode, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
 
-                    <ToggleButton Style="{StaticResource ToolToggle}" Content="보이는 구간에 맞춤"
-                                  IsChecked="{Binding FitVisible, Mode=TwoWay}"
-                                  Margin="12,3,3,3" />
+                    <!-- 세로축을 무엇으로 읽을지 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="세로 눈금" />
+                            <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
+                                         Content="원래값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}" />
+                            <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
+                                         Content="0–1 정규화" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}" />
+                            <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
+                                         Content="변화만" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
+                                         ToolTip="채널마다 첫 값을 빼서, 몇천 중의 1 변화도 보이게 합니다." />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="시간축" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
-                    <Button Content="전체 구간 보기" Click="OnResetTime" />
-                    <Button Content="시간 확대" Click="OnZoomTimeIn" />
-                    <Button Content="시간 축소" Click="OnZoomTimeOut" />
+                    <!-- 가로(시간) 축 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="시간축" />
+                            <Button Content="전체 구간 보기" Click="OnResetTime" />
+                            <Button Content="시간 확대" Click="OnZoomTimeIn" />
+                            <Button Content="시간 축소" Click="OnZoomTimeOut" />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="값 축" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
-                    <Button Content="값 확대" Click="OnZoomValueIn" />
-                    <Button Content="값 축소" Click="OnZoomValueOut" />
-                    <Button Content="값 배율 되돌리기" Click="OnResetValueZoom" />
+                    <!-- 세로(값) 축 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="값 축" />
+                            <Button Content="값 확대" Click="OnZoomValueIn" />
+                            <Button Content="값 축소" Click="OnZoomValueOut" />
+                            <Button Content="보이는 구간에 맞추기" Click="OnFitValueOnce"
+                                    ToolTip="지금 보이는 시간 구간에 세로 눈금을 한 번 맞춥니다. 그 뒤로는 그대로 둡니다." />
+                            <Button Content="값 배율 되돌리기" Click="OnResetValueZoom" />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="계속 맞춤"
+                                          IsChecked="{Binding FitVisible, Mode=TwoWay}"
+                                          ToolTip="켜 두면 시간축을 밀 때마다 세로 눈금을 다시 맞춥니다. 위아래 움직임이 심하면 끄고 쓰세요." />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="두 로그 비교" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
-                    <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 구간 음영"
-                                  IsChecked="{Binding ShadeDifference, Mode=TwoWay}" />
-                    <ToggleButton Style="{StaticResource ToolToggle}" Content="이전·이후 벌려 그리기"
-                                  IsChecked="{Binding SeparateTraces, Mode=TwoWay}" />
+                    <!-- 이전 로그와 이후 로그를 견주는 것들 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="두 로그 비교" />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 구간 음영"
+                                          IsChecked="{Binding ShadeDifference, Mode=TwoWay}" />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이전·이후 벌려 그리기"
+                                          IsChecked="{Binding SeparateTraces, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="허용 오차" Style="{StaticResource FieldLabel}" Margin="12,0,6,0" />
-                    <TextBox Width="62" Margin="0,3,2,3"
-                             Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
-                             ToolTip="채널 값 범위에 대한 비율(%)입니다. 기본 0.1%.&#x0a;대시보드·히트맵과 같은 값을 씁니다." />
-                    <TextBlock Text="%" Style="{StaticResource FieldLabel}" Margin="0,0,6,0" />
-                    <TextBlock Text="{Binding ToleranceHint}" Style="{StaticResource Muted}"
-                               FontSize="11" Margin="0,0,4,0" />
+                    <!-- 어디부터를 차이로 볼지 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="허용 오차" />
+                            <TextBox Width="62"
+                                     Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
+                                     ToolTip="채널 값 범위에 대한 비율(%)입니다. 기본 0.1%.&#x0a;대시보드·히트맵과 같은 값을 씁니다." />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="%" Margin="6,0,8,0" />
+                            <TextBlock Text="{Binding ToleranceHint}" Style="{StaticResource Muted}"
+                                       FontSize="11" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="14,0,0,0"
+                    <TextBlock Style="{StaticResource Muted}" FontSize="11"
+                               VerticalAlignment="Center" Margin="4,0,0,0"
                                Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
+
                 </WrapPanel>
             </Border>
 
