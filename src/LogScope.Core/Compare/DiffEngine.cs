@@ -143,8 +143,11 @@ namespace LogScope.Core.Compare
             bool byName = bc.Kind == ChannelKind.State || ac.Kind == ChannelKind.State;
             d.ByName = byName;
 
-            double tol = opt.Tolerance;
-            if (byName && tol >= 1.0) tol = 0.0;   // 상태 채널은 0/1 로만 나옵니다.
+            // 기준값은 채널마다 다릅니다. 범위가 몇천인 아날로그와 0/1 만 오가는
+            // 디지털에 같은 절대값을 들이댈 수 없기 때문입니다.
+            double tol = ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
+            if (byName && tol >= 1.0) tol = 0.0;   // 상태 채널의 차이는 0/1 로만 나옵니다.
+            d.Threshold = tol;
 
             double sum = 0, sumSq = 0, area = 0, maxAbs = 0, overTime = 0, totalTime = 0;
             int compared = 0, overCount = 0, segments = 0;

@@ -159,7 +159,12 @@ namespace LogScope.App.ViewModels
             int common = c != null ? c.CommonCount : 0;
             ChangedCount = changed.ToString("N0") + "개";
             ChangedNote = "양쪽에 다 있는 IO " + common + "개 중"
-                        + "   /   허용 오차 " + _state.Settings.Tolerance.ToString("0.######");
+                        + "   /   허용 오차 값 범위의 "
+                        + _state.Settings.RelativeTolerancePercent.ToString("0.####") + "%"
+                        + (_state.Settings.AbsoluteTolerance > 0
+                            ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######")
+                              + " 중 큰 쪽"
+                            : "");
 
             string sb = _state.Before != null ? _state.Before.SampleCount.ToString("N0") : "-";
             string sa = _state.After != null ? _state.After.SampleCount.ToString("N0") : "-";

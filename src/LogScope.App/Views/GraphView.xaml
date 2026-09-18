@@ -247,9 +247,13 @@
                     <ToggleButton Style="{StaticResource ToolToggle}" Content="이전·이후 벌려 그리기"
                                   IsChecked="{Binding SeparateTraces, Mode=TwoWay}" />
 
-                    <TextBlock Text="허용 오차" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />
-                    <TextBox Width="76" Margin="0,3,3,3"
-                             Text="{Binding ToleranceText, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                    <TextBlock Text="허용 오차" Style="{StaticResource FieldLabel}" Margin="12,0,6,0" />
+                    <TextBox Width="62" Margin="0,3,2,3"
+                             Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
+                             ToolTip="채널 값 범위에 대한 비율(%)입니다. 기본 0.1%.&#x0a;대시보드·히트맵과 같은 값을 씁니다." />
+                    <TextBlock Text="%" Style="{StaticResource FieldLabel}" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding ToleranceHint}" Style="{StaticResource Muted}"
+                               FontSize="11" Margin="0,0,4,0" />
 
                     <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="14,0,0,0"
                                Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />

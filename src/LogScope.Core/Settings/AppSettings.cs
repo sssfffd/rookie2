@@ -55,7 +55,12 @@ namespace LogScope.Core.Settings
         public List<GroupDef> Groups = new List<GroupDef>();
 
         // 비교 기본값
-        public double Tolerance;
+        //
+        // 기준값은 두 가지 중 큰 쪽입니다 (ToleranceRule 참고).
+        //   RelativeTolerancePercent : 채널 값 범위의 몇 %. 기본 0.1%.
+        //   AbsoluteTolerance        : 값 그대로. 기본 0 (끔).
+        public double RelativeTolerancePercent = ToleranceRule.DefaultPercent;
+        public double AbsoluteTolerance;
         public DiffMetric SortMetric = DiffMetric.MaxAbs;
         public bool AutoAlign = true;
         public double ManualShift;
@@ -129,7 +134,8 @@ namespace LogScope.Core.Settings
             }
             root["groups"] = groups;
 
-            root["tolerance"] = Tolerance;
+            root["relativeTolerancePercent"] = RelativeTolerancePercent;
+            root["absoluteTolerance"] = AbsoluteTolerance;
             root["sortMetric"] = (double)(int)SortMetric;
             root["autoAlign"] = AutoAlign;
             root["manualShift"] = ManualShift;
@@ -186,7 +192,15 @@ namespace LogScope.Core.Settings
                 s.Groups.Add(def);
             }
 
-            s.Tolerance = Json.GetDouble(root, "tolerance", 0);
+            s.RelativeTolerancePercent =
+                Json.GetDouble(root, "relativeTolerancePercent", ToleranceRule.DefaultPercent);
+            if (s.RelativeTolerancePercent < 0 || s.RelativeTolerancePercent > 100)
+                s.RelativeTolerancePercent = ToleranceRule.DefaultPercent;
+
+            // "tolerance" 는 예전 이름입니다. 옛 설정 파일도 그대로 열리게 둡니다.
+            s.AbsoluteTolerance = Json.GetDouble(root, "absoluteTolerance",
+                                                 Json.GetDouble(root, "tolerance", 0));
+            if (s.AbsoluteTolerance < 0) s.AbsoluteTolerance = 0;
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 6) metric = 0;
             s.SortMetric = (DiffMetric)metric;

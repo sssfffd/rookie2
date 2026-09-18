@@ -6,6 +6,7 @@ using System.Windows.Input;
 using LogScope.App.Controls;
 using LogScope.App.Services;
 using LogScope.App.ViewModels;
+using LogScope.Core.Compare;
 
 namespace LogScope.App.Views
 {
@@ -74,10 +75,11 @@ namespace LogScope.App.Views
             Plot.ShadeDifference = _vm.ShadeDifference;
             Plot.SeparateTraces = _vm.SeparateTraces;
 
-            double tol;
-            if (double.TryParse(_vm.ToleranceText, System.Globalization.NumberStyles.Float,
-                                System.Globalization.CultureInfo.InvariantCulture, out tol))
-                Plot.Tolerance = tol;
+            double percent;
+            if (double.TryParse(_vm.RelativeTolerancePercentText, System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out percent))
+                Plot.RelativeTolerance = ToleranceRule.FromPercent(percent);
+            Plot.AbsoluteTolerance = _vm.AbsoluteTolerance;
         }
 
         private void OnSelectionChanged(object sender, EventArgs e)

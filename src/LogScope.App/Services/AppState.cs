@@ -28,7 +28,8 @@ namespace LogScope.App.Services
         public DiffOptions BuildDiffOptions()
         {
             var o = new DiffOptions();
-            o.Tolerance = Settings.Tolerance;
+            o.AbsoluteTolerance = Settings.AbsoluteTolerance;
+            o.RelativeTolerance = ToleranceRule.FromPercent(Settings.RelativeTolerancePercent);
             o.Shift = Settings.ManualShift;
             o.AutoAlign = Settings.AutoAlign;
             o.SortBy = Settings.SortMetric;

@@ -39,6 +39,7 @@ namespace LogScope.Tests
                 DecimationKeepsExtremes();
                 CompareMetrics();
                 ExistenceDifference();
+                ToleranceIsRelativeToRange();
                 HeatmapBuckets();
                 HeatmapRelativeTolerance();
                 JsonRoundTrip();
@@ -300,7 +301,7 @@ namespace LogScope.Tests
             LogDataset dsB = Open(WriteCsv("cmp_b.csv", b.ToString()), Orientation.Auto);
 
             var opt = new DiffOptions();
-            opt.Tolerance = 0.0;
+            opt.AbsoluteTolerance = 0.0;
             CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
 
             Check("양쪽에 다 있는 채널 2개", r.CommonCount == 2, "실제 " + r.CommonCount);
@@ -322,7 +323,7 @@ namespace LogScope.Tests
                   v.TimeRatio.ToString("0.000") + " / " + w.TimeRatio.ToString("0.000"));
 
             // 허용 오차를 키우면 둘 다 같은 것으로 봅니다.
-            opt.Tolerance = 1.5;
+            opt.AbsoluteTolerance = 1.5;
             CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
             Check("허용 오차를 넘기면 차이 없음", r2.ChangedCount == 0, "실제 " + r2.ChangedCount);
         }
@@ -339,6 +340,66 @@ namespace LogScope.Tests
             Check("이후에만 있는 IO 는 C", r.OnlyAfter.Count == 1 && r.OnlyAfter[0].Name == "C",
                   r.OnlyAfter.Count.ToString());
             Check("공통은 B 하나", r.CommonCount == 1, "실제 " + r.CommonCount);
+        }
+
+        private static void ToleranceIsRelativeToRange()
+        {
+            Console.WriteLine("허용 오차 — 채널 값 범위의 0.1% (기본)");
+
+            // BIG  : 0 에서 5000 까지 오르내립니다. 범위가 5000 이라 0.1% = 5.
+            //        2 만큼 벌어지는 것은 잡음이지 차이가 아닙니다.
+            // SMALL: 0 과 1 만 오가는 디지털. 범위가 1 이라 0.1% = 0.001.
+            //        1 만큼 벌어지는 것은 완전히 다른 상태입니다.
+            // 절대값 하나로는 이 둘을 같이 다룰 수 없다는 것이 요점입니다.
+            var a = new StringBuilder("Time,BIG,SMALL\n");
+            var b = new StringBuilder("Time,BIG,SMALL\n");
+            for (int i = 0; i < 200; i++)
+            {
+                double v = i * (5000.0 / 199.0);
+                int d = (i / 10) % 2;
+                a.Append(i).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture))
+                 .Append(',').Append(d).Append('\n');
+
+                double w = v + (i >= 80 && i < 120 ? 2.0 : 0.0);
+                int e = (i >= 80 && i < 120) ? 1 - d : d;
+                b.Append(i).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture))
+                 .Append(',').Append(e).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("tol_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("tol_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new DiffOptions();
+            Near("기본값은 0.1%", ToleranceRule.ToPercent(opt.RelativeTolerance), 0.1, 1e-9);
+
+            CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
+            ChannelDiff big = r.Items.Find(d => d.Name == "BIG");
+            ChannelDiff small = r.Items.Find(d => d.Name == "SMALL");
+            Check("두 채널 모두 찾음", big != null && small != null, null);
+
+            Near("BIG 의 기준값은 범위 5000 의 0.1%", big.Threshold, 5, 0.05);
+            Near("SMALL 의 기준값은 범위 1 의 0.1%", small.Threshold, 0.001, 1e-9);
+
+            Check("BIG 은 차이 아님 (2 < 5)", !big.Changed, "최대 " + big.MaxAbs.ToString("0.###"));
+            Check("SMALL 은 차이 맞음 (1 > 0.001)", small.Changed, null);
+            Check("차이 난 IO 는 하나", r.ChangedCount == 1, "실제 " + r.ChangedCount);
+
+            // 기준을 0.01% 로 낮추면 BIG 도 걸립니다.
+            opt.RelativeTolerance = ToleranceRule.FromPercent(0.01);
+            CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
+            Check("기준을 낮추면 BIG 도 차이", r2.ChangedCount == 2, "실제 " + r2.ChangedCount);
+
+            // 절대 오차를 크게 주면 둘 중 큰 쪽이 기준이 되어 둘 다 빠집니다.
+            opt.RelativeTolerance = ToleranceRule.FromPercent(0.1);
+            opt.AbsoluteTolerance = 3;
+            CompareResult r3 = DiffEngine.Compare(dsA, dsB, opt, null);
+            Check("절대 오차가 크면 둘 중 큰 쪽이 기준", r3.ChangedCount == 0, "실제 " + r3.ChangedCount);
+
+            // 값이 한 자리에 머문 채널은 범위가 0 이라, 값의 크기를 대신 씁니다.
+            LogDataset flatA = Open(WriteCsv("tol_flat_a.csv", "Time,F\n0,3000\n1,3000\n2,3000\n"), Orientation.Auto);
+            LogDataset flatB = Open(WriteCsv("tol_flat_b.csv", "Time,F\n0,3001\n1,3001\n2,3001\n"), Orientation.Auto);
+            CompareResult r4 = DiffEngine.Compare(flatA, flatB, new DiffOptions(), null);
+            Check("3000 에 머물던 값이 3001 이 된 것은 잡음", r4.ChangedCount == 0,
+                  "기준 " + (r4.Items.Count > 0 ? r4.Items[0].Threshold.ToString("0.###") : "?"));
         }
 
         private static void HeatmapBuckets()
@@ -449,7 +510,8 @@ namespace LogScope.Tests
             s.ActiveSet = 3;
             s.Sets[3].Title = "3호기 개조";
             s.Sets[3].BeforeFolder = @"D:\로그\이전";
-            s.Tolerance = 0.25;
+            s.AbsoluteTolerance = 0.25;
+            s.RelativeTolerancePercent = 0.25;
             s.SortMetric = DiffMetric.SegmentCount;
 
             var g = new GroupDef("밸브 묶음");
@@ -463,7 +525,8 @@ namespace LogScope.Tests
             Check("고른 세트", back.ActiveSet == 3, back.ActiveSet.ToString());
             Check("세트 이름", back.Sets[3].Title == "3호기 개조", back.Sets[3].Title);
             Check("세트별 기본 폴더", back.Sets[3].BeforeFolder == @"D:\로그\이전", back.Sets[3].BeforeFolder);
-            Near("허용 오차", back.Tolerance, 0.25, 1e-9);
+            Near("절대 허용 오차", back.AbsoluteTolerance, 0.25, 1e-9);
+            Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());
             Check("그룹 이름", back.Groups.Count == 1 && back.Groups[0].Name == "밸브 묶음", null);
             Check("그룹 구성원을 이름으로 저장", back.Groups[0].Members.Count == 2

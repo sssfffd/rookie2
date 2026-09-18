@@ -41,7 +41,7 @@ namespace LogScope.Core.Compare
 
         public HeatCell[] Cells;
 
-        /// <summary>이 채널에서 "차이"로 볼 기준값. 아래 BuildThreshold 참고.</summary>
+        /// <summary>이 채널에서 "차이"로 볼 기준값. ToleranceRule 이 정합니다.</summary>
         public double Threshold;
 
         /// <summary>차이가 난 칸들 중 가장 큰 평균값. 색 진하기의 기준입니다.</summary>
@@ -67,8 +67,9 @@ namespace LogScope.Core.Compare
         /// <summary>
         /// 채널 값 범위에 대한 비율 허용 오차. 기본 0.001 = 0.1%.
         /// IO 범위가 몇천인데 1 정도 흔들리는 것을 오류로 세지 않기 위한 것입니다.
+        /// 기준값을 실제로 정하는 규칙은 ToleranceRule 에 있습니다.
         /// </summary>
-        public double RelativeTolerance = 0.001;
+        public double RelativeTolerance = ToleranceRule.FromPercent(ToleranceRule.DefaultPercent);
 
         /// <summary>칸이 너무 많아지지 않게 하는 상한.</summary>
         public int MaxBuckets = 4000;
@@ -234,23 +235,6 @@ namespace LogScope.Core.Compare
         }
 
         /// <summary>
-        /// 이 채널에서 "차이가 났다" 고 볼 기준값.
-        /// 절대 허용 오차와, 값 범위의 일정 비율(기본 0.1%) 중 큰 쪽을 씁니다.
-        /// 범위가 몇천인 아날로그 채널에서 1 정도 흔들리는 것을 오류로 세지
-        /// 않기 위한 것입니다. 디지털 채널은 범위가 1 이라 0.1% = 0.001 이 되어
-        /// 0 과 1 의 차이는 그대로 잡힙니다.
-        /// </summary>
-        private static double BuildThreshold(Channel bc, Channel ac, HeatmapOptions opt)
-        {
-            double range = 0;
-            if (!double.IsNaN(bc.Min)) range = Math.Max(range, bc.Max - bc.Min);
-            if (!double.IsNaN(ac.Min)) range = Math.Max(range, ac.Max - ac.Min);
-
-            double rel = range * Math.Max(0, opt.RelativeTolerance);
-            return Math.Max(Math.Max(0, opt.AbsoluteTolerance), rel);
-        }
-
-        /// <summary>
         /// 이전 로그의 표본을 시간 순서대로 훑으면서, 이후 로그의 자리를
         /// 같이 앞으로 밀며 값을 읽습니다. 표본마다 이진 탐색을 하지 않으므로
         /// 채널 하나가 O(표본 수) 로 끝납니다.
@@ -267,7 +251,7 @@ namespace LogScope.Core.Compare
             row.BeforeIndex = bi;
             row.AfterIndex = ai;
             row.Cells = new HeatCell[buckets];
-            row.Threshold = BuildThreshold(bc, ac, opt);
+            row.Threshold = ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
 
             bool stepped = bc.IsStepped || ac.IsStepped;
             bool byName = bc.Kind == ChannelKind.State || ac.Kind == ChannelKind.State;

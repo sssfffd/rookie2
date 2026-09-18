@@ -116,17 +116,40 @@ namespace LogScope.App.ViewModels
 
         // ---------------- 비교 ----------------
 
-        public string ToleranceText
+        /// <summary>허용 오차 — 채널 값 범위에 대한 비율(%). 기본 0.1%.</summary>
+        public string RelativeTolerancePercentText
         {
-            get { return _s.Tolerance.ToString("0.######", CultureInfo.InvariantCulture); }
+            get { return _s.RelativeTolerancePercent.ToString("0.####", CultureInfo.InvariantCulture); }
+            set
+            {
+                double v;
+                if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return;
+                if (v < 0 || v > 100) return;
+                _s.RelativeTolerancePercent = v;
+                Raise();
+            }
+        }
+
+        /// <summary>허용 오차 — 값 그대로. 기본 0 (끔). 비율과 비교해 큰 쪽이 기준.</summary>
+        public string AbsoluteToleranceText
+        {
+            get { return _s.AbsoluteTolerance.ToString("0.######", CultureInfo.InvariantCulture); }
             set
             {
                 double v;
                 if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return;
                 if (v < 0) return;
-                _s.Tolerance = v;
+                _s.AbsoluteTolerance = v;
                 Raise();
             }
+        }
+
+        public void ResetTolerance()
+        {
+            _s.RelativeTolerancePercent = ToleranceRule.DefaultPercent;
+            _s.AbsoluteTolerance = 0;
+            Raise("RelativeTolerancePercentText");
+            Raise("AbsoluteToleranceText");
         }
 
         public IEnumerable<string> Metrics { get { return DashboardVm.MetricNames; } }

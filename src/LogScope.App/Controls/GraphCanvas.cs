@@ -7,6 +7,7 @@ using System.Windows.Media;
 using LogScope.App.Services;
 using LogScope.App.Themes;
 using LogScope.App.ViewModels;
+using LogScope.Core.Compare;
 using LogScope.Core.Model;
 using LogScope.Core.Render;
 
@@ -129,11 +130,24 @@ namespace LogScope.App.Controls
             set { if (_separate != value) { _separate = value; InvalidateVisual(); } }
         }
 
-        private double _tolerance;
-        public double Tolerance
+        // 허용 오차. 기준값은 채널마다 다르게 정해집니다 — 범위가 몇천인
+        // 아날로그와 0/1 만 오가는 디지털에 같은 절대값을 들이댈 수 없어서입니다.
+        // 실제 계산은 Core 의 ToleranceRule 이 하고, 대시보드·히트맵도 같은
+        // 함수를 씁니다. 그래야 세 화면이 같은 IO 를 같게 판정합니다.
+
+        private double _absoluteTolerance;
+        public double AbsoluteTolerance
         {
-            get { return _tolerance; }
-            set { if (_tolerance != value) { _tolerance = value; InvalidateVisual(); } }
+            get { return _absoluteTolerance; }
+            set { if (_absoluteTolerance != value) { _absoluteTolerance = value; InvalidateVisual(); } }
+        }
+
+        private double _relativeTolerance = ToleranceRule.FromPercent(ToleranceRule.DefaultPercent);
+        /// <summary>채널 값 범위에 대한 비율. 0.001 이 0.1%.</summary>
+        public double RelativeTolerance
+        {
+            get { return _relativeTolerance; }
+            set { if (_relativeTolerance != value) { _relativeTolerance = value; InvalidateVisual(); } }
         }
 
         /// <summary>커서나 보이는 구간이 바뀌면 알립니다. 아래 띠의 글자를 고쳐 씁니다.</summary>
@@ -629,7 +643,12 @@ namespace LogScope.App.Controls
             double sep = _separate ? inner.Height * 0.02 : 0.0;
 
             if (_shade && haveB && haveA)
-                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep);
+            {
+                Channel bch = _state.Before.Channels[vm.BeforeIndex];
+                Channel ach = _state.After.Channels[vm.AfterIndex];
+                double tol = ToleranceRule.For(bch, ach, _absoluteTolerance, _relativeTolerance);
+                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep, tol);
+            }
 
             if (haveB) DrawTrace(dc, inner, _colsBefore, columns, vlo, vhi, chLo, chHi, baseline, beforePen, -sep);
             if (haveA) DrawTrace(dc, inner, _colsAfter, columns, vlo, vhi, chLo, chHi, baseline, afterPen, +sep);
@@ -708,10 +727,14 @@ namespace LogScope.App.Controls
         ///
         /// 1 픽셀짜리 네모를 열마다 하나씩 담되, 전부 한 도형에 모아
         /// 한 번에 칠합니다. 붙어 있는 네모들이 모여 자연스러운 띠가 됩니다.
+        ///
+        /// tolerance 는 이 채널의 기준값입니다 (ToleranceRule 이 정한 값).
+        /// 그 안쪽 차이는 칠하지 않습니다 — 대시보드가 "차이 없음" 으로 세는
+        /// 것과 같은 기준이라야 화면끼리 말이 맞습니다.
         /// </summary>
         private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns,
                               double vlo, double vhi, double chLo, double chHi,
-                              double baseline, double sep)
+                              double baseline, double sep, double tolerance)
         {
             var geo = new StreamGeometry();
             bool any = false;
@@ -722,7 +745,7 @@ namespace LogScope.App.Controls
                 {
                     Decimator.Column cb = _colsBefore[x], ca = _colsAfter[x];
                     if (!cb.HasValue || !ca.HasValue) continue;
-                    if (Math.Abs(cb.Last - ca.Last) <= _tolerance) continue;
+                    if (Math.Abs(cb.Last - ca.Last) <= tolerance) continue;
 
                     double y1 = ValueToY(Transform(cb.Last, chLo, chHi, baseline), inner, vlo, vhi) - sep;
                     double y2 = ValueToY(Transform(ca.Last, chLo, chHi, baseline), inner, vlo, vhi) + sep;

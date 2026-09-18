@@ -110,32 +110,48 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="허용 오차"
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="허용 오차 (값 범위의 %)"
                                    Style="{StaticResource FieldLabel}" />
                         <TextBox Grid.Row="0" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding ToleranceText, UpdateSourceTrigger=PropertyChanged}" />
+                                 Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="기본 0.1%. 채널마다 값 범위가 달라서 비율로 잡습니다." />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="기본 0.1"
+                                   Style="{StaticResource Muted}" Margin="10,0,0,0" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="목록 정렬 기준"
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="허용 오차 (절대값)"
                                    Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Metrics}"
+                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,3"
+                                 Text="{Binding AbsoluteToleranceText, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="값 그대로. 기본 0 (끔). 비율과 비교해 큰 쪽이 기준이 됩니다." />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="기본 0 (끔)"
+                                   Style="{StaticResource Muted}" Margin="10,0,0,0" />
+
+                        <Button Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left"
+                                Content="허용 오차를 기본값으로" Click="OnResetTolerance" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="목록 정렬 기준"
+                                   Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Metrics}"
                                   SelectedIndex="{Binding SortMetricIndex, Mode=TwoWay}" />
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="시간 맞추기"
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="시간 맞추기"
                                    Style="{StaticResource FieldLabel}" />
-                        <CheckBox Grid.Row="2" Grid.Column="1" Content="두 로그의 시작 시각을 자동으로 맞춤"
+                        <CheckBox Grid.Row="4" Grid.Column="1" Content="두 로그의 시작 시각을 자동으로 맞춤"
                                   IsChecked="{Binding AutoAlign, Mode=TwoWay}" />
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="손으로 밀기"
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="손으로 밀기"
                                    Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="3" Grid.Column="1" Margin="0,3"
+                        <TextBox Grid.Row="5" Grid.Column="1" Margin="0,3"
                                  Text="{Binding ManualShiftText, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="시간축 단위입니다. 시각 로그라면 밀리초." />
                     </Grid>
 
                     <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
-                               Text="차이 총합만 보면 +1 / -1 이 반복되는 채널이 아주 크게 나옵니다.&#x0a;최대 / 평균 / RMS / 면적 / 시간 비율 / 표본 수 / 구간 수를 함께 보고 판단하세요.&#x0a;여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다." />
+                               Text="허용 오차는 채널마다 다르게 적용됩니다. 0 에서 4000 까지 오르내리는 채널에서&#x0a;1 쯤 흔들리는 것은 잡음이지만, 0 과 1 만 오가는 디지털 채널에서 1 은 완전히 다른 상태입니다.&#x0a;그래서 절대값 하나가 아니라 '그 채널 값 범위의 몇 %' 로 잡습니다 (기본 0.1%).&#x0a;두 칸을 다 채우면 둘 중 큰 쪽이 기준이 됩니다.&#x0a;&#x0a;이 값은 대시보드 · 그래프 차이 음영 · 히트맵이 모두 함께 씁니다.&#x0a;&#x0a;차이 총합만 보면 +1 / -1 이 반복되는 채널이 아주 크게 나옵니다.&#x0a;최대 / 평균 / RMS / 면적 / 시간 비율 / 표본 수 / 구간 수를 함께 보고 판단하세요.&#x0a;여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다." />
                 </StackPanel>
             </TabItem>
 

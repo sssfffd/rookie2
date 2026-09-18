@@ -37,8 +37,18 @@ namespace LogScope.Core.Compare
 
     public sealed class DiffOptions
     {
-        /// <summary>이 값 이하의 차이는 같은 것으로 봅니다.</summary>
-        public double Tolerance = 0.0;
+        /// <summary>
+        /// 절대 허용 오차. 이 값 이하의 차이는 같은 것으로 봅니다.
+        /// 기본 0 (끔). 비율 오차와 함께 쓰이며 둘 중 큰 쪽이 기준이 됩니다.
+        /// </summary>
+        public double AbsoluteTolerance = 0.0;
+
+        /// <summary>
+        /// 비율 허용 오차. 채널 값 범위에 대한 비율이고, 0.001 이 0.1% 입니다.
+        /// 채널마다 값의 크기가 달라서 절대값 하나로는 다룰 수 없습니다.
+        /// 자세한 규칙은 ToleranceRule 을 보세요.
+        /// </summary>
+        public double RelativeTolerance = ToleranceRule.FromPercent(ToleranceRule.DefaultPercent);
 
         /// <summary>이후 로그의 시간을 이만큼 밉니다 (시간축 단위).</summary>
         public double Shift = 0.0;
@@ -71,6 +81,9 @@ namespace LogScope.Core.Compare
         public int DiffSamples;
         public int Segments;
         public int ComparedSamples;
+
+        /// <summary>이 채널에서 "차이" 로 본 기준값. 화면에 그대로 보여 줍니다.</summary>
+        public double Threshold;
 
         /// <summary>상태/문자열 채널이라 "같다/다르다" 로만 비교한 경우.</summary>
         public bool ByName;

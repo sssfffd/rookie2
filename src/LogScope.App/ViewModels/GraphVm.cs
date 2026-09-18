@@ -107,17 +107,39 @@ namespace LogScope.App.ViewModels
             set { if (S.SeparateTraces == value) return; S.SeparateTraces = value; Raise(); Changed(); }
         }
 
-        public string ToleranceText
+        /// <summary>
+        /// 허용 오차 — 채널 값 범위에 대한 비율(%). 기본 0.1%.
+        /// 대시보드·히트맵과 같은 값을 씁니다. 여기서 바꾸면 그쪽도 같이 바뀝니다.
+        /// </summary>
+        public string RelativeTolerancePercentText
         {
-            get { return S.Tolerance.ToString("0.######", CultureInfo.InvariantCulture); }
+            get { return S.RelativeTolerancePercent.ToString("0.####", CultureInfo.InvariantCulture); }
             set
             {
                 double v;
                 if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return;
-                if (v < 0 || S.Tolerance == v) return;
-                S.Tolerance = v;
+                if (v < 0 || v > 100 || S.RelativeTolerancePercent == v) return;
+                S.RelativeTolerancePercent = v;
                 Raise();
+                Raise("ToleranceHint");
                 Changed();
+            }
+        }
+
+        /// <summary>절대 오차. 설정 창에서만 바꿉니다.</summary>
+        public double AbsoluteTolerance { get { return S.AbsoluteTolerance; } }
+
+        /// <summary>도구 줄 옆에 붙는 설명. 절대 오차도 걸려 있으면 같이 알려 줍니다.</summary>
+        public string ToleranceHint
+        {
+            get
+            {
+                string s = "값 범위의 " + S.RelativeTolerancePercent.ToString("0.####",
+                            CultureInfo.InvariantCulture) + "% 까지는 같은 것으로 봅니다";
+                if (S.AbsoluteTolerance > 0)
+                    s += " (절대 " + S.AbsoluteTolerance.ToString("0.######",
+                          CultureInfo.InvariantCulture) + " 과 비교해 큰 쪽)";
+                return s;
             }
         }
 
@@ -167,7 +189,7 @@ namespace LogScope.App.ViewModels
             Raise("LaneMode"); Raise("OverlayMode");
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
             Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
-            Raise("ToleranceText");
+            Raise("RelativeTolerancePercentText"); Raise("ToleranceHint");
         }
     }
 }

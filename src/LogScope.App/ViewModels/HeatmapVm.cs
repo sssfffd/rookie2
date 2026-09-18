@@ -70,25 +70,34 @@ namespace LogScope.App.ViewModels
 
         // ---------------- 허용 오차 ----------------
 
-        private double _relativePercent = 0.1;
         /// <summary>
         /// 채널 값 범위에 대한 비율(%). 기본 0.1% 입니다.
         /// IO 범위가 몇천인데 1 정도 흔들리는 것을 오류로 세지 않기 위한 값입니다.
+        ///
+        /// 설정에 저장되는 값 하나를 대시보드·그래프와 함께 씁니다.
+        /// 여기서 바꾸면 그쪽 "차이 난 IO" 판정도 같이 바뀝니다.
         /// </summary>
         public string RelativeTolerancePercent
         {
-            get { return _relativePercent.ToString("0.###", CultureInfo.InvariantCulture); }
+            get
+            {
+                return _state.Settings.RelativeTolerancePercent.ToString(
+                    "0.####", CultureInfo.InvariantCulture);
+            }
             set
             {
                 double v;
                 if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return;
-                if (v < 0 || v > 100 || _relativePercent == v) return;
-                _relativePercent = v;
+                if (v < 0 || v > 100 || _state.Settings.RelativeTolerancePercent == v) return;
+                _state.Settings.RelativeTolerancePercent = v;
                 Raise();
             }
         }
 
-        public double RelativeTolerance { get { return _relativePercent / 100.0; } }
+        public double RelativeTolerance
+        {
+            get { return ToleranceRule.FromPercent(_state.Settings.RelativeTolerancePercent); }
+        }
 
         private bool _includeUnchanged;
         public bool IncludeUnchanged
@@ -101,7 +110,7 @@ namespace LogScope.App.ViewModels
         {
             var o = new HeatmapOptions();
             o.BucketSpan = BucketSpan;
-            o.AbsoluteTolerance = _state.Settings.Tolerance;
+            o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             o.RelativeTolerance = RelativeTolerance;
             o.IncludeUnchanged = _includeUnchanged;
             o.Shift = _state.AppliedShift;
@@ -147,8 +156,8 @@ namespace LogScope.App.ViewModels
                     + "   /   칸 수 " + r.BucketCount
                     + "        구간 " + from + " ~ " + to
                     + "        허용 오차 값 범위의 " + RelativeTolerancePercent + "%"
-                    + (_state.Settings.Tolerance > 0
-                        ? " 또는 절대 " + _state.Settings.Tolerance.ToString("0.######") + " 중 큰 쪽"
+                    + (_state.Settings.AbsoluteTolerance > 0
+                        ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######") + " 중 큰 쪽"
                         : "");
         }
     }

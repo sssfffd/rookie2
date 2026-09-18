@@ -30,6 +30,11 @@ namespace LogScope.App.Views
             _vm.ForgetFiles();
         }
 
+        private void OnResetTolerance(object sender, RoutedEventArgs e)
+        {
+            _vm.ResetTolerance();
+        }
+
         // ---- 폴더 고르기 ----
         //
         // WPF 에는 폴더 고르는 창이 없습니다. .NET Framework 에 원래 들어 있는
