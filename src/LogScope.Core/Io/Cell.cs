@@ -1,4 +1,4 @@
-namespace LogScope.Core.Io
+﻿namespace LogScope.Core.Io
 {
     public enum CellKind : byte
     {

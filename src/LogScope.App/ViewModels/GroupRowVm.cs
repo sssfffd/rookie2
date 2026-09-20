@@ -1,4 +1,4 @@
-using LogScope.App.Infrastructure;
+﻿using LogScope.App.Infrastructure;
 
 namespace LogScope.App.ViewModels
 {

@@ -1,4 +1,4 @@
-<!-- 밝은 테마. 바탕은 흰색, 위쪽 메뉴 줄은 진한 파랑. -->
+﻿<!-- 밝은 테마. 바탕은 흰색, 위쪽 메뉴 줄은 진한 파랑. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 

@@ -396,6 +396,13 @@ IO 이름은 엑셀에 적힌 그대로 둡니다. 단위를 떼어내 이름을
   디지털·상태 채널은 계단으로 그립니다.
 - 이 저장소의 코드는 리눅스 컨테이너에서 작성했습니다. **윈도우에서 컴파일해 본
   적이 없습니다.** 처음 `build.bat` 을 돌릴 때 오류가 나오면 그 내용을 알려 주세요.
-  대신 컴파일러가 잡아 줄 만한 것 일부를 미리 훑는 검사를 `scripts/` 에 넣어
-  뒀습니다 (`check_sources.py`, `check_shadowing.py`). **빌드에는 필요 없고**
-  파이썬 3 만 있으면 돌아갑니다. 자세한 것은 [scripts/README.md](scripts/README.md).
+
+  다만 이제 **C# 은 실제로 컴파일해서 확인합니다.** 리눅스에서도 Mono 의
+  컴파일러로 `LogScope.Core` · `LogScope.Tests` · `LogScope.App` 을 모두
+  컴파일하고, **테스트도 실제로 돌립니다**(168개 통과).
+  `sh scripts/check_compile.sh` 한 줄입니다.
+
+  아직 확인하지 못하는 것은 **XAML 컴파일**과 **진짜 WPF 타입**뿐입니다
+  (리눅스에 WPF 가 없어 껍데기로 대신합니다). 그래서 `build.bat` 이 여전히
+  정답이고, 저 검사는 그 앞에서 거르는 체입니다.
+  자세한 것은 [scripts/README.md](scripts/README.md).

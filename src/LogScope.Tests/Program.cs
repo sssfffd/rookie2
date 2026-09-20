@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -877,6 +877,51 @@ namespace LogScope.Tests
                   r1.Rows[0].OverBuckets != r5.Rows[0].OverBuckets
                   || r1.Rows[1].OverBuckets != r5.Rows[1].OverBuckets,
                   "1분/5분 칸 수가 같게 나왔습니다");
+        }
+
+        /// <summary>
+        /// 숫자를 글자로 바꿀 때 지수 표기(1.2e+07)가 나오지 않아야 합니다.
+        /// .NET 의 "G4" 가 자리 수에 따라 멋대로 지수로 바꾸던 것을 막은 것이라,
+        /// 경계가 되는 값들을 직접 넣어 봅니다.
+        /// </summary>
+        private static void NumberTextHasNoExponent()
+        {
+            Console.WriteLine("숫자 표기 — 지수 표기 안 씀");
+
+            double[] probes =
+            {
+                0, 1, -1, 0.5, 12.34, 999.99, 1000, 123456, 999999,
+                1000000, 12345678, 1.5e9, -2.5e7,
+                0.001, 0.0005, 0.000123, 1e-6, -1e-6, 1e-9,
+            };
+
+            bool clean = true;
+            string bad = null;
+            for (int i = 0; i < probes.Length; i++)
+            {
+                string a = NumberText.Plain(probes[i]);
+                string b = NumberText.Short(probes[i]);
+                if (HasExponent(a)) { clean = false; bad = probes[i] + " -> " + a; break; }
+                if (HasExponent(b)) { clean = false; bad = probes[i] + " -> " + b; break; }
+            }
+            Check("어떤 값에서도 e / E 가 안 나옴", clean, bad);
+
+            Check("큰 수는 천 단위로 끊음", NumberText.Plain(12345678) == "12,345,678",
+                  "실제 " + NumberText.Plain(12345678));
+            Check("작은 수도 자리를 살림", NumberText.Plain(0.000123) == "0.000123",
+                  "실제 " + NumberText.Plain(0.000123));
+            Check("0 은 그냥 0", NumberText.Plain(0) == "0", "실제 " + NumberText.Plain(0));
+
+            // 대시보드 목록도 같은 서식을 씁니다.
+            var d = new ChannelDiff();
+            d.MaxAbs = 1234567.0;
+            Check("대시보드 칸도 지수 표기 안 씀",
+                  !HasExponent(d.Format(DiffMetric.MaxAbs)), d.Format(DiffMetric.MaxAbs));
+        }
+
+        private static bool HasExponent(string s)
+        {
+            return s != null && (s.IndexOf('e') >= 0 || s.IndexOf('E') >= 0);
         }
 
         private static void JsonRoundTrip()

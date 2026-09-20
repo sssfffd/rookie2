@@ -1,4 +1,4 @@
-<Window x:Class="LogScope.App.Views.SettingsWindow"
+﻿<Window x:Class="LogScope.App.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="설정" Width="760" Height="560" MinWidth="620" MinHeight="460"

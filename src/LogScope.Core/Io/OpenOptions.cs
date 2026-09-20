@@ -1,4 +1,4 @@
-using LogScope.Core.Model;
+﻿using LogScope.Core.Model;
 
 namespace LogScope.Core.Io
 {

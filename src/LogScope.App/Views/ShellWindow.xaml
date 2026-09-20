@@ -1,4 +1,4 @@
-<Window x:Class="LogScope.App.Views.ShellWindow"
+﻿<Window x:Class="LogScope.App.Views.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:v="clr-namespace:LogScope.App.Views"

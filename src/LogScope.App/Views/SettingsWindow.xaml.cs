@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using LogScope.App.ViewModels;
 using LogScope.Core.Settings;

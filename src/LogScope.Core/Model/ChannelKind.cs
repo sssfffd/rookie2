@@ -1,4 +1,4 @@
-namespace LogScope.Core.Model
+﻿namespace LogScope.Core.Model
 {
     /// <summary>채널을 어떻게 그리고 어떻게 비교할지를 가르는 구분.</summary>
     public enum ChannelKind

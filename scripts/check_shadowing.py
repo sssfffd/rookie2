@@ -92,7 +92,7 @@ def pull_headers(body):
 
 
 def scan(path):
-    raw = io.open(path, encoding='utf-8').read()
+    raw = io.open(path, encoding='utf-8-sig').read()
     t = strip(raw)
     hits = []
     for start, end in method_bodies(t):

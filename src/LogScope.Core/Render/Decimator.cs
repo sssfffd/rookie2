@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using LogScope.Core.Model;
 
 namespace LogScope.Core.Render

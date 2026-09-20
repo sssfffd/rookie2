@@ -7,7 +7,7 @@ APP  = os.path.join(ROOT, 'src/LogScope.App')
 fail = []
 def bad(m): fail.append(m)
 
-def read(p): return io.open(p, encoding='utf-8').read()
+def read(p): return io.open(p, encoding='utf-8-sig').read()
 
 xamls = sorted(glob.glob(APP + '/**/*.xaml', recursive=True))
 css   = sorted(glob.glob(ROOT + '/src/**/*.cs', recursive=True))

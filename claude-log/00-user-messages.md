@@ -328,3 +328,11 @@
 > 곳은 같게 맞춰줘야함
 
 → 답변: [17-relative-to-before.md](17-relative-to-before.md)
+
+---
+
+## 요청 21 — 빌드할 때 매번 다른 오류
+
+> build.bat으로 빌드할때 매다 다른 오류들이 계속 발생하는데 전체 다시 점검해봐
+
+→ 답변: [18-real-compile-check.md](18-real-compile-check.md)

@@ -1,4 +1,4 @@
-namespace LogScope.Core.Model
+﻿namespace LogScope.Core.Model
 {
     /// <summary>시간축 값이 무엇을 뜻하는지. 눈금 글자를 어떻게 쓸지 정한다.</summary>
     public enum TimeKind

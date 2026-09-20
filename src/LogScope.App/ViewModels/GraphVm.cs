@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;

@@ -1,4 +1,4 @@
-<Window x:Class="LogScope.App.Views.TextInputWindow"
+﻿<Window x:Class="LogScope.App.Views.TextInputWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="이름" Width="420" SizeToContent="Height"
