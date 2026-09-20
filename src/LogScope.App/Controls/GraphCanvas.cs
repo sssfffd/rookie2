@@ -149,8 +149,7 @@ namespace LogScope.App.Controls
             set { if (_separate != value) { _separate = value; InvalidateVisual(); } }
         }
 
-        // 허용 오차. 기준값은 채널마다 다르게 정해집니다 — 범위가 몇천인
-        // 아날로그와 0/1 만 오가는 디지털에 같은 절대값을 들이댈 수 없어서입니다.
+        // 허용 오차. 그 순간의 값끼리 견줍니다 — |이후 − 이전| / |이전| x 100.
         // 실제 계산은 Core 의 ToleranceRule 이 하고, 대시보드·히트맵도 같은
         // 함수를 씁니다. 그래야 세 화면이 같은 IO 를 같게 판정합니다.
 
@@ -161,12 +160,12 @@ namespace LogScope.App.Controls
             set { if (_absoluteTolerance != value) { _absoluteTolerance = value; InvalidateVisual(); } }
         }
 
-        private double _relativeTolerance = ToleranceRule.FromPercent(ToleranceRule.DefaultPercent);
-        /// <summary>채널 값 범위에 대한 비율. 0.001 이 0.1%.</summary>
-        public double RelativeTolerance
+        private double _relativePercent = ToleranceRule.DefaultPercent;
+        /// <summary>허용 오차 퍼센트. 설정에 적는 그 값 그대로 (0.1 이 0.1%).</summary>
+        public double RelativePercent
         {
-            get { return _relativeTolerance; }
-            set { if (_relativeTolerance != value) { _relativeTolerance = value; InvalidateVisual(); } }
+            get { return _relativePercent; }
+            set { if (_relativePercent != value) { _relativePercent = value; InvalidateVisual(); } }
         }
 
         /// <summary>커서나 보이는 구간이 바뀌면 알립니다. 아래 띠의 글자를 고쳐 씁니다.</summary>
@@ -749,15 +748,11 @@ namespace LogScope.App.Controls
 
             if (_shade && haveB && haveA)
             {
-                Channel bch = _state.Before.Channels[vm.BeforeIndex];
-                Channel ach = _state.After.Channels[vm.AfterIndex];
-                double tol = ToleranceRule.For(bch, ach, _absoluteTolerance, _relativeTolerance);
-
                 // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.
                 Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
                 Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
-                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep, tol);
+                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep);
             }
 
             if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1,
@@ -930,7 +925,6 @@ namespace LogScope.App.Controls
         /// 1 픽셀짜리 네모를 열마다 하나씩 담되, 전부 한 도형에 모아 한 번에
         /// 칠합니다. 붙어 있는 네모들이 모여 자연스러운 띠가 됩니다.
         ///
-        /// tolerance 는 이 채널의 기준값입니다 (ToleranceRule 이 정한 값).
         /// 그 안쪽 차이는 칠하지 않습니다 — 대시보드가 "차이 없음" 으로 세는
         /// 것과 같은 기준이라야 화면끼리 말이 맞습니다.
         /// </summary>
@@ -951,7 +945,7 @@ namespace LogScope.App.Controls
         /// </summary>
         private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns,
                               double vlo, double vhi, double chLo, double chHi,
-                              double baseline, double sep, double tolerance)
+                              double baseline, double sep)
         {
             var geo = new StreamGeometry();
             bool any = false;
@@ -962,13 +956,13 @@ namespace LogScope.App.Controls
                 int x = 0;
                 while (x < columns)
                 {
-                    if (!Differs(x, tolerance)) { x++; continue; }
+                    if (!Differs(x)) { x++; continue; }
 
                     _edgeTop.Clear();
                     _edgeBottom.Clear();
                     double lastPx = 0;
 
-                    while (x < columns && Differs(x, tolerance))
+                    while (x < columns && Differs(x))
                     {
                         double y1 = ValueToY(Transform(_bandBefore[x], chLo, chHi, baseline), inner, vlo, vhi) - sep;
                         double y2 = ValueToY(Transform(_bandAfter[x], chLo, chHi, baseline), inner, vlo, vhi) + sep;
@@ -1002,12 +996,14 @@ namespace LogScope.App.Controls
             dc.DrawGeometry(p.DiffBrush, null, geo);
         }
 
-        /// <summary>그 열에서 두 로그가 허용 오차를 넘어 벌어졌는지.</summary>
-        private bool Differs(int x, double tolerance)
+        /// <summary>
+        /// 그 열에서 두 로그가 허용 오차를 넘어 벌어졌는지.
+        /// 대시보드·히트맵과 같은 함수를 씁니다.
+        /// </summary>
+        private bool Differs(int x)
         {
-            float bv = _bandBefore[x], av = _bandAfter[x];
-            if (float.IsNaN(bv) || float.IsNaN(av)) return false;
-            return Math.Abs(bv - av) > tolerance;
+            return ToleranceRule.IsOver(_bandBefore[x], _bandAfter[x],
+                                        _absoluteTolerance, _relativePercent);
         }
 
         // ---------------- 눈금 ----------------

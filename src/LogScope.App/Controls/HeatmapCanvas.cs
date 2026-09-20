@@ -88,15 +88,14 @@ namespace LogScope.App.Controls
         private bool _showPercent;
 
         /// <summary>
-        /// 칸에 적는 차이를 퍼센트로 바꿉니다.
+        /// 칸에 적는 차이를 퍼센트로 볼지, 값 그대로 볼지.
         ///
-        /// 같은 "평균 차이 3" 이라도 0~5 를 오가는 IO 에서는 큰 차이고
-        /// 0~4000 인 IO 에서는 아무것도 아닙니다. 퍼센트로 보면 줄끼리
-        /// 견줄 수 있습니다. 반대로 "몇 도 틀어졌나" 처럼 값 자체가 알고
-        /// 싶을 때가 있어서 둘 다 볼 수 있게 두었습니다.
+        /// 퍼센트는 이전 값 대비입니다 — 설정에 적는 허용 오차와 <b>같은
+        /// 잣대</b>라, 허용 오차 0.1% 와 칸의 0.3% 를 눈으로 바로 견줄 수
+        /// 있습니다. 반대로 "몇 도 틀어졌나" 처럼 값 자체가 알고 싶을 때가
+        /// 있어서 둘 다 볼 수 있게 두었습니다.
         ///
-        /// 나누는 밑값은 허용 오차와 같은 값 범위(HeatRow.Range)입니다.
-        /// 그래서 기본 허용 오차 0.1% 는 이 화면에서 그대로 0.1% 로 읽힙니다.
+        /// 둘은 <b>같은 순간</b>(가장 크게 벌어진 표본)의 두 가지 표현입니다.
         /// </summary>
         public bool ShowPercent
         {
@@ -107,6 +106,20 @@ namespace LogScope.App.Controls
                 _showPercent = value;
                 InvalidateVisual();
             }
+        }
+
+        private double _tolerancePercent = LogScope.Core.Compare.ToleranceRule.DefaultPercent;
+
+        /// <summary>
+        /// 지금 그려진 히트맵을 만들 때 쓴 허용 오차 퍼센트.
+        /// 설명 줄에 그대로 적어서, 칸에 적힌 퍼센트와 바로 견줄 수 있게 합니다.
+        /// 값이 바뀌어도 다시 그릴 필요는 없습니다 — 설명 줄은 마우스를
+        /// 올릴 때마다 새로 만듭니다.
+        /// </summary>
+        public double TolerancePercent
+        {
+            get { return _tolerancePercent; }
+            set { _tolerancePercent = value; }
         }
 
         /// <summary>마우스가 칸 위에 올라갔을 때의 설명 글.</summary>
@@ -255,15 +268,16 @@ namespace LogScope.App.Controls
                     }
                     else if (hc.OverSamples > 0)
                     {
-                        // 차이가 난 칸. 진하기는 그 줄에서 가장 큰 평균 대비입니다.
-                        // 적는 값과 색을 <b>같은 값</b>으로 냅니다 (HeatRow.ValueOf).
-                        double shown = row.ValueOf(hc);
+                        // 차이가 난 칸. 숫자도 색도 "가장 크게 벌어진 순간의
+                        // 오차(%)" 하나에서 나옵니다. 진하기는 그 줄에서
+                        // 가장 큰 값 대비입니다.
+                        double pct = row.PercentOf(hc);
                         double peak = row.PeakMean > 0 ? row.PeakMean : 1;
-                        double f = Math.Min(1.0, shown / peak);
+                        double f = Math.Min(1.0, pct / peak);
                         Color c1 = Blend(p.HeatLow, p.HeatHigh, 0.25 + 0.75 * f);
                         fill = Frozen(c1);
                         textColor = Readable(c1);
-                        label = showNumbers ? CellText(row, shown) : null;
+                        label = showNumbers ? CellText(row, hc) : null;
                     }
                     else
                     {
@@ -396,29 +410,14 @@ namespace LogScope.App.Controls
 
         /// <summary>
         /// 칸 안에 적을 글자. 단위는 칸이 좁아 넣지 않고 설명 줄에만 적습니다.
+        ///
+        /// 퍼센트든 값이든 <b>같은 순간</b>(가장 크게 벌어진 표본)에서 나옵니다.
+        /// 보기를 바꿔도 가리키는 자리가 달라지지 않습니다.
         /// </summary>
-        private string CellText(HeatRow row, double v)
+        private string CellText(HeatRow row, HeatCell cell)
         {
-            if (!_showPercent) return Compact(v);
-            string pct = Percent(v, row.Range);
-            return pct ?? Compact(v);   // 값 범위가 0 이면 나눌 수가 없습니다.
-        }
-
-        /// <summary>
-        /// 값 범위 대비 퍼센트. 나눌 밑값이 없으면 null 을 돌려줍니다
-        /// (그럴 때 0% 라고 적으면 "차이 없음" 으로 잘못 읽힙니다).
-        /// </summary>
-        private static string Percent(double v, double range)
-        {
-            if (!(range > 0) || double.IsNaN(range)) return null;
-
-            double a = Math.Abs(v) / range * 100.0;
-            if (a == 0) return "0%";
-            if (a >= 100) return a.ToString("0", CultureInfo.InvariantCulture) + "%";
-            if (a >= 10) return a.ToString("0.#", CultureInfo.InvariantCulture) + "%";
-            if (a >= 0.1) return a.ToString("0.##", CultureInfo.InvariantCulture) + "%";
-            if (a >= 0.001) return a.ToString("0.###", CultureInfo.InvariantCulture) + "%";
-            return "<0.001%";
+            if (_showPercent) return NumberText.Short(row.PercentOf(cell)) + "%";
+            return NumberText.Short(row.ValueOf(cell));
         }
 
         /// <summary>설명 줄에 쓸, 값과 단위를 붙인 글자.</summary>
@@ -496,38 +495,28 @@ namespace LogScope.App.Controls
 
             if (!cell.HasData) return row.Name + "   " + when + "   기록 없음";
 
-            // 판정에 쓰인 숫자와 기준을 <b>나란히</b> 보여 줍니다. 위쪽 도구 줄의
-            // 허용 오차와 여기 적힌 숫자가 왜 그렇게 나왔는지 바로 보이도록.
-            string shown = Both(row.ValueOf(cell), row);
             string bar = row.ByName
                 ? "   기준 없음 (이름이 다르면 차이)"
-                : "   기준 " + Both(row.Threshold, row);
+                : "   허용 오차 " + NumberText.Plain(_tolerancePercent) + "%";
 
             if (cell.OverSamples == 0)
                 return row.Name + "   " + when + "   정상"
-                     + "   구간 최대 " + Both(cell.Max, row) + bar
-                     + "   (표본 " + cell.Samples + "개 모두 기준 안)";
+                     + "   구간 최대 차이 " + WithUnit(cell.Max, row) + bar
+                     + "   (표본 " + cell.Samples + "개 모두 허용 오차 안)";
 
-            string what = row.ByName ? "다른 표본의 비율 " : "차이 난 구간의 평균 ";
+            // 칸에 적히는 값과 허용 오차는 같은 잣대입니다. 그래서 둘을
+            // 나란히 적어 두면 왜 빨간지 바로 읽힙니다.
+            string peak = row.ByName
+                ? "이름이 다름"
+                : NumberText.Plain(row.PercentOf(cell)) + "%"
+                  + " (" + WithUnit(row.ValueOf(cell), row) + ")";
 
             return row.Name + "   " + when + "   차이 발생"
-                 + "   " + what + shown
-                 + "   (기준을 넘은 표본 " + cell.OverSamples + " / " + cell.Samples + ")"
+                 + "   가장 크게 벌어진 순간 " + peak
                  + bar
-                 + "   최대 " + Both(cell.Max, row)
-                 + "   구간 전체 평균 " + Both(cell.Mean, row);
-        }
-
-        /// <summary>
-        /// 값과 퍼센트를 함께. 고른 쪽이 앞, 나머지가 괄호 안입니다.
-        /// 둘을 같이 적어야 위쪽의 허용 오차(%)와 견줄 수 있습니다.
-        /// </summary>
-        private string Both(double v, HeatRow row)
-        {
-            string val = WithUnit(v, row);
-            string pct = Percent(v, row.Range);
-            if (pct == null) return val;
-            return _showPercent ? pct + " (" + val + ")" : val + " (" + pct + ")";
+                 + "   (허용 오차를 넘은 표본 " + cell.OverSamples + " / " + cell.Samples + ")"
+                 + "   구간 최대 차이 " + WithUnit(cell.Max, row)
+                 + "   구간 평균 차이 " + WithUnit(cell.Mean, row);
         }
 
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)

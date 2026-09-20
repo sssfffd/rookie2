@@ -78,7 +78,7 @@ namespace LogScope.App.Views
             double percent;
             if (double.TryParse(_vm.RelativeTolerancePercentText, System.Globalization.NumberStyles.Float,
                                 System.Globalization.CultureInfo.InvariantCulture, out percent))
-                Plot.RelativeTolerance = ToleranceRule.FromPercent(percent);
+                Plot.RelativePercent = percent;
             Plot.AbsoluteTolerance = _vm.AbsoluteTolerance;
         }
 

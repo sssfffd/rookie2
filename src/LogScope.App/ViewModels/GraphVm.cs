@@ -210,16 +210,16 @@ namespace LogScope.App.ViewModels
         {
             get
             {
-                string s = "채널 값 크기의 "
+                string s = "이전 값 대비 "
                          + S.RelativeTolerancePercent.ToString("0.####", CultureInfo.InvariantCulture)
                          + "% 까지는 같은 것으로 봅니다.";
                 if (S.AbsoluteTolerance > 0)
                     s += "\n절대 오차 "
                        + S.AbsoluteTolerance.ToString("0.######", CultureInfo.InvariantCulture)
                        + " 과 비교해 큰 쪽이 기준이 됩니다.";
-                s += "\n\n무엇의 몇 % 인지는 채널마다 다릅니다 —"
-                   + "\n값이 오르내린 폭과 값의 크기 중 큰 쪽입니다."
-                   + "\n실제로 쓰인 기준값은 대시보드의 기준값 칸에서 볼 수 있습니다.";
+                s += "\n\n오차 = |이후 − 이전| / |이전| x 100"
+                   + "\n어느 채널이든 같은 잣대입니다."
+                   + "\n화면에 적히는 퍼센트가 바로 이 값이라 그대로 견주면 됩니다.";
                 return s;
             }
         }

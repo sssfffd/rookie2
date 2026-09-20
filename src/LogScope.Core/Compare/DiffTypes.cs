@@ -27,6 +27,11 @@ namespace LogScope.Core.Compare
         SampleCount = 5,
         /// <summary>허용 오차를 넘은 구간의 개수. 흔들림 횟수를 봅니다.</summary>
         SegmentCount = 6,
+        /// <summary>
+        /// 가장 크게 벌어진 순간의 오차(%). 이전 값 대비입니다.
+        /// 설정에 적는 허용 오차와 <b>같은 잣대</b>라 바로 견줄 수 있습니다.
+        /// </summary>
+        MaxPercent = 7,
     }
 
     public enum Presence
@@ -45,11 +50,12 @@ namespace LogScope.Core.Compare
         public double AbsoluteTolerance = 0.0;
 
         /// <summary>
-        /// 비율 허용 오차. 채널 값 범위에 대한 비율이고, 0.001 이 0.1% 입니다.
-        /// 채널마다 값의 크기가 달라서 절대값 하나로는 다룰 수 없습니다.
-        /// 자세한 규칙은 ToleranceRule 을 보세요.
+        /// 허용 오차 퍼센트. 설정에 적는 그 값 그대로입니다 (0.1 이 0.1%).
+        ///
+        /// 그 순간의 오차 = |이후 − 이전| / |이전| x 100 과 견줍니다.
+        /// 채널마다 기준을 따로 만들지 않습니다. 자세한 규칙은 ToleranceRule.
         /// </summary>
-        public double RelativeTolerance = ToleranceRule.FromPercent(ToleranceRule.DefaultPercent);
+        public double RelativePercent = ToleranceRule.DefaultPercent;
 
         /// <summary>이후 로그의 시간을 이만큼 밉니다 (시간축 단위).</summary>
         public double Shift = 0.0;
@@ -75,6 +81,13 @@ namespace LogScope.Core.Compare
         public int AfterIndex = -1;
 
         public double MaxAbs;
+
+        /// <summary>
+        /// 가장 크게 벌어진 순간의 오차(%). 이전 값 대비입니다.
+        /// "차이 났다" 는 판정도 이 값이 허용 오차를 넘었는지로 내리므로,
+        /// 목록에 적히는 숫자와 판정이 어긋날 수 없습니다.
+        /// </summary>
+        public double MaxPercent;
         public double MeanAbs;
         public double Rms;
         public double Area;
@@ -82,9 +95,6 @@ namespace LogScope.Core.Compare
         public int DiffSamples;
         public int Segments;
         public int ComparedSamples;
-
-        /// <summary>이 채널에서 "차이" 로 본 기준값. 화면에 그대로 보여 줍니다.</summary>
-        public double Threshold;
 
         /// <summary>상태/문자열 채널이라 "같다/다르다" 로만 비교한 경우.</summary>
         public bool ByName;
@@ -102,6 +112,7 @@ namespace LogScope.Core.Compare
                 case DiffMetric.TimeRatio: return TimeRatio;
                 case DiffMetric.SampleCount: return DiffSamples;
                 case DiffMetric.SegmentCount: return Segments;
+                case DiffMetric.MaxPercent: return MaxPercent;
                 default: return MaxAbs;
             }
         }
@@ -117,6 +128,7 @@ namespace LogScope.Core.Compare
                 case DiffMetric.TimeRatio: return "차이 시간 비율";
                 case DiffMetric.SampleCount: return "차이 표본 수";
                 case DiffMetric.SegmentCount: return "차이 구간 수";
+                case DiffMetric.MaxPercent: return "최대 오차 %";
                 default: return "최대 차이";
             }
         }
@@ -127,6 +139,10 @@ namespace LogScope.Core.Compare
             switch (m)
             {
                 case DiffMetric.TimeRatio: return (v * 100.0).ToString("0.0") + " %";
+                case DiffMetric.MaxPercent:
+                    // 허용 오차와 같은 잣대라 소수점을 넉넉히 둡니다.
+                    // 0.1% 기준과 0.09% 를 눈으로 가려야 하기 때문입니다.
+                    return NumberText.Plain(v) + " %";
                 case DiffMetric.SampleCount:
                 case DiffMetric.SegmentCount: return ((long)v).ToString("N0");
                 default:

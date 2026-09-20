@@ -138,7 +138,8 @@ Shift+휠(값 확대)은 `LaneY.Zoom` 과 `LaneY.Center` 만 바꿉니다. 커�
 ## 허용 오차가 한 곳에만 있는 이유
 
 ```
-              ToleranceRule.For(이전채널, 이후채널, 절대오차, 비율)
+     ToleranceRule.IsOver(이전값, 이후값, 절대오차, 퍼센트)
+     ToleranceRule.ErrorPercent(이전값, 이후값)
                       ▲            ▲            ▲
                       │            │            │
                  DiffEngine   HeatmapBuilder  GraphCanvas
@@ -149,7 +150,11 @@ Shift+휠(값 확대)은 `LaneY.Zoom` 과 `LaneY.Center` 만 바꿉니다. 커�
 "차이 40개", 히트맵은 "3개" 가 나올 수 있었습니다. 지금은 셋 다 같은 함수를
 부르므로 그런 어긋남이 생길 수 없습니다.
 
-기준값을 채널마다 다르게 잡는 이유는 `ToleranceRule` 의 주석에 적어 두었습니다.
+**판정은 표본 하나하나에서 이뤄집니다.** 채널마다 기준값을 따로 만들지
+않습니다 — 오차는 `|이후 − 이전| / |이전| x 100` 이고, 설정에 적는 퍼센트가
+바로 그 값입니다. 화면에 적히는 퍼센트도 같은 값이라 눈으로 바로 견줄 수
+있습니다. 왜 이렇게 바꿨는지는
+[claude-log/17-relative-to-before.md](../claude-log/17-relative-to-before.md).
 
 ## 히트맵
 
@@ -166,12 +171,15 @@ HeatmapBuilder.Build()
 채널 하나가 O(표본 수) 로 끝납니다. 표본마다 탐색하면 채널 200 x 표본 5 만
 = 1000 만 번의 이진 탐색이 됩니다.
 
-칸에 적는 값은 **기준을 넘은 표본만의 절대 차이 평균**(`HeatRow.ValueOf`)
-입니다. 칸의 색도 같은 값으로 냅니다. 이 값을 고른 이유는
-[claude-log/04-heatmap.md](../claude-log/04-heatmap.md),
-허용 오차와 어긋나던 것을 어떻게 맞췄는지는
-[claude-log/08-heatmap-tolerance-mismatch.md](../claude-log/08-heatmap-tolerance-mismatch.md)
-에 적었습니다.
+칸에 적는 값은 그 구간에서 **가장 크게 벌어진 순간**입니다 — 퍼센트면
+`HeatRow.PercentOf`, 값이면 `HeatRow.ValueOf` 이고 <b>같은 표본</b>에서
+나옵니다. 칸의 색도 같은 값으로 냅니다.
+
+이 값은 <b>허용 오차를 바꿔도 변하지 않습니다.</b> 한때 "기준을 넘은 표본만의
+평균" 을 적었다가, 기준을 바꿀 때마다 숫자가 따라 움직이는 문제를 만들었습니다
+([claude-log/17](../claude-log/17-relative-to-before.md)).
+지표를 고른 과정은
+[claude-log/04-heatmap.md](../claude-log/04-heatmap.md) 에 적었습니다.
 
 ## 배경 스레드
 

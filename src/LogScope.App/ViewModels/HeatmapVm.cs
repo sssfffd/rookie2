@@ -71,8 +71,8 @@ namespace LogScope.App.ViewModels
         // ---------------- 허용 오차 ----------------
 
         /// <summary>
-        /// 채널 값 범위에 대한 비율(%). 기본 0.1% 입니다.
-        /// IO 범위가 몇천인데 1 정도 흔들리는 것을 오류로 세지 않기 위한 값입니다.
+        /// 이전 값 대비 몇 %까지 같은 것으로 볼지. 기본 0.1% 입니다.
+        /// 칸에 적히는 퍼센트와 <b>같은 잣대</b>라 눈으로 바로 견줄 수 있습니다.
         ///
         /// 설정에 저장되는 값 하나를 대시보드·그래프와 함께 씁니다.
         /// 여기서 바꾸면 그쪽 "차이 난 IO" 판정도 같이 바뀝니다.
@@ -95,9 +95,10 @@ namespace LogScope.App.ViewModels
             }
         }
 
-        public double RelativeTolerance
+        /// <summary>허용 오차 퍼센트 (숫자). 설정에 적힌 그 값 그대로입니다.</summary>
+        public double RelativePercent
         {
-            get { return ToleranceRule.FromPercent(_state.Settings.RelativeTolerancePercent); }
+            get { return _state.Settings.RelativeTolerancePercent; }
         }
 
         // ---------------- 값 / 퍼센트 ----------------
@@ -135,8 +136,8 @@ namespace LogScope.App.ViewModels
             get
             {
                 return ShowPercent
-                    ? "차이 발생 (칸 안의 숫자 = 기준을 넘은 표본들의 평균 차이를 값 범위로 나눈 %. 항상 허용 오차보다 큽니다)"
-                    : "차이 발생 (칸 안의 숫자 = 기준을 넘은 표본들의 평균 차이. 항상 허용 오차보다 큽니다)";
+                    ? "차이 발생 (칸 안의 숫자 = 그 구간에서 가장 크게 벌어진 순간의 오차 %. 허용 오차와 같은 잣대입니다)"
+                    : "차이 발생 (칸 안의 숫자 = 그 구간에서 가장 크게 벌어진 순간의 차이. % 로 보면 허용 오차와 바로 견줄 수 있습니다)";
             }
         }
 
@@ -179,7 +180,7 @@ namespace LogScope.App.ViewModels
             var o = new HeatmapOptions();
             o.BucketSpan = BucketSpan;
             o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
-            o.RelativeTolerance = RelativeTolerance;
+            o.RelativePercent = RelativePercent;
             o.IncludeUnchanged = _includeUnchanged;
             o.Shift = _state.AppliedShift;
             return o;
@@ -233,7 +234,7 @@ namespace LogScope.App.ViewModels
                     + "        칸 폭 " + r.BucketLabel
                     + "   /   칸 수 " + r.BucketCount
                     + "        구간 " + from + " ~ " + to
-                    + "        허용 오차 값 범위의 " + RelativeTolerancePercent + "%"
+                    + "        허용 오차 " + RelativeTolerancePercent + "% (이전 값 대비)"
                     + (_state.Settings.AbsoluteTolerance > 0
                         ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######") + " 중 큰 쪽"
                         : "");

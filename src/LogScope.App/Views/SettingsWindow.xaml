@@ -114,11 +114,11 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="허용 오차 (값 범위의 %)"
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="허용 오차 (이전 값 대비 %)"
                                    Style="{StaticResource FieldLabel}" />
                         <TextBox Grid.Row="0" Grid.Column="1" Margin="0,3"
                                  Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
-                                 ToolTip="기본 0.1%. 채널마다 값 범위가 달라서 비율로 잡습니다." />
+                                 ToolTip="오차 = |이후 − 이전| / |이전| x 100. 기본 0.1%.&#x0a;화면에 적히는 퍼센트가 바로 이 값이라 그대로 견주면 됩니다." />
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="기본 0.1"
                                    Style="{StaticResource Muted}" Margin="10,0,0,0" />
 
@@ -126,7 +126,7 @@
                                    Style="{StaticResource FieldLabel}" />
                         <TextBox Grid.Row="1" Grid.Column="1" Margin="0,3"
                                  Text="{Binding AbsoluteToleranceText, UpdateSourceTrigger=LostFocus}"
-                                 ToolTip="값 그대로. 기본 0 (끔). 비율과 비교해 큰 쪽이 기준이 됩니다." />
+                                 ToolTip="값 그대로. 기본 0 (끔).&#x0a;이 값 이하로 벌어진 것은 퍼센트와 상관없이 같은 것으로 봅니다.&#x0a;0 언저리에서 퍼센트가 크게 튀는 것을 막는 데 씁니다." />
                         <TextBlock Grid.Row="1" Grid.Column="2" Text="기본 0 (끔)"
                                    Style="{StaticResource Muted}" Margin="10,0,0,0" />
 
@@ -151,7 +151,7 @@
                     </Grid>
 
                     <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
-                               Text="허용 오차는 채널마다 다르게 적용됩니다. 0 에서 4000 까지 오르내리는 채널에서&#x0a;1 쯤 흔들리는 것은 잡음이지만, 0 과 1 만 오가는 디지털 채널에서 1 은 완전히 다른 상태입니다.&#x0a;그래서 절대값 하나가 아니라 '그 채널 값 범위의 몇 %' 로 잡습니다 (기본 0.1%).&#x0a;두 칸을 다 채우면 둘 중 큰 쪽이 기준이 됩니다.&#x0a;&#x0a;이 값은 대시보드 · 그래프 차이 음영 · 히트맵이 모두 함께 씁니다.&#x0a;&#x0a;차이 총합만 보면 +1 / -1 이 반복되는 채널이 아주 크게 나옵니다.&#x0a;최대 / 평균 / RMS / 면적 / 시간 비율 / 표본 수 / 구간 수를 함께 보고 판단하세요.&#x0a;여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다." />
+                               Text="오차는 그 순간의 값끼리 견줍니다.&#x0a;&#x0a;    오차(%) = |이후 − 이전| / |이전| x 100&#x0a;&#x0a;위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,&#x0a;히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.&#x0a;어느 채널이든 같은 잣대입니다.&#x0a;&#x0a;이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).&#x0a;0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면&#x0a;절대 오차를 함께 걸어 두세요.&#x0a;&#x0a;이 값은 대시보드 · 그래프 차이 음영 · 히트맵이 모두 함께 씁니다.&#x0a;여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다." />
                 </StackPanel>
             </TabItem>
 

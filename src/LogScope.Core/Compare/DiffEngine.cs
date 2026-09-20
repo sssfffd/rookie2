@@ -143,22 +143,15 @@ namespace LogScope.Core.Compare
             bool byName = bc.Kind == ChannelKind.State || ac.Kind == ChannelKind.State;
             d.ByName = byName;
 
-            // 기준값은 채널마다 다릅니다. 범위가 몇천인 아날로그와 0/1 만 오가는
-            // 디지털에 같은 절대값을 들이댈 수 없기 때문입니다.
-            // 이름으로 견주는 줄에는 허용 오차를 매기지 않습니다. 차이가
-            // "같다(0) / 다르다(1)" 뿐이라 "몇 %" 라는 말이 성립하지 않고,
-            // 절대 오차를 1 이상으로 적어 두면 상태가 통째로 바뀌어도 차이로
-            // 세지 않게 됩니다. 히트맵(Heatmap.BuildRow)도 같은 규칙입니다.
-            double tol = byName
-                ? 0.0
-                : ToleranceRule.For(bc, ac, opt.AbsoluteTolerance, opt.RelativeTolerance);
-            d.Threshold = tol;
-
-            double sum = 0, sumSq = 0, area = 0, maxAbs = 0, overTime = 0, totalTime = 0;
+            // 오차는 그 순간의 값끼리 견줍니다 (ToleranceRule 참고).
+            // 채널마다 기준값을 따로 만들지 않습니다 — 어느 채널이든
+            // 설정에 적은 퍼센트 하나가 그대로 기준입니다.
+            double sum = 0, sumSq = 0, area = 0, maxAbs = 0, maxPct = 0;
+            double overTime = 0, totalTime = 0;
             int compared = 0, overCount = 0, segments = 0;
             bool inSegment = false;
             double prevT = 0, prevD = 0;
-            bool havePrev = false;
+            bool prevOver = false, havePrev = false;
 
             for (int k = 0; k < grid.Length; k++)
             {
@@ -166,26 +159,35 @@ namespace LogScope.Core.Compare
                 double bv = before.SampleAt(bi, t);
                 double av = after.SampleAt(ai, t - shift);
 
-                double diff;
+                double diff, pct;
+                bool over;
+
                 if (byName)
                 {
                     string bs = StateText(bc, bv);
                     string as_ = StateText(ac, av);
                     if (bs == null && as_ == null) { havePrev = false; continue; }
-                    diff = string.Equals(bs, as_, StringComparison.Ordinal) ? 0.0 : 1.0;
+
+                    bool same = string.Equals(bs, as_, StringComparison.Ordinal);
+                    diff = same ? 0.0 : 1.0;
+                    pct = same ? 0.0 : ToleranceRule.NameMismatchPercent;
+                    // 이름이 다르면 허용 오차와 상관없이 차이입니다.
+                    over = !same && ToleranceRule.NameMismatchIsOver;
                 }
                 else
                 {
                     if (double.IsNaN(bv) || double.IsNaN(av)) { havePrev = false; continue; }
                     diff = Math.Abs(bv - av);
+                    pct = ToleranceRule.ErrorPercent(bv, av);
+                    over = ToleranceRule.IsOver(bv, av, opt.AbsoluteTolerance, opt.RelativePercent);
                 }
 
                 compared++;
                 sum += diff;
                 sumSq += diff * diff;
                 if (diff > maxAbs) maxAbs = diff;
+                if (!double.IsNaN(pct) && pct > maxPct) maxPct = pct;
 
-                bool over = diff > tol;
                 if (over) overCount++;
                 if (over && !inSegment) { segments++; inSegment = true; }
                 else if (!over) inSegment = false;
@@ -197,21 +199,24 @@ namespace LogScope.Core.Compare
                     {
                         area += 0.5 * (diff + prevD) * dt;
                         totalTime += dt;
-                        if (over || prevD > tol) overTime += dt;
+                        if (over || prevOver) overTime += dt;
                     }
                 }
-                prevT = t; prevD = diff; havePrev = true;
+                prevT = t; prevD = diff; prevOver = over; havePrev = true;
             }
 
             d.ComparedSamples = compared;
             d.MaxAbs = maxAbs;
+            d.MaxPercent = maxPct;
             d.MeanAbs = compared > 0 ? sum / compared : 0;
             d.Rms = compared > 0 ? Math.Sqrt(sumSq / compared) : 0;
             d.Area = area;
             d.TimeRatio = totalTime > 0 ? overTime / totalTime : 0;
             d.DiffSamples = overCount;
             d.Segments = segments;
-            d.Changed = compared > 0 && maxAbs > tol;
+            // 한 순간이라도 넘었으면 차이입니다. 그 "가장 크게 넘은 순간" 이
+            // 곧 MaxPercent 라, 목록에 적히는 숫자와 판정이 늘 맞습니다.
+            d.Changed = overCount > 0;
             return d;
         }
 
@@ -252,23 +257,6 @@ namespace LogScope.Core.Compare
             {
                 int c = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
                 return ascending ? c : -c;
-            });
-        }
-
-        /// <summary>
-        /// 그 채널에 쓰인 기준값으로 정렬합니다.
-        /// "왜 이게 차이로 떴지" 가 헷갈릴 때, 기준값이 유난히 작은(또는 큰)
-        /// 채널을 바로 찾아볼 수 있게 하려고 둔 것입니다.
-        /// </summary>
-        public static void SortByThreshold(List<ChannelDiff> items, bool descending)
-        {
-            items.Sort(delegate (ChannelDiff a, ChannelDiff b)
-            {
-                int c = descending
-                    ? b.Threshold.CompareTo(a.Threshold)
-                    : a.Threshold.CompareTo(b.Threshold);
-                if (c != 0) return c;
-                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
             });
         }
 

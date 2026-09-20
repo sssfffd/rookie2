@@ -23,3 +23,4 @@
 | `14-toolbar-reflow.md` | 안내 글 때문에 도구 줄이 접혔다 펴졌다 하던 것 |
 | `15-oscillating-channel-perf.md` | 값이 자주 바뀌는 IO 에서 그리기가 굼뜨던 세 가지 원인 |
 | `16-stale-checkout.md` | 이미 고친 오류가 계속 보이던 이유와, 판본을 가리는 방법 |
+| `17-relative-to-before.md` | 오차를 "이전 값 대비 %" 로 통일 — 설정한 %와 화면의 %를 같게 |

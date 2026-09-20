@@ -57,7 +57,7 @@ namespace LogScope.Core.Settings
         // 비교 기본값
         //
         // 기준값은 두 가지 중 큰 쪽입니다 (ToleranceRule 참고).
-        //   RelativeTolerancePercent : 채널 값 범위의 몇 %. 기본 0.1%.
+        //   RelativeTolerancePercent : 이전 값 대비 몇 %. 기본 0.1%.
         //   AbsoluteTolerance        : 값 그대로. 기본 0 (끔).
         public double RelativeTolerancePercent = ToleranceRule.DefaultPercent;
         public double AbsoluteTolerance;
@@ -67,8 +67,8 @@ namespace LogScope.Core.Settings
         public bool SortDescending = true;
 
         /// <summary>
-        /// 차이량이 아니라 이름/구분/기준값으로 정렬 중이면 그 값.
-        /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분, 3 = 기준값.
+        /// 차이량이 아니라 이름/구분으로 정렬 중이면 그 값.
+        /// 0 = 차이량(SortMetric), 1 = IO 이름, 2 = 구분.
         /// </summary>
         public int SortColumn;
 
@@ -221,14 +221,16 @@ namespace LogScope.Core.Settings
                                                  Json.GetDouble(root, "tolerance", 0));
             if (s.AbsoluteTolerance < 0) s.AbsoluteTolerance = 0;
             int metric = Json.GetInt(root, "sortMetric", 0);
-            if (metric < 0 || metric > 6) metric = 0;
+            if (metric < 0 || metric > 7) metric = 0;
             s.SortMetric = (DiffMetric)metric;
             // 차이 면적은 화면에서 뺐습니다. 예전 설정에 남아 있으면
             // 아무 칸에도 삼각형이 붙지 않으므로 기본값으로 돌립니다.
             if (s.SortMetric == DiffMetric.Area) s.SortMetric = DiffMetric.MaxAbs;
             s.SortDescending = Json.GetBool(root, "sortDescending", true);
             s.SortColumn = Json.GetInt(root, "sortColumn", 0);
-            if (s.SortColumn < 0 || s.SortColumn > 3) s.SortColumn = 0;
+            // 3 은 예전의 "기준값" 칸이었습니다. 이제 기준은 채널마다 다르지
+            // 않고 설정한 퍼센트 하나라, 그 칸이 없어졌습니다.
+            if (s.SortColumn < 0 || s.SortColumn > 2) s.SortColumn = 0;
             s.HeatmapPercent = Json.GetBool(root, "heatmapPercent", false);
             s.AutoAlign = Json.GetBool(root, "autoAlign", true);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);

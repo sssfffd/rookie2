@@ -23,11 +23,11 @@
                 <ComboBox MinWidth="150" ItemsSource="{Binding BucketChoices}"
                           SelectedIndex="{Binding BucketIndex, Mode=TwoWay}" />
 
-                <TextBlock Text="허용 오차 (값 범위의 %)" Style="{StaticResource FieldLabel}"
+                <TextBlock Text="허용 오차 (이전 값 대비 %)" Style="{StaticResource FieldLabel}"
                            Margin="12,0,8,0" />
                 <TextBox Width="64" Margin="0,3,3,3"
                          Text="{Binding RelativeTolerancePercent, UpdateSourceTrigger=LostFocus}"
-                         ToolTip="기본 0.1%. IO 범위가 몇천인데 1 정도 흔들리는 것은 오류로 세지 않습니다." />
+                         ToolTip="오차 = |이후 − 이전| / |이전| x 100. 기본 0.1%.&#x0a;칸에 적히는 퍼센트와 같은 잣대라 그대로 견주면 됩니다." />
 
                 <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 없는 IO도 보기"
                               IsChecked="{Binding IncludeUnchanged, Mode=TwoWay}" Margin="12,3,3,3" />
@@ -41,7 +41,7 @@
                 <RadioButton GroupName="heatunit" Style="{StaticResource SegmentButton}"
                              Content="% (값 범위 대비)" Checked="OnUnitChanged"
                              IsChecked="{Binding ShowPercent, Mode=TwoWay}"
-                             ToolTip="같은 차이 3 이라도 0~5 인 IO 와 0~4000 인 IO 는 뜻이 다릅니다. 값 범위로 나눈 %로 보면 IO 끼리 견줄 수 있습니다. 허용 오차와 같은 밑값을 써서 0.1% 기준이 그대로 읽힙니다." />
+                             ToolTip="이전 값 대비 몇 % 벌어졌는지. 설정한 허용 오차와 같은 잣대라 바로 견줄 수 있고,&#x0a;값 크기가 다른 IO 끼리도 견줄 수 있습니다." />
 
                 <TextBlock Text="칸 크기" Style="{StaticResource FieldLabel}" Margin="12,0,8,0" />
                 <Button Content="칸 넓게" Click="OnWider" />

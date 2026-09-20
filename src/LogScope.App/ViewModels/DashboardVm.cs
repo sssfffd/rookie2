@@ -22,10 +22,11 @@ namespace LogScope.App.ViewModels
         public string Segments { get; set; }
 
         /// <summary>
-        /// 이 채널에서 "차이" 로 본 기준값. 목록에 그대로 보여 줍니다.
-        /// 이게 안 보이면 "왜 이게 차이로 떴지" 를 알아낼 방법이 없습니다.
+        /// 가장 크게 벌어진 순간의 오차(%). 설정에 적는 허용 오차와 같은
+        /// 잣대라, 이 숫자와 허용 오차를 눈으로 바로 견줄 수 있습니다.
+        /// "왜 이게 차이로 떴지" 에 그대로 답이 됩니다.
         /// </summary>
-        public string Threshold { get; set; }
+        public string MaxPercent { get; set; }
     }
 
     /// <summary>
@@ -34,7 +35,7 @@ namespace LogScope.App.ViewModels
     /// </summary>
     public sealed class ColumnHeaderVm : ObservableObject
     {
-        /// <summary>0 = 차이량(Metric), 1 = IO 이름, 2 = 구분, 3 = 기준값.</summary>
+        /// <summary>0 = 차이량(Metric), 1 = IO 이름, 2 = 구분.</summary>
         public int Kind { get; private set; }
 
         public DiffMetric Metric { get; private set; }
@@ -58,11 +59,6 @@ namespace LogScope.App.ViewModels
         public static ColumnHeaderVm ForKind(string text)
         {
             return new ColumnHeaderVm(2, DiffMetric.MaxAbs, text);
-        }
-
-        public static ColumnHeaderVm ForThreshold(string text)
-        {
-            return new ColumnHeaderVm(3, DiffMetric.MaxAbs, text);
         }
 
         private bool _isSorted;
@@ -183,7 +179,7 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public static readonly DiffMetric[] ShownMetrics =
         {
-            DiffMetric.MaxAbs, DiffMetric.MeanAbs, DiffMetric.Rms,
+            DiffMetric.MaxPercent, DiffMetric.MaxAbs, DiffMetric.MeanAbs, DiffMetric.Rms,
             DiffMetric.TimeRatio, DiffMetric.SampleCount, DiffMetric.SegmentCount,
         };
 
@@ -208,7 +204,7 @@ namespace LogScope.App.ViewModels
         public ColumnHeaderVm ColRms { get; private set; }
         public ColumnHeaderVm ColTime { get; private set; }
         public ColumnHeaderVm ColSegments { get; private set; }
-        public ColumnHeaderVm ColThreshold { get; private set; }
+        public ColumnHeaderVm ColMaxPct { get; private set; }
 
         private List<ColumnHeaderVm> _headers;
 
@@ -221,11 +217,11 @@ namespace LogScope.App.ViewModels
             ColRms = ColumnHeaderVm.ForMetric(DiffMetric.Rms, "RMS");
             ColTime = ColumnHeaderVm.ForMetric(DiffMetric.TimeRatio, "차이 시간");
             ColSegments = ColumnHeaderVm.ForMetric(DiffMetric.SegmentCount, "구간 수");
-            ColThreshold = ColumnHeaderVm.ForThreshold("기준값");
+            ColMaxPct = ColumnHeaderVm.ForMetric(DiffMetric.MaxPercent, "최대 오차 %");
 
             _headers = new List<ColumnHeaderVm>
             {
-                ColName, ColKind, ColMax, ColMean, ColRms, ColTime, ColSegments, ColThreshold
+                ColName, ColKind, ColMaxPct, ColMax, ColMean, ColRms, ColTime, ColSegments
             };
             MarkSorted();
         }
@@ -261,8 +257,8 @@ namespace LogScope.App.ViewModels
             {
                 s.SortColumn = header.Kind;
                 if (header.Kind == 0) s.SortMetric = header.Metric;
-                // 숫자 칸은 큰 값부터, 글자 칸은 가나다순부터가 자연스럽습니다.
-                s.SortDescending = header.Kind == 0 || header.Kind == 3;
+                // 차이량은 큰 값부터, 글자 칸은 가나다순부터가 자연스럽습니다.
+                s.SortDescending = header.Kind == 0;
             }
 
             ApplySort();
@@ -278,7 +274,6 @@ namespace LogScope.App.ViewModels
             {
                 case 1: DiffEngine.SortByName(_state.Comparison.Items, !s.SortDescending); break;
                 case 2: DiffEngine.SortByKind(_state.Comparison.Items, !s.SortDescending); break;
-                case 3: DiffEngine.SortByThreshold(_state.Comparison.Items, s.SortDescending); break;
                 default: DiffEngine.SortByMetric(_state.Comparison.Items, s.SortMetric, s.SortDescending); break;
             }
         }
@@ -311,7 +306,7 @@ namespace LogScope.App.ViewModels
             ChangedCount = changed.ToString("N0") + "개";
             ChangedNote = "양쪽에 다 있는 IO " + common + "개 중"
                         + "   /   허용 오차 값 범위의 "
-                        + _state.Settings.RelativeTolerancePercent.ToString("0.####") + "%"
+                        + _state.Settings.RelativeTolerancePercent.ToString("0.####") + "% (이전 값 대비)"
                         + (_state.Settings.AbsoluteTolerance > 0
                             ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######")
                               + " 중 큰 쪽"
@@ -356,7 +351,7 @@ namespace LogScope.App.ViewModels
                         Rms = d.Format(DiffMetric.Rms),
                         TimeRatio = d.Format(DiffMetric.TimeRatio),
                         Segments = d.Format(DiffMetric.SegmentCount),
-                        Threshold = d.ByName ? "이름 비교" : NumberText.Plain(d.Threshold),
+                        MaxPercent = d.ByName ? "이름 다름" : d.Format(DiffMetric.MaxPercent),
                     });
                 }
             }

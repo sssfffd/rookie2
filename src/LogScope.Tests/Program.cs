@@ -41,15 +41,14 @@ namespace LogScope.Tests
                 ZoomedInTraceSurvives();
                 CompareMetrics();
                 ExistenceDifference();
-                ToleranceIsRelativeToRange();
-                ToleranceUsesValueSizeNotJustSpan();
+                ToleranceIsPercentOfBefore();
+                ChangedMatchesMaxPercent();
                 HeatmapBuckets();
                 HeatmapRelativeTolerance();
+                HeatmapCellNumberDoesNotFollowTolerance();
+                HeatmapStateNamesIgnoreTolerance();
                 UnitsFromUnitRowAndName();
-                HeatmapRangeForPercent();
                 NumberTextHasNoExponent();
-                HeatmapCellNumberMatchesTolerance();
-                HeatmapStateNamesIgnoreAbsoluteTolerance();
                 HeatmapOrderIsSameForEveryBucketWidth();
                 JsonRoundTrip();
                 SettingsRoundTrip();
@@ -469,64 +468,112 @@ namespace LogScope.Tests
             Check("공통은 B 하나", r.CommonCount == 1, "실제 " + r.CommonCount);
         }
 
-        private static void ToleranceIsRelativeToRange()
+        /// <summary>
+        /// 허용 오차는 <b>그 순간의 이전 값 대비 몇 %</b> 입니다.
+        /// 설정에 적는 숫자와 화면에 적히는 숫자가 같은 잣대여야 합니다.
+        /// </summary>
+        private static void ToleranceIsPercentOfBefore()
         {
-            Console.WriteLine("허용 오차 — 채널 값 범위의 0.1% (기본)");
+            Console.WriteLine("허용 오차 — 이전 값 대비 %");
 
-            // BIG  : 0 에서 5000 까지 오르내립니다. 범위가 5000 이라 0.1% = 5.
-            //        2 만큼 벌어지는 것은 잡음이지 차이가 아닙니다.
-            // SMALL: 0 과 1 만 오가는 디지털. 범위가 1 이라 0.1% = 0.001.
-            //        1 만큼 벌어지는 것은 완전히 다른 상태입니다.
-            // 절대값 하나로는 이 둘을 같이 다룰 수 없다는 것이 요점입니다.
+            var opt = new DiffOptions();
+            Near("기본값은 0.1%", opt.RelativePercent, 0.1, 1e-9);
+
+            // 계산식 자체를 먼저 못박습니다.
+            Near("100 → 101 은 1%", ToleranceRule.ErrorPercent(100, 101), 1, 1e-9);
+            Near("6466 → 6467 은 0.0155%", ToleranceRule.ErrorPercent(6466, 6467), 0.015465, 1e-5);
+            Near("같으면 0%", ToleranceRule.ErrorPercent(50, 50), 0, 1e-12);
+            Near("줄어도 크기로 봅니다", ToleranceRule.ErrorPercent(200, 100), 50, 1e-9);
+            Near("0 에서 벗어나면 100%", ToleranceRule.ErrorPercent(0, 1), 100, 1e-9);
+            Near("0 에서 0 은 0%", ToleranceRule.ErrorPercent(0, 0), 0, 1e-12);
+            Check("한쪽이 없으면 NaN", double.IsNaN(ToleranceRule.ErrorPercent(double.NaN, 1)), null);
+
+            Check("1% 기준에서 1% 는 넘지 않음", !ToleranceRule.IsOver(100, 101, 0, 1), null);
+            Check("1% 기준에서 2% 는 넘음", ToleranceRule.IsOver(100, 102, 0, 1), null);
+            Check("절대 오차 안이면 퍼센트와 무관하게 같은 값",
+                  !ToleranceRule.IsOver(0.001, 0.002, 0.5, 0.1), null);
+
+            // 값 크기가 전혀 다른 두 채널이 같은 퍼센트로 판정되는지.
+            //   BIG   : 5000 근처에서 50 만큼 벌어짐  → 1%
+            //   SMALL : 5 근처에서 0.05 만큼 벌어짐   → 1%
+            // 예전 규칙(채널 값 범위 x 퍼센트)에서는 이 둘이 달랐습니다.
             var a = new StringBuilder("Time,BIG,SMALL\n");
             var b = new StringBuilder("Time,BIG,SMALL\n");
-            for (int i = 0; i < 200; i++)
+            for (int i = 0; i < 100; i++)
             {
-                double v = i * (5000.0 / 199.0);
-                int d = (i / 10) % 2;
-                a.Append(i).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture))
-                 .Append(',').Append(d).Append('\n');
-
-                double w = v + (i >= 80 && i < 120 ? 2.0 : 0.0);
-                int e = (i >= 80 && i < 120) ? 1 - d : d;
-                b.Append(i).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture))
-                 .Append(',').Append(e).Append('\n');
+                a.Append(i).Append(",5000,5\n");
+                b.Append(i).Append(i >= 50 ? ",5050,5.05\n" : ",5000,5\n");
             }
             LogDataset dsA = Open(WriteCsv("tol_a.csv", a.ToString()), Orientation.Auto);
             LogDataset dsB = Open(WriteCsv("tol_b.csv", b.ToString()), Orientation.Auto);
 
-            var opt = new DiffOptions();
-            Near("기본값은 0.1%", ToleranceRule.ToPercent(opt.RelativeTolerance), 0.1, 1e-9);
+            var o2 = new DiffOptions();
+            o2.RelativePercent = 2.0;                 // 2% → 둘 다 안 걸림
+            CompareResult r = DiffEngine.Compare(dsA, dsB, o2, null);
+            Check("2% 기준에서는 둘 다 차이 아님", r.ChangedCount == 0, "실제 " + r.ChangedCount);
 
-            CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
-            ChannelDiff big = r.Items.Find(d => d.Name == "BIG");
-            ChannelDiff small = r.Items.Find(d => d.Name == "SMALL");
+            o2.RelativePercent = 0.5;                 // 0.5% → 둘 다 걸림
+            CompareResult r2 = DiffEngine.Compare(dsA, dsB, o2, null);
+            Check("0.5% 기준에서는 둘 다 차이", r2.ChangedCount == 2, "실제 " + r2.ChangedCount);
+
+            ChannelDiff big = r2.Items.Find(d => d.Name == "BIG");
+            ChannelDiff small = r2.Items.Find(d => d.Name == "SMALL");
             Check("두 채널 모두 찾음", big != null && small != null, null);
+            if (big == null || small == null) return;
 
-            Near("BIG 의 기준값은 범위 5000 의 0.1%", big.Threshold, 5, 0.05);
-            Near("SMALL 의 기준값은 범위 1 의 0.1%", small.Threshold, 0.001, 1e-9);
+            Near("BIG 의 최대 오차는 1%", big.MaxPercent, 1, 0.01);
+            Near("SMALL 의 최대 오차도 1%", small.MaxPercent, 1, 0.01);
+            Check("값 크기가 달라도 같은 퍼센트",
+                  Math.Abs(big.MaxPercent - small.MaxPercent) < 0.01,
+                  big.MaxPercent + " / " + small.MaxPercent);
 
-            Check("BIG 은 차이 아님 (2 < 5)", !big.Changed, "최대 " + big.MaxAbs.ToString("0.###"));
-            Check("SMALL 은 차이 맞음 (1 > 0.001)", small.Changed, null);
-            Check("차이 난 IO 는 하나", r.ChangedCount == 1, "실제 " + r.ChangedCount);
+            // 절대 오차는 0 언저리에서 퍼센트가 튀는 것을 막는 탈출구입니다.
+            var o3 = new DiffOptions();
+            o3.RelativePercent = 0.5;
+            o3.AbsoluteTolerance = 100;               // 50 은 이 안쪽
+            CompareResult r3 = DiffEngine.Compare(dsA, dsB, o3, null);
+            ChannelDiff big3 = r3.Items.Find(d => d.Name == "BIG");
+            Check("절대 오차 안이면 퍼센트를 넘어도 차이 아님",
+                  big3 != null && !big3.Changed, null);
+        }
 
-            // 기준을 0.01% 로 낮추면 BIG 도 걸립니다.
-            opt.RelativeTolerance = ToleranceRule.FromPercent(0.01);
+        /// <summary>
+        /// 목록에 적히는 "최대 오차 %" 와 "차이 났다" 는 판정이 어긋나지
+        /// 않아야 합니다. 둘 다 같은 순간에서 나오기 때문입니다.
+        /// </summary>
+        private static void ChangedMatchesMaxPercent()
+        {
+            Console.WriteLine("허용 오차 — 목록의 숫자와 판정이 맞는지");
+
+            // 한 표본만 5% 벌어집니다. 나머지는 똑같습니다.
+            var a = new StringBuilder("Time,V\n");
+            var b = new StringBuilder("Time,V\n");
+            for (int i = 0; i < 200; i++)
+            {
+                a.Append(i).Append(",1000\n");
+                b.Append(i).Append(i == 150 ? ",1050\n" : ",1000\n");
+            }
+            LogDataset dsA = Open(WriteCsv("tol_one_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("tol_one_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new DiffOptions();
+            opt.RelativePercent = 1.0;
+            CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
+            ChannelDiff v = r.Items.Find(d => d.Name == "V");
+            Check("채널을 찾음", v != null, null);
+            if (v == null) return;
+
+            Near("최대 오차 5%", v.MaxPercent, 5, 0.01);
+            Check("5% > 1% 이므로 차이", v.Changed, null);
+            Check("한 표본만 넘음", v.DiffSamples == 1, "실제 " + v.DiffSamples);
+
+            // 기준을 올리면 판정이 뒤집히지만 <b>적히는 숫자는 그대로</b>여야
+            // 합니다. 재는 값이 재는 잣대에 딸려 있으면 안 됩니다.
+            opt.RelativePercent = 10.0;
             CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
-            Check("기준을 낮추면 BIG 도 차이", r2.ChangedCount == 2, "실제 " + r2.ChangedCount);
-
-            // 절대 오차를 크게 주면 둘 중 큰 쪽이 기준이 되어 둘 다 빠집니다.
-            opt.RelativeTolerance = ToleranceRule.FromPercent(0.1);
-            opt.AbsoluteTolerance = 3;
-            CompareResult r3 = DiffEngine.Compare(dsA, dsB, opt, null);
-            Check("절대 오차가 크면 둘 중 큰 쪽이 기준", r3.ChangedCount == 0, "실제 " + r3.ChangedCount);
-
-            // 값이 한 자리에 머문 채널도 값의 크기를 밑값으로 씁니다.
-            LogDataset flatA = Open(WriteCsv("tol_flat_a.csv", "Time,F\n0,3000\n1,3000\n2,3000\n"), Orientation.Auto);
-            LogDataset flatB = Open(WriteCsv("tol_flat_b.csv", "Time,F\n0,3001\n1,3001\n2,3001\n"), Orientation.Auto);
-            CompareResult r4 = DiffEngine.Compare(flatA, flatB, new DiffOptions(), null);
-            Check("3000 에 머물던 값이 3001 이 된 것은 잡음", r4.ChangedCount == 0,
-                  "기준 " + (r4.Items.Count > 0 ? r4.Items[0].Threshold.ToString("0.###") : "?"));
+            ChannelDiff v2 = r2.Items.Find(d => d.Name == "V");
+            Check("기준을 올리면 차이 아님", v2 != null && !v2.Changed, null);
+            Near("그래도 최대 오차는 5% 그대로", v2.MaxPercent, 5, 0.01);
         }
 
         private static void HeatmapBuckets()
@@ -560,55 +607,158 @@ namespace LogScope.Tests
             Check("1분대는 정상", !HeatmapBuilder.IsOver(row, 1), null);
             Check("3분대는 정상", !HeatmapBuilder.IsOver(row, 3), null);
 
-            // 칸에 적히는 값은 "기준을 넘은 표본들의 평균" 입니다. 여기서는
-            // 2 분대 60 표본이 모두 10 만큼 벌어져서 구간 전체 평균과 같습니다.
+            // 칸에 적히는 값은 "가장 크게 벌어진 순간" 입니다. 여기서는
+            // 2 분대 60 표본이 모두 10 만큼 벌어져서 평균과 같습니다.
             Near("2분대 평균 차이", row.Cells[2].Mean, 10, 1e-3);
             Near("2분대 칸에 적히는 값", row.ValueOf(row.Cells[2]), 10, 1e-3);
+            Near("2분대 칸의 오차", row.PercentOf(row.Cells[2]), 10, 1e-3);   // 10 / 100
             Near("1분대 평균 차이", row.Cells[1].Mean, 0, 1e-6);
             Check("1분대 칸에 적히는 값은 0", row.ValueOf(row.Cells[1]) == 0, null);
             Check("1분대에도 기록은 있음", row.Cells[1].HasData, null);
         }
 
+        /// <summary>
+        /// 히트맵도 "이전 값 대비 몇 %" 로 판정하는지.
+        /// </summary>
         private static void HeatmapRelativeTolerance()
         {
-            Console.WriteLine("히트맵 — 값 범위의 0.1% 는 오류로 세지 않음");
+            Console.WriteLine("히트맵 — 이전 값 대비 %로 판정");
 
-            // BIG 은 0 에서 5000 까지 올라가는 채널입니다. 범위가 5000 이므로
-            // 0.1% = 5. 2 만큼 벌어지는 것은 오류가 아닙니다.
-            var a = new StringBuilder("Time,BIG\n");
-            var b = new StringBuilder("Time,BIG\n");
+            // 1000 에 있다가 2 분대에서만 1002 가 됩니다 → 오차 0.2%.
+            var a = new StringBuilder("Time,V\n");
+            var b = new StringBuilder("Time,V\n");
             for (int i = 0; i < 300; i++)
             {
                 string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
-                double v = i * (5000.0 / 299.0);
-                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
-                double w = v + (i >= 120 && i < 180 ? 2.0 : 0.0);
-                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+                a.Append(t).Append(",1000\n");
+                b.Append(t).Append(i >= 120 && i < 180 ? ",1002\n" : ",1000\n");
             }
             LogDataset dsA = Open(WriteCsv("heat_rel_a.csv", a.ToString()), Orientation.Auto);
             LogDataset dsB = Open(WriteCsv("heat_rel_b.csv", b.ToString()), Orientation.Auto);
 
             var opt = new HeatmapOptions();
-            opt.RelativeTolerance = 0.001;      // 0.1%
+            opt.RelativePercent = 0.5;          // 0.2% < 0.5% → 차이 아님
             HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
-            Check("0.1% 안쪽은 차이로 세지 않음", r.Rows.Count == 0, "실제 " + r.Rows.Count);
+            Check("허용 오차 안쪽은 차이로 세지 않음", r.Rows.Count == 0, "실제 " + r.Rows.Count);
 
-            // 기준을 0.01% 로 낮추면 같은 2 가 차이로 잡힙니다.
-            opt.RelativeTolerance = 0.0001;
+            opt.RelativePercent = 0.1;          // 0.2% > 0.1% → 차이
             HeatmapResult r2 = HeatmapBuilder.Build(dsA, dsB, opt, null);
             Check("기준을 낮추면 잡힘", r2.Rows.Count == 1, "실제 " + r2.Rows.Count);
             if (r2.Rows.Count == 1)
             {
-                Check("2분대 한 칸만", r2.Rows[0].OverBuckets == 1, "실제 " + r2.Rows[0].OverBuckets);
-                Near("그 칸의 평균 차이", r2.Rows[0].Cells[2].Mean, 2, 5e-3);
+                HeatRow row = r2.Rows[0];
+                Check("2분대 한 칸만", row.OverBuckets == 1, "실제 " + row.OverBuckets);
+                Near("그 칸의 오차", row.PercentOf(row.Cells[2]), 0.2, 1e-3);
+                Near("값으로 보면 2", row.ValueOf(row.Cells[2]), 2, 1e-3);
             }
 
             // 차이가 없는 IO 도 보기로 하면 줄이 나옵니다.
-            opt.RelativeTolerance = 0.001;
+            opt.RelativePercent = 0.5;
             opt.IncludeUnchanged = true;
             HeatmapResult r3 = HeatmapBuilder.Build(dsA, dsB, opt, null);
             Check("차이 없는 IO도 보기", r3.Rows.Count == 1 && r3.Rows[0].OverBuckets == 0,
                   "줄 " + r3.Rows.Count);
+        }
+
+        /// <summary>
+        /// <b>허용 오차를 바꿔도 칸에 적히는 숫자는 그대로여야 합니다.</b>
+        ///
+        /// 예전에는 칸에 "기준을 넘은 표본만의 평균" 을 적었습니다. 기준을
+        /// 바꾸면 평균 낼 표본이 바뀌어서 숫자가 따라 움직였고, 그래서
+        /// 설정한 퍼센트와 화면의 퍼센트가 계속 어긋나 보였습니다.
+        /// 지금은 "가장 크게 벌어진 순간" 이라 잣대와 무관합니다.
+        /// </summary>
+        private static void HeatmapCellNumberDoesNotFollowTolerance()
+        {
+            Console.WriteLine("히트맵 — 허용 오차를 바꿔도 칸의 숫자는 그대로");
+
+            // 2 분대 60 표본 중 한 표본만 5% 벌어지고, 나머지 59 개는 0.5%.
+            var a = new StringBuilder("Time,V\n");
+            var b = new StringBuilder("Time,V\n");
+            for (int i = 0; i < 300; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                a.Append(t).Append(",1000\n");
+                string after = "1000";
+                if (i >= 120 && i < 180) after = (i == 150) ? "1050" : "1005";
+                b.Append(t).Append(',').Append(after).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("heat_stable_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_stable_b.csv", b.ToString()), Orientation.Auto);
+
+            // 기준 0.1% → 60 표본 모두 넘습니다.
+            var loose = new HeatmapOptions();
+            loose.RelativePercent = 0.1;
+            HeatmapResult r1 = HeatmapBuilder.Build(dsA, dsB, loose, null);
+
+            // 기준 1% → 5% 짜리 한 표본만 넘습니다.
+            var tight = new HeatmapOptions();
+            tight.RelativePercent = 1.0;
+            HeatmapResult r2 = HeatmapBuilder.Build(dsA, dsB, tight, null);
+
+            Check("두 기준 모두 한 줄", r1.Rows.Count == 1 && r2.Rows.Count == 1,
+                  r1.Rows.Count + " / " + r2.Rows.Count);
+            if (r1.Rows.Count != 1 || r2.Rows.Count != 1) return;
+
+            HeatRow a1 = r1.Rows[0], a2 = r2.Rows[0];
+
+            // 넘은 표본 수는 기준에 따라 달라집니다 (당연합니다).
+            Check("0.1% 에서는 60 표본이 넘음", a1.Cells[2].OverSamples == 60,
+                  "실제 " + a1.Cells[2].OverSamples);
+            Check("1% 에서는 1 표본만 넘음", a2.Cells[2].OverSamples == 1,
+                  "실제 " + a2.Cells[2].OverSamples);
+
+            // 그런데 칸에 적히는 숫자는 <b>양쪽이 같아야</b> 합니다.
+            Near("0.1% 에서 칸의 오차", a1.PercentOf(a1.Cells[2]), 5, 1e-3);
+            Near("1% 에서 칸의 오차", a2.PercentOf(a2.Cells[2]), 5, 1e-3);
+            Check("기준을 바꿔도 칸의 숫자가 그대로",
+                  Math.Abs(a1.PercentOf(a1.Cells[2]) - a2.PercentOf(a2.Cells[2])) < 1e-6, null);
+
+            // 값으로 봐도 같은 순간이라 같은 숫자입니다.
+            Near("값으로 본 칸", a1.ValueOf(a1.Cells[2]), 50, 1e-3);
+            Check("값으로 봐도 그대로",
+                  Math.Abs(a1.ValueOf(a1.Cells[2]) - a2.ValueOf(a2.Cells[2])) < 1e-6, null);
+
+            // 그리고 빨간 칸의 숫자는 늘 허용 오차보다 큽니다.
+            Check("칸의 숫자 > 허용 오차 (0.1%)", a1.PercentOf(a1.Cells[2]) > 0.1, null);
+            Check("칸의 숫자 > 허용 오차 (1%)", a2.PercentOf(a2.Cells[2]) > 1.0, null);
+
+            // 정상 칸은 0 입니다.
+            Check("1분대는 정상", a1.PercentOf(a1.Cells[1]) == 0, null);
+        }
+
+        /// <summary>
+        /// 이름으로 견주는 줄은 허용 오차와 무관하게 잡히고, 오차는 100% 입니다.
+        /// 절대 오차를 크게 잡아도 상태가 바뀐 것을 놓치면 안 됩니다.
+        /// </summary>
+        private static void HeatmapStateNamesIgnoreTolerance()
+        {
+            Console.WriteLine("히트맵 — 상태 이름은 허용 오차와 무관");
+
+            var a = new StringBuilder("Time,상태\n");
+            var b = new StringBuilder("Time,상태\n");
+            for (int i = 0; i < 180; i++)
+            {
+                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
+                a.Append(t).Append(",IDLE\n");
+                b.Append(t).Append(i >= 120 ? ",RUN\n" : ",IDLE\n");
+            }
+            LogDataset dsA = Open(WriteCsv("heat_state_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("heat_state_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new HeatmapOptions();
+            opt.AbsoluteTolerance = 1000;       // 아주 크게 잡아도
+            opt.RelativePercent = 100;          // 퍼센트도 최대로 잡아도
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("허용 오차를 아무리 키워도 이름 차이는 잡힘", r.Rows.Count == 1,
+                  "실제 " + r.Rows.Count);
+            if (r.Rows.Count != 1) return;
+
+            HeatRow row = r.Rows[0];
+            Check("이름으로 견준 줄", row.ByName, null);
+            Near("오차는 100%", row.PercentOf(row.Cells[2]), 100, 1e-6);
+            Check("1 분대는 정상", row.PercentOf(row.Cells[1]) == 0, null);
         }
 
         /// <summary>
@@ -651,188 +801,6 @@ namespace LogScope.Tests
             Check("괄호 안이 숫자면 단위가 아님",
                   b.Channels[b.FindChannel("밸브(2)")].Unit.Length == 0,
                   "실제 '" + b.Channels[b.FindChannel("밸브(2)")].Unit + "'");
-        }
-
-        /// <summary>
-        /// 히트맵에서 차이를 퍼센트로 보여 줄 때 나눌 밑값(HeatRow.Range)이
-        /// 허용 오차와 같은 값 범위인지. 여기가 어긋나면 "허용 오차 0.1%" 와
-        /// 칸에 적히는 "%" 가 서로 다른 뜻이 됩니다.
-        /// </summary>
-        private static void HeatmapRangeForPercent()
-        {
-            Console.WriteLine("히트맵 — 퍼센트로 볼 때의 밑값");
-
-            // 0 에서 100 까지 오르는 채널. 2 분대에서만 2 만큼 벌어집니다.
-            var a = new StringBuilder("Time,P\n");
-            var b = new StringBuilder("Time,P\n");
-            for (int i = 0; i < 300; i++)
-            {
-                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
-                double v = i * (100.0 / 299.0);
-                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
-                double w = v + (i >= 120 && i < 180 ? 2.0 : 0.0);
-                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
-            }
-            LogDataset dsA = Open(WriteCsv("heat_pct_a.csv", a.ToString()), Orientation.Auto);
-            LogDataset dsB = Open(WriteCsv("heat_pct_b.csv", b.ToString()), Orientation.Auto);
-
-            var opt = new HeatmapOptions();
-            opt.RelativeTolerance = 0.0001;     // 0.01% = 0.01. 2 는 차이로 잡힙니다.
-            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
-
-            Check("줄 하나", r.Rows.Count == 1, "실제 " + r.Rows.Count);
-            if (r.Rows.Count != 1) return;
-
-            HeatRow row = r.Rows[0];
-            Near("밑값은 값 범위", row.Range, 100, 0.5);
-            Near("허용 오차와 같은 규칙",
-                 row.Threshold, ToleranceRule.For(dsA.Channels[0], dsB.Channels[0], 0, 0.0001), 1e-9);
-            Near("평균 차이", row.Cells[2].Mean, 2, 5e-3);
-
-            // 칸에 적힐 퍼센트: 2 / 100 * 100 = 2%
-            Near("퍼센트", row.Cells[2].Mean / row.Range * 100.0, 2, 0.02);
-            Check("이름으로 견준 줄이 아님", !row.ByName, null);
-        }
-
-        /// <summary>
-        /// 빨간 칸에 적히는 숫자는 <b>언제나 허용 오차보다 커야 합니다.</b>
-        ///
-        /// 예전에는 칸에 구간 전체의 평균을 적었습니다. 60 표본 중 하나만
-        /// 5 만큼 튀면 평균은 0.083 이라, 기준 0.1 로 잡은 빨간 칸에
-        /// "0.083" 이 적혔습니다. 위에 적어 둔 허용 오차와 아래 칸의 숫자가
-        /// 달라 보이던 것이 이것입니다.
-        /// </summary>
-        private static void HeatmapCellNumberMatchesTolerance()
-        {
-            Console.WriteLine("히트맵 — 칸의 숫자와 허용 오차가 같은 잣대인지");
-
-            // 0~100 채널. 2 분대의 <b>한 표본만</b> 5 만큼 벌어집니다.
-            var a = new StringBuilder("Time,P\n");
-            var b = new StringBuilder("Time,P\n");
-            for (int i = 0; i < 300; i++)
-            {
-                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
-                double v = i * (100.0 / 299.0);
-                a.Append(t).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
-                double w = v + (i == 150 ? 5.0 : 0.0);
-                b.Append(t).Append(',').Append(w.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
-            }
-            LogDataset dsA = Open(WriteCsv("heat_one_a.csv", a.ToString()), Orientation.Auto);
-            LogDataset dsB = Open(WriteCsv("heat_one_b.csv", b.ToString()), Orientation.Auto);
-
-            var opt = new HeatmapOptions();
-            opt.RelativeTolerance = 0.001;      // 0.1% → 값 범위 100 이므로 기준 0.1
-            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
-
-            Check("한 표본만 튀어도 차이로 잡음", r.Rows.Count == 1, "실제 " + r.Rows.Count);
-            if (r.Rows.Count != 1) return;
-
-            HeatRow row = r.Rows[0];
-            HeatCell cell = row.Cells[2];
-
-            Near("기준", row.Threshold, 0.1, 1e-6);
-            Check("넘은 표본은 하나", cell.OverSamples == 1, "실제 " + cell.OverSamples);
-
-            // 구간 전체 평균은 기준보다 작습니다 — 그래서 이걸 적으면 안 됩니다.
-            Check("전체 평균은 기준보다 작음", cell.Mean < row.Threshold,
-                  "전체 평균 " + cell.Mean + ", 기준 " + row.Threshold);
-
-            // 칸에 적히는 값은 기준보다 큽니다.
-            double shown = row.ValueOf(cell);
-            Near("칸에 적히는 값", shown, 5, 5e-3);
-            Check("빨간 칸의 숫자는 늘 기준보다 큼", shown > row.Threshold,
-                  "칸 " + shown + ", 기준 " + row.Threshold);
-
-            // 퍼센트로 봐도 마찬가지여야 합니다 (5 / 100 = 5% > 0.1%).
-            Near("칸의 퍼센트", shown / row.Range * 100.0, 5, 0.02);
-            Near("기준의 퍼센트", row.ThresholdPercent, 0.1, 1e-6);
-            Check("퍼센트로 봐도 칸 > 기준", shown / row.Range * 100.0 > row.ThresholdPercent, null);
-
-            // 정상 칸은 0 입니다.
-            Check("정상 칸은 0", row.ValueOf(row.Cells[0]) == 0, "실제 " + row.ValueOf(row.Cells[0]));
-        }
-
-        /// <summary>
-        /// 이름으로 견주는 줄에는 허용 오차를 매기지 않습니다.
-        /// 절대 오차를 1 이상으로 적어 두면, 예전에는 상태 이름이 통째로
-        /// 바뀌어도 (차이 1.0 &gt; 기준 2.0 이 거짓이라) 차이로 세지 않았습니다.
-        /// </summary>
-        private static void HeatmapStateNamesIgnoreAbsoluteTolerance()
-        {
-            Console.WriteLine("히트맵 — 상태 이름은 허용 오차와 무관");
-
-            var a = new StringBuilder("Time,상태\n");
-            var b = new StringBuilder("Time,상태\n");
-            for (int i = 0; i < 180; i++)
-            {
-                string t = "00:" + (i / 60).ToString("00") + ":" + (i % 60).ToString("00");
-                a.Append(t).Append(",IDLE\n");
-                b.Append(t).Append(i >= 120 ? ",RUN\n" : ",IDLE\n");
-            }
-            LogDataset dsA = Open(WriteCsv("heat_state_a.csv", a.ToString()), Orientation.Auto);
-            LogDataset dsB = Open(WriteCsv("heat_state_b.csv", b.ToString()), Orientation.Auto);
-
-            var opt = new HeatmapOptions();
-            opt.AbsoluteTolerance = 2.0;        // 차이 1.0 보다 큽니다
-            opt.RelativeTolerance = 0.001;
-            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
-
-            Check("절대 오차를 크게 잡아도 이름 차이는 잡힘", r.Rows.Count == 1, "실제 " + r.Rows.Count);
-            if (r.Rows.Count != 1) return;
-
-            HeatRow row = r.Rows[0];
-            Check("이름으로 견준 줄", row.ByName, null);
-            Check("기준값 없음", row.Threshold == 0, "실제 " + row.Threshold);
-            Near("퍼센트의 밑값은 1", row.Range, 1, 1e-9);
-
-            // 2 분대는 전부 달랐으므로 100%.
-            Near("다른 표본의 비율", row.ValueOf(row.Cells[2]) * 100.0, 100, 0.01);
-            Check("1 분대는 정상", row.ValueOf(row.Cells[1]) == 0, null);
-        }
-
-        /// <summary>
-        /// 숫자를 글자로 바꿀 때 지수 표기(1.2e+07)가 나오지 않아야 합니다.
-        /// .NET 의 "G4" 가 자리 수에 따라 멋대로 지수로 바꾸던 것을 막은 것이라,
-        /// 경계가 되는 값들을 직접 넣어 봅니다.
-        /// </summary>
-        private static void NumberTextHasNoExponent()
-        {
-            Console.WriteLine("숫자 표기 — 지수 표기 안 씀");
-
-            double[] probes =
-            {
-                0, 1, -1, 0.5, 12.34, 999.99, 1000, 123456, 999999,
-                1000000, 12345678, 1.5e9, -2.5e7,
-                0.001, 0.0005, 0.000123, 1e-6, -1e-6, 1e-9,
-            };
-
-            bool clean = true;
-            string bad = null;
-            for (int i = 0; i < probes.Length; i++)
-            {
-                string a = NumberText.Plain(probes[i]);
-                string b = NumberText.Short(probes[i]);
-                if (HasExponent(a)) { clean = false; bad = probes[i] + " -> " + a; break; }
-                if (HasExponent(b)) { clean = false; bad = probes[i] + " -> " + b; break; }
-            }
-            Check("어떤 값에서도 e / E 가 안 나옴", clean, bad);
-
-            Check("큰 수는 천 단위로 끊음", NumberText.Plain(12345678) == "12,345,678",
-                  "실제 " + NumberText.Plain(12345678));
-            Check("작은 수도 자리를 살림", NumberText.Plain(0.000123) == "0.000123",
-                  "실제 " + NumberText.Plain(0.000123));
-            Check("0 은 그냥 0", NumberText.Plain(0) == "0", "실제 " + NumberText.Plain(0));
-
-            // 대시보드 목록도 같은 서식을 씁니다.
-            var d = new ChannelDiff();
-            d.MaxAbs = 1234567.0;
-            Check("대시보드 칸도 지수 표기 안 씀",
-                  !HasExponent(d.Format(DiffMetric.MaxAbs)), d.Format(DiffMetric.MaxAbs));
-        }
-
-        private static bool HasExponent(string s)
-        {
-            return s != null && (s.IndexOf('e') >= 0 || s.IndexOf('E') >= 0);
         }
 
         /// <summary>
@@ -889,15 +857,15 @@ namespace LogScope.Tests
             string n5 = r5.Rows[0].Name + "," + r5.Rows[1].Name + "," + r5.Rows[2].Name;
             Check("칸 폭이 달라도 IO 차례가 같음", n1 == n5, "1분 [" + n1 + "], 5분 [" + n5 + "]");
 
-            // 가장 크게 벌어진 순간이 큰 쪽이 위입니다. WIDE 는 벌어진 표본이
-            // 300 개로 훨씬 많지만, 벌어진 크기는 SPIKE 가 5 배입니다.
+            // 가장 크게 벌어진 순간(오차 %)이 큰 쪽이 위입니다. WIDE 는 벌어진
+            // 표본이 300 개로 훨씬 많지만, 벌어진 정도는 SPIKE 가 훨씬 큽니다.
             Check("제일 크게 튄 IO 가 맨 위", n1 == "SPIKE,WIDE,SMALL", "실제 " + n1);
 
             // 차례를 정하는 값 자체가 칸 폭과 무관한지도 직접 봅니다.
             for (int i = 0; i < 3; i++)
             {
                 HeatRow x = r1.Rows[i], y = r5.Rows[i];
-                Near(x.Name + " 의 최대 차이가 폭과 무관", x.PeakMax, y.PeakMax, 1e-6);
+                Near(x.Name + " 의 최대 오차가 폭과 무관", x.PeakMax, y.PeakMax, 1e-6);
                 Check(x.Name + " 의 넘은 표본 수가 폭과 무관",
                       x.TotalOverSamples == y.TotalOverSamples,
                       "1분 " + x.TotalOverSamples + ", 5분 " + y.TotalOverSamples);
@@ -909,76 +877,6 @@ namespace LogScope.Tests
                   r1.Rows[0].OverBuckets != r5.Rows[0].OverBuckets
                   || r1.Rows[1].OverBuckets != r5.Rows[1].OverBuckets,
                   "1분/5분 칸 수가 같게 나왔습니다");
-        }
-
-        /// <summary>
-        /// 비율 오차의 밑값은 "오르내린 폭" 과 "값의 크기" 중 <b>큰 쪽</b>이어야
-        /// 합니다.
-        ///
-        /// 예전에는 폭만 보고, 폭이 정확히 0 일 때만 크기로 물러섰습니다.
-        /// 그래서 6466 과 6467 사이만 오가는 채널은 폭이 1 이라, 허용 오차를
-        /// 1% 로 잡아도 기준값이 1 x 1% = 0.01 이 되어 1 만큼의 차이가
-        /// 그대로 잡혔습니다.
-        /// </summary>
-        private static void ToleranceUsesValueSizeNotJustSpan()
-        {
-            Console.WriteLine("허용 오차 — 밑값은 폭과 크기 중 큰 쪽");
-
-            // NEAR : 6466 과 6467 사이만 오감 (폭 1, 크기 6467)
-            // JUMP : 같은 자리에 있다가 6600 으로 튐
-            // DIG  : 0/1 디지털 (폭 1, 크기 1)
-            var a = new StringBuilder("Time,NEAR,JUMP,DIG\n");
-            var b = new StringBuilder("Time,NEAR,JUMP,DIG\n");
-            for (int i = 0; i < 200; i++)
-            {
-                int baseline = i >= 100 ? 6467 : 6466;
-                a.Append(i).Append(',').Append(baseline)
-                           .Append(',').Append(baseline)
-                           .Append(',').Append(i % 2).Append('\n');
-
-                // 이후 로그 쪽 값. 아래에서 쓰는 결과 변수와 이름이 겹치지
-                // 않도록 v 를 붙입니다 (같은 메서드 안에서 안쪽 블록과 바깥
-                // 블록이 같은 이름을 쓰면 C# 이 CS0136 으로 막습니다).
-                int vNear = i >= 100 ? 6466 : 6467;          // 늘 1 만큼 벌어짐
-                int vJump = i >= 150 ? 6600 : baseline;      // 크게 튐
-                b.Append(i).Append(',').Append(vNear)
-                           .Append(',').Append(vJump)
-                           .Append(',').Append(1 - (i % 2)).Append('\n');
-            }
-            LogDataset dsA = Open(WriteCsv("tol_span_a.csv", a.ToString()), Orientation.Auto);
-            LogDataset dsB = Open(WriteCsv("tol_span_b.csv", b.ToString()), Orientation.Auto);
-
-            var opt = new DiffOptions();
-            opt.RelativeTolerance = ToleranceRule.FromPercent(1.0);   // 1%
-            CompareResult r = DiffEngine.Compare(dsA, dsB, opt, null);
-
-            ChannelDiff near = r.Items.Find(d => d.Name == "NEAR");
-            ChannelDiff jump = r.Items.Find(d => d.Name == "JUMP");
-            ChannelDiff dig = r.Items.Find(d => d.Name == "DIG");
-            Check("세 채널 모두 찾음", near != null && jump != null && dig != null, null);
-            if (near == null || jump == null || dig == null) return;
-
-            // 폭은 1 이지만 값이 6467 이므로 기준값은 6467 의 1%.
-            Near("NEAR 의 기준값은 6467 의 1%", near.Threshold, 64.67, 0.05);
-            Check("6467 과 6466 의 차이 1 은 1% 오차 안", !near.Changed,
-                  "최대 " + near.MaxAbs.ToString("0.###") + ", 기준 " + near.Threshold.ToString("0.###"));
-
-            // 그렇다고 아무것도 안 잡히면 안 됩니다. 크게 튄 것은 그대로 잡힙니다.
-            Check("6600 으로 튄 것은 차이 맞음", jump.Changed,
-                  "최대 " + jump.MaxAbs.ToString("0.###") + ", 기준 " + jump.Threshold.ToString("0.###"));
-
-            // 0/1 채널은 폭도 1, 크기도 1 이라 예전과 똑같이 잡힙니다.
-            Near("DIG 의 기준값은 1 의 1%", dig.Threshold, 0.01, 1e-9);
-            Check("0 과 1 의 차이는 그대로 잡힘", dig.Changed, null);
-
-            Check("차이 난 IO 는 둘", r.ChangedCount == 2, "실제 " + r.ChangedCount);
-
-            // 좁은 폭의 작은 차이까지 봐야 하면 비율을 낮추면 됩니다.
-            opt.RelativeTolerance = ToleranceRule.FromPercent(0.001);
-            CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
-            ChannelDiff near2 = r2.Items.Find(d => d.Name == "NEAR");
-            Check("비율을 낮추면 NEAR 도 잡힘", near2 != null && near2.Changed,
-                  near2 != null ? "기준 " + near2.Threshold.ToString("0.######") : "못 찾음");
         }
 
         private static void JsonRoundTrip()

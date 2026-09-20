@@ -125,6 +125,7 @@ namespace LogScope.App.Views
             }
 
             var map = result as HeatmapResult;
+            Map.TolerancePercent = options.RelativePercent;
             Map.SetResult(map);
             _vm.Describe(map);
         }

@@ -29,7 +29,7 @@ namespace LogScope.App.Services
         {
             var o = new DiffOptions();
             o.AbsoluteTolerance = Settings.AbsoluteTolerance;
-            o.RelativeTolerance = ToleranceRule.FromPercent(Settings.RelativeTolerancePercent);
+            o.RelativePercent = Settings.RelativeTolerancePercent;
             o.Shift = Settings.ManualShift;
             o.AutoAlign = Settings.AutoAlign;
             o.SortBy = Settings.SortMetric;

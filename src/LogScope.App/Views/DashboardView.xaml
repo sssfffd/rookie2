@@ -127,6 +127,11 @@
                                                     Header="{Binding ColKind}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding Kind}" />
+                                    <!-- 설정한 허용 오차와 같은 잣대라 맨 앞에 둡니다. -->
+                                    <GridViewColumn Width="105"
+                                                    Header="{Binding ColMaxPct}"
+                                                    HeaderTemplate="{StaticResource SortHeader}"
+                                                    DisplayMemberBinding="{Binding MaxPercent}" />
                                     <GridViewColumn Width="100"
                                                     Header="{Binding ColMax}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
@@ -147,12 +152,6 @@
                                                     Header="{Binding ColSegments}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding Segments}" />
-                                    <!-- 이 줄이 왜 "차이" 로 떴는지 알아보려면
-                                         쓰인 기준값이 보여야 합니다. -->
-                                    <GridViewColumn Width="100"
-                                                    Header="{Binding ColThreshold}"
-                                                    HeaderTemplate="{StaticResource SortHeader}"
-                                                    DisplayMemberBinding="{Binding Threshold}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>
