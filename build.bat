@@ -114,6 +114,23 @@ if not defined MSBUILD (
 
 call :msg "MSBuild : %MSBUILD%" "MSBuild : %MSBUILD%"
 call :msg "로그     : %LOG%" "Log     : %LOG%"
+
+rem ---- which revision is this? --------------------------------------
+rem  Printed so "I applied the fix but the error is still there" can be
+rem  told apart from "this working copy is older than the fix" without
+rem  guessing. Silently skipped when git is not on PATH.
+set "REV="
+set "DIRTY="
+git --version >nul 2>nul
+if not errorlevel 1 (
+  for /f "usebackq delims=" %%h in (`git -C "%ROOT%." rev-parse --short=12 HEAD 2^>nul`) do set "REV=%%h"
+  for /f "usebackq delims=" %%d in (`git -C "%ROOT%." status --porcelain --untracked-files=no 2^>nul`) do set "DIRTY=1"
+)
+if defined REV call :msg "커밋     : %REV%" "Commit  : %REV%"
+if defined DIRTY call :msg "           (고친 내용이 커밋 안 된 채로 섞여 있습니다)" "           (uncommitted changes are mixed in)"
+set "VER="
+if exist "%ROOT%version.txt" set /p VER=<"%ROOT%version.txt"
+if defined VER call :msg "버전     : %VER%" "Version : %VER%"
 echo.
 
 rem ---- build --------------------------------------------------------

@@ -308,3 +308,11 @@
 > 렉이 너무 심한데?
 
 → 답변: [15-oscillating-channel-perf.md](15-oscillating-channel-perf.md)
+
+---
+
+## 요청 19 — jump 문제가 아직도 난다
+
+> .core빌드할 때 jump관련 문제가 아직도 발생함
+
+→ 답변: [16-stale-checkout.md](16-stale-checkout.md)
