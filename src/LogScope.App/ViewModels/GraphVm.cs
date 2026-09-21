@@ -123,16 +123,43 @@ namespace LogScope.App.ViewModels
             set { if (S.FitVisible == value) return; S.FitVisible = value; Raise(); Changed(); }
         }
 
+        /// <summary>
+        /// 차이 영역 표시 — 허용 오차를 넘은 구간을 칠합니다.
+        ///
+        /// <b>파형 분리 보기와 같이 켜지지 않습니다.</b> 벌려 놓고 그 사이를
+        /// 칠하면 칠해진 넓이가 "값 차이" 가 아니라 "값 차이 + 벌린 간격" 이
+        /// 되어, 눈으로 재는 넓이가 눈금과 안 맞게 됩니다. 둘 다 끄는 것은
+        /// 됩니다 — 켜져 있는 것을 다시 누르면 꺼집니다.
+        /// </summary>
         public bool ShadeDifference
         {
             get { return S.ShadeDifference; }
-            set { if (S.ShadeDifference == value) return; S.ShadeDifference = value; Raise(); Changed(); }
+            set
+            {
+                if (S.ShadeDifference == value) return;
+                S.ShadeDifference = value;
+                if (value && S.SeparateTraces) { S.SeparateTraces = false; Raise("SeparateTraces"); }
+                Raise();
+                Changed();
+            }
         }
 
+        /// <summary>
+        /// 파형 분리 보기 — 이전과 이후를 위아래로 조금 벌려 그립니다.
+        /// 두 선이 겹쳐 하나로 보일 때 씁니다.
+        /// 차이 영역 표시와 같이 켜지지 않습니다 (위 설명 참고).
+        /// </summary>
         public bool SeparateTraces
         {
             get { return S.SeparateTraces; }
-            set { if (S.SeparateTraces == value) return; S.SeparateTraces = value; Raise(); Changed(); }
+            set
+            {
+                if (S.SeparateTraces == value) return;
+                S.SeparateTraces = value;
+                if (value && S.ShadeDifference) { S.ShadeDifference = false; Raise("ShadeDifference"); }
+                Raise();
+                Changed();
+            }
         }
 
         /// <summary>

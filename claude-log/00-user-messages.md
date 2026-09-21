@@ -395,3 +395,15 @@
 > 두 로그에서 동일한 io의 차이값이 변화량으로 나와야한다고
 
 → 답변: [23-difference-of-two-logs.md](23-difference-of-two-logs.md)
+
+---
+
+## 요청 27 — 도구 줄 이름 정리, 두 보기 방식은 하나만
+
+> 시간축 값축의 확대 축소를 + -로 전체, 되돌리기를 초기화로
+> 시간 축은 Time Scale / 값축은 Value Scale로 표현을 바꿔줘
+> 그리고 차이 음영은 차이 영역 표시로
+> 벌려 그리기는 파형 분리 보기로 바꿔주고
+> 둘 중에 하나만 선택되게 해줘
+
+→ 답변: [24-toolbar-labels.md](24-toolbar-labels.md)

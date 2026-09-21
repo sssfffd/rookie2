@@ -90,7 +90,7 @@ namespace LogScope.App.Controls
         private float[] _diffV = new float[0];
         private readonly List<Point> _pts = new List<Point>(4096);
 
-        // 차이 음영을 이어진 덩어리째 폴리곤으로 묶을 때 쓰는 자리.
+        // 차이 영역 표시를 이어진 덩어리째 폴리곤으로 묶을 때 쓰는 자리.
         // 매 프레임 새로 잡지 않으려고 들고 있습니다.
         private readonly List<Point> _edgeTop = new List<Point>(4096);
         private readonly List<Point> _edgeBottom = new List<Point>(4096);

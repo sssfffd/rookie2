@@ -104,8 +104,12 @@ namespace LogScope.Core.Settings
         /// 역시 이름으로 저장합니다.
         /// </summary>
         public string AxisIo = string.Empty;
-        public bool ShadeDifference = true;
-        public bool SeparateTraces;                 // 겹칠 때 위아래로 조금 벌려 그리기
+        // 이 둘은 <b>같이 켜지지 않습니다.</b> 벌려 놓고 그 사이를 칠하면
+        // 칠해진 넓이가 "값 차이" 가 아니라 "값 차이 + 벌린 간격" 이 되어,
+        // 눈으로 재는 넓이가 눈금과 안 맞습니다. 막는 곳은 화면 쪽(GraphVm)
+        // 이고, 여기서는 옛 설정 파일이 둘 다 켜 둔 경우만 손봅니다.
+        public bool ShadeDifference = true;         // 차이 영역 표시
+        public bool SeparateTraces;                 // 파형 분리 보기
 
         // 그래프 기본값
         public bool LaneMode = true;                // true = 레인, false = 겹쳐보기
@@ -282,6 +286,9 @@ namespace LogScope.Core.Settings
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);
             s.ShadeDifference = Json.GetBool(root, "shadeDifference", true);
             s.SeparateTraces = Json.GetBool(root, "separateTraces", false);
+            // 둘을 따로 켜던 시절의 설정 파일이 남아 있을 수 있습니다. 그대로
+            // 두면 화면에서는 만들 수 없는 상태로 뜹니다. 차이 영역 쪽을 남깁니다.
+            if (s.ShadeDifference && s.SeparateTraces) s.SeparateTraces = false;
 
             s.LaneMode = Json.GetBool(root, "laneMode", true);
             s.ValueScaleMode = Json.GetString(root, "valueScaleMode", "raw");

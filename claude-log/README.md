@@ -30,3 +30,4 @@
 | `21-toolbar-and-align-rework.md` | 도구 줄 3 줄 상한, 값 단위 시간 맞추기, 가로축 재점검 |
 | `22-delta-is-difference.md` | 0–1 정규화 제거 (변화량 부분은 23 에서 바로잡음) |
 | `23-difference-of-two-logs.md` | 변화량 = 두 로그의 차이. 격자가 다른 두 로그를 합쳐 훑기 |
+| `24-toolbar-labels.md` | 도구 줄 이름 정리, 차이 영역 표시와 파형 분리 보기는 하나만 |

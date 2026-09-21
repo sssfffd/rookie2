@@ -417,7 +417,7 @@ namespace LogScope.Tests
             Check("접으면 대부분의 열이 빔 (그래서 접어 그리면 안 됨)", filled < columns / 4,
                   "찬 열 " + filled + " / " + columns);
 
-            // 열마다 값을 뽑으면 빈 열이 없습니다. 차이 음영이 이걸 씁니다.
+            // 열마다 값을 뽑으면 빈 열이 없습니다. 차이 영역 표시가 이걸 씁니다.
             var band = new float[columns];
             Decimator.SampleColumns(ds, 0, t0, t1, band, columns);
             int holes = 0;
@@ -1488,6 +1488,22 @@ namespace LogScope.Tests
             s.ValueScaleMode = "delta";
             AppSettings keep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
             Check("변화량은 그대로 남음", keep.ValueScaleMode == "delta", keep.ValueScaleMode);
+
+            // 차이 영역 표시와 파형 분리 보기는 같이 켜지지 않습니다. 둘을 따로
+            // 켜던 시절의 설정 파일이 남아 있어도 화면에서 만들 수 없는 상태로
+            // 뜨지 않아야 합니다.
+            s.ShadeDifference = true;
+            s.SeparateTraces = true;
+            AppSettings both = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("둘 다 켜져 있으면 하나만 남음", !(both.ShadeDifference && both.SeparateTraces),
+                  "음영 " + both.ShadeDifference + " / 분리 " + both.SeparateTraces);
+            Check("차이 영역 쪽을 남김", both.ShadeDifference, null);
+
+            // 파형 분리만 켜 둔 것은 그대로 살아야 합니다.
+            s.ShadeDifference = false;
+            s.SeparateTraces = true;
+            AppSettings sep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("파형 분리만 켠 것은 그대로", sep.SeparateTraces && !sep.ShadeDifference, null);
             Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());
