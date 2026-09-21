@@ -1176,12 +1176,12 @@ namespace LogScope.Tests
         /// 오름차순을 전제하기 때문입니다.
         /// </summary>
         /// <summary>
-        /// 변화량 = <b>두 로그의 차이</b>. 이후 − 이전 선 하나입니다.
+        /// 차이 (이후−이전) = <b>두 로그의 차이</b>. 선 하나입니다.
         /// 같으면 0, 이후가 1 크면 +1, 1 작으면 -1.
         /// </summary>
         private static void DifferenceOfTwoLogs()
         {
-            Console.WriteLine("변화량 — 두 로그의 차이");
+            Console.WriteLine("차이 — 두 로그의 차이");
 
             // 두 로그가 같은 격자(0..9)에 있고 V 만 다릅니다.
             //   이전 10,10,10,10,10,10,10,10,10,10
@@ -1235,7 +1235,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceAcrossGrids()
         {
-            Console.WriteLine("변화량 — 격자가 다르고 시간이 어긋난 두 로그");
+            Console.WriteLine("차이 — 격자가 다르고 시간이 어긋난 두 로그");
 
             // 이전: 0,2,4,6,8 에서 값 100 (2 초마다)
             // 이후: 1000 부터 1 초마다 값 100, 단 1005 에서만 105
@@ -1270,7 +1270,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceOfStateChannels()
         {
-            Console.WriteLine("변화량 — 상태 채널은 이름으로");
+            Console.WriteLine("차이 — 상태 채널은 이름으로");
 
             // 두 로그에서 상태가 나오는 차례가 달라 번호가 서로 어긋납니다.
             string b = "Time,MODE\n0,IDLE\n1,IDLE\n2,RUN\n3,RUN\n";
@@ -1299,7 +1299,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceOutsideOverlap()
         {
-            Console.WriteLine("변화량 — 겹치지 않는 구간");
+            Console.WriteLine("차이 — 겹치지 않는 구간");
 
             // 이전은 0~9, 이후는 5~14. 겹치는 곳은 5~9 뿐입니다.
             var b = new StringBuilder("Time,V\n");
@@ -1487,7 +1487,7 @@ namespace LogScope.Tests
 
             s.ValueScaleMode = "delta";
             AppSettings keep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
-            Check("변화량은 그대로 남음", keep.ValueScaleMode == "delta", keep.ValueScaleMode);
+            Check("차이 눈금은 그대로 남음", keep.ValueScaleMode == "delta", keep.ValueScaleMode);
 
             // 차이 영역 표시와 파형 분리 보기는 같이 켜지지 않습니다. 둘을 따로
             // 켜던 시절의 설정 파일이 남아 있어도 화면에서 만들 수 없는 상태로

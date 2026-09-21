@@ -308,16 +308,20 @@ namespace LogScope.App.Controls
         {
             double lo, hi;
             bool saved = _fitVisible;
+            bool ok1, ok2;
 
             _fitVisible = false;
-            BaseRange(ios, out lo, out hi);        // 기준 범위 (배율 1 일 때)
+            BaseRange(ios, out lo, out hi, out ok1);    // 기준 범위 (배율 1 일 때)
             double full = hi - lo;
 
             double vlo, vhi;
             _fitVisible = true;
-            BaseRange(ios, out vlo, out vhi);      // 지금 보이는 구간의 범위
+            BaseRange(ios, out vlo, out vhi, out ok2);  // 지금 보이는 구간의 범위
             _fitVisible = saved;
 
+            // 둘 중 하나라도 진짜 값에서 나온 게 아니면 손대지 않습니다.
+            // 가짜 0~1 에서 뽑은 자리를 적어 두면 그 뒤로 눈금이 0 에 붙박입니다.
+            if (!ok1 || !ok2) return;
             double span = vhi - vlo;
             if (!(full > 0) || !(span > 0)) return;
 
@@ -557,12 +561,13 @@ namespace LogScope.App.Controls
                                  Math.Max(8, rect.Height - HeaderH - 4));
 
             double lo, hi;
-            BaseRange(ios, out lo, out hi);
+            bool usable;
+            BaseRange(ios, out lo, out hi, out usable);
 
             LaneY ly = LaneFor(laneKey);
             double span = (hi - lo) / ly.Zoom;
             if (!(span > 0)) span = 1;
-            double center = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
+            double center = CenterOf(ly, lo, hi, usable);
             double vlo = center - span * 0.5, vhi = center + span * 0.5;
 
             DrawValueAxis(dc, p, rect, inner, vlo, vhi, ios);
@@ -575,6 +580,32 @@ namespace LogScope.App.Controls
             }
 
             DrawLaneHeader(dc, p, rect, ios);
+        }
+
+        /// <summary>
+        /// 이 레인의 세로 가운데. <b>기준 범위 밖으로 나가지 못하게 가둡니다.</b>
+        ///
+        /// 가운데 값은 끌기와 Shift+휠, [구간 맞춤] 이 적어 두는 절대값입니다.
+        /// 그런데 적어 두는 그 순간에 쓸 만한 범위가 없었으면(레인/겹쳐보기를
+        /// 오가는 사이, 한쪽 로그에만 있는 IO, 겹치는 구간이 없는 차이 눈금 …)
+        /// 0~1 이라는 가짜 범위에서 나온 값이 적힙니다. 그러면 그 뒤로 값이
+        /// 제대로 돌아와도 눈금은 0 언저리에 붙박이고, 선은 화면 밖에 있어
+        /// <b>IO 값이 전부 0 으로 고정된 것처럼</b> 보입니다.
+        ///
+        /// 가두면 그런 자리가 아예 생기지 않습니다. 적어 둔 값이 범위 밖이면
+        /// 가장 가까운 끝으로 끌어당겨, 데이터가 언제나 화면 안에 들어옵니다.
+        /// </summary>
+        private static double CenterOf(LaneY ly, double lo, double hi, bool usable)
+        {
+            double mid = (lo + hi) * 0.5;
+            if (double.IsNaN(ly.Center)) return mid;
+
+            // 쓸 만한 범위가 없으면 적어 둔 값도 믿을 수 없습니다.
+            if (!usable) return mid;
+
+            if (ly.Center < lo) return lo;
+            if (ly.Center > hi) return hi;
+            return ly.Center;
         }
 
         private readonly Dictionary<int, Pen> _pairPens = new Dictionary<int, Pen>();
@@ -668,7 +699,7 @@ namespace LogScope.App.Controls
         }
 
         /// <summary>
-        /// 변화량 눈금일 때 값 뒤에 붙이는 "차이 +0.3".
+        /// 차이 눈금일 때 값 뒤에 붙이는 "차이 +0.3".
         ///
         /// 이 눈금에서 화면에 그려진 선은 두 값이 아니라 <b>그 차이</b>입니다.
         /// 이전/이후 값만 적으면 커서가 가리키는 숫자와 선이 서로 다른 것을
@@ -698,6 +729,21 @@ namespace LogScope.App.Controls
         /// </summary>
         private void BaseRange(IoRowVm[] ios, out double lo, out double hi)
         {
+            bool any;
+            BaseRange(ios, out lo, out hi, out any);
+        }
+
+        /// <summary>
+        /// 레인의 기준 범위와, <b>그게 진짜 값에서 나온 것인지</b>.
+        ///
+        /// 쓸 만한 값이 하나도 없으면 0~1 을 돌려주되 <paramref name="usable"/>
+        /// 을 거짓으로 둡니다. 그 0~1 은 "그릴 게 없어서 아무 눈금이나 그린
+        /// 것" 이지 데이터가 아닙니다. 그걸 데이터인 줄 알고 세로 위치를
+        /// 적어 두면, 나중에 값이 돌아와도 눈금이 0 언저리에 붙박여
+        /// <b>IO 값이 0 으로 고정된 것처럼</b> 보입니다.
+        /// </summary>
+        private void BaseRange(IoRowVm[] ios, out double lo, out double hi, out bool usable)
+        {
             double a = double.PositiveInfinity, b = double.NegativeInfinity;
             for (int k = 0; k < ios.Length; k++)
             {
@@ -706,7 +752,8 @@ namespace LogScope.App.Controls
                 if (clo < a) a = clo;
                 if (chi > b) b = chi;
             }
-            if (a > b) { a = 0; b = 1; }
+            usable = a <= b;
+            if (!usable) { a = 0; b = 1; }
 
             // 차이는 두 로그가 같은 동안 계속 0 이라, 0 이 눈금에 들어 있지
             // 않으면 어디가 "차이 없음" 인지 알 수 없습니다.
@@ -809,7 +856,7 @@ namespace LogScope.App.Controls
         }
 
         /// <summary>
-        /// 지금 변화량(두 로그의 차이) 눈금인지.
+        /// 지금 차이(이후−이전) 눈금인지.
         ///
         /// 이 눈금에서는 선이 <b>하나</b>입니다. 이전과 이후를 각각 그리는
         /// 대신 "이후 − 이전" 을 그립니다. 그래서 값 하나를 바꿔 주는
@@ -1453,11 +1500,13 @@ namespace LogScope.App.Controls
             if (!LaneAt(at, out key, out inner, out ios)) return;
 
             double lo, hi;
-            BaseRange(ios, out lo, out hi);
+            bool usable;
+            BaseRange(ios, out lo, out hi, out usable);
+            if (!usable) return;      // 그릴 값이 없는 레인은 세로 위치를 적지 않습니다.
 
             LaneY ly = LaneFor(key);
             double span = (hi - lo) / ly.Zoom;
-            double center = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
+            double center = CenterOf(ly, lo, hi, true);
 
             double f = inner.Height > 0 ? (inner.Bottom - at.Y) / inner.Height : 0.5;
             double valueAt = center - span * 0.5 + f * span;
@@ -1511,15 +1560,18 @@ namespace LogScope.App.Controls
             _dragT0 = _t0; _dragT1 = _t1;
 
             string key; Rect inner; IoRowVm[] ios;
+            _dragLane = null;
             if (LaneAt(_dragPoint, out key, out inner, out ios))
             {
-                _dragLane = key;
                 double lo, hi;
-                BaseRange(ios, out lo, out hi);
-                LaneY ly = LaneFor(key);
-                _dragCenter = double.IsNaN(ly.Center) ? (lo + hi) * 0.5 : ly.Center;
+                bool usable;
+                BaseRange(ios, out lo, out hi, out usable);
+                if (usable)
+                {
+                    _dragLane = key;
+                    _dragCenter = CenterOf(LaneFor(key), lo, hi, true);
+                }
             }
-            else _dragLane = null;
 
             CaptureMouse();
             e.Handled = true;
@@ -1550,10 +1602,14 @@ namespace LogScope.App.Controls
                 if (LaneAt(_dragPoint, out key, out inner, out ios) && inner.Height > 0)
                 {
                     double lo, hi;
-                    BaseRange(ios, out lo, out hi);
-                    LaneY ly = LaneFor(key);
-                    double vspan = (hi - lo) / ly.Zoom;
-                    ly.Center = _dragCenter + dy * vspan / inner.Height;
+                    bool usable;
+                    BaseRange(ios, out lo, out hi, out usable);
+                    if (usable)
+                    {
+                        LaneY ly = LaneFor(key);
+                        double vspan = (hi - lo) / ly.Zoom;
+                        ly.Center = _dragCenter + dy * vspan / inner.Height;
+                    }
                 }
             }
 

@@ -231,16 +231,19 @@
                               HorizontalScrollBarVisibility="Disabled">
                 <WrapPanel>
 
-                    <!-- 무엇을 어떻게 늘어놓을지 -->
+                    <!--
+                      무엇을 어떻게 늘어놓을지. IO 를 하나만 골랐을 때는 둘이
+                      같은 그림이라, 묶음 이름에 "여러 IO 선택시" 를 적어 둡니다.
+                    -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="보기" />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="보기 (여러 IO 선택시)" />
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                         Content="레인" IsChecked="{Binding LaneMode, Mode=TwoWay}"
-                                         ToolTip="채널마다 한 줄씩 따로 그립니다." />
+                                         Content="Lane" IsChecked="{Binding LaneMode, Mode=TwoWay}"
+                                         ToolTip="IO 마다 한 줄씩 따로 그립니다. 줄마다 세로 눈금이 따로라 값 크기가 달라도 각각 꽉 차게 보입니다." />
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                         Content="겹쳐" IsChecked="{Binding OverlayMode, Mode=TwoWay}"
-                                         ToolTip="한 판에 겹쳐 그리고 눈금을 같이 씁니다." />
+                                         Content="Overlay" IsChecked="{Binding OverlayMode, Mode=TwoWay}"
+                                         ToolTip="한 판에 겹쳐 그리고 세로 눈금을 같이 씁니다. 값 크기가 비슷한 IO 끼리 견줄 때 씁니다." />
                         </StackPanel>
                     </Border>
 
@@ -252,8 +255,8 @@
                                          Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
                                          ToolTip="이전 로그와 이후 로그를 각각 그립니다. 로그에 적힌 값 그대로." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="변화량" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
-                                         ToolTip="두 로그의 차이를 선 하나로 그립니다 (이후 − 이전).&#x0a;같으면 0, 이후가 1 크면 +1, 1 작으면 -1.&#x0a;상태 채널은 이름이 같으면 0, 다르면 1 입니다.&#x0a;한쪽에만 있는 IO 는 견줄 상대가 없어 비어 있습니다." />
+                                         Content="차이 (이후−이전)" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
+                                         ToolTip="두 로그의 차이를 선 하나로 그립니다.&#x0a;같으면 0, 이후가 1 크면 +1, 1 작으면 -1.&#x0a;상태 채널은 이름이 같으면 0, 다르면 1 입니다.&#x0a;한쪽에만 있는 IO 는 견줄 상대가 없어 비어 있습니다." />
                         </StackPanel>
                     </Border>
 
