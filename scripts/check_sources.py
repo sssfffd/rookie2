@@ -64,9 +64,10 @@ for c in css:
     rel = os.path.relpath(c, ROOT)
     now = counts(read(c))
     try:
-        head = counts(subprocess.check_output(['git','-C',ROOT,'show','HEAD:'+rel]).decode('utf-8'))
+        head = counts(subprocess.check_output(['git','-C',ROOT,'show','HEAD:'+rel],
+                                              stderr=subprocess.PIPE).decode('utf-8'))
     except Exception:
-        head = (0, 0, 0)          # 새 파일
+        head = (0, 0, 0)          # 새 파일. 균형이 맞으면 (0,0,0) 입니다.
     if now != head:
         bad('괄호 균형이 바뀜 %s HEAD=%s 지금=%s' % (rel, head, now))
 

@@ -84,7 +84,11 @@ namespace LogScope.Tests
                 HeatmapOrderIsSameForEveryBucketWidth();
                 TriggerAlignOnEdge();
                 TriggerAlignRefusesBadIo();
+                TriggerAlignCountsStartAsEdge();
+                TriggerAlignOnAnyLevel();
                 AxisChannelSwap();
+                AxisRefusesCoarseValues();
+                AxisWarnsOnFlatRuns();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -984,7 +988,7 @@ namespace LogScope.Tests
             LogDataset dsA = Open(WriteCsv("align_a.csv", a.ToString()), Orientation.Auto);
             LogDataset dsB = Open(WriteCsv("align_b.csv", b.ToString()), Orientation.Auto);
 
-            AlignResult r = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Rising, 1);
+            AlignResult r = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Rising, 1, double.NaN);
             Check("맞춰짐", r.Ok, r.Message);
             if (!r.Ok) return;
 
@@ -998,15 +1002,135 @@ namespace LogScope.Tests
             // 시작 시각으로 맞추면 100 이 나옵니다 — 사건은 15 만큼 어긋납니다.
             Near("시작 시각 맞추기는 다른 값", dsA.TimeStart - dsB.TimeStart, -100, 1e-9);
 
-            // 아날로그 채널도 값 범위 한가운데를 문턱으로 잡아 똑같이 맞춥니다.
-            AlignResult r2 = TriggerAlign.Compute(dsA, dsB, "ANALOG", EdgeKind.Rising, 1);
+            // 아날로그 이름을 달았어도 값이 20 과 80 둘뿐이라, 문턱을 잡지 않고
+            // 그 값 그대로 봅니다. 알아서 고르는 기준 값은 1 이 없으니 최댓값 80.
+            AlignResult r2 = TriggerAlign.Compute(dsA, dsB, "ANALOG", EdgeKind.Rising, 1, double.NaN);
             Check("아날로그로도 맞춰짐", r2.Ok, r2.Message);
             if (r2.Ok) Near("아날로그 밀기 값도 같음", r2.Shift, -115, 1e-9);
-            Near("문턱값은 값 범위의 한가운데", r2.Before.Level, 50, 1e-9);
+            LevelSet two = TriggerAlign.LevelsOf(dsA, dsA.FindChannel("ANALOG"));
+            Check("값이 둘뿐이면 문턱을 안 씀", !two.Thresholded, null);
+            Near("알아서 고르는 값은 최댓값", two.Fallback(), 80, 1e-9);
 
             // 내려가는 쪽만 찾으면 없습니다 (한 번 올라가고 끝이므로).
-            AlignResult r3 = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Falling, 1);
+            AlignResult r3 = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Falling, 1, double.NaN);
             Check("내려가는 변화는 없음", !r3.Ok, r3.Message);
+
+            // 값 종류가 많은 진짜 아날로그는 문턱 하나로 위/아래를 가릅니다.
+            // RAMP 는 0 에서 99 까지 1 씩 올라 100 가지라 MaxLevels(64)를 넘습니다.
+            var c = new StringBuilder("Time,RAMP\n");
+            var d = new StringBuilder("Time,RAMP\n");
+            for (int i = 0; i < 100; i++)
+            {
+                c.Append(i).Append(',').Append(i).Append('\n');
+                d.Append(500 + i).Append(',').Append(i).Append('\n');
+            }
+            LogDataset dsC = Open(WriteCsv("align_ramp_a.csv", c.ToString()), Orientation.Auto);
+            LogDataset dsD = Open(WriteCsv("align_ramp_b.csv", d.ToString()), Orientation.Auto);
+
+            LevelSet ramp = TriggerAlign.LevelsOf(dsC, dsC.FindChannel("RAMP"));
+            Check("값이 많으면 문턱으로 가름", ramp.Thresholded, null);
+            Near("문턱은 값 범위의 한가운데", ramp.Threshold, 49.5, 1e-9);
+            Check("고를 값은 0 과 1 둘뿐", ramp.Values.Length == 2, ramp.Values.Length.ToString());
+
+            AlignResult ramped = TriggerAlign.Compute(dsC, dsD, "RAMP", EdgeKind.Rising, 1, 1);
+            Check("문턱으로도 맞춰짐", ramped.Ok, ramped.Message);
+            if (ramped.Ok)
+            {
+                Near("문턱을 넘은 시각", ramped.Before.Time, 50, 1e-9);
+                Near("문턱값이 결과에 실림", ramped.Before.Level, 49.5, 1e-9);
+                Near("밀기 값", ramped.Shift, -500, 1e-9);
+            }
+        }
+
+        /// <summary>
+        /// 기록을 늦게 건 로그는 그 IO 가 <b>이미 1 인 채로</b> 시작합니다.
+        /// 그때 "1 이 되는 순간" 은 그 로그의 첫 표본입니다. 이걸 놓치면
+        /// 맞출 수 있는 로그를 못 맞춥니다.
+        /// </summary>
+        private static void TriggerAlignCountsStartAsEdge()
+        {
+            Console.WriteLine("시간 맞추기 — 처음부터 그 값인 로그");
+
+            // 이전 로그: 0 초 시작, 30 초에 START 가 0 → 1
+            // 이후 로그: 200 초 시작, 처음부터 끝까지 START 가 1
+            //   맞추면 200 이 30 으로 와야 하므로 밀기 값은 30 - 200 = -170.
+            var a = new StringBuilder("Time,START\n");
+            for (int i = 0; i < 100; i++) a.Append(i).Append(',').Append(i >= 30 ? 1 : 0).Append('\n');
+
+            var b = new StringBuilder("Time,START\n");
+            for (int i = 0; i < 100; i++) b.Append(200 + i).Append(",1\n");
+
+            LogDataset dsA = Open(WriteCsv("align_start_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("align_start_b.csv", b.ToString()), Orientation.Auto);
+
+            AlignResult r = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Rising, 1, 1);
+            Check("처음부터 1 인 로그도 맞춰짐", r.Ok, r.Message);
+            if (!r.Ok) return;
+
+            Near("이후 로그는 첫 표본이 그 순간", r.After.Time, 200, 1e-9);
+            Check("처음부터였다고 표시", r.After.AtStart, null);
+            Check("이전 로그는 진짜 변화", !r.Before.AtStart, null);
+            Near("밀기 값", r.Shift, -170, 1e-9);
+
+            // 안 바뀌는 쪽이라도 반대쪽이 바뀌면 후보에 올라야 합니다.
+            Check("한쪽만 바뀌어도 후보",
+                  TriggerAlign.CanTrigger(dsA, dsA.FindChannel("START"))
+                  || TriggerAlign.CanTrigger(dsB, dsB.FindChannel("START")), null);
+
+            // "아무 변화" 로는 못 맞춥니다 — 이후 로그에 변화가 없으니까요.
+            AlignResult any = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Any, 1, double.NaN);
+            Check("아무 변화로는 못 맞춤", !any.Ok, any.Message);
+        }
+
+        /// <summary>
+        /// 0/1 만이 아니라 그 IO 에 나온 값이면 무엇이든 기준이 됩니다.
+        /// 0~5 로 오르는 단계 신호는 "5 가 되는 순간" 으로도 맞춰야 합니다.
+        /// </summary>
+        private static void TriggerAlignOnAnyLevel()
+        {
+            Console.WriteLine("시간 맞추기 — 0/1 말고 최댓값까지");
+
+            // STEP 은 10 표본마다 한 단계씩 0 → 5 로 오릅니다.
+            //   이전 로그: i 초,      5 가 되는 시각 = 50
+            //   이후 로그: 300 + i 초, 5 가 되는 시각 = 350
+            var a = new StringBuilder("Time,STEP\n");
+            var b = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 70; i++)
+            {
+                int step = i / 10; if (step > 5) step = 5;
+                a.Append(i).Append(',').Append(step).Append('\n');
+                b.Append(300 + i).Append(',').Append(step).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("align_step_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("align_step_b.csv", b.ToString()), Orientation.Auto);
+
+            LevelSet ls = TriggerAlign.LevelsOf(dsA, dsA.FindChannel("STEP"));
+            Check("고를 수 있는 값이 6 개", ls.Values.Length == 6, ls.Values.Length.ToString());
+            Check("값 그대로 보는 채널", !ls.Thresholded, null);
+            Near("최댓값은 5", ls.Values[5], 5, 1e-9);
+
+            AlignResult five = TriggerAlign.Compute(dsA, dsB, "STEP", EdgeKind.Rising, 1, 5);
+            Check("최댓값으로 맞춰짐", five.Ok, five.Message);
+            if (five.Ok)
+            {
+                Near("이전 로그에서 5 가 된 시각", five.Before.Time, 50, 1e-9);
+                Near("이후 로그에서 5 가 된 시각", five.After.Time, 350, 1e-9);
+                Near("밀기 값", five.Shift, -300, 1e-9);
+            }
+
+            // 중간 단계로도 맞춰지고, 그 값이 결과에 반영돼야 합니다.
+            AlignResult three = TriggerAlign.Compute(dsA, dsB, "STEP", EdgeKind.Rising, 1, 3);
+            Check("중간 값으로도 맞춰짐", three.Ok, three.Message);
+            if (three.Ok) Near("3 이 된 시각", three.Before.Time, 30, 1e-9);
+
+            // 벗어나는 순간: 3 에서 4 로 가는 자리(=40)입니다.
+            AlignResult off = TriggerAlign.Compute(dsA, dsB, "STEP", EdgeKind.Falling, 1, 3);
+            Check("벗어나는 순간도 잡힘", off.Ok, off.Message);
+            if (off.Ok) Near("3 에서 벗어난 시각", off.Before.Time, 40, 1e-9);
+
+            // 없는 값을 고르면 조용히 다른 값으로 바꿔치기하지 않습니다.
+            AlignResult ghost = TriggerAlign.Compute(dsA, dsB, "STEP", EdgeKind.Rising, 1, 9);
+            Check("없는 값으로는 못 맞춤", !ghost.Ok, ghost.Message);
         }
 
         /// <summary>
@@ -1026,15 +1150,15 @@ namespace LogScope.Tests
             LogDataset dsA = Open(WriteCsv("align_bad_a.csv", a.ToString()), Orientation.Auto);
             LogDataset dsB = Open(WriteCsv("align_bad_b.csv", b.ToString()), Orientation.Auto);
 
-            AlignResult flat = TriggerAlign.Compute(dsA, dsB, "FLAT", EdgeKind.Any, 1);
+            AlignResult flat = TriggerAlign.Compute(dsA, dsB, "FLAT", EdgeKind.Any, 1, double.NaN);
             Check("안 바뀌는 IO 로는 못 맞춤", !flat.Ok, null);
             Check("이유를 알려 줌", flat.Message.Length > 0, null);
 
-            AlignResult missing = TriggerAlign.Compute(dsA, dsB, "ONLYHERE", EdgeKind.Any, 1);
+            AlignResult missing = TriggerAlign.Compute(dsA, dsB, "ONLYHERE", EdgeKind.Any, 1, double.NaN);
             Check("한쪽에만 있는 IO 로는 못 맞춤", !missing.Ok, null);
             Check("어느 쪽에 없는지 알려 줌", missing.Message.Contains("이후 로그"), missing.Message);
 
-            AlignResult none = TriggerAlign.Compute(dsA, dsB, "", EdgeKind.Any, 1);
+            AlignResult none = TriggerAlign.Compute(dsA, dsB, "", EdgeKind.Any, 1, double.NaN);
             Check("IO 를 안 고르면 그렇게 알려 줌", !none.Ok, null);
 
             // 후보 추리기: FLAT 은 안 바뀌므로 빠져야 합니다.
@@ -1091,6 +1215,61 @@ namespace LogScope.Tests
             Check("오르내리는 IO 는 후보 아님", !ds.CanBeAxis(ds.FindChannel("WOBBLE")), null);
         }
 
+        /// <summary>
+        /// 채널 값은 float 라 유효자리가 약 7 자리입니다. 1970 년부터 센
+        /// 밀리초 같은 큰 수를 가로축으로 놓으면 이웃 표본이 같은 값으로
+        /// 뭉개져 그래프가 계단이 됩니다. 조용히 그리지 말고 막아야 합니다.
+        /// </summary>
+        private static void AxisRefusesCoarseValues()
+        {
+            Console.WriteLine("가로축 — 값이 너무 커서 표본이 뭉개질 때");
+
+            // EPOCH 는 1.7e12 근처에서 100 씩 오릅니다. 그 크기에서 float 눈금은
+            // 약 20 만이라, 100 간격은 아예 담기지 않습니다.
+            // SMALL 은 같은 간격인데 0 에서 시작해서 멀쩡합니다.
+            var sb = new StringBuilder("Time,EPOCH,SMALL,V\n");
+            for (int i = 0; i < 200; i++)
+                sb.Append(i).Append(',').Append(1700000000000L + i * 100L)
+                  .Append(',').Append(i * 100)
+                  .Append(',').Append(i).Append('\n');
+            LogDataset ds = Open(WriteCsv("axis_coarse.csv", sb.ToString()), Orientation.Auto);
+
+            string problem;
+            Check("뭉개지는 IO 는 거부", !ds.SetAxisChannel("EPOCH", out problem), problem);
+            Check("왜 안 되는지 알려 줌", problem.Contains("너무 커서"), problem);
+            Check("거부했으면 시간축은 그대로", ds.UsesOwnTime, ds.AxisChannel);
+            Check("뭉개지는 IO 는 후보도 아님", !ds.CanBeAxis(ds.FindChannel("EPOCH")), null);
+
+            Check("같은 간격이라도 작은 수는 됨", ds.SetAxisChannel("SMALL", out problem), problem);
+            Near("가로축 끝", ds.TimeEnd, 199 * 100, 1e-6);
+            ds.ClearAxisChannel();
+        }
+
+        /// <summary>
+        /// 여러 표본이 같은 값을 갖는 IO(1 초 단위 카운터 같은 것)는 막지
+        /// 않습니다. 대신 왜 가로로 겹쳐 보이는지 말해 줘야 합니다.
+        /// </summary>
+        private static void AxisWarnsOnFlatRuns()
+        {
+            Console.WriteLine("가로축 — 여러 표본이 같은 자리에 겹칠 때");
+
+            // TICK 은 10 표본마다 1 씩 오릅니다. 100 표본 중 90 개가 직전과
+            // 같은 값입니다.
+            var sb = new StringBuilder("Time,TICK,V\n");
+            for (int i = 0; i < 100; i++)
+                sb.Append(i).Append(',').Append(i / 10).Append(',').Append(i).Append('\n');
+            LogDataset ds = Open(WriteCsv("axis_flat.csv", sb.ToString()), Orientation.Auto);
+
+            string problem;
+            Check("겹쳐도 가로축은 됨", ds.SetAxisChannel("TICK", out problem), problem);
+            Check("겹친다고 알려 줌", ds.AxisNote.Length > 0, ds.AxisNote);
+            Check("몇 개가 겹치는지 적음", ds.AxisNote.Contains("90"), ds.AxisNote);
+
+            // 되돌리면 알림도 사라집니다.
+            ds.ClearAxisChannel();
+            Check("되돌리면 알림도 사라짐", ds.AxisNote.Length == 0, ds.AxisNote);
+        }
+
         private static void JsonRoundTrip()
         {
             Console.WriteLine("JSON");
@@ -1122,6 +1301,7 @@ namespace LogScope.Tests
             s.AlignIo = "START 신호";
             s.AlignEdge = 1;
             s.AlignOccurrence = 3;
+            s.AlignLevel = 5;
             s.AxisIo = "경과 시간";
             s.RelativeTolerancePercent = 0.25;
             s.SortMetric = DiffMetric.SegmentCount;
@@ -1141,6 +1321,14 @@ namespace LogScope.Tests
             Check("맞추기 기준 IO", back.AlignIo == "START 신호", back.AlignIo);
             Check("맞추기 변화 방향", back.AlignEdge == 1, "실제 " + back.AlignEdge);
             Check("맞추기 몇 번째", back.AlignOccurrence == 3, "실제 " + back.AlignOccurrence);
+            Near("맞추기 기준 값", back.AlignLevel, 5, 1e-9);
+
+            // NaN("알아서 고름")은 JSON 에 담을 수 없어서 아예 안 적습니다.
+            // 다시 읽으면 도로 NaN 이어야 합니다 — 0 으로 떨어지면 "0 이 되는
+            // 순간" 이라는 엉뚱한 기준이 됩니다.
+            s.AlignLevel = double.NaN;
+            AppSettings auto = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("알아서 고름은 그대로 남음", double.IsNaN(auto.AlignLevel), "실제 " + auto.AlignLevel);
             Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());

@@ -19,12 +19,18 @@ namespace LogScope.App.ViewModels
 
         public ChannelListVm List { get; private set; }
 
+        /// <summary>
+        /// 가로축과 시간 맞추기. 히트맵 화면과 <b>같은 것</b>을 씁니다.
+        /// </summary>
+        public AlignVm Align { get; private set; }
+
         /// <summary>도구 줄에서 뭔가 바뀌면 불립니다.</summary>
         public event EventHandler OptionsChanged;
 
-        public GraphVm(AppState state)
+        public GraphVm(AppState state, AlignVm align)
         {
             _state = state;
+            Align = align;
             List = new ChannelListVm(state);
         }
 
@@ -34,121 +40,6 @@ namespace LogScope.App.ViewModels
         {
             EventHandler h = OptionsChanged;
             if (h != null) h(this, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// 시간 맞추기나 가로축을 바꿨을 때. 로그를 다시 견주고 화면을 새로
-        /// 그려야 해서, 그 일을 맡은 셸 창이 받습니다.
-        /// </summary>
-        public event EventHandler AlignmentChanged;
-
-        private void Realign()
-        {
-            EventHandler h = AlignmentChanged;
-            if (h != null) h(this, EventArgs.Empty);
-        }
-
-        // ---------------- 시간 맞추기 ----------------
-
-        /// <summary>목록에서 "고르지 않음" 을 나타내는 줄.</summary>
-        public const string NoneItem = "(안 씀 — 시작 시각으로 맞춤)";
-
-        /// <summary>가로축 목록에서 "로그의 시간 열" 을 나타내는 줄.</summary>
-        public const string OwnTimeItem = "(로그의 시간)";
-
-        /// <summary>
-        /// 기준으로 삼을 수 있는 IO 들. 양쪽 로그에 다 있고 양쪽 모두
-        /// 한 번은 바뀌는 IO 만 올립니다 — 안 바뀌는 IO 는 기준이 될 수 없어서
-        /// 목록에 올려 봐야 고르면 실패할 뿐입니다.
-        /// </summary>
-        public IEnumerable<string> AlignChoices
-        {
-            get
-            {
-                var list = new List<string>();
-                list.Add(NoneItem);
-                list.AddRange(_state.AlignCandidates());
-                return list;
-            }
-        }
-
-        public string AlignIo
-        {
-            get { return S.AlignIo.Length == 0 ? NoneItem : S.AlignIo; }
-            set
-            {
-                string v = (value == NoneItem || value == null) ? string.Empty : value;
-                if (S.AlignIo == v) return;
-                S.AlignIo = v;
-                Raise("AlignIo");
-                Realign();
-            }
-        }
-
-        public IEnumerable<string> EdgeChoices
-        {
-            get { return new[] { "0 → 1 로 바뀔 때", "1 → 0 으로 바뀔 때", "어느 쪽이든 바뀔 때" }; }
-        }
-
-        public int AlignEdgeIndex
-        {
-            get { return S.AlignEdge; }
-            set
-            {
-                if (value < 0 || value > 2 || S.AlignEdge == value) return;
-                S.AlignEdge = value;
-                Raise("AlignEdgeIndex");
-                if (S.AlignIo.Length > 0) Realign();
-            }
-        }
-
-        /// <summary>몇 번째 변화로 맞출지. 같은 IO 가 여러 번 바뀔 때 씁니다.</summary>
-        public string AlignOccurrenceText
-        {
-            get { return S.AlignOccurrence.ToString(CultureInfo.InvariantCulture); }
-            set
-            {
-                int v;
-                if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out v)) return;
-                if (v < 1) v = 1;
-                if (S.AlignOccurrence == v) return;
-                S.AlignOccurrence = v;
-                Raise("AlignOccurrenceText");
-                if (S.AlignIo.Length > 0) Realign();
-            }
-        }
-
-        /// <summary>맞춘 결과를 알리는 한 줄. 못 맞췄으면 그 이유입니다.</summary>
-        public string AlignNote { get { return _state.AlignNote; } }
-
-        // ---------------- 가로축 ----------------
-
-        /// <summary>
-        /// 가로축으로 쓸 수 있는 IO 들. 값이 뒤로 가지 않고 실제로 늘어나는
-        /// 채널만 올립니다 (경과 시간, 스캔 번호 같은 것).
-        /// </summary>
-        public IEnumerable<string> AxisChoices
-        {
-            get
-            {
-                var list = new List<string>();
-                list.Add(OwnTimeItem);
-                list.AddRange(_state.AxisCandidates());
-                return list;
-            }
-        }
-
-        public string AxisIo
-        {
-            get { return S.AxisIo.Length == 0 ? OwnTimeItem : S.AxisIo; }
-            set
-            {
-                string v = (value == OwnTimeItem || value == null) ? string.Empty : value;
-                if (S.AxisIo == v) return;
-                S.AxisIo = v;
-                Raise("AxisIo");
-                Realign();
-            }
         }
 
         // ---------------- 보기 방식 ----------------
@@ -384,9 +275,6 @@ namespace LogScope.App.ViewModels
         {
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
             Raise("LaneMode"); Raise("OverlayMode");
-            Raise("AlignChoices"); Raise("AlignIo"); Raise("AlignEdgeIndex");
-            Raise("AlignOccurrenceText"); Raise("AlignNote");
-            Raise("AxisChoices"); Raise("AxisIo");
             Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
             Raise("ScaleHint"); Raise("ScaleHintDetail"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
             Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");

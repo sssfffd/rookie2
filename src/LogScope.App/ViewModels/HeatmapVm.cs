@@ -16,9 +16,16 @@ namespace LogScope.App.ViewModels
     {
         private readonly AppState _state;
 
-        public HeatmapVm(AppState state)
+        /// <summary>
+        /// 가로축과 시간 맞추기. 그래프 화면과 <b>같은 것</b>을 씁니다.
+        /// 히트맵도 두 로그를 겹쳐 견주는 화면이라 같은 기준으로 맞춰야 합니다.
+        /// </summary>
+        public AlignVm Align { get; private set; }
+
+        public HeatmapVm(AppState state, AlignVm align)
         {
             _state = state;
+            Align = align;
         }
 
         // ---------------- 칸 폭 ----------------
@@ -160,12 +167,24 @@ namespace LogScope.App.ViewModels
         private double _shownRelative = double.NaN;
         private double _shownAbsolute = double.NaN;
 
+        /// <summary>
+        /// 지금 그려져 있는 히트맵을 만들 때 쓴 밀기 값. 시간 맞추기를 바꾸면
+        /// 두 로그가 겹치는 자리가 통째로 달라지는데, 그걸 말없이 두면 옛
+        /// 기준으로 그려진 칸을 새 기준인 줄 알고 읽게 됩니다.
+        /// </summary>
+        private double _shownShift = double.NaN;
+
         /// <summary>안내 줄. 최신이면 빈 글자라 줄 자체가 사라집니다.</summary>
         public string StaleText
         {
             get
             {
                 if (double.IsNaN(_shownRelative)) return string.Empty;
+
+                if (_shownShift != _state.AppliedShift)
+                    return "시간 맞추기가 바뀌었습니다. 아래 히트맵은 아직 예전 기준으로 "
+                         + "그려져 있습니다 — [히트맵 다시 계산] 을 눌러 주세요.";
+
                 if (_shownRelative == _state.Settings.RelativeTolerancePercent
                     && _shownAbsolute == _state.Settings.AbsoluteTolerance) return string.Empty;
 
@@ -208,6 +227,7 @@ namespace LogScope.App.ViewModels
             {
                 _shownRelative = double.NaN;
                 _shownAbsolute = double.NaN;
+                _shownShift = double.NaN;
                 Raise("StaleText");
                 Summary = "아직 계산하지 않았습니다.";
                 return;
@@ -217,6 +237,7 @@ namespace LogScope.App.ViewModels
             // StaleText 가 그 사실을 알립니다.
             _shownRelative = _state.Settings.RelativeTolerancePercent;
             _shownAbsolute = _state.Settings.AbsoluteTolerance;
+            _shownShift = _state.AppliedShift;
             Raise("StaleText");
 
             if (r.Warning.Length > 0 && r.Rows.Count == 0)
@@ -234,6 +255,7 @@ namespace LogScope.App.ViewModels
                     + "        칸 폭 " + r.BucketLabel
                     + "   /   칸 수 " + r.BucketCount
                     + "        구간 " + from + " ~ " + to
+                    + (Align != null && Align.Note.Length > 0 ? "\n" + Align.Note : "")
                     + "        허용 오차 " + RelativeTolerancePercent + "% (이전 값 대비)"
                     + (_state.Settings.AbsoluteTolerance > 0
                         ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######") + " 중 큰 쪽"

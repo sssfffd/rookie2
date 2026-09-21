@@ -33,25 +33,45 @@ namespace LogScope.App.Services
         public string AlignNote = string.Empty;
 
         /// <summary>
+        /// 사건으로 맞춰서 나온 밀기 값. 맞추기를 안 쓰거나 못 맞췄으면 NaN.
+        ///
+        /// <b>설정에 적지 않고 여기에만 둡니다.</b> 예전에는 이 값을
+        /// Settings.ManualShift 에 적고 AutoAlign 을 꺼 버렸는데, 그러면
+        ///   - 맞추기를 해제해도 AutoAlign 이 꺼진 채라 시작 시각 자동
+        ///     맞춤이 돌아오지 않았고,
+        ///   - 설정 창에서 손으로 넣어 둔 밀기 값이 덮여 사라졌습니다.
+        /// 지금은 설정을 건드리지 않고 견줄 때 합칩니다 (BuildDiffOptions).
+        /// </summary>
+        public double TriggerShift = double.NaN;
+
+        /// <summary>지금 사건으로 맞춰져 있는지.</summary>
+        public bool UsesTriggerAlign
+        {
+            get { return Settings.AlignIo.Length > 0 && !double.IsNaN(TriggerShift); }
+        }
+
+        /// <summary>
         /// 설정에 적힌 IO 로 두 로그의 시간축을 맞춥니다.
         ///
-        /// 맞춰지면 <b>ManualShift 에 그 값을 적고 자동 맞추기를 끕니다.</b>
-        /// 시작 시각 맞추기와 사건 맞추기를 겹쳐 걸면 둘이 서로를 밀어
-        /// 엉뚱한 자리로 가기 때문입니다.
+        /// 기준 IO 를 안 골랐으면 맞추기를 풀고 <b>시작 시각 자동 맞춤으로
+        /// 돌아갑니다</b> — 설정에 적힌 AutoAlign 을 그대로 따릅니다.
         ///
-        /// 못 맞추면 밀기 값을 건드리지 않고 이유만 돌려줍니다 — 조용히
-        /// 어긋난 그래프를 보여 주는 것보다 낫습니다.
+        /// 못 맞추면 이유만 돌려주고 밀기 값은 건드리지 않습니다.
         /// </summary>
         public AlignResult ApplyTriggerAlign()
         {
+            if (Settings.AlignIo.Length == 0)
+            {
+                TriggerShift = double.NaN;
+                AlignNote = string.Empty;
+                return new AlignResult { Ok = true, Message = string.Empty };
+            }
+
             AlignResult r = TriggerAlign.Compute(Before, After, Settings.AlignIo,
                                                  (EdgeKind)Settings.AlignEdge,
-                                                 Settings.AlignOccurrence);
-            if (r.Ok)
-            {
-                Settings.ManualShift = r.Shift;
-                Settings.AutoAlign = false;
-            }
+                                                 Settings.AlignOccurrence,
+                                                 Settings.AlignLevel);
+            TriggerShift = r.Ok ? r.Shift : double.NaN;
             AlignNote = r.Message;
             return r;
         }
@@ -60,9 +80,24 @@ namespace LogScope.App.Services
         public void ClearTriggerAlign()
         {
             Settings.AlignIo = string.Empty;
-            Settings.ManualShift = 0;
-            Settings.AutoAlign = true;
+            TriggerShift = double.NaN;
             AlignNote = string.Empty;
+        }
+
+        /// <summary>
+        /// 지금 쓰는 기준 IO 에서 고를 수 있는 값들. 양쪽 로그 중 값 종류가
+        /// 많은 쪽을 보여 줍니다 — 한쪽에만 나오는 값으로도 맞출 수 있어야
+        /// 하기 때문입니다 (반대쪽은 처음부터 그 값일 수 있습니다).
+        /// </summary>
+        public LevelSet AlignLevels()
+        {
+            string name = Settings.AlignIo;
+            if (name.Length == 0) return new LevelSet();
+
+            LevelSet b = Before != null ? TriggerAlign.LevelsOf(Before, Before.FindChannel(name)) : new LevelSet();
+            LevelSet a = After != null ? TriggerAlign.LevelsOf(After, After.FindChannel(name)) : new LevelSet();
+            if (b.Thresholded || a.Thresholded) return b.Thresholded ? b : a;
+            return a.Values.Length > b.Values.Length ? a : b;
         }
 
         /// <summary>
@@ -101,6 +136,17 @@ namespace LogScope.App.Services
             if (After != null) After.ClearAxisChannel();
         }
 
+        /// <summary>가로축을 그 IO 로 놓았을 때 알아 둘 점. 없으면 빈 글자.</summary>
+        public string AxisNote
+        {
+            get
+            {
+                if (Before != null && Before.AxisNote.Length > 0) return Before.AxisNote;
+                if (After != null && After.AxisNote.Length > 0) return After.AxisNote;
+                return string.Empty;
+            }
+        }
+
         /// <summary>
         /// 가로축으로 쓸 수 있는 IO 이름들. 양쪽 로그에 다 있고 양쪽 모두
         /// 오름차순이어야 합니다.
@@ -127,8 +173,11 @@ namespace LogScope.App.Services
         }
 
         /// <summary>
-        /// 시간 맞추기 기준으로 쓸 수 있는 IO 이름들. 양쪽 로그에 다 있고
-        /// 양쪽 모두 한 번은 바뀌어야 합니다.
+        /// 시간 맞추기 기준으로 쓸 수 있는 IO 이름들.
+        ///
+        /// 양쪽 로그에 다 있고, <b>한쪽에서라도</b> 값이 바뀌면 후보입니다.
+        /// 반대쪽이 처음부터 그 값이면 거기서는 시작 지점이 그 순간이라,
+        /// 그래도 맞춰집니다 — 기록을 늦게 건 로그에서 흔한 모양입니다.
         /// </summary>
         public List<string> AlignCandidates()
         {
@@ -140,8 +189,7 @@ namespace LogScope.App.Services
                 string name = Before.Channels[i].Name;
                 int j = After.FindChannel(name);
                 if (j < 0) continue;
-                if (!TriggerAlign.CanTrigger(Before, i)) continue;
-                if (!TriggerAlign.CanTrigger(After, j)) continue;
+                if (!TriggerAlign.CanTrigger(Before, i) && !TriggerAlign.CanTrigger(After, j)) continue;
                 list.Add(name);
             }
             return list;
@@ -152,8 +200,13 @@ namespace LogScope.App.Services
             var o = new DiffOptions();
             o.AbsoluteTolerance = Settings.AbsoluteTolerance;
             o.RelativePercent = Settings.RelativeTolerancePercent;
-            o.Shift = Settings.ManualShift;
-            o.AutoAlign = Settings.AutoAlign;
+            // 밀기 값은 여기서 합칩니다. 사건으로 맞춰져 있으면 그 값이
+            // 바탕이 되고 시작 시각 자동 맞춤은 비켜섭니다 — 둘 다 걸면
+            // 서로를 밀어 엉뚱한 자리로 갑니다. 설정 창에서 손으로 넣은
+            // ManualShift 는 어느 쪽이든 그 위에 더해지는 미세 조정입니다.
+            bool trigger = UsesTriggerAlign;
+            o.Shift = Settings.ManualShift + (trigger ? TriggerShift : 0.0);
+            o.AutoAlign = !trigger && Settings.AutoAlign;
             o.SortBy = Settings.SortMetric;
             return o;
         }

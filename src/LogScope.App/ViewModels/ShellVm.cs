@@ -18,12 +18,19 @@ namespace LogScope.App.ViewModels
         public GraphVm Graph { get; private set; }
         public HeatmapVm Heatmap { get; private set; }
 
+        /// <summary>
+        /// 가로축과 시간 맞추기. 그래프 화면과 히트맵 화면이 <b>같은 것</b>을
+        /// 나눠 씁니다 — 한쪽에서 맞춰 놓으면 다른 쪽에도 그대로 보입니다.
+        /// </summary>
+        public AlignVm Align { get; private set; }
+
         public ShellVm(AppState state)
         {
             _state = state;
+            Align = new AlignVm(state);
             Dashboard = new DashboardVm(state);
-            Graph = new GraphVm(state);
-            Heatmap = new HeatmapVm(state);
+            Graph = new GraphVm(state, Align);
+            Heatmap = new HeatmapVm(state, Align);
 
             var names = new ObservableCollection<string>();
             for (int i = 0; i < AppSettings.SetCount; i++) names.Add(state.Settings.Sets[i].DisplayName(i));
@@ -161,6 +168,7 @@ namespace LogScope.App.ViewModels
         /// <summary>로그가 바뀐 뒤 화면 전체를 새로 고칩니다.</summary>
         public void ReloadAll()
         {
+            Align.Reload();
             Graph.Reload();
             Dashboard.Refresh();
             RefreshSetNames();

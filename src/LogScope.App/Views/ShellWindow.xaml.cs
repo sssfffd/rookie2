@@ -47,7 +47,9 @@ namespace LogScope.App.Views
 
             Dashboard.IoActivated += OnDashboardIoActivated;
             Heatmap.CellOpened += OnHeatmapCellOpened;
-            Graph.AlignmentChanged += OnAlignmentChanged;
+            // 가로축·시간 맞추기는 그래프와 히트맵이 같은 것 하나를 씁니다.
+            // 그래서 어느 화면을 거치지 않고 여기서 바로 받습니다.
+            _vm.Align.Changed += OnAlignmentChanged;
 
             Loaded += OnLoaded;
         }
@@ -235,16 +237,17 @@ namespace LogScope.App.Views
                     "가로축", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-            if (_state.Settings.AlignIo.Length > 0 && _state.HasBoth)
+            // 기준 IO 를 안 골랐어도 반드시 부릅니다. 그래야 예전에 맞춰
+            // 뒀던 밀기 값이 지워지고 시작 시각 자동 맞춤이 돌아옵니다.
+            AlignResult r = _state.ApplyTriggerAlign();
+            if (!r.Ok && _state.HasBoth)
             {
-                AlignResult r = _state.ApplyTriggerAlign();
-                if (!r.Ok)
-                {
-                    MessageBox.Show(this,
-                        "시간을 맞추지 못했습니다.\n\n" + r.Message,
-                        "시간 맞추기", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                MessageBox.Show(this,
+                    "시간을 맞추지 못했습니다.\n\n" + r.Message,
+                    "시간 맞추기", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+
+            _vm.Align.Reload();
         }
 
         /// <summary>도구 줄에서 가로축이나 맞추기 기준을 바꿨을 때.</summary>
@@ -254,7 +257,14 @@ namespace LogScope.App.Views
             Recompare();
             _vm.ReloadAll();
             Graph.OnDataChanged();
+
+            // 히트맵을 보고 있는 중이라면 바로 다시 계산합니다. 비워만 두면
+            // 맞추기를 바꾼 그 자리에서 화면이 텅 비고, 왜 비었는지도
+            // 알 수 없습니다. 다른 화면에 있으면 비워만 두고, 히트맵으로
+            // 넘어올 때 OnPageChanged 가 계산합니다.
             Heatmap.Invalidate();
+            if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
+
             SaveSettings();
         }
 

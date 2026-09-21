@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ctl="clr-namespace:LogScope.App.Controls"
+             xmlns:local="clr-namespace:LogScope.App.Views"
              Background="{DynamicResource Brush.Window}"
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
@@ -42,6 +43,21 @@
                              Content="% (값 범위 대비)" Checked="OnUnitChanged"
                              IsChecked="{Binding ShowPercent, Mode=TwoWay}"
                              ToolTip="이전 값 대비 몇 % 벌어졌는지. 설정한 허용 오차와 같은 잣대라 바로 견줄 수 있고,&#x0a;값 크기가 다른 IO 끼리도 견줄 수 있습니다." />
+
+                <!--
+                  가로축과 시간 맞추기. 그래프 화면과 <b>같은 판</b>을 띄웁니다.
+                  히트맵도 두 로그를 겹쳐 견주는 화면이라, 시간이 어긋나 있으면
+                  칸 하나하나가 전부 엉뚱한 구간을 가리킵니다.
+                -->
+                <Button x:Name="AlignAnchor" Content="{Binding Align.Summary}" Width="146"
+                        Margin="12,3,3,3" Click="OnAlignOpen"
+                        ToolTip="가로축을 다른 IO 로 놓거나, 특정 IO 가 어떤 값이 되는 순간으로 두 로그의 시간을 맞춥니다.&#x0a;그래프 화면과 같은 설정입니다." />
+                <Popup x:Name="AlignPopup" PlacementTarget="{Binding ElementName=AlignAnchor}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                       Closed="OnAlignPopupClosed">
+                    <local:AlignPanel DataContext="{Binding Align}"
+                                      CloseRequested="OnAlignPanelClose" />
+                </Popup>
 
                 <TextBlock Text="칸 크기" Style="{StaticResource FieldLabel}" Margin="12,0,8,0" />
                 <Button Content="칸 넓게" Click="OnWider" />

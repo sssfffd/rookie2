@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- LogScope.App — 화면 (WPF).
      파싱/데이터는 전부 LogScope.Core 에 있고 이 프로젝트는 그것을 참조만 합니다.
      AnyCPU + Prefer32Bit=false 로 64비트 윈도우에서는 64비트로 돌아갑니다.
@@ -82,6 +82,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\AlignPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\GraphView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -115,6 +119,7 @@
     <Compile Include="ViewModels\IoRowVm.cs" />
     <Compile Include="ViewModels\GroupRowVm.cs" />
     <Compile Include="ViewModels\ChannelListVm.cs" />
+    <Compile Include="ViewModels\AlignVm.cs" />
     <Compile Include="ViewModels\GraphVm.cs" />
     <Compile Include="ViewModels\DashboardVm.cs" />
     <Compile Include="ViewModels\HeatmapVm.cs" />
@@ -128,6 +133,10 @@
     </Compile>
     <Compile Include="Views\DashboardView.xaml.cs">
       <DependentUpon>DashboardView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\AlignPanel.xaml.cs">
+      <DependentUpon>AlignPanel.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Views\GraphView.xaml.cs">

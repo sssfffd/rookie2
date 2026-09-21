@@ -88,10 +88,16 @@ namespace LogScope.Core.Settings
         // 기준이 될 IO 를 정해 둬야 합니다. IO 이름으로 저장하므로 다시 연
         // 로그에도 그대로 붙습니다.
         public string AlignIo = string.Empty;
-        /// <summary>0 = 0→1, 1 = 1→0, 2 = 어느 쪽이든.</summary>
+        /// <summary>0 = 그 값이 될 때, 1 = 그 값에서 벗어날 때, 2 = 아무 변화.</summary>
         public int AlignEdge;
         /// <summary>몇 번째 변화로 맞출지. 1 이 첫 번째.</summary>
         public int AlignOccurrence = 1;
+        /// <summary>
+        /// 기준이 되는 값. 0/1 만이 아니라 그 IO 에 실제로 나온 값이면 무엇이든
+        /// 됩니다 (0~5 로 움직이는 단계 신호면 5 도). NaN 이면 그 IO 에 맞게
+        /// 알아서 고릅니다 — 1 이 있으면 1, 없으면 최댓값.
+        /// </summary>
+        public double AlignLevel = double.NaN;
 
         /// <summary>
         /// 가로축으로 쓸 IO 이름. 빈 글자면 로그의 시간 열을 씁니다.
@@ -178,6 +184,8 @@ namespace LogScope.Core.Settings
             root["alignIo"] = AlignIo;
             root["alignEdge"] = (double)AlignEdge;
             root["alignOccurrence"] = (double)AlignOccurrence;
+            // NaN 은 JSON 에 담을 수 없어서 "알아서 고름" 은 아예 안 적습니다.
+            if (!double.IsNaN(AlignLevel)) root["alignLevel"] = AlignLevel;
             root["axisIo"] = AxisIo;
             root["manualShift"] = ManualShift;
             root["shadeDifference"] = ShadeDifference;
@@ -260,6 +268,9 @@ namespace LogScope.Core.Settings
             if (s.AlignEdge < 0 || s.AlignEdge > 2) s.AlignEdge = 0;
             s.AlignOccurrence = Json.GetInt(root, "alignOccurrence", 1);
             if (s.AlignOccurrence < 1) s.AlignOccurrence = 1;
+            s.AlignLevel = root.ContainsKey("alignLevel")
+                ? Json.GetDouble(root, "alignLevel", double.NaN)
+                : double.NaN;
             s.AxisIo = Json.GetString(root, "axisIo", string.Empty);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);
             s.ShadeDifference = Json.GetBool(root, "shadeDifference", true);

@@ -50,12 +50,22 @@ namespace LogScope.Core.Model
         public bool UsesOwnTime { get { return AxisChannel.Length == 0; } }
 
         /// <summary>
+        /// 가로축을 이 IO 로 놓았을 때 알아 둘 점. 막지는 않았지만 그림이
+        /// 그렇게 보이는 이유를 설명해야 하는 경우입니다. 없으면 빈 글자.
+        /// </summary>
+        public string AxisNote = string.Empty;
+
+        /// <summary>원래 표본 수. 가로축을 갈아 끼워도 변하지 않습니다.</summary>
+        private int OwnSampleCount { get { return (_ownTimes ?? Times).Length; } }
+
+        /// <summary>
         /// 가로축을 이 IO 의 값으로 바꿉니다. 바꿀 수 없으면 거짓을 돌려주고
         /// problem 에 이유를 담습니다. 원래 시간축은 그대로 보관합니다.
         /// </summary>
         public bool SetAxisChannel(string name, out string problem)
         {
             problem = string.Empty;
+            AxisNote = string.Empty;
 
             int ch = FindChannel(name);
             if (ch < 0) { problem = "\"" + name + "\" 를 찾지 못했습니다."; return false; }
@@ -67,13 +77,23 @@ namespace LogScope.Core.Model
                 return false;
             }
 
+            // 길이는 반드시 <b>원래</b> 표본 수로 셉니다. 지금 걸려 있는
+            // 가로축의 길이로 재면, 축을 갈아 끼울 때마다 배열이 조금씩
+            // 짧아져 로그 뒷부분이 말없이 사라집니다.
             float[] v = c.Values;
-            int n = Math.Min(v.Length, SampleCount);
+            int n = OwnSampleCount;
             if (n < 2) { problem = "표본이 너무 적습니다."; return false; }
+            if (v.Length < n)
+            {
+                problem = "\"" + name + "\" 의 값이 " + v.Length + " 개뿐이라 표본 "
+                        + n + " 개를 덮지 못합니다.";
+                return false;
+            }
 
             var axis = new double[n];
             double prev = double.NegativeInfinity;
-            int filled = 0;
+            bool haveAny = false;
+            int flat = 0;
 
             for (int i = 0; i < n; i++)
             {
@@ -82,8 +102,9 @@ namespace LogScope.Core.Model
                 {
                     // 값이 빈 자리는 직전 값을 끌고 갑니다. 그래야 오름차순이
                     // 깨지지 않고, 그 구간은 어차피 그릴 값이 없습니다.
-                    if (filled == 0) { problem = "\"" + name + "\" 의 앞부분이 비어 있습니다."; return false; }
+                    if (!haveAny) { problem = "\"" + name + "\" 의 앞부분이 비어 있습니다."; return false; }
                     axis[i] = prev;
+                    flat++;
                     continue;
                 }
                 if (x < prev)
@@ -93,14 +114,48 @@ namespace LogScope.Core.Model
                             + "). 가로축은 늘어나기만 해야 합니다.";
                     return false;
                 }
+                if (haveAny && x == prev) flat++;
                 axis[i] = x;
                 prev = x;
-                filled++;
+                haveAny = true;
             }
 
             if (axis[n - 1] <= axis[0])
             {
-                problem = "\"" + name + "\" 는 처음부터 끝까지 값이 그대로입니다.";
+                // 값이 안 늘어나는 이유가 둘입니다. 진짜로 안 변했거나,
+                // 값이 너무 커서 float 가 이웃 표본을 구분하지 못했거나.
+                // 아래 주석에 적은 대로 두 번째가 훨씬 흔하고, 그 경우엔
+                // "값이 그대로" 라고만 하면 무엇을 고쳐야 할지 알 수 없습니다.
+                double coarse = Math.Abs(axis[0]) * 1.2e-7;
+                problem = coarse >= 1
+                    ? "\"" + name + "\" 는 값이 너무 커서(" + NumberText.Plain(axis[0])
+                      + ") 표본이 전부 같은 값으로 뭉개집니다. 이 크기에서는 "
+                      + NumberText.Plain(coarse) + " 단위까지만 담기기 때문입니다. "
+                      + "경과 시간처럼 0 에서 시작하는 열을 쓰거나 로그의 시간을 쓰세요."
+                    : "\"" + name + "\" 는 처음부터 끝까지 값이 그대로입니다.";
+                return false;
+            }
+
+            // ---- 값이 너무 커서 표본을 구분하지 못하는 경우 --------------
+            //
+            // 채널 값은 float 로 담습니다 (표본이 수백만 개라 double 이면
+            // 메모리가 두 배입니다). float 의 유효자리는 약 7 자리라,
+            // 1970 년부터 센 밀리초(1.7e12) 같은 큰 수를 담으면 이웃한
+            // 눈금 사이 간격이 10 만을 넘습니다. 그런 열을 가로축으로 놓으면
+            // 수천 표본이 같은 자리에 겹쳐서, 그래프가 계단처럼 뭉개집니다.
+            //
+            // 조용히 그려 놓고 "이상하다" 고 하게 두는 것보다, 왜 안 되는지
+            // 말하고 막는 편이 낫습니다.
+            double span = axis[n - 1] - axis[0];
+            double step = span / (n - 1);
+            double grain = Math.Abs(axis[n - 1]) * 1.2e-7;   // 그 크기에서의 float 눈금
+            if (step > 0 && grain > step)
+            {
+                problem = "\"" + name + "\" 는 값이 너무 커서(" + NumberText.Plain(axis[n - 1])
+                        + ") 표본을 구분하지 못합니다. 이 크기에서는 "
+                        + NumberText.Plain(grain) + " 단위까지만 담기는데, 표본 간격은 "
+                        + NumberText.Plain(step) + " 입니다. "
+                        + "경과 시간처럼 0 에서 시작하는 열을 쓰거나 로그의 시간을 쓰세요.";
                 return false;
             }
 
@@ -109,12 +164,21 @@ namespace LogScope.Core.Model
             TimeKind = TimeKind.Number;
             TimeUnit = c.Unit;
             AxisChannel = c.Name;
+
+            // 막을 일은 아니지만 알려는 줘야 하는 경우. 스캔 번호나 1 초
+            // 단위 카운터를 축으로 놓으면 여러 표본이 같은 자리에 겹칩니다.
+            if (flat > n / 2)
+            {
+                AxisNote = "\"" + c.Name + "\" 는 표본 " + n + " 개 중 " + flat
+                         + " 개가 직전과 같은 값입니다. 그 구간은 가로로 겹쳐 그려집니다.";
+            }
             return true;
         }
 
         /// <summary>가로축을 로그의 시간 열로 되돌립니다.</summary>
         public void ClearAxisChannel()
         {
+            AxisNote = string.Empty;
             if (_ownTimes == null) return;
             Times = _ownTimes;
             TimeKind = _ownKind;
@@ -124,17 +188,22 @@ namespace LogScope.Core.Model
 
         /// <summary>
         /// 가로축으로 쓸 수 있는 IO 인지. 목록을 추리는 데 씁니다.
-        /// 값이 뒤로 가지 않고 실제로 늘어나야 합니다.
+        /// 값이 뒤로 가지 않고 실제로 늘어나야 하고, 값이 너무 커서 표본이
+        /// 뭉개지지 않아야 합니다 — SetAxisChannel 과 같은 잣대입니다.
         /// </summary>
         public bool CanBeAxis(int channel)
         {
             if (channel < 0 || channel >= ChannelCount) return false;
             Channel c = Channels[channel];
+            // 목록에는 아날로그만 올립니다. 디지털 0/1 이 "0 만 나오다 1 만
+            // 나오는" 모양이면 오름차순이긴 하지만, 그걸 가로축으로 놓아도
+            // 자리가 두 개뿐이라 볼 것이 없습니다. (SetAxisChannel 은 막지
+            // 않습니다 — 저장된 설정이 그런 IO 를 가리킬 수 있습니다.)
             if (c.Kind != ChannelKind.Analog) return false;
 
             float[] v = c.Values;
-            int n = Math.Min(v.Length, SampleCount);
-            if (n < 2) return false;
+            int n = OwnSampleCount;
+            if (n < 2 || v.Length < n) return false;
 
             double prev = double.NegativeInfinity, first = double.NaN;
             for (int i = 0; i < n; i++)
@@ -145,7 +214,10 @@ namespace LogScope.Core.Model
                 if (double.IsNaN(first)) first = x;
                 prev = x;
             }
-            return !double.IsNaN(first) && prev > first;
+            if (double.IsNaN(first) || !(prev > first)) return false;
+
+            double step = (prev - first) / (n - 1);
+            return !(step > 0 && Math.Abs(prev) * 1.2e-7 > step);
         }
 
         public string SourcePath = string.Empty;
@@ -326,10 +398,11 @@ namespace LogScope.Core.Model
                     return "#" + ((long)Math.Round(t)).ToString();
                 default:
                     {
+                        // 지수 표기를 쓰지 않습니다. 가로축을 다른 IO 로 놓으면
+                        // 이 갈래를 타는데, 눈금이 "1.7E+12" 로 적히면 어디를
+                        // 보고 있는지 알 수가 없습니다.
                         string u = string.IsNullOrEmpty(TimeUnit) ? "" : " " + TimeUnit;
-                        double a = Math.Abs(t);
-                        if (a != 0 && (a < 0.001 || a >= 1e7)) return t.ToString("G6") + u;
-                        return t.ToString("0.###") + u;
+                        return NumberText.Plain(t) + u;
                     }
             }
         }

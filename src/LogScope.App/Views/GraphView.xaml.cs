@@ -45,7 +45,6 @@ namespace LogScope.App.Views
             if (_vm != null)
             {
                 _vm.OptionsChanged -= OnOptionsChanged;
-                _vm.AlignmentChanged -= OnAlignmentChanged;
                 _vm.List.SelectionChanged -= OnSelectionChanged;
             }
 
@@ -53,7 +52,6 @@ namespace LogScope.App.Views
             if (_vm == null) return;
 
             _vm.OptionsChanged += OnOptionsChanged;
-            _vm.AlignmentChanged += OnAlignmentChanged;
             _vm.List.SelectionChanged += OnSelectionChanged;
 
             PushOptions();
@@ -350,22 +348,34 @@ namespace LogScope.App.Views
         private void OnZoomValueOut(object sender, RoutedEventArgs e) { Plot.ZoomValue(1 / 1.35); }
         private void OnResetValueZoom(object sender, RoutedEventArgs e) { Plot.ResetValueZoom(); }
 
-        /// <summary>
-        /// 시간 맞추기나 가로축이 바뀌면 로그를 다시 견주고 화면을 새로
-        /// 그려야 합니다. 그 일은 셸 창이 맡고 있어서 그대로 올려 보냅니다.
-        /// </summary>
-        public event EventHandler AlignmentChanged;
+        // 판이 바뀐 결과(다시 견주기, 다시 그리기)는 여기서 다루지 않습니다 —
+        // AlignVm.Changed 를 셸 창이 직접 받습니다. 그래프와 히트맵이 같은 판
+        // 하나를 쓰기 때문에, 한쪽 화면이 중간에서 전달해 주는 모양이면
+        // 다른 화면에서 바꿨을 때 새 나갑니다.
+        // ---- 가로축 · 시간 맞추기 판 --------------------------------
+        //
+        // 팝업은 바깥을 누르면 닫힙니다(StaysOpen="False"). 그런데 그 "바깥"
+        // 에는 팝업을 연 단추도 들어갑니다. 팝업이 먼저 그 누름을 받아 닫고,
+        // 그 다음에 단추의 Click 이 도착해 다시 엽니다 — 눌러도 안 닫히는
+        // 것처럼 보이는 유명한 자리입니다.
+        //
+        // 그래서 방금 닫혔으면 그 한 번은 무시합니다.
+        private DateTime _alignClosedAt;
 
-        private void OnAlignmentChanged(object sender, EventArgs e)
+        private void OnAlignPopupClosed(object sender, EventArgs e)
         {
-            EventHandler h = AlignmentChanged;
-            if (h != null) h(this, EventArgs.Empty);
+            _alignClosedAt = DateTime.UtcNow;
         }
 
-        private void OnClearAlign(object sender, RoutedEventArgs e)
+        private void OnAlignOpen(object sender, RoutedEventArgs e)
         {
-            if (_vm == null) return;
-            _vm.AlignIo = GraphVm.NoneItem;     // 설정을 지우고 Realign 까지 같이 일어납니다.
+            if ((DateTime.UtcNow - _alignClosedAt).TotalMilliseconds < 250) return;
+            AlignPopup.IsOpen = true;
+        }
+
+        private void OnAlignPanelClose(object sender, EventArgs e)
+        {
+            AlignPopup.IsOpen = false;
         }
 
         /// <summary>

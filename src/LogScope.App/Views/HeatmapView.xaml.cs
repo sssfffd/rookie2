@@ -68,6 +68,33 @@ namespace LogScope.App.Views
             if (_vm != null) Map.ShowPercent = _vm.ShowPercent;
         }
 
+        // 판이 바뀐 결과는 셸 창이 AlignVm.Changed 로 받아 다시 계산합니다.
+        // ---- 가로축 · 시간 맞추기 판 --------------------------------
+        //
+        // 팝업은 바깥을 누르면 닫힙니다(StaysOpen="False"). 그런데 그 "바깥"
+        // 에는 팝업을 연 단추도 들어갑니다. 팝업이 먼저 그 누름을 받아 닫고,
+        // 그 다음에 단추의 Click 이 도착해 다시 엽니다 — 눌러도 안 닫히는
+        // 것처럼 보이는 유명한 자리입니다.
+        //
+        // 그래서 방금 닫혔으면 그 한 번은 무시합니다.
+        private DateTime _alignClosedAt;
+
+        private void OnAlignPopupClosed(object sender, EventArgs e)
+        {
+            _alignClosedAt = DateTime.UtcNow;
+        }
+
+        private void OnAlignOpen(object sender, RoutedEventArgs e)
+        {
+            if ((DateTime.UtcNow - _alignClosedAt).TotalMilliseconds < 250) return;
+            AlignPopup.IsOpen = true;
+        }
+
+        private void OnAlignPanelClose(object sender, EventArgs e)
+        {
+            AlignPopup.IsOpen = false;
+        }
+
         private void OnHoverTextChanged(object sender, string text)
         {
             if (_vm != null) _vm.HoverText = text;

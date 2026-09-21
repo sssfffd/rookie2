@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ctl="clr-namespace:LogScope.App.Controls"
              xmlns:vm="clr-namespace:LogScope.App.ViewModels"
+             xmlns:local="clr-namespace:LogScope.App.Views"
              Background="{DynamicResource Brush.Window}"
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
@@ -205,22 +206,41 @@
         <!-- ================= 오른쪽: 도구 줄 + 그래프 ================= -->
         <DockPanel Grid.Column="2">
 
-            <!-- 좁아지면 저절로 줄바꿈됩니다. 버튼이 밖으로 튀어나오지 않습니다. -->
+            <!--
+              도구 줄.
+
+              <b>세 줄을 넘지 않습니다.</b> WrapPanel 은 좁아지면 저절로 줄을
+              바꾸는데, 단추가 많으면 다섯 줄 여섯 줄로 자라서 정작 그래프가
+              들어갈 자리가 없어집니다. 그래서 두 가지를 했습니다.
+
+                1. 글자를 줄였습니다. 무슨 뜻인지는 풍선 도움말에 적습니다.
+                2. 한 번 정해 놓고 쓰는 것들(가로축 · 시간 맞추기)은 접어서
+                   팝업으로 넘겼습니다.
+
+              그래도 창이 아주 좁으면 네 줄이 될 수 있어서, 높이 상한을 걸고
+              넘치면 세로로 굴리게 했습니다. 줄 하나가 42 (단추 28 + 위아래
+              여백 6 + 묶음 테두리 2) 라 세 줄이면 126 입니다. 여기에 글꼴
+              차이만큼 몇 px 만 얹습니다 — 넉넉히 주면 네 번째 줄이 반쯤
+              보여서 상한을 건 뜻이 없어집니다. 바깥 Border 의 안쪽 여백은
+              이 상한 밖이라 더하지 않습니다.
+            -->
             <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                     Padding="8,4">
+                <ScrollViewer MaxHeight="132" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
                 <WrapPanel>
 
                     <!-- 무엇을 어떻게 늘어놓을지 -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="보기 방식" />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="보기" />
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                         Content="레인 (채널마다 한 줄)"
-                                         IsChecked="{Binding LaneMode, Mode=TwoWay}" />
+                                         Content="레인" IsChecked="{Binding LaneMode, Mode=TwoWay}"
+                                         ToolTip="채널마다 한 줄씩 따로 그립니다." />
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
-                                         Content="겹쳐보기 (눈금 공유)"
-                                         IsChecked="{Binding OverlayMode, Mode=TwoWay}" />
+                                         Content="겹쳐" IsChecked="{Binding OverlayMode, Mode=TwoWay}"
+                                         ToolTip="한 판에 겹쳐 그리고 눈금을 같이 씁니다." />
                         </StackPanel>
                     </Border>
 
@@ -232,8 +252,8 @@
                                          Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
                                          ToolTip="로그에 적힌 값을 그대로 씁니다." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="0–1 정규화" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}"
-                                         ToolTip="채널마다 자기 최소~최대를 0~1 로 폅니다.&#x0a;겹쳐보기에서 값 크기가 다른 채널끼리 모양을 견줄 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
+                                         Content="0–1" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}"
+                                         ToolTip="0–1 정규화.&#x0a;채널마다 자기 최소~최대를 0~1 로 폅니다.&#x0a;겹쳐보기에서 값 크기가 다른 채널끼리 모양을 견줄 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
                                          Content="변화량" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
                                          ToolTip="채널마다 첫 값을 뺍니다. 6466.3 대신 +0.3 으로 읽힙니다.&#x0a;겹쳐보기에서 값 위치가 다른 채널을 한자리에 모을 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
@@ -250,7 +270,7 @@
                             <TextBlock Text="{Binding ScaleHint}" Style="{StaticResource Muted}"
                                        ToolTip="{Binding ScaleHintDetail}"
                                        FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"
-                                       Width="152" TextWrapping="NoWrap"
+                                       Width="118" TextWrapping="NoWrap"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
@@ -259,36 +279,9 @@
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource ToolGroupCaption}" Text="시간축" />
-                            <Button Content="전체 구간 보기" Click="OnResetTime" />
-                            <Button Content="시간 확대" Click="OnZoomTimeIn" />
-                            <Button Content="시간 축소" Click="OnZoomTimeOut" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- 가로축을 무엇으로 삼을지 -->
-                    <Border Style="{StaticResource ToolGroup}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="가로축" />
-                            <ComboBox MinWidth="150" ItemsSource="{Binding AxisChoices}"
-                                      SelectedItem="{Binding AxisIo, Mode=TwoWay}"
-                                      ToolTip="로그의 시간 열 대신 다른 IO 를 가로축으로 놓습니다.&#x0a;경과 시간이나 스캔 번호처럼 값이 늘어나기만 하는 IO 만 고를 수 있습니다." />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- 두 로그의 시간축을 사건으로 맞추기 -->
-                    <Border Style="{StaticResource ToolGroup}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="시간 맞추기" />
-                            <ComboBox MinWidth="150" ItemsSource="{Binding AlignChoices}"
-                                      SelectedItem="{Binding AlignIo, Mode=TwoWay}"
-                                      ToolTip="고른 IO 를 0/1 로 보고, 그 값이 바뀌는 순간이 겹치도록&#x0a;이후 로그를 밉니다. 시작 시각이 달라도 사건끼리 맞춰집니다.&#x0a;양쪽 로그에 다 있고 한 번은 바뀌는 IO 만 목록에 나옵니다." />
-                            <ComboBox MinWidth="130" ItemsSource="{Binding EdgeChoices}"
-                                      SelectedIndex="{Binding AlignEdgeIndex, Mode=TwoWay}" />
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="몇 번째" Margin="6,0,4,0" />
-                            <TextBox Width="42"
-                                     Text="{Binding AlignOccurrenceText, UpdateSourceTrigger=LostFocus}"
-                                     ToolTip="같은 IO 가 여러 번 바뀔 때 몇 번째 변화로 맞출지. 1 이 첫 번째입니다." />
-                            <Button Content="맞추기 해제" Click="OnClearAlign" />
+                            <Button Content="전체" Click="OnResetTime" ToolTip="전체 구간 보기 (Home)" />
+                            <Button Content="확대" Click="OnZoomTimeIn" ToolTip="시간축 확대. 휠로도 됩니다." />
+                            <Button Content="축소" Click="OnZoomTimeOut" ToolTip="시간축 축소. 휠로도 됩니다." />
                         </StackPanel>
                     </Border>
 
@@ -296,11 +289,11 @@
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource ToolGroupCaption}" Text="값 축" />
-                            <Button Content="값 확대" Click="OnZoomValueIn" />
-                            <Button Content="값 축소" Click="OnZoomValueOut" />
-                            <Button Content="보이는 구간에 맞추기" Click="OnFitValueOnce"
+                            <Button Content="확대" Click="OnZoomValueIn" ToolTip="값 축 확대. Shift+휠로도 됩니다." />
+                            <Button Content="축소" Click="OnZoomValueOut" ToolTip="값 축 축소. Shift+휠로도 됩니다." />
+                            <Button Content="구간 맞춤" Click="OnFitValueOnce"
                                     ToolTip="지금 보이는 시간 구간에 세로 눈금을 한 번 맞춥니다. 그 뒤로는 그대로 둡니다." />
-                            <Button Content="값 배율 되돌리기" Click="OnResetValueZoom" />
+                            <Button Content="되돌리기" Click="OnResetValueZoom" ToolTip="값 배율을 처음으로 되돌립니다." />
                             <ToggleButton Style="{StaticResource ToolToggle}" Content="계속 맞춤"
                                           IsChecked="{Binding FitVisible, Mode=TwoWay}"
                                           ToolTip="켜 두면 시간축을 밀 때마다 세로 눈금을 다시 맞춥니다. 위아래 움직임이 심하면 끄고 쓰세요." />
@@ -310,36 +303,54 @@
                     <!-- 이전 로그와 이후 로그를 견주는 것들 -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="두 로그 비교" />
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 구간 음영"
-                                          IsChecked="{Binding ShadeDifference, Mode=TwoWay}" />
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이전·이후 벌려 그리기"
-                                          IsChecked="{Binding SeparateTraces, Mode=TwoWay}" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- 어디부터를 차이로 볼지 -->
-                    <Border Style="{StaticResource ToolGroup}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="허용 오차" />
-                            <TextBox Width="62"
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="비교" />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 음영"
+                                          IsChecked="{Binding ShadeDifference, Mode=TwoWay}"
+                                          ToolTip="허용 오차를 넘은 구간을 칠합니다." />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="벌려 그리기"
+                                          IsChecked="{Binding SeparateTraces, Mode=TwoWay}"
+                                          ToolTip="이전과 이후를 위아래로 조금 벌려 그립니다." />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="허용 오차" Margin="10,0,6,0" />
+                            <TextBox Width="52"
                                      Text="{Binding RelativeTolerancePercentText, UpdateSourceTrigger=LostFocus}"
-                                     ToolTip="채널 값 범위에 대한 비율(%)입니다. 기본 0.1%.&#x0a;대시보드·히트맵과 같은 값을 씁니다." />
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="%" Margin="6,0,8,0" />
-                            <!-- 여기도 자리를 고정합니다. 위의 ScaleHint 와 같은 이유입니다. -->
-                            <TextBlock Text="{Binding ToleranceHint}" Style="{StaticResource Muted}"
-                                       ToolTip="{Binding ToleranceHintDetail}"
-                                       FontSize="11" VerticalAlignment="Center"
-                                       Width="150" TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis" />
+                                     ToolTip="{Binding ToleranceHintDetail}" />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="%" Margin="5,0,2,0"
+                                       ToolTip="{Binding ToleranceHintDetail}" />
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Style="{StaticResource Muted}" FontSize="11"
-                               VerticalAlignment="Center" Margin="4,0,0,0"
-                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
+                    <!--
+                      가로축과 시간 맞추기. 콤보 세 개와 입력 칸을 도구 줄에
+                      펴면 그것만으로 한 줄을 다 먹습니다. 한 번 정해 놓고
+                      계속 쓰는 값들이라 팝업으로 접어 둡니다.
+                    -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel x:Name="AlignAnchor" Orientation="Horizontal">
+                            <!--
+                              토글이 아니라 그냥 단추입니다. 토글로 두면
+                              팝업이 열린 채 그 단추를 눌렀을 때 팝업이 먼저
+                              닫히면서 단추는 다시 켜져, 눌러도 안 닫히는
+                              것처럼 보입니다. 열기만 맡기고 닫기는 바깥
+                              누름과 [닫기] 에 맡깁니다.
+
+                              글자 폭을 고정합니다. 상태에 따라 글이 바뀌는데
+                              폭까지 바뀌면 그때마다 도구 줄이 다시 접혀
+                              줄 수가 달라집니다.
+                            -->
+                            <Button Content="{Binding Align.Summary}" Width="146"
+                                    Click="OnAlignOpen"
+                                    ToolTip="가로축을 다른 IO 로 놓거나, 특정 IO 가 어떤 값이 되는 순간으로 두 로그의 시간을 맞춥니다." />
+                            <Popup x:Name="AlignPopup" PlacementTarget="{Binding ElementName=AlignAnchor}"
+                                   Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                                   Closed="OnAlignPopupClosed">
+                                <local:AlignPanel DataContext="{Binding Align}"
+                                                  CloseRequested="OnAlignPanelClose" />
+                            </Popup>
+                        </StackPanel>
+                    </Border>
 
                 </WrapPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- 아래 띠: 커서 값과 보이는 구간 -->
@@ -350,9 +361,13 @@
                     <TextBlock Text="{Binding ReadoutText}" TextWrapping="Wrap"
                                Foreground="{DynamicResource Brush.Text}" />
                     <!-- 시간 맞추기 결과. 안 쓰면 줄 자체가 사라집니다. -->
-                    <TextBlock Text="{Binding AlignNote}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Align.Note}" TextWrapping="Wrap"
                                Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding AlignNote, Converter={StaticResource TextToVisibility}}" />
+                               Visibility="{Binding Align.Note, Converter={StaticResource TextToVisibility}}" />
+                    <!-- 마우스 쓰는 법. 도구 줄에 있던 것을 여기로 내렸습니다 —
+                         거기 두면 도구 줄 한 줄을 통째로 먹었습니다. -->
+                    <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
+                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
                 </StackPanel>
             </Border>
 

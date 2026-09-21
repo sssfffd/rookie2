@@ -20,6 +20,7 @@ OURS = {
     'DashboardView': 'LogScope.App.Views.DashboardView',
     'GraphView': 'LogScope.App.Views.GraphView',
     'HeatmapView': 'LogScope.App.Views.HeatmapView',
+    'AlignPanel': 'LogScope.App.Views.AlignPanel',
 }
 WPF = {
     'ListView': 'System.Windows.Controls.ListView',
@@ -38,6 +39,9 @@ WPF = {
     'ProgressBar': 'System.Windows.Controls.ProgressBar',
     'TabControl': 'System.Windows.Controls.TabControl',
     'Image': 'System.Windows.Controls.Image',
+    'Popup': 'System.Windows.Controls.Primitives.Popup',
+    'WrapPanel': 'System.Windows.Controls.WrapPanel',
+    'DockPanel': 'System.Windows.Controls.DockPanel',
 }
 
 

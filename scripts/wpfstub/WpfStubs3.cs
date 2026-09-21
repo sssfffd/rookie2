@@ -125,6 +125,15 @@ namespace System.Windows.Controls.Primitives
     {
         public double Minimum, Maximum, Value;
     }
+    public class Popup : System.Windows.FrameworkElement
+    {
+        public bool IsOpen;
+        public bool StaysOpen;
+        public bool AllowsTransparency;
+        public System.Windows.FrameworkElement PlacementTarget;
+        public object Child;
+        public event EventHandler Opened, Closed;
+    }
 }
 
 namespace System.Windows.Data
