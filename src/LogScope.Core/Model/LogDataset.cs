@@ -27,6 +27,127 @@ namespace LogScope.Core.Model
         public int FirstRow = 1;
         public int FirstCol = 1;
 
+        // ---- 가로축 바꿔 끼우기 --------------------------------------
+        //
+        // 보통은 로그의 시간 열을 가로축으로 씁니다. 그런데 시간과 나란히
+        // 가는 다른 IO(경과 시간 레지스터, 스캔 번호, 별도 타임스탬프 열 …)를
+        // 가로축으로 놓고 보고 싶을 때가 있습니다.
+        //
+        // 그럴 때 Times 배열을 그 채널의 값으로 <b>갈아 끼웁니다.</b> 아래
+        // 모든 함수(이진 탐색, 값 읽기, 눈금 글자)와 그리는 쪽, 견주는 쪽이
+        // 전부 Times 만 보므로 그 밖에는 손댈 곳이 없습니다.
+        //
+        // 대신 조건이 하나 있습니다 — <b>값이 뒤로 가면 안 됩니다.</b>
+        // 이진 탐색과 접기가 오름차순을 전제하기 때문입니다. 뒤로 가는
+        // 채널은 SetAxisChannel 이 거부하고 이유를 돌려줍니다.
+        private double[] _ownTimes;
+        private TimeKind _ownKind;
+        private string _ownUnit;
+
+        /// <summary>지금 가로축으로 쓰는 IO 이름. 빈 글자면 로그의 시간 열입니다.</summary>
+        public string AxisChannel = string.Empty;
+
+        public bool UsesOwnTime { get { return AxisChannel.Length == 0; } }
+
+        /// <summary>
+        /// 가로축을 이 IO 의 값으로 바꿉니다. 바꿀 수 없으면 거짓을 돌려주고
+        /// problem 에 이유를 담습니다. 원래 시간축은 그대로 보관합니다.
+        /// </summary>
+        public bool SetAxisChannel(string name, out string problem)
+        {
+            problem = string.Empty;
+
+            int ch = FindChannel(name);
+            if (ch < 0) { problem = "\"" + name + "\" 를 찾지 못했습니다."; return false; }
+
+            Channel c = Channels[ch];
+            if (c.Kind == ChannelKind.State)
+            {
+                problem = "\"" + name + "\" 는 상태(문자열) 채널이라 가로축으로 쓸 수 없습니다.";
+                return false;
+            }
+
+            float[] v = c.Values;
+            int n = Math.Min(v.Length, SampleCount);
+            if (n < 2) { problem = "표본이 너무 적습니다."; return false; }
+
+            var axis = new double[n];
+            double prev = double.NegativeInfinity;
+            int filled = 0;
+
+            for (int i = 0; i < n; i++)
+            {
+                double x = v[i];
+                if (double.IsNaN(x))
+                {
+                    // 값이 빈 자리는 직전 값을 끌고 갑니다. 그래야 오름차순이
+                    // 깨지지 않고, 그 구간은 어차피 그릴 값이 없습니다.
+                    if (filled == 0) { problem = "\"" + name + "\" 의 앞부분이 비어 있습니다."; return false; }
+                    axis[i] = prev;
+                    continue;
+                }
+                if (x < prev)
+                {
+                    problem = "\"" + name + "\" 는 값이 뒤로 갑니다 ("
+                            + NumberText.Plain(prev) + " → " + NumberText.Plain(x)
+                            + "). 가로축은 늘어나기만 해야 합니다.";
+                    return false;
+                }
+                axis[i] = x;
+                prev = x;
+                filled++;
+            }
+
+            if (axis[n - 1] <= axis[0])
+            {
+                problem = "\"" + name + "\" 는 처음부터 끝까지 값이 그대로입니다.";
+                return false;
+            }
+
+            if (_ownTimes == null) { _ownTimes = Times; _ownKind = TimeKind; _ownUnit = TimeUnit; }
+            Times = axis;
+            TimeKind = TimeKind.Number;
+            TimeUnit = c.Unit;
+            AxisChannel = c.Name;
+            return true;
+        }
+
+        /// <summary>가로축을 로그의 시간 열로 되돌립니다.</summary>
+        public void ClearAxisChannel()
+        {
+            if (_ownTimes == null) return;
+            Times = _ownTimes;
+            TimeKind = _ownKind;
+            TimeUnit = _ownUnit ?? string.Empty;
+            AxisChannel = string.Empty;
+        }
+
+        /// <summary>
+        /// 가로축으로 쓸 수 있는 IO 인지. 목록을 추리는 데 씁니다.
+        /// 값이 뒤로 가지 않고 실제로 늘어나야 합니다.
+        /// </summary>
+        public bool CanBeAxis(int channel)
+        {
+            if (channel < 0 || channel >= ChannelCount) return false;
+            Channel c = Channels[channel];
+            if (c.Kind != ChannelKind.Analog) return false;
+
+            float[] v = c.Values;
+            int n = Math.Min(v.Length, SampleCount);
+            if (n < 2) return false;
+
+            double prev = double.NegativeInfinity, first = double.NaN;
+            for (int i = 0; i < n; i++)
+            {
+                double x = v[i];
+                if (double.IsNaN(x)) continue;
+                if (x < prev) return false;
+                if (double.IsNaN(first)) first = x;
+                prev = x;
+            }
+            return !double.IsNaN(first) && prev > first;
+        }
+
         public string SourcePath = string.Empty;
         public long SourceBytes;
         public double LoadSeconds;

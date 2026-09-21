@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- LogScope.Core — 파일 파싱과 데이터 모델. UI 참조가 하나도 없습니다.
      구형(non-SDK) csproj 를 일부러 씁니다. NuGet 복원이 필요 없어서
      네트워크가 막힌 PC 에서도 그대로 빌드됩니다. -->
@@ -62,6 +62,7 @@
     <Compile Include="Render\Decimator.cs" />
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\ToleranceRule.cs" />
+    <Compile Include="Align\TriggerAlign.cs" />
     <Compile Include="Compare\DiffEngine.cs" />
     <Compile Include="Compare\Heatmap.cs" />
     <Compile Include="Settings\Json.cs" />

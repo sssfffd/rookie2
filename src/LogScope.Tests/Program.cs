@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using LogScope.Core.Align;
 using LogScope.Core.Compare;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
@@ -50,6 +51,9 @@ namespace LogScope.Tests
                 UnitsFromUnitRowAndName();
                 NumberTextHasNoExponent();
                 HeatmapOrderIsSameForEveryBucketWidth();
+                TriggerAlignOnEdge();
+                TriggerAlignRefusesBadIo();
+                AxisChannelSwap();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -924,6 +928,138 @@ namespace LogScope.Tests
             return s != null && (s.IndexOf('e') >= 0 || s.IndexOf('E') >= 0);
         }
 
+        /// <summary>
+        /// 특정 IO 가 바뀌는 순간으로 두 로그의 시간축을 맞춥니다.
+        /// 시작 시각이 달라도 사건끼리 겹쳐야 합니다.
+        /// </summary>
+        private static void TriggerAlignOnEdge()
+        {
+            Console.WriteLine("시간 맞추기 — IO 가 바뀌는 순간 기준");
+
+            // 이전 로그: 0 초에 시작, 30 초에 START 가 0 → 1
+            // 이후 로그: 100 초에 시작, 145 초에 START 가 0 → 1
+            //   시작 시각 차이는 100, 사건 시각 차이는 115 입니다.
+            //   사건으로 맞추면 밀기 값이 30 - 145 = -115 여야 합니다.
+            var a = new StringBuilder("Time,START,ANALOG\n");
+            for (int i = 0; i < 100; i++)
+                a.Append(i).Append(',').Append(i >= 30 ? 1 : 0)
+                           .Append(',').Append(i >= 30 ? 80 : 20).Append('\n');
+
+            var b = new StringBuilder("Time,START,ANALOG\n");
+            for (int i = 0; i < 100; i++)
+                b.Append(100 + i).Append(',').Append(i >= 45 ? 1 : 0)
+                                 .Append(',').Append(i >= 45 ? 80 : 20).Append('\n');
+
+            LogDataset dsA = Open(WriteCsv("align_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("align_b.csv", b.ToString()), Orientation.Auto);
+
+            AlignResult r = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Rising, 1);
+            Check("맞춰짐", r.Ok, r.Message);
+            if (!r.Ok) return;
+
+            Near("이전 로그의 변화 시각", r.Before.Time, 30, 1e-9);
+            Near("이후 로그의 변화 시각", r.After.Time, 145, 1e-9);
+            Near("밀기 값", r.Shift, -115, 1e-9);
+
+            // "이후 시각 + 밀기 = 이전 시각" 이라는 약속이 지켜지는지.
+            Near("사건이 겹침", r.After.Time + r.Shift, r.Before.Time, 1e-9);
+
+            // 시작 시각으로 맞추면 100 이 나옵니다 — 사건은 15 만큼 어긋납니다.
+            Near("시작 시각 맞추기는 다른 값", dsA.TimeStart - dsB.TimeStart, -100, 1e-9);
+
+            // 아날로그 채널도 값 범위 한가운데를 문턱으로 잡아 똑같이 맞춥니다.
+            AlignResult r2 = TriggerAlign.Compute(dsA, dsB, "ANALOG", EdgeKind.Rising, 1);
+            Check("아날로그로도 맞춰짐", r2.Ok, r2.Message);
+            if (r2.Ok) Near("아날로그 밀기 값도 같음", r2.Shift, -115, 1e-9);
+            Near("문턱값은 값 범위의 한가운데", r2.Before.Level, 50, 1e-9);
+
+            // 내려가는 쪽만 찾으면 없습니다 (한 번 올라가고 끝이므로).
+            AlignResult r3 = TriggerAlign.Compute(dsA, dsB, "START", EdgeKind.Falling, 1);
+            Check("내려가는 변화는 없음", !r3.Ok, r3.Message);
+        }
+
+        /// <summary>
+        /// 기준이 될 수 없는 IO 는 조용히 넘어가지 않고 이유를 돌려줘야 합니다.
+        /// </summary>
+        private static void TriggerAlignRefusesBadIo()
+        {
+            Console.WriteLine("시간 맞추기 — 못 맞출 때 이유를 돌려주는지");
+
+            var a = new StringBuilder("Time,FLAT,ONLYHERE\n");
+            var b = new StringBuilder("Time,FLAT\n");
+            for (int i = 0; i < 50; i++)
+            {
+                a.Append(i).Append(",1,").Append(i % 2).Append('\n');
+                b.Append(i).Append(",1\n");
+            }
+            LogDataset dsA = Open(WriteCsv("align_bad_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("align_bad_b.csv", b.ToString()), Orientation.Auto);
+
+            AlignResult flat = TriggerAlign.Compute(dsA, dsB, "FLAT", EdgeKind.Any, 1);
+            Check("안 바뀌는 IO 로는 못 맞춤", !flat.Ok, null);
+            Check("이유를 알려 줌", flat.Message.Length > 0, null);
+
+            AlignResult missing = TriggerAlign.Compute(dsA, dsB, "ONLYHERE", EdgeKind.Any, 1);
+            Check("한쪽에만 있는 IO 로는 못 맞춤", !missing.Ok, null);
+            Check("어느 쪽에 없는지 알려 줌", missing.Message.Contains("이후 로그"), missing.Message);
+
+            AlignResult none = TriggerAlign.Compute(dsA, dsB, "", EdgeKind.Any, 1);
+            Check("IO 를 안 고르면 그렇게 알려 줌", !none.Ok, null);
+
+            // 후보 추리기: FLAT 은 안 바뀌므로 빠져야 합니다.
+            int flatCh = dsA.FindChannel("FLAT");
+            Check("안 바뀌는 IO 는 후보가 아님", !TriggerAlign.CanTrigger(dsA, flatCh), null);
+        }
+
+        /// <summary>
+        /// 로그의 시간 열 대신 다른 IO 를 가로축으로 끼웁니다.
+        /// 값이 뒤로 가는 IO 는 거부해야 합니다 — 이진 탐색과 접기가
+        /// 오름차순을 전제하기 때문입니다.
+        /// </summary>
+        private static void AxisChannelSwap()
+        {
+            Console.WriteLine("가로축 바꿔 끼우기");
+
+            // ELAPSED 는 0 에서 990 까지 10 씩 늘어납니다.
+            // WOBBLE 은 오르내립니다 — 가로축이 될 수 없습니다.
+            var sb = new StringBuilder("Time,ELAPSED,WOBBLE,V\n");
+            for (int i = 0; i < 100; i++)
+                sb.Append(i).Append(',').Append(i * 10)
+                  .Append(',').Append(i % 7)
+                  .Append(',').Append(i * 2).Append('\n');
+            LogDataset ds = Open(WriteCsv("axis.csv", sb.ToString()), Orientation.Auto);
+
+            Check("처음에는 로그의 시간 열", ds.UsesOwnTime, ds.AxisChannel);
+            Near("원래 시간축 끝", ds.TimeEnd, 99, 1e-9);
+
+            string problem;
+            Check("늘어나는 IO 는 가로축이 됨", ds.SetAxisChannel("ELAPSED", out problem), problem);
+            Check("가로축 이름이 바뀜", ds.AxisChannel == "ELAPSED", ds.AxisChannel);
+            Check("이제 로그의 시간 열이 아님", !ds.UsesOwnTime, null);
+            Near("가로축 시작", ds.TimeStart, 0, 1e-9);
+            Near("가로축 끝", ds.TimeEnd, 990, 1e-9);
+
+            // 값 읽기가 새 가로축을 따라가는지. ELAPSED 500 은 i = 50 이고,
+            // 그때 V 는 100 입니다.
+            int v = ds.FindChannel("V");
+            Near("새 가로축으로 값을 읽음", ds.SampleAt(v, 500), 100, 1e-6);
+
+            // 되돌리기
+            ds.ClearAxisChannel();
+            Check("되돌리면 로그의 시간 열", ds.UsesOwnTime, null);
+            Near("원래 시간축이 그대로 살아 있음", ds.TimeEnd, 99, 1e-9);
+            Near("값도 원래대로", ds.SampleAt(v, 50), 100, 1e-6);
+
+            // 오르내리는 IO 는 거부합니다.
+            Check("뒤로 가는 IO 는 거부", !ds.SetAxisChannel("WOBBLE", out problem), null);
+            Check("이유를 알려 줌", problem.Contains("뒤로"), problem);
+            Check("거부했으면 시간축은 그대로", ds.UsesOwnTime, ds.AxisChannel);
+
+            // 후보 추리기
+            Check("늘어나는 IO 는 후보", ds.CanBeAxis(ds.FindChannel("ELAPSED")), null);
+            Check("오르내리는 IO 는 후보 아님", !ds.CanBeAxis(ds.FindChannel("WOBBLE")), null);
+        }
+
         private static void JsonRoundTrip()
         {
             Console.WriteLine("JSON");
@@ -952,6 +1088,10 @@ namespace LogScope.Tests
             s.Sets[3].Title = "3호기 개조";
             s.Sets[3].BeforeFolder = @"D:\로그\이전";
             s.AbsoluteTolerance = 0.25;
+            s.AlignIo = "START 신호";
+            s.AlignEdge = 1;
+            s.AlignOccurrence = 3;
+            s.AxisIo = "경과 시간";
             s.RelativeTolerancePercent = 0.25;
             s.SortMetric = DiffMetric.SegmentCount;
 
@@ -967,6 +1107,10 @@ namespace LogScope.Tests
             Check("세트 이름", back.Sets[3].Title == "3호기 개조", back.Sets[3].Title);
             Check("세트별 기본 폴더", back.Sets[3].BeforeFolder == @"D:\로그\이전", back.Sets[3].BeforeFolder);
             Near("절대 허용 오차", back.AbsoluteTolerance, 0.25, 1e-9);
+            Check("맞추기 기준 IO", back.AlignIo == "START 신호", back.AlignIo);
+            Check("맞추기 변화 방향", back.AlignEdge == 1, "실제 " + back.AlignEdge);
+            Check("맞추기 몇 번째", back.AlignOccurrence == 3, "실제 " + back.AlignOccurrence);
+            Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());
             Check("그룹 이름", back.Groups.Count == 1 && back.Groups[0].Name == "밸브 묶음", null);

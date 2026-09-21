@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using LogScope.Core.Align;
 using LogScope.Core.Compare;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
@@ -24,6 +25,127 @@ namespace LogScope.App.Services
 
         public bool HasAny { get { return Before != null || After != null; } }
         public bool HasBoth { get { return Before != null && After != null; } }
+
+        /// <summary>
+        /// 시간 맞추기 결과를 알립니다. 화면에 그대로 보여 주는 글입니다.
+        /// 맞추기를 안 쓰면 빈 글자입니다.
+        /// </summary>
+        public string AlignNote = string.Empty;
+
+        /// <summary>
+        /// 설정에 적힌 IO 로 두 로그의 시간축을 맞춥니다.
+        ///
+        /// 맞춰지면 <b>ManualShift 에 그 값을 적고 자동 맞추기를 끕니다.</b>
+        /// 시작 시각 맞추기와 사건 맞추기를 겹쳐 걸면 둘이 서로를 밀어
+        /// 엉뚱한 자리로 가기 때문입니다.
+        ///
+        /// 못 맞추면 밀기 값을 건드리지 않고 이유만 돌려줍니다 — 조용히
+        /// 어긋난 그래프를 보여 주는 것보다 낫습니다.
+        /// </summary>
+        public AlignResult ApplyTriggerAlign()
+        {
+            AlignResult r = TriggerAlign.Compute(Before, After, Settings.AlignIo,
+                                                 (EdgeKind)Settings.AlignEdge,
+                                                 Settings.AlignOccurrence);
+            if (r.Ok)
+            {
+                Settings.ManualShift = r.Shift;
+                Settings.AutoAlign = false;
+            }
+            AlignNote = r.Message;
+            return r;
+        }
+
+        /// <summary>맞추기를 풀고 시작 시각 맞추기로 되돌립니다.</summary>
+        public void ClearTriggerAlign()
+        {
+            Settings.AlignIo = string.Empty;
+            Settings.ManualShift = 0;
+            Settings.AutoAlign = true;
+            AlignNote = string.Empty;
+        }
+
+        /// <summary>
+        /// 설정에 적힌 IO 를 가로축으로 끼웁니다. 두 로그 모두에 겁니다.
+        /// 한쪽이라도 못 쓰면 <b>양쪽 다 원래 시간축으로 되돌립니다</b> —
+        /// 한쪽만 다른 축으로 그리면 두 로그가 아예 다른 이야기가 됩니다.
+        /// </summary>
+        public string ApplyAxisChannel()
+        {
+            string name = Settings.AxisIo;
+            if (string.IsNullOrEmpty(name))
+            {
+                if (Before != null) Before.ClearAxisChannel();
+                if (After != null) After.ClearAxisChannel();
+                return string.Empty;
+            }
+
+            string problem;
+            if (Before != null && !Before.SetAxisChannel(name, out problem))
+            {
+                ResetAxis();
+                return "이전 로그: " + problem;
+            }
+            if (After != null && !After.SetAxisChannel(name, out problem))
+            {
+                ResetAxis();
+                return "이후 로그: " + problem;
+            }
+            return string.Empty;
+        }
+
+        private void ResetAxis()
+        {
+            Settings.AxisIo = string.Empty;
+            if (Before != null) Before.ClearAxisChannel();
+            if (After != null) After.ClearAxisChannel();
+        }
+
+        /// <summary>
+        /// 가로축으로 쓸 수 있는 IO 이름들. 양쪽 로그에 다 있고 양쪽 모두
+        /// 오름차순이어야 합니다.
+        /// </summary>
+        public List<string> AxisCandidates()
+        {
+            var list = new List<string>();
+            LogDataset baseDs = Before ?? After;
+            if (baseDs == null) return list;
+
+            for (int i = 0; i < baseDs.ChannelCount; i++)
+            {
+                if (!baseDs.CanBeAxis(i)) continue;
+                string name = baseDs.Channels[i].Name;
+                LogDataset other = ReferenceEquals(baseDs, Before) ? After : Before;
+                if (other != null)
+                {
+                    int j = other.FindChannel(name);
+                    if (j < 0 || !other.CanBeAxis(j)) continue;
+                }
+                list.Add(name);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// 시간 맞추기 기준으로 쓸 수 있는 IO 이름들. 양쪽 로그에 다 있고
+        /// 양쪽 모두 한 번은 바뀌어야 합니다.
+        /// </summary>
+        public List<string> AlignCandidates()
+        {
+            var list = new List<string>();
+            if (Before == null || After == null) return list;
+
+            for (int i = 0; i < Before.ChannelCount; i++)
+            {
+                string name = Before.Channels[i].Name;
+                int j = After.FindChannel(name);
+                if (j < 0) continue;
+                if (!TriggerAlign.CanTrigger(Before, i)) continue;
+                if (!TriggerAlign.CanTrigger(After, j)) continue;
+                list.Add(name);
+            }
+            return list;
+        }
 
         public DiffOptions BuildDiffOptions()
         {

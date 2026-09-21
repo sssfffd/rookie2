@@ -265,6 +265,33 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- 가로축을 무엇으로 삼을지 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="가로축" />
+                            <ComboBox MinWidth="150" ItemsSource="{Binding AxisChoices}"
+                                      SelectedItem="{Binding AxisIo, Mode=TwoWay}"
+                                      ToolTip="로그의 시간 열 대신 다른 IO 를 가로축으로 놓습니다.&#x0a;경과 시간이나 스캔 번호처럼 값이 늘어나기만 하는 IO 만 고를 수 있습니다." />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 두 로그의 시간축을 사건으로 맞추기 -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="시간 맞추기" />
+                            <ComboBox MinWidth="150" ItemsSource="{Binding AlignChoices}"
+                                      SelectedItem="{Binding AlignIo, Mode=TwoWay}"
+                                      ToolTip="고른 IO 를 0/1 로 보고, 그 값이 바뀌는 순간이 겹치도록&#x0a;이후 로그를 밉니다. 시작 시각이 달라도 사건끼리 맞춰집니다.&#x0a;양쪽 로그에 다 있고 한 번은 바뀌는 IO 만 목록에 나옵니다." />
+                            <ComboBox MinWidth="130" ItemsSource="{Binding EdgeChoices}"
+                                      SelectedIndex="{Binding AlignEdgeIndex, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="몇 번째" Margin="6,0,4,0" />
+                            <TextBox Width="42"
+                                     Text="{Binding AlignOccurrenceText, UpdateSourceTrigger=LostFocus}"
+                                     ToolTip="같은 IO 가 여러 번 바뀔 때 몇 번째 변화로 맞출지. 1 이 첫 번째입니다." />
+                            <Button Content="맞추기 해제" Click="OnClearAlign" />
+                        </StackPanel>
+                    </Border>
+
                     <!-- 세로(값) 축 -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
@@ -319,8 +346,14 @@
             <Border DockPanel.Dock="Bottom" Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
                     Padding="12,5">
-                <TextBlock Text="{Binding ReadoutText}" TextWrapping="Wrap"
-                           Foreground="{DynamicResource Brush.Text}" />
+                <StackPanel>
+                    <TextBlock Text="{Binding ReadoutText}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Brush.Text}" />
+                    <!-- 시간 맞추기 결과. 안 쓰면 줄 자체가 사라집니다. -->
+                    <TextBlock Text="{Binding AlignNote}" TextWrapping="Wrap"
+                               Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
+                               Visibility="{Binding AlignNote, Converter={StaticResource TextToVisibility}}" />
+                </StackPanel>
             </Border>
 
             <Grid>

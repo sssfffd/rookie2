@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using LogScope.App.Services;
+using LogScope.Core.Align;
 using LogScope.App.ViewModels;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
@@ -46,6 +47,7 @@ namespace LogScope.App.Views
 
             Dashboard.IoActivated += OnDashboardIoActivated;
             Heatmap.CellOpened += OnHeatmapCellOpened;
+            Graph.AlignmentChanged += OnAlignmentChanged;
 
             Loaded += OnLoaded;
         }
@@ -212,8 +214,53 @@ namespace LogScope.App.Views
             }
         }
 
+        /// <summary>
+        /// 저장된 가로축 IO 와 시간 맞추기 IO 를 다시 적용합니다.
+        ///
+        /// 차례가 중요합니다 — 가로축을 갈아 끼우면 시간 값 자체가 바뀌므로
+        /// <b>맞추기는 반드시 그 뒤</b>에 해야 합니다. 그리고 둘 다 끝난
+        /// 뒤에 견줘야 합니다.
+        ///
+        /// 설정에 적힌 IO 가 이번 로그에는 없거나 조건에 안 맞을 수 있습니다.
+        /// 그럴 때는 조용히 넘어가지 않고 왜 안 됐는지 알립니다 — 어긋난
+        /// 그래프를 맞는 줄 알고 보는 것보다 낫습니다.
+        /// </summary>
+        private void ReapplyAxisAndAlign()
+        {
+            string axisProblem = _state.ApplyAxisChannel();
+            if (axisProblem.Length > 0)
+            {
+                MessageBox.Show(this,
+                    "가로축을 그 IO 로 둘 수 없어 로그의 시간축으로 되돌렸습니다.\n\n" + axisProblem,
+                    "가로축", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            if (_state.Settings.AlignIo.Length > 0 && _state.HasBoth)
+            {
+                AlignResult r = _state.ApplyTriggerAlign();
+                if (!r.Ok)
+                {
+                    MessageBox.Show(this,
+                        "시간을 맞추지 못했습니다.\n\n" + r.Message,
+                        "시간 맞추기", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        }
+
+        /// <summary>도구 줄에서 가로축이나 맞추기 기준을 바꿨을 때.</summary>
+        private void OnAlignmentChanged(object sender, EventArgs e)
+        {
+            ReapplyAxisAndAlign();
+            Recompare();
+            _vm.ReloadAll();
+            Graph.OnDataChanged();
+            Heatmap.Invalidate();
+            SaveSettings();
+        }
+
         private void AfterLoad()
         {
+            ReapplyAxisAndAlign();
             Recompare();
             _vm.ReloadAll();
             Graph.OnDataChanged();

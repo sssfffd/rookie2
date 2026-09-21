@@ -45,6 +45,7 @@ namespace LogScope.App.Views
             if (_vm != null)
             {
                 _vm.OptionsChanged -= OnOptionsChanged;
+                _vm.AlignmentChanged -= OnAlignmentChanged;
                 _vm.List.SelectionChanged -= OnSelectionChanged;
             }
 
@@ -52,6 +53,7 @@ namespace LogScope.App.Views
             if (_vm == null) return;
 
             _vm.OptionsChanged += OnOptionsChanged;
+            _vm.AlignmentChanged += OnAlignmentChanged;
             _vm.List.SelectionChanged += OnSelectionChanged;
 
             PushOptions();
@@ -347,6 +349,24 @@ namespace LogScope.App.Views
         private void OnZoomValueIn(object sender, RoutedEventArgs e) { Plot.ZoomValue(1.35); }
         private void OnZoomValueOut(object sender, RoutedEventArgs e) { Plot.ZoomValue(1 / 1.35); }
         private void OnResetValueZoom(object sender, RoutedEventArgs e) { Plot.ResetValueZoom(); }
+
+        /// <summary>
+        /// 시간 맞추기나 가로축이 바뀌면 로그를 다시 견주고 화면을 새로
+        /// 그려야 합니다. 그 일은 셸 창이 맡고 있어서 그대로 올려 보냅니다.
+        /// </summary>
+        public event EventHandler AlignmentChanged;
+
+        private void OnAlignmentChanged(object sender, EventArgs e)
+        {
+            EventHandler h = AlignmentChanged;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
+        private void OnClearAlign(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+            _vm.AlignIo = GraphVm.NoneItem;     // 설정을 지우고 Realign 까지 같이 일어납니다.
+        }
 
         /// <summary>
         /// 지금 보이는 시간 구간에 세로 눈금을 한 번 맞춥니다.
