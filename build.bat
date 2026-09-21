@@ -45,6 +45,9 @@ rem
 rem  Logs:
 rem     build.log       everything, UTF-8, meant to be opened in an editor
 rem     build.err.log   error lines only, console encoding, printed below
+rem
+rem  See ":cp" at the bottom: after every child process we put the code
+rem  page back, because a child can change it for the whole window.
 rem ===================================================================
 
 setlocal enabledelayedexpansion
@@ -142,8 +145,10 @@ rem                   turning them into garbage on a CP949 console.
 if exist "%ERRLOG%" del "%ERRLOG%" >nul 2>nul
 
 "%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl1 "/flp1:logfile=%LOG%;verbosity=normal;encoding=UTF-8" /fl2 "/flp2:logfile=%ERRLOG%;errorsonly;verbosity=normal"
+set "RC=%ERRORLEVEL%"
+call :cp
 
-if errorlevel 1 (
+if not "%RC%"=="0" (
   echo.
   echo   ============================================================
   call :msg " 빌드 실패. 오류 줄만 추려 보면:" " Build failed. Just the error lines:"
@@ -160,7 +165,10 @@ echo.
 call :msg "테스트" "Tests"
 echo   ------------------------------------------------------------
 "%ROOT%src\LogScope.Tests\bin\%CONFIG%\LogScope.Tests.exe"
-if errorlevel 1 (
+set "RC=%ERRORLEVEL%"
+call :cp
+
+if not "%RC%"=="0" (
   echo.
   call :msg "[오류] 테스트가 실패했습니다. 위의 FAIL 줄을 보세요." "[error] A test failed. See the FAIL lines above."
   goto :fail
@@ -212,6 +220,23 @@ echo   %~2
 goto :eof
 :msg_ko
 echo   %~1
+goto :eof
+
+rem  Put the console code page back the way we found it.
+rem
+rem  A child process can change the code page, and the change OUTLIVES
+rem  that process -- the code page belongs to the console window, not to
+rem  the process that set it. .NET's "Console.OutputEncoding" setter does
+rem  exactly this. When it happens, every Korean line this script prints
+rem  afterwards is CP949 bytes going into a console that is no longer on
+rem  CP949, so the Hangul vanishes and the lines look truncated.
+rem
+rem  This is NOT the "chcp 65001" the header warns about. We only ever
+rem  restore the page the console already had when the script started,
+rem  so a console that was never Korean is left exactly as it was.
+:cp
+if not defined CP goto :eof
+chcp %CP% >nul 2>nul
 goto :eof
 
 rem  Wait for a key, but only when the window would vanish otherwise.

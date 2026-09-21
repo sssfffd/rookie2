@@ -349,3 +349,11 @@
 > 볼 수 있게 선택 가능하게 만들어줘
 
 → 답변: [19-trigger-align-and-axis.md](19-trigger-align-and-axis.md)
+
+---
+
+## 요청 23 — build.bat 이 중간부터 한글을 못 찍음
+
+> build.bat하면 중간부터 한글 짤려서 나오는데?
+
+→ 답변: [20-console-codepage.md](20-console-codepage.md)

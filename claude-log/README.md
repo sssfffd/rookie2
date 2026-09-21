@@ -26,3 +26,4 @@
 | `17-relative-to-before.md` | 오차를 "이전 값 대비 %" 로 통일 — 설정한 %와 화면의 %를 같게 |
 | `18-real-compile-check.md` | 매번 다른 오류가 나던 진짜 이유 — 이제 정말로 컴파일합니다 |
 | `19-trigger-align-and-axis.md` | 특정 IO 의 변화로 시간축 맞추기, 다른 IO 를 가로축으로 |
+| `20-console-codepage.md` | 빌드 중간부터 한글이 사라지던 이유 — 코드 페이지는 창의 것입니다 |

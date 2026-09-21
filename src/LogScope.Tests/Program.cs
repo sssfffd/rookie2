@@ -21,9 +21,40 @@ namespace LogScope.Tests
         private static int _pass, _fail;
         private static string _dir;
 
+        /// <summary>
+        /// 콘솔 글자 인코딩을 정합니다.
+        ///
+        /// <b>윈도우에서는 손대지 않습니다.</b> 코드 페이지는 프로세스가 아니라
+        /// <b>콘솔 창의 성질</b>이라, 여기서 65001 로 바꾸면 이 프로그램이 끝난
+        /// 뒤에도 그 창에 그대로 남습니다. 그러면 build.bat 이 그 뒤에 찍는
+        /// CP949 한글이 전부 깨집니다 — 테스트를 돌린 시점부터 갑자기 글자가
+        /// 사라지는 것처럼 보입니다.
+        ///
+        /// 한국어 윈도우 콘솔은 어차피 CP949 로 시작하고, .NET 이 한글을 그
+        /// 코드 페이지로 알아서 바꿔 내보냅니다. 그대로 두는 것이 맞습니다.
+        ///
+        /// 리눅스(Mono)에서는 반대입니다. 터미널이 UTF-8 인데 LANG 이 비어
+        /// 있으면 기본이 ASCII 로 잡혀 한글이 물음표가 됩니다. 거기서만 UTF-8
+        /// 로 맞춥니다. 리눅스에는 "콘솔 코드 페이지" 라는 것이 없어서 남의
+        /// 뒷정리를 망칠 일도 없습니다.
+        /// </summary>
+        private static void UseConsoleEncoding()
+        {
+            PlatformID id = Environment.OSVersion.Platform;
+            bool windows = id == PlatformID.Win32NT || id == PlatformID.Win32Windows
+                        || id == PlatformID.Win32S || id == PlatformID.WinCE;
+            if (windows) return;
+
+            // 출력이 파일로 돌려져 있으면 런타임에 따라 예외가 납니다.
+            // 인코딩 하나 때문에 테스트가 안 돌아가면 곤란합니다.
+            try { Console.OutputEncoding = new UTF8Encoding(false); }
+            catch (IOException) { }
+            catch (NotSupportedException) { }
+        }
+
         private static int Main()
         {
-            Console.OutputEncoding = Encoding.UTF8;
+            UseConsoleEncoding();
             _dir = Path.Combine(Path.GetTempPath(), "logscope-test-" + Guid.NewGuid().ToString("N").Substring(0, 8));
             Directory.CreateDirectory(_dir);
             try
