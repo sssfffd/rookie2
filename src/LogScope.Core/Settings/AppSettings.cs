@@ -109,7 +109,14 @@ namespace LogScope.Core.Settings
 
         // 그래프 기본값
         public bool LaneMode = true;                // true = 레인, false = 겹쳐보기
-        public string ValueScaleMode = "raw";       // raw | normalized | delta
+        /// <summary>
+        /// 세로 눈금. raw = 값 그대로, delta = 이웃 표본과의 차이(차분).
+        ///
+        /// 예전에는 normalized(0–1 정규화)도 있었습니다. 없앴으므로 옛 설정
+        /// 파일에서 그 값이 나오면 raw 로 되돌립니다 — 모르는 값을 그대로
+        /// 들고 있으면 어느 단추도 안 켜진 채로 뜹니다.
+        /// </summary>
+        public string ValueScaleMode = "raw";       // raw | delta
         public bool FitVisible;                     // 보이는 구간에 세로 배율 맞춤
 
         // 선택 기능 (파이썬 AI 모듈)
@@ -278,6 +285,7 @@ namespace LogScope.Core.Settings
 
             s.LaneMode = Json.GetBool(root, "laneMode", true);
             s.ValueScaleMode = Json.GetString(root, "valueScaleMode", "raw");
+            if (s.ValueScaleMode != "delta") s.ValueScaleMode = "raw";
             s.FitVisible = Json.GetBool(root, "fitVisible", false);
 
             s.AiEnabled = Json.GetBool(root, "aiEnabled", false);

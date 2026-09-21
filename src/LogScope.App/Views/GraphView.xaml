@@ -252,26 +252,8 @@
                                          Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
                                          ToolTip="로그에 적힌 값을 그대로 씁니다." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="0–1" IsChecked="{Binding ScaleNormalized, Mode=TwoWay}"
-                                         ToolTip="0–1 정규화.&#x0a;채널마다 자기 최소~최대를 0~1 로 폅니다.&#x0a;겹쳐보기에서 값 크기가 다른 채널끼리 모양을 견줄 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
-                            <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
                                          Content="변화량" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
-                                         ToolTip="채널마다 첫 값을 뺍니다. 6466.3 대신 +0.3 으로 읽힙니다.&#x0a;겹쳐보기에서 값 위치가 다른 채널을 한자리에 모을 때 씁니다.&#x0a;레인 보기에서는 눈금 숫자만 바뀝니다." />
-                            <!--
-                              자리를 고정해 둡니다.
-
-                              이 글이 나타났다 사라졌다 하면 그때마다 바깥
-                              WrapPanel 이 다시 접혀서, 단추를 누를 때마다
-                              도구 줄의 줄 수가 바뀝니다. 그래서 글이 없을
-                              때도 같은 폭을 차지하게 하고(Visibility 를
-                              쓰지 않습니다), 줄바꿈도 막아 높이가 변하지
-                              않게 합니다. 긴 설명은 풍선 도움말로 넘깁니다.
-                            -->
-                            <TextBlock Text="{Binding ScaleHint}" Style="{StaticResource Muted}"
-                                       ToolTip="{Binding ScaleHintDetail}"
-                                       FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"
-                                       Width="118" TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis" />
+                                         ToolTip="이웃한 두 표본의 차이(차분)를 그립니다.&#x0a;안 바뀌면 0, 1 오르면 +1, 1 내리면 -1.&#x0a;값이 얼마인지가 아니라 언제 얼마나 움직였는지를 봅니다." />
                         </StackPanel>
                     </Border>
 

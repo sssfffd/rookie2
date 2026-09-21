@@ -86,6 +86,8 @@ namespace LogScope.Tests
                 TriggerAlignRefusesBadIo();
                 TriggerAlignCountsStartAsEdge();
                 TriggerAlignOnAnyLevel();
+                DiffSeries();
+                DiffAcrossGaps();
                 AxisChannelSwap();
                 AxisRefusesCoarseValues();
                 AxisWarnsOnFlatRuns();
@@ -1171,6 +1173,78 @@ namespace LogScope.Tests
         /// 값이 뒤로 가는 IO 는 거부해야 합니다 — 이진 탐색과 접기가
         /// 오름차순을 전제하기 때문입니다.
         /// </summary>
+        /// <summary>
+        /// 변화량(차분) — 이웃한 두 표본의 차이. 안 바뀌면 0, 1 오르면 +1,
+        /// 1 내리면 -1.
+        /// </summary>
+        private static void DiffSeries()
+        {
+            Console.WriteLine("변화량 (차분)");
+
+            // STEP: 0,0,1,1,2,1,0,0  →  차이 0,0,1,0,1,-1,-1,0
+            var sb = new StringBuilder("Time,STEP\n");
+            int[] step = { 0, 0, 1, 1, 2, 1, 0, 0 };
+            for (int i = 0; i < step.Length; i++)
+                sb.Append(i).Append(',').Append(step[i]).Append('\n');
+            LogDataset ds = Open(WriteCsv("diff.csv", sb.ToString()), Orientation.Auto);
+
+            Channel c = ds.Channels[ds.FindChannel("STEP")];
+            float[] d = c.Diff;
+
+            Check("길이는 값 배열과 같음", d.Length == step.Length, d.Length.ToString());
+            Near("첫 표본은 0 (직전이 없음)", d[0], 0, 1e-9);
+            Near("안 바뀌면 0", d[1], 0, 1e-9);
+            Near("1 오르면 +1", d[2], 1, 1e-9);
+            Near("그대로면 0", d[3], 0, 1e-9);
+            Near("또 1 오르면 +1", d[4], 1, 1e-9);
+            Near("1 내리면 -1", d[5], -1, 1e-9);
+            Near("또 1 내리면 -1", d[6], -1, 1e-9);
+            Near("마지막도 안 바뀌면 0", d[7], 0, 1e-9);
+
+            Near("변화량 최소", c.DiffMin, -1, 1e-9);
+            Near("변화량 최대", c.DiffMax, 1, 1e-9);
+
+            // 같은 배열을 다시 받아도 다시 계산하지 않습니다 (갈무리).
+            Check("두 번째 호출은 같은 배열", ReferenceEquals(d, c.Diff), null);
+
+            // 접기도 차이를 봐야 합니다. 값을 먼저 접고 빼면 그 열 안에서
+            // 얼마나 움직였는지가 이미 사라집니다.
+            var cols = new Decimator.Column[4];
+            Decimator.Build(ds, ds.FindChannel("STEP"), 0, 8, cols, 4, true);
+            Check("접은 값도 차이", cols[1].Max >= 1 - 1e-6, "실제 " + cols[1].Max);
+
+            Decimator.Build(ds, ds.FindChannel("STEP"), 0, 8, cols, 4, false);
+            Check("false 면 값 그대로", cols[1].Max >= 1 - 1e-6 && cols[1].Min >= 0, null);
+
+            double lo, hi;
+            Check("범위도 차이로", Decimator.RangeIn(ds, ds.FindChannel("STEP"), 0, 8, out lo, out hi, true), null);
+            Near("차이 범위 최소", lo, -1, 1e-9);
+            Near("차이 범위 최대", hi, 1, 1e-9);
+        }
+
+        /// <summary>
+        /// 값이 빈 자리(NaN)에서는 변화량도 없고, 그 뒤 첫 표본은 0 입니다.
+        /// 빈 구간을 건너뛴 값 차이를 "변화" 로 그리면 없던 계단이 생깁니다.
+        /// </summary>
+        private static void DiffAcrossGaps()
+        {
+            Console.WriteLine("변화량 — 빈 구간 건너뛰기");
+
+            // 5 에서 끊겼다가 100 으로 돌아옵니다. 95 짜리 변화로 보면 안 됩니다.
+            string csv = "Time,V\n0,5\n1,5\n2,\n3,\n4,100\n5,101\n";
+            LogDataset ds = Open(WriteCsv("diff_gap.csv", csv), Orientation.Auto);
+
+            float[] d = ds.Channels[ds.FindChannel("V")].Diff;
+            Near("첫 표본 0", d[0], 0, 1e-9);
+            Near("안 바뀌면 0", d[1], 0, 1e-9);
+            Check("빈 자리는 변화량도 없음", float.IsNaN(d[2]) && float.IsNaN(d[3]), null);
+            Near("빈 구간 뒤 첫 표본은 0", d[4], 0, 1e-9);
+            Near("그 다음은 제대로 +1", d[5], 1, 1e-9);
+
+            Near("빈 구간을 건너뛴 95 는 안 생김",
+                 ds.Channels[ds.FindChannel("V")].DiffMax, 1, 1e-9);
+        }
+
         private static void AxisChannelSwap()
         {
             Console.WriteLine("가로축 바꿔 끼우기");
@@ -1329,6 +1403,16 @@ namespace LogScope.Tests
             s.AlignLevel = double.NaN;
             AppSettings auto = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
             Check("알아서 고름은 그대로 남음", double.IsNaN(auto.AlignLevel), "실제 " + auto.AlignLevel);
+
+            // 없앤 눈금(0–1 정규화)이 적힌 옛 설정 파일은 "값 그대로" 로
+            // 되돌아와야 합니다. 그대로 두면 어느 단추도 안 켜진 채 뜹니다.
+            s.ValueScaleMode = "normalized";
+            AppSettings old = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("없앤 눈금은 값 그대로로", old.ValueScaleMode == "raw", old.ValueScaleMode);
+
+            s.ValueScaleMode = "delta";
+            AppSettings keep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("변화량은 그대로 남음", keep.ValueScaleMode == "delta", keep.ValueScaleMode);
             Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());

@@ -375,3 +375,13 @@
 > 다시확인해봐
 
 → 답변: [21-toolbar-and-align-rework.md](21-toolbar-and-align-rework.md)
+
+---
+
+## 요청 25 — 0–1 정규화 제거, 변화량은 차분으로
+
+> 그리고 0-1 정규화는 필요없을 것 같아
+> 변화량의 경우에는 (차분)쓰고 두 io값의 차이를 나타내야 하는거야
+> 변화가 없으면 0, 1 증가하면 1 -1이면 -1
+
+→ 답변: [22-delta-is-difference.md](22-delta-is-difference.md)

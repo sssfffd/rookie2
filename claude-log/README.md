@@ -28,3 +28,4 @@
 | `19-trigger-align-and-axis.md` | 특정 IO 의 변화로 시간축 맞추기, 다른 IO 를 가로축으로 |
 | `20-console-codepage.md` | 빌드 중간부터 한글이 사라지던 이유 — 코드 페이지는 창의 것입니다 |
 | `21-toolbar-and-align-rework.md` | 도구 줄 3 줄 상한, 값 단위 시간 맞추기, 가로축 재점검 |
+| `22-delta-is-difference.md` | 0–1 정규화 제거, 변화량을 진짜 차분으로 |

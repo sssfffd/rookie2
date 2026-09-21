@@ -51,7 +51,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || S.LaneMode == value) return;   // 라디오는 켤 때만 반응
                 S.LaneMode = true;
-                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint"); Raise("ScaleHintDetail");
+                Raise("LaneMode"); Raise("OverlayMode");
                 Changed();
             }
         }
@@ -63,7 +63,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || !S.LaneMode) return;
                 S.LaneMode = false;
-                Raise("LaneMode"); Raise("OverlayMode"); Raise("ScaleHint"); Raise("ScaleHintDetail");
+                Raise("LaneMode"); Raise("OverlayMode");
                 Changed();
             }
         }
@@ -74,77 +74,38 @@ namespace LogScope.App.ViewModels
         {
             if (S.ValueScaleMode == mode) return;
             S.ValueScaleMode = mode;
-            Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
-            Raise("ScaleHint"); Raise("ScaleHintDetail");
+            Raise("ScaleRaw"); Raise("ScaleDelta");
             Changed();
         }
 
         /// <summary>
-        /// 세로 눈금 모드가 지금 그림을 실제로 바꾸는지 알려 주는 짧은 글.
+        /// 로그에 적힌 값 그대로 그립니다.
         ///
-        /// <b>레인 보기에서는 세 모드가 똑같은 그림을 그립니다.</b> 우연이
-        /// 아니라 계산상 반드시 그렇습니다. 레인은 그 채널의 값 범위에 딱
-        /// 맞춰 그려지는데,
-        ///
-        ///   정규화  값에서 (v − 최소) / (최대 − 최소) 를 하고
-        ///           눈금도 0~1 로 바꿈  → 같은 자리에 같은 모양
-        ///   변화량  값에서 첫 값을 빼고
-        ///           눈금도 그만큼 내림  → 같은 자리에 같은 모양
-        ///
-        /// 즉 값과 눈금에 똑같은 변환을 걸어서 화면 좌표가 하나도 안 바뀝니다.
-        /// 바뀌는 것은 <b>눈금에 적히는 숫자</b>뿐입니다. 그것도 쓸모가 있어서
-        /// (6466.3 대신 +0.3 을 읽는 편이 낫습니다) 남겨 두지만, "그래프가
-        /// 안 변한다" 는 것을 화면에서 말해 주지 않으면 고장으로 보입니다.
-        ///
-        /// 겹쳐보기에서는 여러 채널이 눈금 하나를 같이 써서, 채널마다 다른
-        /// 변환이 걸리므로 그림이 실제로 달라집니다.
-        ///
-        /// <b>글을 짧게 두는 이유</b>가 있습니다. 이 글은 도구 줄 안에 있고,
-        /// 도구 줄은 좁아지면 저절로 줄을 바꾸는 WrapPanel 입니다. 긴 문장이
-        /// 나타났다 사라졌다 하면 그때마다 도구 줄 전체가 다시 접혀서, 단추를
-        /// 누를 때마다 줄 수가 바뀝니다. 그래서 짧게 적고, 긴 설명은
-        /// ScaleHintDetail 로 넘겨 풍선 도움말에만 띄웁니다.
-        /// 자리도 XAML 에서 고정 너비로 잡아 두어, 글이 없을 때도 폭이
-        /// 그대로라 도구 줄이 움직이지 않습니다.
+        /// 예전에는 여기에 "0–1 정규화" 가 하나 더 있었습니다. 없앴습니다 —
+        /// 레인 보기에서는 값과 눈금에 똑같은 변환이 걸려 그림이 하나도
+        /// 안 바뀌었고, 겹쳐보기에서도 "이 채널의 최소~최대 안에서 몇 %" 라는
+        /// 숫자는 로그를 읽을 때 쓸 데가 없었습니다.
         /// </summary>
-        public string ScaleHint
-        {
-            get
-            {
-                if (ScaleRaw) return string.Empty;
-                return S.LaneMode ? "레인에선 눈금 숫자만 바뀜" : "채널마다 따로 변환됨";
-            }
-        }
-
-        /// <summary>풍선 도움말에 띄울 긴 설명. ScaleHint 의 자세한 판입니다.</summary>
-        public string ScaleHintDetail
-        {
-            get
-            {
-                if (ScaleRaw) return null;
-                return S.LaneMode
-                    ? "레인 보기에서는 세 모드가 같은 그림을 그립니다.\n"
-                      + "값과 눈금에 똑같은 변환을 걸기 때문에 화면 좌표가 바뀌지 않고,\n"
-                      + "눈금에 적히는 숫자만 바뀝니다 (6466.3 대신 +0.3).\n"
-                      + "그림이 달라지는 것은 겹쳐보기입니다."
-                    : "겹쳐보기라 채널마다 따로 변환됩니다.\n"
-                      + "여러 채널이 눈금 하나를 같이 쓰므로,\n"
-                      + "값 크기나 값 위치가 다른 채널끼리 모양을 견줄 수 있습니다.";
-            }
-        }
-
         public bool ScaleRaw
         {
-            get { return S.ValueScaleMode != "normalized" && S.ValueScaleMode != "delta"; }
+            get { return S.ValueScaleMode != "delta"; }
             set { if (value) SetScale("raw"); }
         }
 
-        public bool ScaleNormalized
-        {
-            get { return S.ValueScaleMode == "normalized"; }
-            set { if (value) SetScale("normalized"); }
-        }
-
+        /// <summary>
+        /// 변화량 (차분) — <b>이웃한 두 표본의 차이</b>를 그립니다.
+        ///
+        ///   안 바뀜   →   0
+        ///   1 오름    →  +1
+        ///   1 내림    →  -1
+        ///
+        /// 값이 얼마인지가 아니라 <b>언제 얼마나 움직였는지</b>를 봅니다.
+        /// 6466.3 에서 6466.6 으로 가는 변화는 값 눈금으로는 직선이나 다름없지만
+        /// 여기서는 +0.3 짜리 막대로 또렷하게 섭니다.
+        ///
+        /// 첫 표본과, 값이 빈 구간 뒤의 첫 표본은 0 입니다 — 직전 값을 모르는
+        /// 자리라 없는 변화를 지어내지 않습니다.
+        /// </summary>
         public bool ScaleDelta
         {
             get { return S.ValueScaleMode == "delta"; }
@@ -195,8 +156,8 @@ namespace LogScope.App.ViewModels
         /// <summary>
         /// 도구 줄에 적는 짧은 안내.
         ///
-        /// ScaleHint 와 같은 이유로 짧게 둡니다 — 길이가 들쭉날쭉하면 도구 줄이
-        /// 다시 접혀서, 숫자를 고칠 때마다 단추들이 아래로 내려갑니다.
+        /// 짧게 둡니다 — 길이가 들쭉날쭉하면 도구 줄이 다시 접혀서, 숫자를
+        /// 고칠 때마다 단추들이 아래로 내려갑니다.
         /// 절대 오차까지 걸려 있는지는 여기서 한 글자로만 알리고, 자세한 것은
         /// ToleranceHintDetail 이 풍선 도움말로 보여 줍니다.
         /// </summary>
@@ -275,8 +236,7 @@ namespace LogScope.App.ViewModels
         {
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
             Raise("LaneMode"); Raise("OverlayMode");
-            Raise("ScaleRaw"); Raise("ScaleNormalized"); Raise("ScaleDelta");
-            Raise("ScaleHint"); Raise("ScaleHintDetail"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
+            Raise("ScaleRaw"); Raise("ScaleDelta"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
             Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");
         }
     }

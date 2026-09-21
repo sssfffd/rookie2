@@ -69,8 +69,7 @@ namespace LogScope.App.Views
         {
             if (_vm == null) return;
             Plot.LaneMode = _vm.LaneMode;
-            Plot.Scale = _vm.ScaleNormalized ? ValueScaleMode.Normalized
-                       : (_vm.ScaleDelta ? ValueScaleMode.Delta : ValueScaleMode.Raw);
+            Plot.Scale = _vm.ScaleDelta ? ValueScaleMode.Delta : ValueScaleMode.Raw;
             Plot.FitVisible = _vm.FitVisible;
             Plot.ShadeDifference = _vm.ShadeDifference;
             Plot.SeparateTraces = _vm.SeparateTraces;

@@ -13,7 +13,24 @@ using LogScope.Core.Render;
 
 namespace LogScope.App.Controls
 {
-    public enum ValueScaleMode { Raw, Normalized, Delta }
+    /// <summary>
+    /// 세로 눈금을 무엇으로 읽을지.
+    ///
+    /// <b>0–1 정규화는 없앴습니다.</b> 레인 보기에서는 값과 눈금에 똑같은
+    /// 변환이 걸려 그림이 하나도 안 바뀌었고, 겹쳐보기에서도 "이 채널의
+    /// 최소~최대 안에서 몇 %" 라는 숫자는 로그를 읽을 때 쓸 데가 없었습니다.
+    /// </summary>
+    public enum ValueScaleMode
+    {
+        /// <summary>로그에 적힌 값 그대로.</summary>
+        Raw,
+        /// <summary>
+        /// 이웃한 두 표본의 <b>차이</b>. 안 바뀌었으면 0, 1 올랐으면 +1,
+        /// 1 내렸으면 -1. 값이 얼마인지가 아니라 언제 얼마나 움직였는지를
+        /// 봅니다.
+        /// </summary>
+        Delta,
+    }
 
     /// <summary>
     /// 그래프를 직접 그리는 판.
@@ -66,6 +83,12 @@ namespace LogScope.App.Controls
         private Decimator.Column[] _colsAfter = new Decimator.Column[0];
         private float[] _bandBefore = new float[0];
         private float[] _bandAfter = new float[0];
+
+        // 변화량 눈금일 때 선이 그려지는 자리. 판정(_bandBefore/_bandAfter)과
+        // 따로 둡니다 — 어디가 다른지는 <b>값</b>으로 가리고, 칠하는 자리는
+        // 지금 화면에 그려진 선을 따라가야 하기 때문입니다.
+        private float[] _bandBeforeY = new float[0];
+        private float[] _bandAfterY = new float[0];
         private readonly List<Point> _pts = new List<Point>(4096);
 
         // 차이 음영을 이어진 덩어리째 폴리곤으로 묶을 때 쓰는 자리.
@@ -484,6 +507,8 @@ namespace LogScope.App.Controls
                 _colsAfter = new Decimator.Column[columns];
                 _bandBefore = new float[columns];
                 _bandAfter = new float[columns];
+                _bandBeforeY = new float[columns];
+                _bandAfterY = new float[columns];
             }
         }
 
@@ -625,15 +650,41 @@ namespace LogScope.App.Controls
             if (vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
-                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA));
+                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA))
+                   + DeltaNote(_state.Before, vm.BeforeIndex, _cursorA);
             }
             if (vm.InAfter && _state.After != null)
             {
                 if (s.Length > 0) s += "    ";
                 Channel c = _state.After.Channels[vm.AfterIndex];
-                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, _cursorA - _state.AppliedShift));
+                double t = _cursorA - _state.AppliedShift;
+                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t))
+                   + DeltaNote(_state.After, vm.AfterIndex, t);
             }
             return s;
+        }
+
+        /// <summary>
+        /// 변화량 눈금일 때 값 옆에 붙이는 "(Δ +0.3)".
+        ///
+        /// 값만 적으면 커서가 가리키는 숫자와 화면에 그려진 선이 서로 다른
+        /// 것을 말하게 됩니다. 그렇다고 변화량만 적으면 지금 값이 얼마인지
+        /// 알 수 없어서, 둘 다 적습니다.
+        ///
+        /// 변화량은 이어 읽지 않고 <b>가장 가까운 표본</b>의 것을 씁니다.
+        /// 표본과 표본 사이에는 일어난 변화가 없습니다.
+        /// </summary>
+        private string DeltaNote(LogDataset ds, int ch, double t)
+        {
+            if (!Diffing || ds == null) return string.Empty;
+            int i = ds.IndexAt(t);
+            if (i < 0) return string.Empty;
+
+            float[] d = ds.Channels[ch].Diff;
+            if (i >= d.Length || float.IsNaN(d[i])) return string.Empty;
+
+            double v = d[i];
+            return "  (Δ " + (v > 0 ? "+" : "") + NumberText.Plain(v) + ")";
         }
 
         /// <summary>
@@ -643,22 +694,24 @@ namespace LogScope.App.Controls
         /// </summary>
         private void BaseRange(IoRowVm[] ios, out double lo, out double hi)
         {
-            if (_scale == ValueScaleMode.Normalized) { lo = -0.05; hi = 1.05; return; }
-
             double a = double.PositiveInfinity, b = double.NegativeInfinity;
             for (int k = 0; k < ios.Length; k++)
             {
                 double clo, chi;
                 if (!ChannelRange(ios[k], out clo, out chi)) continue;
-                if (_scale == ValueScaleMode.Delta)
-                {
-                    double bas = Baseline(ios[k]);
-                    clo -= bas; chi -= bas;
-                }
                 if (clo < a) a = clo;
                 if (chi > b) b = chi;
             }
             if (a > b) { a = 0; b = 1; }
+
+            // 변화량은 안 바뀌는 동안 계속 0 이라, 0 이 눈금에 들어 있지 않으면
+            // 어디가 "변화 없음" 인지 알 수 없습니다.
+            if (_scale == ValueScaleMode.Delta)
+            {
+                if (a > 0) a = 0;
+                if (b < 0) b = 0;
+            }
+
             if (b - a < 1e-12) { double m = (a + b) * 0.5; a = m - 0.5; b = m + 0.5; }
 
             double pad = (b - a) * 0.08;
@@ -670,16 +723,17 @@ namespace LogScope.App.Controls
             lo = double.PositiveInfinity; hi = double.NegativeInfinity;
             if (_state == null) return false;
             bool any = false;
+            bool d = Diffing;
             double x0, x1;
 
             if (_fitVisible)
             {
                 if (vm.InBefore && _state.Before != null
-                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1))
+                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1, d))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (vm.InAfter && _state.After != null
                     && Decimator.RangeIn(_state.After, vm.AfterIndex,
-                        _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1))
+                        _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1, d))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (any) return true;
             }
@@ -687,55 +741,33 @@ namespace LogScope.App.Controls
             if (vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
-                if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
+                double clo = d ? c.DiffMin : c.Min, chi = d ? c.DiffMax : c.Max;
+                if (!double.IsNaN(clo)) { lo = Math.Min(lo, clo); hi = Math.Max(hi, chi); any = true; }
             }
             if (vm.InAfter && _state.After != null)
             {
                 Channel c = _state.After.Channels[vm.AfterIndex];
-                if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
+                double clo = d ? c.DiffMin : c.Min, chi = d ? c.DiffMax : c.Max;
+                if (!double.IsNaN(clo)) { lo = Math.Min(lo, clo); hi = Math.Max(hi, chi); any = true; }
             }
             return any;
         }
 
-        /// <summary>"변화량" 모드에서 빼 줄 기준값. 채널의 첫 유효 값입니다.</summary>
-        private double Baseline(IoRowVm vm)
-        {
-            if (_state == null) return 0;
-            if (vm.InBefore && _state.Before != null)
-            {
-                float[] v = _state.Before.Channels[vm.BeforeIndex].Values;
-                for (int i = 0; i < v.Length; i++) if (!float.IsNaN(v[i])) return v[i];
-            }
-            if (vm.InAfter && _state.After != null)
-            {
-                float[] v = _state.After.Channels[vm.AfterIndex].Values;
-                for (int i = 0; i < v.Length; i++) if (!float.IsNaN(v[i])) return v[i];
-            }
-            return 0;
-        }
-
-        private double Transform(double v, double chLo, double chHi, double baseline)
-        {
-            if (double.IsNaN(v)) return double.NaN;
-            switch (_scale)
-            {
-                case ValueScaleMode.Normalized:
-                    return (chHi - chLo) > 1e-12 ? (v - chLo) / (chHi - chLo) : 0.5;
-                case ValueScaleMode.Delta:
-                    return v - baseline;
-                default:
-                    return v;
-            }
-        }
+        /// <summary>
+        /// 지금 변화량 눈금인지. 이 값 하나로 접기 · 범위 · 그리기가 모두
+        /// 값 배열 대신 <b>차이 배열</b>을 봅니다.
+        ///
+        /// 예전에는 값 하나를 받아 바꿔 주는 함수(Transform)로 처리했는데,
+        /// 차이는 <b>직전 표본을 알아야</b> 나오므로 그렇게는 할 수 없습니다.
+        /// 접은 뒤(열마다 최소/최대만 남은 뒤)에 빼면 그 열 안에서 얼마나
+        /// 움직였는지가 이미 사라진 다음입니다.
+        /// </summary>
+        private bool Diffing { get { return _scale == ValueScaleMode.Delta; } }
 
         private void DrawChannel(DrawingContext dc, Palette p, Rect inner, IoRowVm vm,
                                  double vlo, double vhi, Pen beforePen, Pen afterPen, int columns)
         {
             if (_state == null || inner.Width <= 1) return;
-
-            double chLo, chHi;
-            if (!ChannelRange(vm, out chLo, out chHi)) { chLo = 0; chHi = 1; }
-            double baseline = _scale == ValueScaleMode.Delta ? Baseline(vm) : 0;
 
             bool haveB = vm.InBefore && _state.Before != null;
             bool haveA = vm.InAfter && _state.After != null;
@@ -752,13 +784,23 @@ namespace LogScope.App.Controls
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.
                 Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
                 Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
-                ShadeGap(dc, p, inner, columns, vlo, vhi, chLo, chHi, baseline, sep);
+
+                // "다르다" 는 판정은 <b>언제나 값으로</b> 합니다. 그래야 허용
+                // 오차의 뜻이 대시보드 · 히트맵과 같고, 눈금을 바꿨다고 칠해지는
+                // 자리가 달라지지 않습니다. 변화량 눈금일 때는 칠할 자리만
+                // 따로 뽑습니다 — 화면에 그려진 선은 그쪽이니까요.
+                if (Diffing)
+                {
+                    Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBeforeY, columns, true);
+                    Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfterY, columns, true);
+                }
+                ShadeGap(dc, p, inner, columns, vlo, vhi, sep);
             }
 
             if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1,
-                                _colsBefore, columns, vlo, vhi, chLo, chHi, baseline, beforePen, -sep);
+                                _colsBefore, columns, vlo, vhi, beforePen, -sep);
             if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1,
-                                _colsAfter, columns, vlo, vhi, chLo, chHi, baseline, afterPen, +sep);
+                                _colsAfter, columns, vlo, vhi, afterPen, +sep);
         }
 
         /// <summary>
@@ -775,19 +817,18 @@ namespace LogScope.App.Controls
         /// </summary>
         private void DrawSide(DrawingContext dc, Rect inner, LogDataset ds, int ch,
                               double t0, double t1, Decimator.Column[] cols, int columns,
-                              double vlo, double vhi, double chLo, double chHi,
-                              double baseline, Pen pen, double dy)
+                              double vlo, double vhi, Pen pen, double dy)
         {
             int first, last;
             if (!Decimator.VisibleRange(ds, t0, t1, out first, out last)) return;
 
             long visible = (long)last - first + 1;
             if (visible <= columns)
-                DrawSamples(dc, inner, ds, ch, first, last, t0, t1, vlo, vhi, chLo, chHi, baseline, pen, dy);
+                DrawSamples(dc, inner, ds, ch, first, last, t0, t1, vlo, vhi, pen, dy);
             else
             {
-                Decimator.Build(ds, ch, t0, t1, cols, columns);
-                DrawColumns(dc, inner, cols, columns, vlo, vhi, chLo, chHi, baseline, pen, dy);
+                Decimator.Build(ds, ch, t0, t1, cols, columns, Diffing);
+                DrawColumns(dc, inner, cols, columns, vlo, vhi, pen, dy);
             }
         }
 
@@ -795,16 +836,18 @@ namespace LogScope.App.Controls
         /// 표본을 그대로 잇습니다. 디지털과 상태 채널은 계단으로 그립니다 —
         /// 값이 다음 표본까지 그대로 유지되다가 거기서 한 번에 바뀌는 것이므로,
         /// 비스듬한 선으로 이으면 없던 중간값을 그린 셈이 됩니다.
+        ///
+        /// 변화량 눈금도 계단으로 그립니다. 변화는 <b>그 표본에서 일어난 일</b>
+        /// 이라, 비스듬히 이으면 표본 사이에 없던 중간 변화를 그린 셈이 됩니다.
         /// </summary>
         private void DrawSamples(DrawingContext dc, Rect inner, LogDataset ds, int ch,
                                  int first, int last, double t0, double t1,
-                                 double vlo, double vhi, double chLo, double chHi,
-                                 double baseline, Pen pen, double dy)
+                                 double vlo, double vhi, Pen pen, double dy)
         {
             Channel c = ds.Channels[ch];
-            float[] v = c.Values;
+            float[] v = Decimator.Series(c, Diffing);
             double[] times = ds.Times;
-            bool stepped = c.IsStepped;
+            bool stepped = c.IsStepped || Diffing;
 
             double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
@@ -820,7 +863,7 @@ namespace LogScope.App.Controls
                     if (float.IsNaN(value)) { if (open) Flush(ctx, ref open); continue; }
 
                     double x = TimeToXIn(inner, times[i], t0, t1);
-                    double y = Clamp(ValueToY(Transform(value, chLo, chHi, baseline), inner, vlo, vhi) + dy,
+                    double y = Clamp(ValueToY(value, inner, vlo, vhi) + dy,
                                      top, bottom);
 
                     if (!open) { ctx.BeginFigure(new Point(x, y), false, false); open = true; }
@@ -855,8 +898,7 @@ namespace LogScope.App.Controls
         /// 촘촘한 경우에만 이 길로 오기 때문입니다.
         /// </summary>
         private void DrawColumns(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns,
-                                 double vlo, double vhi, double chLo, double chHi,
-                                 double baseline, Pen pen, double dy)
+                                 double vlo, double vhi, Pen pen, double dy)
         {
             double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
@@ -874,8 +916,8 @@ namespace LogScope.App.Controls
 
                     double px = ColumnToX(inner, x);
                     // 화면 y 는 값이 클수록 작아집니다. yTop 이 c.Max, yBottom 이 c.Min.
-                    double yTop = Clamp(ValueToY(Transform(c.Max, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
-                    double yBottom = Clamp(ValueToY(Transform(c.Min, chLo, chHi, baseline), inner, vlo, vhi) + dy, top, bottom);
+                    double yTop = Clamp(ValueToY(c.Max, inner, vlo, vhi) + dy, top, bottom);
+                    double yBottom = Clamp(ValueToY(c.Min, inner, vlo, vhi) + dy, top, bottom);
 
                     // 직전 열이 끝난 높이에서 가까운 쪽부터 찍습니다.
                     double enter = yTop, leave = yBottom;
@@ -944,8 +986,7 @@ namespace LogScope.App.Controls
         /// 도형 개수가 수천 개에서 몇 개로 줄어듭니다.
         /// </summary>
         private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns,
-                              double vlo, double vhi, double chLo, double chHi,
-                              double baseline, double sep)
+                              double vlo, double vhi, double sep)
         {
             var geo = new StreamGeometry();
             bool any = false;
@@ -964,8 +1005,8 @@ namespace LogScope.App.Controls
 
                     while (x < columns && Differs(x))
                     {
-                        double y1 = ValueToY(Transform(_bandBefore[x], chLo, chHi, baseline), inner, vlo, vhi) - sep;
-                        double y2 = ValueToY(Transform(_bandAfter[x], chLo, chHi, baseline), inner, vlo, vhi) + sep;
+                        double y1 = ValueToY(Diffing ? _bandBeforeY[x] : _bandBefore[x], inner, vlo, vhi) - sep;
+                        double y2 = ValueToY(Diffing ? _bandAfterY[x] : _bandAfter[x], inner, vlo, vhi) + sep;
                         double t = Clamp(Math.Min(y1, y2), inner.Top, inner.Bottom);
                         double b = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
                         if (b - t < 1) b = t + 1;
@@ -1121,8 +1162,6 @@ namespace LogScope.App.Controls
         {
             switch (_scale)
             {
-                case ValueScaleMode.Normalized:
-                    return "0–1 정규화";
                 case ValueScaleMode.Delta:
                     {
                         string u = UnitOf(ios);
