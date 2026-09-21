@@ -385,3 +385,13 @@
 > 변화가 없으면 0, 1 증가하면 1 -1이면 -1
 
 → 답변: [22-delta-is-difference.md](22-delta-is-difference.md)
+
+---
+
+## 요청 26 — 변화량은 두 로그의 차이 (요청 25 바로잡음)
+
+> 너 변화량을 이전과 이후 로그 분석한게 아니라 그냥 개별의 로그로 분석했잖아
+> 변화량은 2개의 log에서 하나가 나와야지
+> 두 로그에서 동일한 io의 차이값이 변화량으로 나와야한다고
+
+→ 답변: [23-difference-of-two-logs.md](23-difference-of-two-logs.md)

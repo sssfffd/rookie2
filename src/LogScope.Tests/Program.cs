@@ -86,8 +86,10 @@ namespace LogScope.Tests
                 TriggerAlignRefusesBadIo();
                 TriggerAlignCountsStartAsEdge();
                 TriggerAlignOnAnyLevel();
-                DiffSeries();
-                DiffAcrossGaps();
+                DifferenceOfTwoLogs();
+                DifferenceAcrossGrids();
+                DifferenceOfStateChannels();
+                DifferenceOutsideOverlap();
                 AxisChannelSwap();
                 AxisRefusesCoarseValues();
                 AxisWarnsOnFlatRuns();
@@ -1174,75 +1176,148 @@ namespace LogScope.Tests
         /// 오름차순을 전제하기 때문입니다.
         /// </summary>
         /// <summary>
-        /// 변화량(차분) — 이웃한 두 표본의 차이. 안 바뀌면 0, 1 오르면 +1,
-        /// 1 내리면 -1.
+        /// 변화량 = <b>두 로그의 차이</b>. 이후 − 이전 선 하나입니다.
+        /// 같으면 0, 이후가 1 크면 +1, 1 작으면 -1.
         /// </summary>
-        private static void DiffSeries()
+        private static void DifferenceOfTwoLogs()
         {
-            Console.WriteLine("변화량 (차분)");
+            Console.WriteLine("변화량 — 두 로그의 차이");
 
-            // STEP: 0,0,1,1,2,1,0,0  →  차이 0,0,1,0,1,-1,-1,0
-            var sb = new StringBuilder("Time,STEP\n");
-            int[] step = { 0, 0, 1, 1, 2, 1, 0, 0 };
-            for (int i = 0; i < step.Length; i++)
-                sb.Append(i).Append(',').Append(step[i]).Append('\n');
-            LogDataset ds = Open(WriteCsv("diff.csv", sb.ToString()), Orientation.Auto);
+            // 두 로그가 같은 격자(0..9)에 있고 V 만 다릅니다.
+            //   이전 10,10,10,10,10,10,10,10,10,10
+            //   이후 10,11,10, 9,10,10,12,10,10,10
+            //   차이  0,+1, 0,-1, 0, 0,+2, 0, 0, 0
+            var b = new StringBuilder("Time,V\n");
+            var a = new StringBuilder("Time,V\n");
+            int[] av = { 10, 11, 10, 9, 10, 10, 12, 10, 10, 10 };
+            for (int i = 0; i < 10; i++)
+            {
+                b.Append(i).Append(",10\n");
+                a.Append(i).Append(',').Append(av[i]).Append('\n');
+            }
+            LogDataset dsB = Open(WriteCsv("two_b.csv", b.ToString()), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("two_a.csv", a.ToString()), Orientation.Auto);
 
-            Channel c = ds.Channels[ds.FindChannel("STEP")];
-            float[] d = c.Diff;
+            int bi = dsB.FindChannel("V"), ai = dsA.FindChannel("V");
 
-            Check("길이는 값 배열과 같음", d.Length == step.Length, d.Length.ToString());
-            Near("첫 표본은 0 (직전이 없음)", d[0], 0, 1e-9);
-            Near("안 바뀌면 0", d[1], 0, 1e-9);
-            Near("1 오르면 +1", d[2], 1, 1e-9);
-            Near("그대로면 0", d[3], 0, 1e-9);
-            Near("또 1 오르면 +1", d[4], 1, 1e-9);
-            Near("1 내리면 -1", d[5], -1, 1e-9);
-            Near("또 1 내리면 -1", d[6], -1, 1e-9);
-            Near("마지막도 안 바뀌면 0", d[7], 0, 1e-9);
-
-            Near("변화량 최소", c.DiffMin, -1, 1e-9);
-            Near("변화량 최대", c.DiffMax, 1, 1e-9);
-
-            // 같은 배열을 다시 받아도 다시 계산하지 않습니다 (갈무리).
-            Check("두 번째 호출은 같은 배열", ReferenceEquals(d, c.Diff), null);
-
-            // 접기도 차이를 봐야 합니다. 값을 먼저 접고 빼면 그 열 안에서
-            // 얼마나 움직였는지가 이미 사라집니다.
-            var cols = new Decimator.Column[4];
-            Decimator.Build(ds, ds.FindChannel("STEP"), 0, 8, cols, 4, true);
-            Check("접은 값도 차이", cols[1].Max >= 1 - 1e-6, "실제 " + cols[1].Max);
-
-            Decimator.Build(ds, ds.FindChannel("STEP"), 0, 8, cols, 4, false);
-            Check("false 면 값 그대로", cols[1].Max >= 1 - 1e-6 && cols[1].Min >= 0, null);
+            Near("같은 자리는 0", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 0), 0, 1e-6);
+            Near("이후가 1 크면 +1", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 1), 1, 1e-6);
+            Near("이후가 1 작으면 -1", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 3), -1, 1e-6);
+            Near("이후가 2 크면 +2", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 6), 2, 1e-6);
 
             double lo, hi;
-            Check("범위도 차이로", Decimator.RangeIn(ds, ds.FindChannel("STEP"), 0, 8, out lo, out hi, true), null);
-            Near("차이 범위 최소", lo, -1, 1e-9);
-            Near("차이 범위 최대", hi, 1, 1e-9);
+            Check("차이 폭이 나옴",
+                  DifferenceSeries.RangeIn(dsB, bi, dsA, ai, 0, 0, 9, out lo, out hi), null);
+            Near("차이 최소", lo, -1, 1e-6);
+            Near("차이 최대", hi, 2, 1e-6);
+
+            // 표본 그대로 뽑기 (성긴 경우). 격자가 같으니 10 점입니다.
+            var cols = new Decimator.Column[64];
+            var t = new double[256];
+            var v = new float[256];
+            int n = DifferenceSeries.Build(dsB, bi, dsA, ai, 0, 0, 9, cols, 64, t, v, 256);
+            Check("표본 10 개", n == 10, "실제 " + n);
+            Near("넷째 표본의 차이", v[3], -1, 1e-6);
+            Near("일곱째 표본의 차이", v[6], 2, 1e-6);
+
+            // 자리가 모자라면 -1 을 돌려주고, 접은 쪽은 그래도 채워집니다.
+            int small = DifferenceSeries.Build(dsB, bi, dsA, ai, 0, 0, 9, cols, 64, t, v, 3);
+            Check("자리가 모자라면 -1", small == -1, "실제 " + small);
+            bool anyCol = false;
+            for (int i = 0; i < 64; i++) if (cols[i].HasValue) { anyCol = true; break; }
+            Check("그래도 접은 쪽은 채워짐", anyCol, null);
         }
 
         /// <summary>
-        /// 값이 빈 자리(NaN)에서는 변화량도 없고, 그 뒤 첫 표본은 0 입니다.
-        /// 빈 구간을 건너뛴 값 차이를 "변화" 로 그리면 없던 계단이 생깁니다.
+        /// 두 로그의 시간 격자가 달라도 됩니다. 한쪽에만 있는 표본에서도
+        /// 반대쪽 값을 읽어 견줍니다 — 이전 로그 격자만 쓰면 이후 로그에서만
+        /// 튄 자리를 통째로 놓칩니다. 밀기 값도 지켜야 합니다.
         /// </summary>
-        private static void DiffAcrossGaps()
+        private static void DifferenceAcrossGrids()
         {
-            Console.WriteLine("변화량 — 빈 구간 건너뛰기");
+            Console.WriteLine("변화량 — 격자가 다르고 시간이 어긋난 두 로그");
 
-            // 5 에서 끊겼다가 100 으로 돌아옵니다. 95 짜리 변화로 보면 안 됩니다.
-            string csv = "Time,V\n0,5\n1,5\n2,\n3,\n4,100\n5,101\n";
-            LogDataset ds = Open(WriteCsv("diff_gap.csv", csv), Orientation.Auto);
+            // 이전: 0,2,4,6,8 에서 값 100 (2 초마다)
+            // 이후: 1000 부터 1 초마다 값 100, 단 1005 에서만 105
+            //   밀기 -1000 이면 이후 1005 는 이전 5 자리입니다.
+            //   이전 격자(짝수)에는 5 가 없으므로, 격자를 합쳐야 +5 가 보입니다.
+            var b = new StringBuilder("Time,V\n");
+            for (int i = 0; i <= 8; i += 2) b.Append(i).Append(",100\n");
 
-            float[] d = ds.Channels[ds.FindChannel("V")].Diff;
-            Near("첫 표본 0", d[0], 0, 1e-9);
-            Near("안 바뀌면 0", d[1], 0, 1e-9);
-            Check("빈 자리는 변화량도 없음", float.IsNaN(d[2]) && float.IsNaN(d[3]), null);
-            Near("빈 구간 뒤 첫 표본은 0", d[4], 0, 1e-9);
-            Near("그 다음은 제대로 +1", d[5], 1, 1e-9);
+            var a = new StringBuilder("Time,V\n");
+            for (int i = 0; i <= 8; i++)
+                a.Append(1000 + i).Append(',').Append(i == 5 ? 105 : 100).Append('\n');
 
-            Near("빈 구간을 건너뛴 95 는 안 생김",
-                 ds.Channels[ds.FindChannel("V")].DiffMax, 1, 1e-9);
+            LogDataset dsB = Open(WriteCsv("grid_b.csv", b.ToString()), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("grid_a.csv", a.ToString()), Orientation.Auto);
+            int bi = dsB.FindChannel("V"), ai = dsA.FindChannel("V");
+
+            double lo, hi;
+            Check("맞춘 뒤 차이가 나옴",
+                  DifferenceSeries.RangeIn(dsB, bi, dsA, ai, -1000, 0, 8, out lo, out hi), null);
+            Near("이후에서만 튄 자리를 놓치지 않음", hi, 5, 1e-6);
+            Near("그 밖에는 0", lo, 0, 1e-6);
+
+            // 밀기를 안 하면 두 로그가 겹치지 않아 견줄 자리가 없습니다.
+            Check("안 맞추면 겹치는 자리가 없음",
+                  !DifferenceSeries.RangeIn(dsB, bi, dsA, ai, 0, 0, 8, out lo, out hi), null);
+        }
+
+        /// <summary>
+        /// 상태(문자열) 채널은 값을 빼면 안 됩니다. 상태 번호가 로그마다 따로
+        /// 매겨지기 때문입니다. 이름이 같으면 0, 다르면 1 — 대시보드 · 히트맵과
+        /// 같은 규칙입니다.
+        /// </summary>
+        private static void DifferenceOfStateChannels()
+        {
+            Console.WriteLine("변화량 — 상태 채널은 이름으로");
+
+            // 두 로그에서 상태가 나오는 차례가 달라 번호가 서로 어긋납니다.
+            string b = "Time,MODE\n0,IDLE\n1,IDLE\n2,RUN\n3,RUN\n";
+            string a = "Time,MODE\n0,RUN\n1,IDLE\n2,RUN\n3,STOP\n";
+            LogDataset dsB = Open(WriteCsv("state_b.csv", b), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("state_a.csv", a), Orientation.Auto);
+            int bi = dsB.FindChannel("MODE"), ai = dsA.FindChannel("MODE");
+
+            Check("상태 채널로 알아봄",
+                  DifferenceSeries.ByName(dsB.Channels[bi], dsA.Channels[ai]), null);
+
+            Near("이름이 다르면 1", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 0), 1, 1e-9);
+            Near("이름이 같으면 0", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 1), 0, 1e-9);
+            Near("이름이 같으면 0 (RUN)", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 2), 0, 1e-9);
+            Near("이름이 다르면 1 (STOP)", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 3), 1, 1e-9);
+
+            double lo, hi;
+            DifferenceSeries.RangeIn(dsB, bi, dsA, ai, 0, 0, 3, out lo, out hi);
+            Near("상태 차이의 최소는 0", lo, 0, 1e-9);
+            Near("상태 차이의 최대는 1", hi, 1, 1e-9);
+        }
+
+        /// <summary>
+        /// 기록 구간 밖에서는 차이를 만들지 않습니다. 없는 값을 지어내면
+        /// 로그가 짧은 쪽 끝에서 가짜 차이가 생깁니다.
+        /// </summary>
+        private static void DifferenceOutsideOverlap()
+        {
+            Console.WriteLine("변화량 — 겹치지 않는 구간");
+
+            // 이전은 0~9, 이후는 5~14. 겹치는 곳은 5~9 뿐입니다.
+            var b = new StringBuilder("Time,V\n");
+            for (int i = 0; i <= 9; i++) b.Append(i).Append(",10\n");
+            var a = new StringBuilder("Time,V\n");
+            for (int i = 5; i <= 14; i++) a.Append(i).Append(",12\n");
+
+            LogDataset dsB = Open(WriteCsv("ovl_b.csv", b.ToString()), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("ovl_a.csv", a.ToString()), Orientation.Auto);
+            int bi = dsB.FindChannel("V"), ai = dsA.FindChannel("V");
+
+            Check("겹치기 전은 값이 없음", double.IsNaN(DifferenceSeries.At(dsB, bi, dsA, ai, 0, 2)), null);
+            Near("겹치는 곳은 +2", DifferenceSeries.At(dsB, bi, dsA, ai, 0, 7), 2, 1e-6);
+            Check("겹친 뒤도 값이 없음", double.IsNaN(DifferenceSeries.At(dsB, bi, dsA, ai, 0, 12)), null);
+
+            // 한쪽에만 있는 IO 도 마찬가지입니다.
+            Check("없는 채널은 값이 없음",
+                  double.IsNaN(DifferenceSeries.At(dsB, bi, dsA, -1, 0, 7)), null);
         }
 
         private static void AxisChannelSwap()

@@ -56,6 +56,9 @@ namespace LogScope.App.Themes
         public Pen BorderPen;
         public Pen BeforePen;
         public Pen AfterPen;
+        /// <summary>"이후 − 이전" 차이 선. 이전/이후 어느 쪽 색도 아니어야
+        /// 값 눈금과 헷갈리지 않습니다.</summary>
+        public Pen DiffPen;
         public Pen CursorAPen;
         public Pen CursorBPen;
 
@@ -93,6 +96,9 @@ namespace LogScope.App.Themes
             BorderPen = FrozenPen(GridStrong, 1);
             BeforePen = FrozenPen(Before, 1.4);
             AfterPen = FrozenPen(After, 1.4);
+            // 차이 선은 강조색으로 조금 굵게 긋습니다. 이전/이후 어느 쪽
+            // 색도 아니어야 "이건 두 로그를 뺀 선" 이라는 게 한눈에 보입니다.
+            DiffPen = FrozenPen(Accent, 1.6);
             CursorAPen = FrozenPen(CursorA, 1.2);
             CursorBPen = FrozenPen(CursorB, 1.2);
             for (int i = 0; i < Series.Length; i++) _seriesPens[i] = FrozenPen(Series[i], 1.4);

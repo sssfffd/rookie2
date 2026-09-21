@@ -42,67 +42,6 @@ namespace LogScope.Core.Model
 
         public int SampleCount { get { return Values.Length; } }
 
-        // ---- 변화량 (차분) ------------------------------------------------
-        //
-        // 이웃한 두 표본의 <b>차이</b>입니다. 안 바뀌었으면 0, 1 올랐으면 +1,
-        // 1 내렸으면 -1. 값이 얼마인지가 아니라 <b>언제 얼마나 움직였는지</b>를
-        // 보는 눈금입니다.
-        //
-        // 값 배열과 나란한 배열을 하나 더 만듭니다. 화면에 그릴 때마다 새로
-        // 계산하면 표본이 수백만 개인 채널에서 프레임마다 그만큼 돌아서 못 씁니다.
-        // 그렇다고 읽을 때 미리 다 만들면 채널마다 메모리가 두 배가 되므로,
-        // <b>그 눈금으로 실제 그리는 채널만</b> 처음 필요할 때 만듭니다.
-        // 값 배열은 읽은 뒤 바뀌지 않으므로 한 번 만들면 계속 맞습니다.
-        private float[] _diff;
-        private double _diffMin = double.NaN, _diffMax = double.NaN;
-
-        public float[] Diff
-        {
-            get { EnsureDiff(); return _diff; }
-        }
-
-        /// <summary>NaN 을 뺀 변화량의 최소/최대. 값이 하나도 없으면 NaN.</summary>
-        public double DiffMin { get { EnsureDiff(); return _diffMin; } }
-        public double DiffMax { get { EnsureDiff(); return _diffMax; } }
-
-        private void EnsureDiff()
-        {
-            if (_diff != null) return;
-
-            float[] v = Values;
-            var d = new float[v.Length];
-            double lo = double.PositiveInfinity, hi = double.NegativeInfinity;
-
-            bool havePrev = false;
-            float prev = 0f;
-
-            for (int i = 0; i < v.Length; i++)
-            {
-                float x = v[i];
-                if (float.IsNaN(x))
-                {
-                    // 값이 없는 자리는 변화량도 없습니다. 여기서 선이 끊깁니다.
-                    d[i] = float.NaN;
-                    havePrev = false;
-                    continue;
-                }
-
-                // 첫 표본과, 빈 구간 뒤의 첫 표본은 0 입니다. 직전 값을 모르는
-                // 자리라, 없는 변화를 지어내는 것보다 "여기서는 모른다" 를
-                // 0 으로 두는 편이 낫습니다.
-                float delta = havePrev ? x - prev : 0f;
-                d[i] = delta;
-                prev = x; havePrev = true;
-
-                if (delta < lo) lo = delta;
-                if (delta > hi) hi = delta;
-            }
-
-            _diff = d;
-            if (lo > hi) { _diffMin = double.NaN; _diffMax = double.NaN; }
-            else { _diffMin = lo; _diffMax = hi; }
-        }
-
         /// <summary>Min/Max 를 값 배열에서 다시 계산합니다.</summary>
         public void RecomputeRange()
         {

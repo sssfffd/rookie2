@@ -60,6 +60,7 @@
     <Compile Include="Io\TableBuilder.cs" />
     <Compile Include="Io\LogReader.cs" />
     <Compile Include="Render\Decimator.cs" />
+    <Compile Include="Render\DifferenceSeries.cs" />
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\ToleranceRule.cs" />
     <Compile Include="Align\TriggerAlign.cs" />

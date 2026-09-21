@@ -16,20 +16,6 @@ namespace LogScope.Core.Render
     public static class Decimator
     {
         /// <summary>
-        /// 어느 배열을 접을지. <paramref name="diff"/> 가 참이면 값 대신
-        /// <b>이웃 표본과의 차이</b>를 봅니다 ("변화량" 눈금).
-        ///
-        /// 차이는 접기 전에 계산돼 있어야 합니다. 열마다 최소/최대만 남은
-        /// 뒤에 빼면 <b>그 열 안에서 얼마나 움직였는지가 사라집니다</b> —
-        /// 접힌 최댓값과 최솟값의 차이는 변화량이 아닙니다.
-        /// </summary>
-        public static float[] Series(Channel c, bool diff)
-        {
-            if (c == null) return new float[0];
-            return diff ? c.Diff : c.Values;
-        }
-
-        /// <summary>
         /// 한 픽셀 열의 요약.
         ///
         /// 최소와 최대만 담습니다. 예전에는 첫값과 끝값도 담았는데, 한 열은
@@ -52,12 +38,6 @@ namespace LogScope.Core.Render
         public static void Build(LogDataset ds, int channel, double t0, double t1,
                                  Column[] outCols, int columns)
         {
-            Build(ds, channel, t0, t1, outCols, columns, false);
-        }
-
-        public static void Build(LogDataset ds, int channel, double t0, double t1,
-                                 Column[] outCols, int columns, bool diff)
-        {
             for (int i = 0; i < columns; i++) outCols[i] = new Column();
             if (ds == null || columns <= 0) return;
             if (channel < 0 || channel >= ds.ChannelCount) return;
@@ -65,7 +45,7 @@ namespace LogScope.Core.Render
             int n = ds.SampleCount;
             if (n == 0 || !(t1 > t0)) return;
 
-            float[] v = Series(ds.Channels[channel], diff);
+            float[] v = ds.Channels[channel].Values;
             double[] times = ds.Times;
 
             int start = ds.IndexAtOrBefore(t0);
@@ -152,12 +132,6 @@ namespace LogScope.Core.Render
         public static void SampleColumns(LogDataset ds, int channel, double t0, double t1,
                                          float[] outValues, int columns)
         {
-            SampleColumns(ds, channel, t0, t1, outValues, columns, false);
-        }
-
-        public static void SampleColumns(LogDataset ds, int channel, double t0, double t1,
-                                         float[] outValues, int columns, bool diff)
-        {
             for (int i = 0; i < columns; i++) outValues[i] = float.NaN;
             if (ds == null || columns <= 0) return;
             if (channel < 0 || channel >= ds.ChannelCount) return;
@@ -166,11 +140,9 @@ namespace LogScope.Core.Render
             if (n == 0 || !(t1 > t0)) return;
 
             Channel c = ds.Channels[channel];
-            float[] v = Series(c, diff);
+            float[] v = c.Values;
             double[] times = ds.Times;
-            // 변화량은 그 표본에서 일어난 일이라, 표본 사이를 이어 읽으면
-            // 없던 중간 변화를 지어내게 됩니다. 계단처럼 직전 값을 씁니다.
-            bool stepped = c.IsStepped || diff;
+            bool stepped = c.IsStepped;
 
             double first = times[0], last = times[n - 1];
             double step = (t1 - t0) / columns;
@@ -231,16 +203,10 @@ namespace LogScope.Core.Render
         public static bool RangeIn(LogDataset ds, int channel, double t0, double t1,
                                    out double min, out double max)
         {
-            return RangeIn(ds, channel, t0, t1, out min, out max, false);
-        }
-
-        public static bool RangeIn(LogDataset ds, int channel, double t0, double t1,
-                                   out double min, out double max, bool diff)
-        {
             min = 0; max = 0;
             if (ds == null || channel < 0 || channel >= ds.ChannelCount) return false;
 
-            float[] v = Series(ds.Channels[channel], diff);
+            float[] v = ds.Channels[channel].Values;
             double[] times = ds.Times;
             int n = ds.SampleCount;
 

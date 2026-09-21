@@ -25,9 +25,9 @@ namespace LogScope.App.Controls
         /// <summary>로그에 적힌 값 그대로.</summary>
         Raw,
         /// <summary>
-        /// 이웃한 두 표본의 <b>차이</b>. 안 바뀌었으면 0, 1 올랐으면 +1,
-        /// 1 내렸으면 -1. 값이 얼마인지가 아니라 언제 얼마나 움직였는지를
-        /// 봅니다.
+        /// <b>두 로그의 차이</b>. 이전과 이후를 따로 그리지 않고
+        /// "이후 − 이전" 선 하나를 그립니다. 같으면 0, 이후가 1 크면 +1,
+        /// 1 작으면 -1.
         /// </summary>
         Delta,
     }
@@ -84,11 +84,10 @@ namespace LogScope.App.Controls
         private float[] _bandBefore = new float[0];
         private float[] _bandAfter = new float[0];
 
-        // 변화량 눈금일 때 선이 그려지는 자리. 판정(_bandBefore/_bandAfter)과
-        // 따로 둡니다 — 어디가 다른지는 <b>값</b>으로 가리고, 칠하는 자리는
-        // 지금 화면에 그려진 선을 따라가야 하기 때문입니다.
-        private float[] _bandBeforeY = new float[0];
-        private float[] _bandAfterY = new float[0];
+        // 차이 눈금("이후 − 이전")에서 쓰는 자리.
+        private Decimator.Column[] _colsDiff = new Decimator.Column[0];
+        private double[] _diffT = new double[0];
+        private float[] _diffV = new float[0];
         private readonly List<Point> _pts = new List<Point>(4096);
 
         // 차이 음영을 이어진 덩어리째 폴리곤으로 묶을 때 쓰는 자리.
@@ -134,6 +133,9 @@ namespace LogScope.App.Controls
         public void SetChannels(List<IoRowVm> channels)
         {
             _channels = channels ?? new List<IoRowVm>();
+            // 로그가 바뀌었을 수 있으니 갈무리해 둔 차이 폭을 버립니다.
+            _diffRange.Clear();
+            _diffRangeShift = double.NaN;
             InvalidateVisual();
         }
 
@@ -507,8 +509,11 @@ namespace LogScope.App.Controls
                 _colsAfter = new Decimator.Column[columns];
                 _bandBefore = new float[columns];
                 _bandAfter = new float[columns];
-                _bandBeforeY = new float[columns];
-                _bandAfterY = new float[columns];
+                _colsDiff = new Decimator.Column[columns];
+                // 두 로그의 격자를 합쳐 훑으므로 표본이 열 수보다 많을 수
+                // 있습니다. 넉넉히 두고, 그래도 넘치면 접은 쪽으로 넘어갑니다.
+                _diffT = new double[columns * 2 + 8];
+                _diffV = new float[columns * 2 + 8];
             }
         }
 
@@ -650,41 +655,40 @@ namespace LogScope.App.Controls
             if (vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
-                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA))
-                   + DeltaNote(_state.Before, vm.BeforeIndex, _cursorA);
+                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA));
             }
             if (vm.InAfter && _state.After != null)
             {
                 if (s.Length > 0) s += "    ";
                 Channel c = _state.After.Channels[vm.AfterIndex];
                 double t = _cursorA - _state.AppliedShift;
-                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t))
-                   + DeltaNote(_state.After, vm.AfterIndex, t);
+                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t));
             }
-            return s;
+            return s + DiffNote(vm);
         }
 
         /// <summary>
-        /// 변화량 눈금일 때 값 옆에 붙이는 "(Δ +0.3)".
+        /// 변화량 눈금일 때 값 뒤에 붙이는 "차이 +0.3".
         ///
-        /// 값만 적으면 커서가 가리키는 숫자와 화면에 그려진 선이 서로 다른
-        /// 것을 말하게 됩니다. 그렇다고 변화량만 적으면 지금 값이 얼마인지
-        /// 알 수 없어서, 둘 다 적습니다.
-        ///
-        /// 변화량은 이어 읽지 않고 <b>가장 가까운 표본</b>의 것을 씁니다.
-        /// 표본과 표본 사이에는 일어난 변화가 없습니다.
+        /// 이 눈금에서 화면에 그려진 선은 두 값이 아니라 <b>그 차이</b>입니다.
+        /// 이전/이후 값만 적으면 커서가 가리키는 숫자와 선이 서로 다른 것을
+        /// 말하게 되고, 차이만 적으면 값이 얼마인지 알 수 없어서 둘 다 적습니다.
         /// </summary>
-        private string DeltaNote(LogDataset ds, int ch, double t)
+        private string DiffNote(IoRowVm vm)
         {
-            if (!Diffing || ds == null) return string.Empty;
-            int i = ds.IndexAt(t);
-            if (i < 0) return string.Empty;
+            if (!Diffing || !CanDiff(vm)) return string.Empty;
 
-            float[] d = ds.Channels[ch].Diff;
-            if (i >= d.Length || float.IsNaN(d[i])) return string.Empty;
+            double d = DifferenceSeries.At(_state.Before, vm.BeforeIndex,
+                                           _state.After, vm.AfterIndex,
+                                           _state.AppliedShift, _cursorA);
+            if (double.IsNaN(d)) return string.Empty;
 
-            double v = d[i];
-            return "  (Δ " + (v > 0 ? "+" : "") + NumberText.Plain(v) + ")";
+            // 상태 채널은 0/1 이 "같다/다르다" 라는 뜻이라 숫자로 적으면 헷갈립니다.
+            if (DifferenceSeries.ByName(_state.Before.Channels[vm.BeforeIndex],
+                                        _state.After.Channels[vm.AfterIndex]))
+                return "    " + (d == 0 ? "차이 없음" : "상태 다름");
+
+            return "    차이 " + (d > 0 ? "+" : "") + NumberText.Plain(d);
         }
 
         /// <summary>
@@ -704,8 +708,8 @@ namespace LogScope.App.Controls
             }
             if (a > b) { a = 0; b = 1; }
 
-            // 변화량은 안 바뀌는 동안 계속 0 이라, 0 이 눈금에 들어 있지 않으면
-            // 어디가 "변화 없음" 인지 알 수 없습니다.
+            // 차이는 두 로그가 같은 동안 계속 0 이라, 0 이 눈금에 들어 있지
+            // 않으면 어디가 "차이 없음" 인지 알 수 없습니다.
             if (_scale == ValueScaleMode.Delta)
             {
                 if (a > 0) a = 0;
@@ -723,17 +727,38 @@ namespace LogScope.App.Controls
             lo = double.PositiveInfinity; hi = double.NegativeInfinity;
             if (_state == null) return false;
             bool any = false;
-            bool d = Diffing;
             double x0, x1;
+
+            // 차이 눈금은 두 로그를 함께 읽어야 나오는 값이라, 채널에 적어 둔
+            // 최소/최대를 쓸 수가 없습니다. 대신 겹치는 구간을 훑습니다.
+            //
+            // "계속 맞춤" 이 꺼져 있으면 <b>겹치는 구간 전체</b>를 봅니다.
+            // 그래야 시간축을 밀어도 세로 배율이 흔들리지 않는데, 그 계산은
+            // 로그를 통째로 훑는 일이라 프레임마다 하면 못 씁니다. 그래서
+            // 갈무리해 두고 로그나 밀기 값이 바뀔 때만 버립니다.
+            if (Diffing)
+            {
+                if (!CanDiff(vm)) return false;
+                double shift = _state.AppliedShift;
+                if (_fitVisible)
+                {
+                    if (!DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
+                                                  _state.After, vm.AfterIndex,
+                                                  shift, _t0, _t1, out x0, out x1)) return false;
+                    lo = x0; hi = x1;
+                    return true;
+                }
+                return CachedDiffRange(vm, out lo, out hi);
+            }
 
             if (_fitVisible)
             {
                 if (vm.InBefore && _state.Before != null
-                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1, d))
+                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (vm.InAfter && _state.After != null
                     && Decimator.RangeIn(_state.After, vm.AfterIndex,
-                        _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1, d))
+                        _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (any) return true;
             }
@@ -741,28 +766,69 @@ namespace LogScope.App.Controls
             if (vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
-                double clo = d ? c.DiffMin : c.Min, chi = d ? c.DiffMax : c.Max;
-                if (!double.IsNaN(clo)) { lo = Math.Min(lo, clo); hi = Math.Max(hi, chi); any = true; }
+                if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
             }
             if (vm.InAfter && _state.After != null)
             {
                 Channel c = _state.After.Channels[vm.AfterIndex];
-                double clo = d ? c.DiffMin : c.Min, chi = d ? c.DiffMax : c.Max;
-                if (!double.IsNaN(clo)) { lo = Math.Min(lo, clo); hi = Math.Max(hi, chi); any = true; }
+                if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
             }
             return any;
         }
 
+        // 겹치는 구간 전체의 차이 폭. IO 마다 한 번만 재고 들고 있습니다.
+        private readonly Dictionary<string, double[]> _diffRange =
+            new Dictionary<string, double[]>(StringComparer.Ordinal);
+        private double _diffRangeShift = double.NaN;
+
+        private bool CachedDiffRange(IoRowVm vm, out double lo, out double hi)
+        {
+            lo = 0; hi = 1;
+            double shift = _state.AppliedShift;
+
+            // 밀기 값이 바뀌면 겹치는 자리가 통째로 달라집니다. 옛 값을 그대로
+            // 쓰면 맞추기를 바꿔도 세로 눈금이 안 따라옵니다.
+            if (_diffRangeShift != shift) { _diffRange.Clear(); _diffRangeShift = shift; }
+
+            double[] got;
+            if (!_diffRange.TryGetValue(vm.Name, out got))
+            {
+                double t0 = Math.Max(_state.Before.TimeStart, _state.After.TimeStart + shift);
+                double t1 = Math.Min(_state.Before.TimeEnd, _state.After.TimeEnd + shift);
+                double a, b;
+                got = DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
+                                               _state.After, vm.AfterIndex,
+                                               shift, t0, t1, out a, out b)
+                    ? new double[] { a, b }
+                    : null;
+                _diffRange[vm.Name] = got;
+            }
+            if (got == null) return false;
+            lo = got[0]; hi = got[1];
+            return true;
+        }
+
         /// <summary>
-        /// 지금 변화량 눈금인지. 이 값 하나로 접기 · 범위 · 그리기가 모두
-        /// 값 배열 대신 <b>차이 배열</b>을 봅니다.
+        /// 지금 변화량(두 로그의 차이) 눈금인지.
         ///
-        /// 예전에는 값 하나를 받아 바꿔 주는 함수(Transform)로 처리했는데,
-        /// 차이는 <b>직전 표본을 알아야</b> 나오므로 그렇게는 할 수 없습니다.
-        /// 접은 뒤(열마다 최소/최대만 남은 뒤)에 빼면 그 열 안에서 얼마나
-        /// 움직였는지가 이미 사라진 다음입니다.
+        /// 이 눈금에서는 선이 <b>하나</b>입니다. 이전과 이후를 각각 그리는
+        /// 대신 "이후 − 이전" 을 그립니다. 그래서 값 하나를 바꿔 주는
+        /// 함수로는 처리할 수 없습니다 — 두 로그를 같은 시각에서 함께 읽어야
+        /// 나오는 값이라, 접기 · 범위 · 그리기가 모두 다른 길로 갑니다.
         /// </summary>
         private bool Diffing { get { return _scale == ValueScaleMode.Delta; } }
+
+        /// <summary>
+        /// 이 IO 를 차이로 그릴 수 있는지. 한쪽 로그에만 있으면 견줄 상대가
+        /// 없습니다. 그 레인은 비워 두고, 왜 비었는지는 레인 머리글의
+        /// "이전에만 / 이후에만" 이 말해 줍니다.
+        /// </summary>
+        private bool CanDiff(IoRowVm vm)
+        {
+            return _state != null && vm != null
+                && vm.InBefore && vm.InAfter
+                && _state.Before != null && _state.After != null;
+        }
 
         private void DrawChannel(DrawingContext dc, Palette p, Rect inner, IoRowVm vm,
                                  double vlo, double vhi, Pen beforePen, Pen afterPen, int columns)
@@ -778,22 +844,29 @@ namespace LogScope.App.Controls
 
             double sep = _separate ? inner.Height * 0.02 : 0.0;
 
+            // ---- 차이 눈금: 선 하나 -------------------------------------
+            if (Diffing)
+            {
+                if (!CanDiff(vm)) return;     // 한쪽에만 있는 IO 는 견줄 상대가 없습니다.
+
+                if (_shade)
+                {
+                    // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
+                    Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
+                    Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
+                    ShadeGap(dc, p, inner, columns, vlo, vhi, 0);
+                }
+
+                DrawDifference(dc, p, inner, vm, bt0, bt1, shift, columns, vlo, vhi);
+                return;
+            }
+
             if (_shade && haveB && haveA)
             {
                 // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.
                 Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
                 Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
-
-                // "다르다" 는 판정은 <b>언제나 값으로</b> 합니다. 그래야 허용
-                // 오차의 뜻이 대시보드 · 히트맵과 같고, 눈금을 바꿨다고 칠해지는
-                // 자리가 달라지지 않습니다. 변화량 눈금일 때는 칠할 자리만
-                // 따로 뽑습니다 — 화면에 그려진 선은 그쪽이니까요.
-                if (Diffing)
-                {
-                    Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBeforeY, columns, true);
-                    Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfterY, columns, true);
-                }
                 ShadeGap(dc, p, inner, columns, vlo, vhi, sep);
             }
 
@@ -801,6 +874,70 @@ namespace LogScope.App.Controls
                                 _colsBefore, columns, vlo, vhi, beforePen, -sep);
             if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1,
                                 _colsAfter, columns, vlo, vhi, afterPen, +sep);
+        }
+
+        /// <summary>
+        /// 두 로그의 차이 선 하나. "이후 − 이전" 입니다.
+        ///
+        /// 한쪽 로그만 그릴 때(DrawSide)와 갈림길이 같습니다 — 표본이 픽셀보다
+        /// 성기면 그대로 잇고, 촘촘하면 열마다 최소/최대만 뽑아 그립니다.
+        /// 다만 두 로그의 시간 격자가 서로 달라서 표본 개수를 미리 알 수 없으니,
+        /// 한 번 훑으면서 둘 다 채우고 넘치면 접은 쪽을 씁니다.
+        /// </summary>
+        private void DrawDifference(DrawingContext dc, Palette p, Rect inner, IoRowVm vm,
+                                    double t0, double t1, double shift, int columns,
+                                    double vlo, double vhi)
+        {
+            int count = DifferenceSeries.Build(_state.Before, vm.BeforeIndex,
+                                               _state.After, vm.AfterIndex,
+                                               shift, t0, t1,
+                                               _colsDiff, columns,
+                                               _diffT, _diffV, _diffT.Length);
+
+            // 0 선. 어디가 "차이 없음" 인지 눈에 보여야 합니다.
+            double zero = ValueToY(0, inner, vlo, vhi);
+            if (zero >= inner.Top && zero <= inner.Bottom)
+            {
+                dc.DrawLine(p.GridPen, new Point(inner.Left, Snap(zero)),
+                                       new Point(inner.Right, Snap(zero)));
+            }
+
+            Pen pen = p.DiffPen;
+            if (count < 0)
+            {
+                DrawColumns(dc, inner, _colsDiff, columns, vlo, vhi, pen, 0);
+                return;
+            }
+            if (count == 0) return;
+
+            // 상태 채널의 차이는 0/1 이라 계단으로 그립니다. 그 사이에
+            // "반쯤 다름" 같은 값은 없습니다.
+            bool stepped = DifferenceSeries.ByName(_state.Before.Channels[vm.BeforeIndex],
+                                                   _state.After.Channels[vm.AfterIndex]);
+
+            double top = inner.Top - 4, bottom = inner.Bottom + 4;
+            var geo = new StreamGeometry();
+            using (StreamGeometryContext ctx = geo.Open())
+            {
+                _pts.Clear();
+                double prevY = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    double x = TimeToXIn(inner, _diffT[i], t0, t1);
+                    double y = Clamp(ValueToY(_diffV[i], inner, vlo, vhi), top, bottom);
+
+                    if (i == 0) { ctx.BeginFigure(new Point(x, y), false, false); }
+                    else
+                    {
+                        if (stepped) _pts.Add(new Point(x, prevY));
+                        _pts.Add(new Point(x, y));
+                    }
+                    prevY = y;
+                }
+                if (_pts.Count > 0) ctx.PolyLineTo(_pts, true, false);
+            }
+            geo.Freeze();
+            dc.DrawGeometry(null, pen, geo);
         }
 
         /// <summary>
@@ -827,7 +964,7 @@ namespace LogScope.App.Controls
                 DrawSamples(dc, inner, ds, ch, first, last, t0, t1, vlo, vhi, pen, dy);
             else
             {
-                Decimator.Build(ds, ch, t0, t1, cols, columns, Diffing);
+                Decimator.Build(ds, ch, t0, t1, cols, columns);
                 DrawColumns(dc, inner, cols, columns, vlo, vhi, pen, dy);
             }
         }
@@ -837,17 +974,15 @@ namespace LogScope.App.Controls
         /// 값이 다음 표본까지 그대로 유지되다가 거기서 한 번에 바뀌는 것이므로,
         /// 비스듬한 선으로 이으면 없던 중간값을 그린 셈이 됩니다.
         ///
-        /// 변화량 눈금도 계단으로 그립니다. 변화는 <b>그 표본에서 일어난 일</b>
-        /// 이라, 비스듬히 이으면 표본 사이에 없던 중간 변화를 그린 셈이 됩니다.
         /// </summary>
         private void DrawSamples(DrawingContext dc, Rect inner, LogDataset ds, int ch,
                                  int first, int last, double t0, double t1,
                                  double vlo, double vhi, Pen pen, double dy)
         {
             Channel c = ds.Channels[ch];
-            float[] v = Decimator.Series(c, Diffing);
+            float[] v = c.Values;
             double[] times = ds.Times;
-            bool stepped = c.IsStepped || Diffing;
+            bool stepped = c.IsStepped;
 
             double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
@@ -1005,8 +1140,19 @@ namespace LogScope.App.Controls
 
                     while (x < columns && Differs(x))
                     {
-                        double y1 = ValueToY(Diffing ? _bandBeforeY[x] : _bandBefore[x], inner, vlo, vhi) - sep;
-                        double y2 = ValueToY(Diffing ? _bandAfterY[x] : _bandAfter[x], inner, vlo, vhi) + sep;
+                        // 차이 눈금에서는 선이 하나라 그 선과 0 선 사이를 칠합니다.
+                        // 값 눈금에서는 이전 선과 이후 선 사이입니다.
+                        double y1, y2;
+                        if (Diffing)
+                        {
+                            y1 = ValueToY(_bandAfter[x] - _bandBefore[x], inner, vlo, vhi);
+                            y2 = ValueToY(0, inner, vlo, vhi);
+                        }
+                        else
+                        {
+                            y1 = ValueToY(_bandBefore[x], inner, vlo, vhi) - sep;
+                            y2 = ValueToY(_bandAfter[x], inner, vlo, vhi) + sep;
+                        }
                         double t = Clamp(Math.Min(y1, y2), inner.Top, inner.Bottom);
                         double b = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
                         if (b - t < 1) b = t + 1;
@@ -1164,8 +1310,11 @@ namespace LogScope.App.Controls
             {
                 case ValueScaleMode.Delta:
                     {
+                        // Δ 는 "이후 − 이전" 이라는 뜻입니다. 눈금 칸이 좁아서
+                        // 그걸 다 적을 수 없으니 기호로 줄이고, 자세한 것은
+                        // 도구 줄의 풍선 도움말이 말해 줍니다.
                         string u = UnitOf(ios);
-                        return u.Length > 0 ? "Δ " + u : "변화량";
+                        return u.Length > 0 ? "Δ " + u : "차이";
                     }
                 default:
                     {

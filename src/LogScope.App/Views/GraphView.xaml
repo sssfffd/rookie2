@@ -250,10 +250,10 @@
                             <TextBlock Style="{StaticResource ToolGroupCaption}" Text="세로 눈금" />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
                                          Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
-                                         ToolTip="로그에 적힌 값을 그대로 씁니다." />
+                                         ToolTip="이전 로그와 이후 로그를 각각 그립니다. 로그에 적힌 값 그대로." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
                                          Content="변화량" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
-                                         ToolTip="이웃한 두 표본의 차이(차분)를 그립니다.&#x0a;안 바뀌면 0, 1 오르면 +1, 1 내리면 -1.&#x0a;값이 얼마인지가 아니라 언제 얼마나 움직였는지를 봅니다." />
+                                         ToolTip="두 로그의 차이를 선 하나로 그립니다 (이후 − 이전).&#x0a;같으면 0, 이후가 1 크면 +1, 1 작으면 -1.&#x0a;상태 채널은 이름이 같으면 0, 다르면 1 입니다.&#x0a;한쪽에만 있는 IO 는 견줄 상대가 없어 비어 있습니다." />
                         </StackPanel>
                     </Border>
 
