@@ -151,6 +151,15 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public List<BandVm> Bands { get { return ScoreBands.Legend(); } }
 
+        /// <summary>
+        /// 화면 아래 요약 칸에 적는 글.
+        ///
+        /// <b>아직 미구현입니다.</b> 무엇을 요약해 줄지 정해지지 않았습니다 —
+        /// 분석 셋의 결과를 한 문단으로 묶는 것이 될 텐데, 분석 2·3 이
+        /// 없는 지금은 쓸 재료가 없습니다. 채울 자리는 여기 한 곳입니다.
+        /// </summary>
+        public string SummaryText { get { return "미구현"; } }
+
         /// <summary>칸 위에 적는 안내.</summary>
         public string Hint
         {

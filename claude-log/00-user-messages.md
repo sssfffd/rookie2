@@ -474,3 +474,13 @@
 > 그리고 비교를 실행한 시간도 적어주겨
 
 → 답변: [27-main-screen-layout.md](27-main-screen-layout.md) 의 3 장
+
+---
+
+## 요청 33 — 요약 칸과 가로 배치
+
+> 그리고 아래에 요약 칸 적어저서 그 안에
+> 미구현이라고 적어줘
+> 아 그리고 분석 1 2 3 칸은 가로로 배치하는게 좋을 것
+
+→ 답변: [27-main-screen-layout.md](27-main-screen-layout.md) 의 1 장과 1-2 장
