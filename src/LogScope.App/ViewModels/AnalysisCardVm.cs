@@ -108,6 +108,28 @@ namespace LogScope.App.ViewModels
         }
 
         public bool CanOpen { get { return MemberCount > 0; } }
+
+        // ---- 그룹 줄 아래: 어떤 차이가 났는지 --------------------------
+        //
+        // <b>자리만 잡아 둔 것입니다.</b> 무엇을 어떤 말로 적을지 아직
+        // 정해지지 않았습니다 — "밸브 3 개가 늦게 열림" 처럼 사람이 읽는
+        // 문장이 될 텐데, 그걸 무엇으로 판단할지가 먼저입니다.
+        //
+        // 미리 자리를 잡아 두는 이유는, 나중에 글이 들어올 때 줄 높이가
+        // 달라져 목록이 통째로 다시 접히지 않게 하려는 것입니다.
+        //
+        // 채울 자리는 여기 한 곳입니다.
+        private string _detail = string.Empty;
+
+        public string DetailText
+        {
+            get { return _detail.Length > 0 ? _detail : "미구현"; }
+        }
+
+        public void SetDetail(string text)
+        {
+            _detail = text ?? string.Empty;
+        }
     }
 
     /// <summary>분석 칸 안에 적는 숫자 하나. "달라진 IO  12개" 같은 것.</summary>

@@ -521,3 +521,12 @@
 > 그 그룹 관련 IO 히트맵으로 이동할 수 있게 만들어줘
 
 → 답변: [29-card-summary-and-groups.md](29-card-summary-and-groups.md)
+
+---
+
+## 요청 37 — 그룹 줄 아래에 차이 내용 자리
+
+> 대시보드에 그룹별 요약할때 그룹 줄 뜨는 거 밑에 어떤 차이가 발생했는 지
+> 적어줄꺼거든? 그 공간까지 만들어줘
+
+→ 답변: [29-card-summary-and-groups.md](29-card-summary-and-groups.md) 의 3-2 장

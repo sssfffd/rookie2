@@ -179,8 +179,13 @@
                                                    FontSize="11" TextWrapping="Wrap"
                                                    Visibility="{Binding GroupNote, Converter={StaticResource TextToVisibility}}" />
 
-                                        <!-- 그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다. -->
-                                        <ScrollViewer MaxHeight="118" VerticalScrollBarVisibility="Auto"
+                                        <!--
+                                          그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다.
+                                          한 줄이 두 줄짜리가 됐습니다 (이름 17 + 차이 내용 16
+                                          + 위아래 여백 5 = 38). 셋이면 114, 네 번째가 살짝
+                                          보이게 130 으로 둡니다.
+                                        -->
+                                        <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto"
                                                       HorizontalScrollBarVisibility="Disabled"
                                                       Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
                                             <ItemsControl ItemsSource="{Binding Groups}">
@@ -190,27 +195,41 @@
                                                                 Click="OnGroupClick" Tag="{Binding GroupName}"
                                                                 IsEnabled="{Binding CanOpen}"
                                                                 ToolTip="이 그룹의 IO 만 히트맵에서 봅니다."
-                                                                Margin="0,1,0,1">
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
+                                                                Margin="0,1,0,3">
+                                                            <StackPanel>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
 
-                                                                <Border x:Name="Dot" Grid.Column="0"
-                                                                        Width="8" Height="8" CornerRadius="4"
-                                                                        VerticalAlignment="Center" Margin="0,0,7,0"
-                                                                        Background="{DynamicResource Brush.Muted}" />
+                                                                    <Border x:Name="Dot" Grid.Column="0"
+                                                                            Width="8" Height="8" CornerRadius="4"
+                                                                            VerticalAlignment="Center" Margin="0,0,7,0"
+                                                                            Background="{DynamicResource Brush.Muted}" />
 
-                                                                <TextBlock Grid.Column="1" Text="{Binding GroupName}"
-                                                                           VerticalAlignment="Center" FontSize="12"
-                                                                           TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding GroupName}"
+                                                                               VerticalAlignment="Center" FontSize="12"
+                                                                               TextTrimming="CharacterEllipsis" />
 
-                                                                <TextBlock Grid.Column="2" Text="{Binding CountText}"
-                                                                           Style="{StaticResource Muted}" FontSize="11"
-                                                                           VerticalAlignment="Center" Margin="8,0,0,0" />
-                                                            </Grid>
+                                                                    <TextBlock Grid.Column="2" Text="{Binding CountText}"
+                                                                               Style="{StaticResource Muted}" FontSize="11"
+                                                                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                                </Grid>
+
+                                                                <!--
+                                                                  그룹 줄 아래: 어떤 차이가 났는지.
+                                                                  아직 자리만 잡아 둔 것입니다. 미리 잡아 두는 이유는
+                                                                  나중에 글이 들어올 때 줄 높이가 달라져 목록이 통째로
+                                                                  다시 접히지 않게 하려는 것입니다. 점 자리(15)만큼
+                                                                  들여 써서 그룹 이름 아래에 붙게 합니다.
+                                                                -->
+                                                                <TextBlock Text="{Binding DetailText}"
+                                                                           Style="{StaticResource Muted}" FontSize="10"
+                                                                           TextWrapping="Wrap" MinHeight="14"
+                                                                           Margin="15,2,0,0" />
+                                                            </StackPanel>
                                                         </Button>
 
                                                         <DataTemplate.Triggers>
