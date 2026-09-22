@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using LogScope.Core.Align;
 using LogScope.Core.Compare;
+using LogScope.Core.History;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Render;
@@ -93,6 +94,8 @@ namespace LogScope.Tests
                 AxisChannelSwap();
                 AxisRefusesCoarseValues();
                 AxisWarnsOnFlatRuns();
+                HistorySaveAndLoad();
+                HistoryEdgeCases();
                 JsonRoundTrip();
                 SettingsRoundTrip();
             }
@@ -1417,6 +1420,114 @@ namespace LogScope.Tests
             // 되돌리면 알림도 사라집니다.
             ds.ClearAxisChannel();
             Check("되돌리면 알림도 사라짐", ds.AxisNote.Length == 0, ds.AxisNote);
+        }
+
+        /// <summary>
+        /// 분석 결과를 남기고 다시 읽습니다. 기록 하나에 파일 하나이고,
+        /// 최근 것이 앞에 옵니다.
+        /// </summary>
+        private static void HistorySaveAndLoad()
+        {
+            Console.WriteLine("분석 결과 저장");
+
+            string folder = Path.Combine(_dir, "history-test");
+
+            var a = new AnalysisRecord();
+            a.SavedAt = new DateTime(2026, 3, 14, 9, 30, 0);
+            a.Label = "기동 전";
+            a.BeforeName = "2026-03-14_before.xlsx";
+            a.AfterName = "2026-03-21_after.xlsx";
+            a.BeforeTime = "2026-03-14";
+            a.AfterTime = "2026-03-21";
+            a.HasScore = true; a.Score = 100;
+            a.ComparedCount = 184; a.ChangedCount = 12; a.OneSidedCount = 3;
+            a.TolerancePercent = 0.1; a.AbsoluteTolerance = 0.25;
+            a.AlignIo = "START 신호"; a.AxisIo = "경과 시간"; a.AppliedShift = -115;
+
+            string problem;
+            string id = HistoryStore.Save(folder, a, out problem);
+            Check("저장됨", id.Length > 0, problem);
+            Check("파일 이름이 시각", id.StartsWith("20260314-093000"), id);
+
+            // 두 번째 건. 더 나중 시각이라 목록에서 앞에 와야 합니다.
+            var b = new AnalysisRecord();
+            b.SavedAt = new DateTime(2026, 3, 21, 17, 5, 0);
+            b.ComparedCount = 184; b.ChangedCount = 20;
+            b.TolerancePercent = 0.1; b.AbsoluteTolerance = 0.25;
+            b.AlignIo = "START 신호"; b.AxisIo = "경과 시간";
+            HistoryStore.Save(folder, b, out problem);
+            Check("둘째도 저장됨", problem.Length == 0, problem);
+
+            List<AnalysisRecord> back = HistoryStore.Load(folder);
+            Check("두 건이 읽힘", back.Count == 2, "실제 " + back.Count);
+            if (back.Count != 2) return;
+
+            Check("최근 것이 앞", back[0].SavedAt > back[1].SavedAt, null);
+
+            AnalysisRecord r = back[1];
+            Check("이름", r.Label == "기동 전", r.Label);
+            Check("이전 파일", r.BeforeName == "2026-03-14_before.xlsx", r.BeforeName);
+            Check("발생시간", r.AfterTime == "2026-03-21", r.AfterTime);
+            Check("점수 있음", r.HasScore, null);
+            Near("점수", r.Score, 100, 1e-9);
+            Check("견준 IO", r.ComparedCount == 184, r.ComparedCount.ToString());
+            Check("달라진 IO", r.ChangedCount == 12, r.ChangedCount.ToString());
+            Check("한쪽에만", r.OneSidedCount == 3, r.OneSidedCount.ToString());
+            Near("허용 오차", r.TolerancePercent, 0.1, 1e-9);
+            Near("절대 오차", r.AbsoluteTolerance, 0.25, 1e-9);
+            Check("맞추기 IO", r.AlignIo == "START 신호", r.AlignIo);
+            Check("가로축 IO", r.AxisIo == "경과 시간", r.AxisIo);
+            Near("밀기 값", r.AppliedShift, -115, 1e-9);
+            Check("저장 시각", r.SavedAt == new DateTime(2026, 3, 14, 9, 30, 0),
+                  r.SavedAt.ToString("s"));
+
+            // 이름을 안 붙이면 저장 시각으로 적힙니다.
+            Check("이름 없으면 시각", back[0].DisplayName.StartsWith("2026-03-21"), back[0].DisplayName);
+
+            // 지우기
+            Check("지워짐", HistoryStore.Delete(folder, id), null);
+            Check("한 건만 남음", HistoryStore.Load(folder).Count == 1, null);
+            Check("없는 것을 지우면 거짓", !HistoryStore.Delete(folder, id), null);
+
+            // 경로가 섞인 열쇠는 거부합니다. 엉뚱한 곳을 지울 수 있습니다.
+            Check("경로가 섞이면 거부", !HistoryStore.Delete(folder, "..\\settings.json"), null);
+            Check("폴더 구분자도 거부", !HistoryStore.Delete(folder, "sub/other.json"), null);
+        }
+
+        /// <summary>
+        /// 같은 밀리초에 두 번 저장해도 한 건이 사라지면 안 됩니다.
+        /// 그리고 기준이 다른 기록은 그대로 견줄 수 없다고 말해야 합니다.
+        /// </summary>
+        private static void HistoryEdgeCases()
+        {
+            Console.WriteLine("분석 결과 저장 — 가장자리");
+
+            string folder = Path.Combine(_dir, "history-edge");
+            var t = new DateTime(2026, 5, 1, 12, 0, 0);
+
+            string problem;
+            var a = new AnalysisRecord(); a.SavedAt = t; a.Label = "첫째";
+            var b = new AnalysisRecord(); b.SavedAt = t; b.Label = "둘째";
+            string ia = HistoryStore.Save(folder, a, out problem);
+            string ib = HistoryStore.Save(folder, b, out problem);
+
+            Check("같은 시각이어도 이름이 다름", ia != ib, ia + " / " + ib);
+            Check("두 건 다 남음", HistoryStore.Load(folder).Count == 2, null);
+
+            // 기준 견주기
+            var r = new AnalysisRecord();
+            r.TolerancePercent = 0.1; r.AbsoluteTolerance = 0;
+            r.AlignIo = "START"; r.AxisIo = string.Empty;
+
+            Check("같은 기준", r.SameBasis(0.1, 0, "START", ""), null);
+            Check("허용 오차가 다르면", !r.SameBasis(1.0, 0, "START", ""), null);
+            Check("절대 오차가 다르면", !r.SameBasis(0.1, 0.5, "START", ""), null);
+            Check("맞추기가 다르면", !r.SameBasis(0.1, 0, "RUN", ""), null);
+            Check("가로축이 다르면", !r.SameBasis(0.1, 0, "START", "경과"), null);
+
+            // 없는 폴더를 읽으면 빈 목록입니다 (터지지 않습니다).
+            Check("없는 폴더는 빈 목록",
+                  HistoryStore.Load(Path.Combine(_dir, "history-none")).Count == 0, null);
         }
 
         private static void JsonRoundTrip()

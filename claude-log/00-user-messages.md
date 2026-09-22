@@ -484,3 +484,12 @@
 > 아 그리고 분석 1 2 3 칸은 가로로 배치하는게 좋을 것
 
 → 답변: [27-main-screen-layout.md](27-main-screen-layout.md) 의 1 장과 1-2 장
+
+---
+
+## 요청 34 — 분석 결과 저장
+
+> 메인 화면에 분석 결과 저장 시스템도 만들어줘
+> 그래서 새로 분석했을 때 이전결과랑 비교할 수 있게
+
+→ 답변: [28-analysis-history.md](28-analysis-history.md)

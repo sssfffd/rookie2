@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using LogScope.App.ViewModels;
 
 namespace LogScope.App.Views
 {
@@ -24,6 +25,47 @@ namespace LogScope.App.Views
         {
             public readonly int Number;
             public AnalysisEventArgs(int number) { Number = number; }
+        }
+
+        /// <summary>
+        /// [지금 결과 저장]. 이름을 물어보고 한 건 남깁니다.
+        ///
+        /// 이름은 비워 둘 수 있습니다 — 그러면 저장 시각으로 적힙니다.
+        /// 뭘 적을지 몰라 저장을 안 하게 되는 것보다 낫습니다.
+        /// </summary>
+        private void OnSaveResult(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainVm;
+            if (vm == null) return;
+
+            string label;
+            if (!TextInputWindow.Ask(Window.GetWindow(this), "분석 결과 저장",
+                    "이 결과에 붙일 이름 (비워 두면 저장 시각으로 적습니다)",
+                    string.Empty, out label)) return;
+
+            string problem = vm.SaveCurrent(label);
+            if (problem.Length > 0)
+            {
+                MessageBox.Show(Window.GetWindow(this), problem, "저장",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void OnDeleteSaved(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainVm;
+            var b = sender as Button;
+            if (vm == null || b == null) return;
+
+            string id = b.Tag as string;
+            if (string.IsNullOrEmpty(id)) return;
+
+            // 지우면 되돌릴 수 없습니다. 한 번 묻습니다.
+            if (MessageBox.Show(Window.GetWindow(this),
+                    "저장된 분석 한 건을 지웁니다. 되돌릴 수 없습니다.", "삭제",
+                    MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+
+            vm.DeleteSaved(id);
         }
 
         private void OnCardClick(object sender, RoutedEventArgs e)

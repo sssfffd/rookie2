@@ -59,6 +59,8 @@
     <Compile Include="Io\TimeAxis.cs" />
     <Compile Include="Io\TableBuilder.cs" />
     <Compile Include="Io\LogReader.cs" />
+    <Compile Include="History\AnalysisRecord.cs" />
+    <Compile Include="History\HistoryStore.cs" />
     <Compile Include="Render\Decimator.cs" />
     <Compile Include="Render\DifferenceSeries.cs" />
     <Compile Include="Compare\DiffTypes.cs" />

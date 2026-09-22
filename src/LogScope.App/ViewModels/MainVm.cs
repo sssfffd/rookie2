@@ -4,6 +4,7 @@ using System.IO;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
 using LogScope.Core.Compare;
+using LogScope.Core.History;
 using LogScope.Core.Model;
 
 namespace LogScope.App.ViewModels
@@ -31,6 +32,7 @@ namespace LogScope.App.ViewModels
                 new AnalysisCardVm(3, "분석 3",
                     "아직 정해지지 않았습니다.", false),
             };
+            ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();
         }
 
@@ -66,7 +68,9 @@ namespace LogScope.App.ViewModels
             // 그대로 읽힙니다.
             for (int i = 1; i < Cards.Count; i++) Cards[i].ClearScore();
 
-            Raise("HasLogs"); Raise("HasBoth"); Raise("Hint");
+            RefreshDeltas();
+
+            Raise("HasLogs"); Raise("HasBoth"); Raise("Hint"); Raise("CanSave");
             Raise("BeforeTime"); Raise("AfterTime");
             Raise("BeforeText"); Raise("AfterText");
             Raise("BeforePath"); Raise("AfterPath");
@@ -150,6 +154,119 @@ namespace LogScope.App.ViewModels
         /// 무슨 뜻인지 알려 줍니다. 칸의 점수 색과 <b>같은 값</b>을 봅니다.
         /// </summary>
         public List<BandVm> Bands { get { return ScoreBands.Legend(); } }
+
+        // ---------------- 저장된 분석 ----------------
+        //
+        // 지금 결과를 남겨 두고, 다음에 분석했을 때 <b>지난번과 얼마나 달라졌는지</b>
+        // 를 봅니다. 로그 값 자체는 담지 않습니다 — 요약된 몇 개의 수만 남깁니다.
+        // 왜 그렇게 했는지는 AnalysisRecord 에 적어 뒀습니다.
+
+        private List<HistoryRowVm> _history = new List<HistoryRowVm>();
+        public List<HistoryRowVm> History { get { return _history; } }
+
+        public bool HasHistory { get { return _history.Count > 0; } }
+
+        /// <summary>견준 결과가 있어야 저장할 것이 있습니다.</summary>
+        public bool CanSave { get { return _state.Comparison != null; } }
+
+        /// <summary>저장해 둔 것을 다시 읽습니다. 창을 열 때와 저장·삭제 뒤에 부릅니다.</summary>
+        public void ReloadHistory()
+        {
+            var rows = new List<HistoryRowVm>();
+            foreach (AnalysisRecord r in HistoryStore.Load(HistoryStore.ResolveFolder()))
+                rows.Add(new HistoryRowVm(r));
+            _history = rows;
+            RefreshDeltas();
+            Raise("History"); Raise("HasHistory"); Raise("HistoryNote");
+        }
+
+        /// <summary>줄마다 "지금 결과와 얼마나 다른지" 를 다시 셉니다.</summary>
+        private void RefreshDeltas()
+        {
+            CompareResult r = _state.Comparison;
+            bool live = r != null;
+            double pct = _state.Settings.RelativeTolerancePercent;
+            double abs = _state.Settings.AbsoluteTolerance;
+            string align = _state.Settings.AlignIo;
+            string axis = _state.Settings.AxisIo;
+
+            for (int i = 0; i < _history.Count; i++)
+            {
+                HistoryRowVm row = _history[i];
+                row.Against(live,
+                            live && row.Record.SameBasis(pct, abs, align, axis),
+                            live, AnalysisCardVm.MaxScore,
+                            live ? r.ChangedCount : 0);
+            }
+        }
+
+        /// <summary>
+        /// 지금 결과를 한 건으로 남깁니다. 저장하지 못하면 이유를 돌려줍니다
+        /// (성공이면 빈 글자).
+        /// </summary>
+        public string SaveCurrent(string label)
+        {
+            CompareResult r = _state.Comparison;
+            if (r == null) return "견준 결과가 없습니다. 로그 두 개를 열고 비교한 뒤에 저장할 수 있습니다.";
+
+            var rec = new AnalysisRecord();
+            rec.SavedAt = _state.ComparedAt != DateTime.MinValue ? _state.ComparedAt : DateTime.Now;
+            rec.Label = label ?? string.Empty;
+
+            rec.BeforeName = NameOf(_state.BeforePath);
+            rec.AfterName = NameOf(_state.AfterPath);
+            rec.BeforeTime = Occurred(_state.Before);
+            rec.AfterTime = Occurred(_state.After);
+
+            rec.HasScore = true;
+            rec.Score = AnalysisCardVm.MaxScore;      // ← 진짜 점수가 들어갈 자리
+
+            rec.ComparedCount = r.CommonCount;
+            rec.ChangedCount = r.ChangedCount;
+            rec.OneSidedCount = r.OnlyBefore.Count + r.OnlyAfter.Count;
+
+            rec.TolerancePercent = _state.Settings.RelativeTolerancePercent;
+            rec.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
+            rec.AlignIo = _state.Settings.AlignIo;
+            rec.AxisIo = _state.Settings.AxisIo;
+            rec.AppliedShift = r.AppliedShift;
+
+            string problem;
+            HistoryStore.Save(HistoryStore.ResolveFolder(), rec, out problem);
+            if (problem.Length > 0) return "저장하지 못했습니다.\n\n" + problem;
+
+            ReloadHistory();
+            return string.Empty;
+        }
+
+        /// <summary>한 건을 지웁니다.</summary>
+        public void DeleteSaved(string id)
+        {
+            if (HistoryStore.Delete(HistoryStore.ResolveFolder(), id)) ReloadHistory();
+        }
+
+        private static string NameOf(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return string.Empty;
+            try { return Path.GetFileName(path); }
+            catch (ArgumentException) { return string.Empty; }
+        }
+
+        /// <summary>목록 위에 적는 안내.</summary>
+        public string HistoryNote
+        {
+            get
+            {
+                if (_history.Count == 0)
+                    return "아직 저장한 것이 없습니다. 견준 뒤 [지금 결과 저장] 을 누르면 여기에 쌓입니다.";
+                if (_state.Comparison == null)
+                    return "로그를 견주면 각 줄에 지금 결과와의 차이가 같이 뜹니다.";
+                return "각 줄의 오른쪽이 지금 결과와의 차이입니다. 달라진 IO 가 늘면 빨강, 줄면 초록입니다.";
+            }
+        }
+
+        /// <summary>저장 폴더. 화면에서 "어디에 쌓이는지" 를 알려 줍니다.</summary>
+        public string HistoryFolder { get { return HistoryStore.ResolveFolder(); } }
 
         /// <summary>
         /// 화면 아래 요약 칸에 적는 글.
