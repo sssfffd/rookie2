@@ -86,6 +86,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\MainView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\PlaceholderView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\GraphView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -120,6 +128,8 @@
     <Compile Include="ViewModels\GroupRowVm.cs" />
     <Compile Include="ViewModels\ChannelListVm.cs" />
     <Compile Include="ViewModels\AlignVm.cs" />
+    <Compile Include="ViewModels\AnalysisCardVm.cs" />
+    <Compile Include="ViewModels\MainVm.cs" />
     <Compile Include="ViewModels\GraphVm.cs" />
     <Compile Include="ViewModels\DashboardVm.cs" />
     <Compile Include="ViewModels\HeatmapVm.cs" />
@@ -137,6 +147,14 @@
     </Compile>
     <Compile Include="Views\AlignPanel.xaml.cs">
       <DependentUpon>AlignPanel.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\MainView.xaml.cs">
+      <DependentUpon>MainView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\PlaceholderView.xaml.cs">
+      <DependentUpon>PlaceholderView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Views\GraphView.xaml.cs">

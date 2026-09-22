@@ -15,21 +15,65 @@
         <!-- ================= 위쪽 메뉴 줄 (진한 파랑) ================= -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,6">
             <WrapPanel>
-                <TextBlock Text="LogScope" FontSize="17" FontWeight="Bold"
-                           Foreground="{DynamicResource Brush.TopBarText}"
-                           VerticalAlignment="Center" Margin="2,0,8,0" />
+                <!--
+                  [LogScope] 를 누르면 큰 화면 목록이 내려옵니다.
+                  분석이 늘어나도 위 줄이 길어지지 않게 접어 둡니다.
+                -->
+                <Button x:Name="BrandButton" Style="{StaticResource BrandButton}" Click="OnBrandClick"
+                        ToolTip="누르면 화면 목록이 열립니다.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="LogScope" FontSize="17" FontWeight="Bold"
+                                   Foreground="{DynamicResource Brush.TopBarText}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="▾" FontSize="11" Margin="6,2,0,0"
+                                   Foreground="{DynamicResource Brush.TopBarMuted}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Popup x:Name="BrandMenu" PlacementTarget="{Binding ElementName=BrandButton}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                       Closed="OnBrandMenuClosed">
+                    <Border Background="{DynamicResource Brush.Panel}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            Padding="0,5">
+                        <StackPanel>
+                            <TextBlock Text="화면" Style="{StaticResource FieldLabel}" Margin="14,2,14,5" />
+                            <Button Style="{StaticResource MenuItemButton}" Content="1.  메인"
+                                    Tag="0" Click="OnGoScreen" />
+                            <Button Style="{StaticResource MenuItemButton}" Content="2.  1번 화면 — 로그 비교"
+                                    Tag="1" Click="OnGoScreen" />
+                            <Button Style="{StaticResource MenuItemButton}" Content="3.  2번 화면"
+                                    Tag="2" Click="OnGoScreen" />
+                            <Button Style="{StaticResource MenuItemButton}" Content="4.  3번 화면"
+                                    Tag="3" Click="OnGoScreen" />
+                        </StackPanel>
+                    </Border>
+                </Popup>
+
+                <TextBlock Text="{Binding ScreenName}" FontSize="12"
+                           Foreground="{DynamicResource Brush.TopBarMuted}"
+                           VerticalAlignment="Center" Margin="2,0,10,0" />
                 <TextBlock Text="{Binding VersionText}" FontSize="11"
                            Foreground="{DynamicResource Brush.TopBarMuted}"
-                           VerticalAlignment="Center" Margin="0,0,16,0" />
+                           VerticalAlignment="Center" Margin="0,0,14,0" />
 
+                <!--
+                  대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
+                  있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
+                  하게 됩니다.
+                -->
                 <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="대시보드"
                              IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
+                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                              ToolTip="요약 화면입니다 (F1)." />
                 <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="그래프"
                              IsChecked="{Binding ShowGraph, Mode=TwoWay}"
+                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                              ToolTip="시간에 따른 파형을 봅니다 (F2)." />
                 <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="히트맵"
                              IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
+                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                              ToolTip="시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3)." />
 
                 <TextBlock Text="로그 세트" Foreground="{DynamicResource Brush.TopBarMuted}"
@@ -61,23 +105,39 @@
         </Border>
 
         <!-- ================= 본문 =================
-             세 화면을 모두 만들어 두고 보이기만 바꿉니다. 그래야 화면을
+             화면을 모두 만들어 두고 보이기만 바꿉니다. 그래야 화면을
              오갈 때 고른 IO 나 확대 상태가 사라지지 않습니다. -->
         <Grid>
-            <v:DashboardView x:Name="Dashboard" DataContext="{Binding Dashboard}"
-                             Visibility="{Binding DataContext.ShowDashboard,
+
+            <!-- 메인 -->
+            <v:MainView x:Name="Main" DataContext="{Binding Main}"
+                        Visibility="{Binding DataContext.ShowMain,
+                                     RelativeSource={RelativeSource AncestorType=Window},
+                                     Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- 분석 1 — 지금까지 만든 것. 안에서 다시 셋으로 갈립니다. -->
+            <Grid Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}">
+                <v:DashboardView x:Name="Dashboard" DataContext="{Binding Dashboard}"
+                                 Visibility="{Binding DataContext.ShowDashboard,
+                                              RelativeSource={RelativeSource AncestorType=Window},
+                                              Converter={StaticResource BoolToVisibility}}" />
+
+                <v:GraphView x:Name="Graph" DataContext="{Binding Graph}"
+                             Visibility="{Binding DataContext.ShowGraph,
                                           RelativeSource={RelativeSource AncestorType=Window},
                                           Converter={StaticResource BoolToVisibility}}" />
 
-            <v:GraphView x:Name="Graph" DataContext="{Binding Graph}"
-                         Visibility="{Binding DataContext.ShowGraph,
-                                      RelativeSource={RelativeSource AncestorType=Window},
-                                      Converter={StaticResource BoolToVisibility}}" />
+                <v:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
+                               Visibility="{Binding DataContext.ShowHeatmap,
+                                            RelativeSource={RelativeSource AncestorType=Window},
+                                            Converter={StaticResource BoolToVisibility}}" />
+            </Grid>
 
-            <v:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
-                           Visibility="{Binding DataContext.ShowHeatmap,
-                                        RelativeSource={RelativeSource AncestorType=Window},
-                                        Converter={StaticResource BoolToVisibility}}" />
+            <!-- 분석 2 · 3 — 아직 빈 화면입니다. -->
+            <v:PlaceholderView Heading="분석 2"
+                               Visibility="{Binding ShowAnalysis2, Converter={StaticResource BoolToVisibility}}" />
+            <v:PlaceholderView Heading="분석 3"
+                               Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
     </DockPanel>
 </Window>

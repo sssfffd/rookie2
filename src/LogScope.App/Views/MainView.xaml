@@ -1,0 +1,84 @@
+﻿<UserControl x:Class="LogScope.App.Views.MainView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:LogScope.App.ViewModels"
+             Background="{DynamicResource Brush.Window}"
+             Foreground="{DynamicResource Brush.Text}"
+             FontFamily="Segoe UI" FontSize="12">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="18,16,18,20">
+
+            <TextBlock Text="분석 결과" Style="{StaticResource H1}" Margin="6,0,0,2" />
+            <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}" Margin="6,0,0,10"
+                       TextWrapping="Wrap" />
+
+            <!--
+              분석 칸. 좁아지면 저절로 줄을 바꿉니다.
+
+              칸 전체가 단추입니다. 요청은 "점수를 누르면" 이었지만 점수만
+              눌리게 하면 과녁이 너무 작습니다. 칸 어디를 눌러도 같은 자리로
+              갑니다 — 점수도 그 안에 들어 있습니다.
+            -->
+            <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:AnalysisCardVm}">
+                        <Button Style="{StaticResource CardButton}" Click="OnCardClick"
+                                Tag="{Binding Number}">
+                            <StackPanel Width="290">
+
+                                <!-- 번호표와 이름 -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Border Background="{DynamicResource Brush.AccentSoft}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Badge}" FontSize="11"
+                                                   Foreground="{DynamicResource Brush.Accent}"
+                                                   FontWeight="SemiBold" />
+                                    </Border>
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"
+                                               VerticalAlignment="Center" Margin="9,0,0,0" />
+                                </StackPanel>
+
+                                <!-- 점수 -->
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
+                                               FontSize="42" FontWeight="Bold"
+                                               Foreground="{DynamicResource Brush.Good}"
+                                               VerticalAlignment="Bottom" />
+                                    <TextBlock Text="점" FontSize="15" Margin="4,0,0,8"
+                                               Foreground="{DynamicResource Brush.Muted}"
+                                               VerticalAlignment="Bottom" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
+                                           FontSize="11" Margin="0,0,0,8" />
+
+                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}"
+                                           TextWrapping="Wrap" Height="34" />
+                            </StackPanel>
+                        </Button>
+
+                        <DataTemplate.Triggers>
+                            <!-- 아직 만들지 않은 분석은 점수를 흐리게 둡니다.
+                                 만점이라고 크게 적어 놓으면 뭔가 재서 나온 수인 줄 압니다. -->
+                            <DataTrigger Binding="{Binding Ready}" Value="False">
+                                <Setter TargetName="ScoreText" Property="Foreground"
+                                        Value="{DynamicResource Brush.Muted}" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="8,12,0,0"
+                       TextWrapping="Wrap"
+                       Text="점수는 아직 계산하지 않습니다. 무엇을 어떻게 점수로 매길지 정해지기 전까지 모두 만점으로 둡니다." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

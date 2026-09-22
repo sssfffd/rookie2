@@ -21,6 +21,8 @@ OURS = {
     'GraphView': 'LogScope.App.Views.GraphView',
     'HeatmapView': 'LogScope.App.Views.HeatmapView',
     'AlignPanel': 'LogScope.App.Views.AlignPanel',
+    'MainView': 'LogScope.App.Views.MainView',
+    'PlaceholderView': 'LogScope.App.Views.PlaceholderView',
 }
 WPF = {
     'ListView': 'System.Windows.Controls.ListView',

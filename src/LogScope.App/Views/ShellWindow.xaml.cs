@@ -41,6 +41,8 @@ namespace LogScope.App.Views
 
             _vm.SetChanged += OnSetChanged;
             _vm.PageChanged += OnPageChanged;
+            _vm.ScreenChanged += OnScreenChanged;
+            Main.AnalysisOpened += OnAnalysisOpened;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -281,9 +283,66 @@ namespace LogScope.App.Views
 
         private void OnPageChanged(object sender, EventArgs e)
         {
-            // 히트맵 화면을 처음 열면 한 번 계산해 둡니다.
-            if (_vm.Page == ShellVm.PageHeatmap && Heatmap.Map.Result == null && _state.HasBoth)
-                Heatmap.Recalculate(false);
+            EnsureHeatmap();
+        }
+
+        /// <summary>큰 화면이 바뀌었을 때.</summary>
+        private void OnScreenChanged(object sender, EventArgs e)
+        {
+            // 분석 1 로 돌아왔는데 히트맵을 보고 있었다면 다시 계산해 둡니다.
+            // 화면을 옮겨 다니는 사이에 맞추기나 허용 오차가 바뀌었을 수 있습니다.
+            EnsureHeatmap();
+        }
+
+        /// <summary>
+        /// 히트맵 화면을 보고 있는데 아직 계산이 없으면 한 번 돌립니다.
+        /// 큰 화면과 안쪽 화면 둘 다 이 자리를 거칩니다 — 조건이 같은데
+        /// 두 군데에 적어 두면 한쪽만 고치게 됩니다.
+        /// </summary>
+        private void EnsureHeatmap()
+        {
+            if (_vm.Screen != ShellVm.ScreenAnalysis1) return;
+            if (_vm.Page != ShellVm.PageHeatmap) return;
+            if (Heatmap.Map.Result != null || !_state.HasBoth) return;
+            Heatmap.Recalculate(false);
+        }
+
+        /// <summary>메인 화면에서 분석 칸을 눌렀을 때.</summary>
+        private void OnAnalysisOpened(object sender, MainView.AnalysisEventArgs e)
+        {
+            _vm.GoAnalysis(e.Number);
+        }
+
+        // ---- 왼쪽 위 [LogScope] 의 화면 목록 ----
+        //
+        // 팝업은 바깥을 누르면 닫히는데, 그 "바깥" 에는 팝업을 연 단추도
+        // 들어갑니다. 팝업이 먼저 그 누름을 받아 닫고 그 다음에 Click 이
+        // 도착해 다시 엽니다. 그래서 방금 닫혔으면 그 한 번은 무시합니다.
+        // (가로축·시간 맞추기 판과 같은 자리입니다.)
+        private DateTime _brandClosedAt;
+
+        private void OnBrandMenuClosed(object sender, EventArgs e)
+        {
+            _brandClosedAt = DateTime.UtcNow;
+        }
+
+        private void OnBrandClick(object sender, RoutedEventArgs e)
+        {
+            if ((DateTime.UtcNow - _brandClosedAt).TotalMilliseconds < 250) return;
+            BrandMenu.IsOpen = true;
+        }
+
+        private void OnGoScreen(object sender, RoutedEventArgs e)
+        {
+            BrandMenu.IsOpen = false;
+
+            var b = sender as System.Windows.Controls.Button;
+            if (b == null) return;
+
+            int n;
+            if (!int.TryParse(b.Tag as string, System.Globalization.NumberStyles.Integer,
+                              System.Globalization.CultureInfo.InvariantCulture, out n)) return;
+            _vm.Screen = n;
         }
 
         private void OnDashboardIoActivated(object sender, DashboardView.IoEventArgs e)
@@ -345,9 +404,14 @@ namespace LogScope.App.Views
 
             switch (e.Key)
             {
+                // 셋 다 분석 1 의 화면이라, 다른 데 있으면 거기로 데려갑니다.
                 case Key.F1: _vm.GoDashboard(); e.Handled = true; break;
                 case Key.F2: _vm.GoGraph(); e.Handled = true; break;
                 case Key.F3: _vm.GoHeatmap(); e.Handled = true; break;
+                case Key.Escape:
+                    if (BrandMenu.IsOpen) { BrandMenu.IsOpen = false; e.Handled = true; }
+                    else if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
+                    break;
                 case Key.F5: OnRecompare(this, null); e.Handled = true; break;
                 case Key.O:
                     if (ctrl) { OpenLog(!shift); e.Handled = true; }
