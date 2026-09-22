@@ -7,78 +7,147 @@
              FontFamily="Segoe UI" FontSize="12">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="18,16,18,20">
+        <!-- 아주 넓은 화면에서 칸이 끝없이 늘어나지 않게 가둡니다. -->
+        <StackPanel Margin="20,16,20,22" MaxWidth="1180" HorizontalAlignment="Stretch">
 
-            <TextBlock Text="분석 결과" Style="{StaticResource H1}" Margin="6,0,0,2" />
-            <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}" Margin="6,0,0,10"
-                       TextWrapping="Wrap" />
+            <!-- ===== 지금 열어 둔 로그 =====
+                 이 정보가 아래 알림 줄 한 줄에만 있었습니다. 메인 화면이라면
+                 "지금 무엇을 보고 있는가" 가 제일 먼저 보여야 합니다. -->
+            <Border Background="{DynamicResource Brush.Panel}"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                    CornerRadius="5" Padding="18,13" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="열어 둔 로그" Style="{StaticResource FieldLabel}" Margin="0,0,0,6" />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                    Background="{DynamicResource Brush.Before}" Margin="0,0,8,0" />
+                            <TextBlock Text="이전" Width="34" Foreground="{DynamicResource Brush.Muted}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding BeforeText}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                    Background="{DynamicResource Brush.After}" Margin="0,0,8,0" />
+                            <TextBlock Text="이후" Width="34" Foreground="{DynamicResource Brush.Muted}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding AfterText}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding RangeText}" Style="{StaticResource Muted}"
+                                   FontSize="11" Margin="52,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding RangeText, Converter={StaticResource TextToVisibility}}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1" Text="{Binding Hint}" Style="{StaticResource Muted}"
+                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="260"
+                               TextAlignment="Right" Margin="16,0,0,0" />
+                </Grid>
+            </Border>
+
+            <TextBlock Text="분석 결과" Style="{StaticResource H1}" Margin="2,4,0,8" />
 
             <!--
-              분석 칸. 좁아지면 저절로 줄을 바꿉니다.
+              분석 칸. 세로로 셋, 각각 가로로 꽉 찹니다.
 
               칸 전체가 단추입니다. 요청은 "점수를 누르면" 이었지만 점수만
               눌리게 하면 과녁이 너무 작습니다. 칸 어디를 눌러도 같은 자리로
               갑니다 — 점수도 그 안에 들어 있습니다.
             -->
             <ItemsControl ItemsSource="{Binding Cards}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:AnalysisCardVm}">
                         <Button Style="{StaticResource CardButton}" Click="OnCardClick"
-                                Tag="{Binding Number}">
-                            <StackPanel Width="290">
+                                Tag="{Binding Number}" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="220" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                                <!-- 번호표와 이름 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <Border Background="{DynamicResource Brush.AccentSoft}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Badge}" FontSize="11"
-                                                   Foreground="{DynamicResource Brush.Accent}"
-                                                   FontWeight="SemiBold" />
-                                    </Border>
-                                    <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"
-                                               VerticalAlignment="Center" Margin="9,0,0,0" />
+                                <!-- 왼쪽: 번호표 · 이름 · 설명 -->
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <Border Background="{DynamicResource Brush.AccentSoft}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Badge}" FontSize="11"
+                                                       Foreground="{DynamicResource Brush.Accent}"
+                                                       FontWeight="SemiBold" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"
+                                                   VerticalAlignment="Center" Margin="9,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}"
+                                               TextWrapping="Wrap" Margin="0,0,16,0" />
                                 </StackPanel>
 
-                                <!-- 점수 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
-                                               FontSize="42" FontWeight="Bold"
-                                               Foreground="{DynamicResource Brush.Good}"
-                                               VerticalAlignment="Bottom" />
-                                    <TextBlock Text="점" FontSize="15" Margin="4,0,0,8"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Bottom" />
-                                </StackPanel>
-                                <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
-                                           FontSize="11" Margin="0,0,0,8" />
+                                <!-- 가운데: 그 분석이 실제로 센 숫자들 -->
+                                <ItemsControl Grid.Column="1" ItemsSource="{Binding Stats}"
+                                              VerticalAlignment="Center" Margin="0,0,26,0"
+                                              Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:StatVm}">
+                                            <StackPanel Margin="0,0,22,0" MinWidth="76">
+                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}"
+                                                           FontSize="11" />
+                                                <TextBlock Text="{Binding Value}" FontSize="17"
+                                                           FontWeight="SemiBold" Margin="0,2,0,0"
+                                                           Foreground="{DynamicResource Brush.Text}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
-                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}"
-                                           TextWrapping="Wrap" Height="34" />
-                            </StackPanel>
+                                <!-- 오른쪽: 점수 -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                            HorizontalAlignment="Right" MinWidth="150">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
+                                                   FontSize="40" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brush.Muted}"
+                                                   VerticalAlignment="Bottom" />
+                                        <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,7"
+                                                   Foreground="{DynamicResource Brush.Muted}"
+                                                   VerticalAlignment="Bottom" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
+                                               FontSize="11" HorizontalAlignment="Right" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
                         </Button>
 
                         <DataTemplate.Triggers>
-                            <!-- 아직 만들지 않은 분석은 점수를 흐리게 둡니다.
-                                 만점이라고 크게 적어 놓으면 뭔가 재서 나온 수인 줄 압니다. -->
-                            <DataTrigger Binding="{Binding Ready}" Value="False">
+                            <!-- 만점일 때만 초록으로. 아직 안 재 본 "??" 까지
+                                 초록이면 다 맞았다는 뜻으로 읽힙니다. -->
+                            <DataTrigger Binding="{Binding IsFull}" Value="True">
                                 <Setter TargetName="ScoreText" Property="Foreground"
-                                        Value="{DynamicResource Brush.Muted}" />
+                                        Value="{DynamicResource Brush.Good}" />
                             </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="8,12,0,0"
+            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="4,12,0,0"
                        TextWrapping="Wrap"
-                       Text="점수는 아직 계산하지 않습니다. 무엇을 어떻게 점수로 매길지 정해지기 전까지 모두 만점으로 둡니다." />
+                       Text="점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 견주기 전이면 ??, 견주고 나면 만점으로 둡니다." />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

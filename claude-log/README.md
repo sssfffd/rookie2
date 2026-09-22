@@ -33,3 +33,4 @@
 | `24-toolbar-labels.md` | 도구 줄 이름 정리, 차이 영역 표시와 파형 분리 보기는 하나만 |
 | `25-lane-center-clamp.md` | 값이 0 으로 붙박이던 것, Lane/Overlay 이름, 두 맞춤의 차이 |
 | `26-four-screens.md` | 화면을 넷으로. 메인 화면과 분석 1·2·3 |
+| `27-main-screen-layout.md` | 메인 화면 — 가로로 긴 칸 셋, ??/100, 로그 요약 |
