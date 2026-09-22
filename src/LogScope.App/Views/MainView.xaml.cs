@@ -27,6 +27,43 @@ namespace LogScope.App.Views
             public AnalysisEventArgs(int number) { Number = number; }
         }
 
+        /// <summary>요약에서 그룹 한 줄을 눌렀을 때.</summary>
+        public event EventHandler<GroupEventArgs> GroupOpened;
+
+        public sealed class GroupEventArgs : EventArgs
+        {
+            public readonly string GroupName;
+            public readonly System.Collections.Generic.List<string> Members;
+
+            public GroupEventArgs(string groupName, System.Collections.Generic.List<string> members)
+            {
+                GroupName = groupName;
+                Members = members;
+            }
+        }
+
+        /// <summary>
+        /// 요약의 그룹 줄. 그 그룹의 IO 만 히트맵에 남기고 그리로 넘어갑니다.
+        /// 어디로 어떻게 넘어갈지는 창(ShellWindow)이 정합니다.
+        /// </summary>
+        private void OnGroupClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+
+            var vm = DataContext as MainVm;
+            var b = sender as Button;
+            if (vm == null || b == null) return;
+
+            string name = b.Tag as string;
+            if (string.IsNullOrEmpty(name)) return;
+
+            GroupSummaryVm g = vm.FindGroup(name);
+            if (g == null || !g.CanOpen) return;
+
+            EventHandler<GroupEventArgs> h = GroupOpened;
+            if (h != null) h(this, new GroupEventArgs(g.GroupName, g.Members));
+        }
+
         /// <summary>
         /// [지금 결과 저장]. 이름을 물어보고 한 건 남깁니다.
         ///

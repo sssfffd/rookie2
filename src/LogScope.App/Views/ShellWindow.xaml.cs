@@ -43,6 +43,7 @@ namespace LogScope.App.Views
             _vm.PageChanged += OnPageChanged;
             _vm.ScreenChanged += OnScreenChanged;
             Main.AnalysisOpened += OnAnalysisOpened;
+            Main.GroupOpened += OnGroupOpened;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -307,10 +308,27 @@ namespace LogScope.App.Views
             Heatmap.Recalculate(false);
         }
 
-        /// <summary>메인 화면에서 분석 칸을 눌렀을 때.</summary>
+        /// <summary>메인 화면에서 분석 칸의 이동 화살표를 눌렀을 때.</summary>
         private void OnAnalysisOpened(object sender, MainView.AnalysisEventArgs e)
         {
             _vm.GoAnalysis(e.Number);
+        }
+
+        /// <summary>
+        /// 메인 화면 요약에서 그룹을 눌렀을 때. 그 그룹의 IO 만 히트맵에
+        /// 남기고 그리로 넘어갑니다.
+        ///
+        /// 넘어가기 <b>전에</b> 추립니다. 먼저 화면을 바꾸면 OnPageChanged 가
+        /// 추리기 전의 조건으로 한 번 계산해 버려서, 전체를 그렸다가 곧바로
+        /// 다시 그리게 됩니다.
+        /// </summary>
+        private void OnGroupOpened(object sender, MainView.GroupEventArgs e)
+        {
+            if (!_state.HasBoth) return;
+
+            _vm.Screen = ShellVm.ScreenAnalysis1;
+            _vm.GoHeatmap();
+            Heatmap.FocusGroup(e.GroupName, e.Members);
         }
 
         // ---- 왼쪽 위 [LogScope] 의 화면 목록 ----

@@ -6,6 +6,7 @@ using LogScope.App.Services;
 using LogScope.Core.Compare;
 using LogScope.Core.History;
 using LogScope.Core.Model;
+using LogScope.Core.Settings;
 
 namespace LogScope.App.ViewModels
 {
@@ -64,9 +65,15 @@ namespace LogScope.App.ViewModels
                 });
             }
 
+            Cards[0].SetGroups(BuildGroups(r));
+
             // 분석 2·3 은 아직 없습니다. 점수를 비워 둬야 "안 만들었다" 가
             // 그대로 읽힙니다.
-            for (int i = 1; i < Cards.Count; i++) Cards[i].ClearScore();
+            for (int i = 1; i < Cards.Count; i++)
+            {
+                Cards[i].ClearScore();
+                Cards[i].SetGroups(new List<GroupSummaryVm>());
+            }
 
             RefreshDeltas();
 
@@ -80,6 +87,70 @@ namespace LogScope.App.ViewModels
         private static string Count(int n)
         {
             return n.ToString("N0") + "개";
+        }
+
+        /// <summary>
+        /// 그룹마다 "몇 개 중 몇 개가 달라졌나" 를 셉니다.
+        ///
+        /// 그룹은 설정에 담긴 것을 그대로 씁니다. 그룹에 안 담긴 IO 가 남으면
+        /// <b>"묶지 않은 IO"</b> 라는 줄을 하나 더 붙입니다 — 그걸 빼 버리면
+        /// 칸의 "달라진 IO 12개" 와 요약의 합이 안 맞아서, 어느 쪽이 틀린 건지
+        /// 알 수가 없게 됩니다.
+        /// </summary>
+        private List<GroupSummaryVm> BuildGroups(CompareResult r)
+        {
+            var list = new List<GroupSummaryVm>();
+            if (r == null) return list;
+
+            // 달라진 IO 를 빨리 찾을 수 있게 이름을 모아 둡니다.
+            var changed = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < r.Items.Count; i++)
+                if (r.Items[i].Changed) changed.Add(LogDataset.LooseKey(r.Items[i].Name));
+
+            // 견준 IO 전체. 그룹에 안 담긴 것을 가려내는 데 씁니다.
+            var rest = new HashSet<string>(StringComparer.Ordinal);
+            var restNames = new List<string>();
+            for (int i = 0; i < r.Items.Count; i++)
+            {
+                string key = LogDataset.LooseKey(r.Items[i].Name);
+                if (rest.Add(key)) restNames.Add(r.Items[i].Name);
+            }
+
+            List<GroupDef> groups = _state.Settings.Groups;
+            for (int g = 0; g < groups.Count; g++)
+            {
+                GroupDef def = groups[g];
+                var members = new List<string>();
+                int changedHere = 0;
+
+                for (int m = 0; m < def.Members.Count; m++)
+                {
+                    string key = LogDataset.LooseKey(def.Members[m]);
+                    if (!rest.Contains(key)) continue;   // 이 로그에 없는 IO
+                    members.Add(def.Members[m]);
+                    if (changed.Contains(key)) changedHere++;
+                    rest.Remove(key);
+                }
+
+                list.Add(new GroupSummaryVm(def.Name, members, members.Count, changedHere));
+            }
+
+            // 어느 그룹에도 안 담긴 IO. 하나라도 남으면 줄을 붙입니다.
+            if (rest.Count > 0)
+            {
+                var left = new List<string>();
+                int changedLeft = 0;
+                for (int i = 0; i < restNames.Count; i++)
+                {
+                    string key = LogDataset.LooseKey(restNames[i]);
+                    if (!rest.Contains(key)) continue;
+                    left.Add(restNames[i]);
+                    if (changed.Contains(key)) changedLeft++;
+                }
+                list.Add(new GroupSummaryVm("묶지 않은 IO", left, left.Count, changedLeft));
+            }
+
+            return list;
         }
 
         // ---------------- 지금 열어 둔 로그 ----------------
@@ -154,6 +225,19 @@ namespace LogScope.App.ViewModels
         /// 무슨 뜻인지 알려 줍니다. 칸의 점수 색과 <b>같은 값</b>을 봅니다.
         /// </summary>
         public List<BandVm> Bands { get { return ScoreBands.Legend(); } }
+
+        /// <summary>요약에서 누른 그룹을 찾습니다. 분석 1 의 것만 있습니다.</summary>
+        public GroupSummaryVm FindGroup(string groupName)
+        {
+            if (string.IsNullOrEmpty(groupName)) return null;
+            for (int c = 0; c < Cards.Count; c++)
+            {
+                List<GroupSummaryVm> gs = Cards[c].Groups;
+                for (int i = 0; i < gs.Count; i++)
+                    if (gs[i].GroupName == groupName) return gs[i];
+            }
+            return null;
+        }
 
         // ---------------- 저장된 분석 ----------------
         //
@@ -280,15 +364,6 @@ namespace LogScope.App.ViewModels
 
         /// <summary>저장 폴더. 화면에서 "어디에 쌓이는지" 를 알려 줍니다.</summary>
         public string HistoryFolder { get { return HistoryStore.ResolveFolder(); } }
-
-        /// <summary>
-        /// 화면 아래 요약 칸에 적는 글.
-        ///
-        /// <b>아직 미구현입니다.</b> 무엇을 요약해 줄지 정해지지 않았습니다 —
-        /// 분석 셋의 결과를 한 문단으로 묶는 것이 될 텐데, 분석 2·3 이
-        /// 없는 지금은 쓸 재료가 없습니다. 채울 자리는 여기 한 곳입니다.
-        /// </summary>
-        public string SummaryText { get { return "미구현"; } }
 
         /// <summary>칸 위에 적는 안내.</summary>
         public string Hint

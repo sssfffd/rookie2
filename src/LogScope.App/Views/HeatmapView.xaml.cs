@@ -95,6 +95,26 @@ namespace LogScope.App.Views
             AlignPopup.IsOpen = false;
         }
 
+        /// <summary>[모든 IO 보기]. 한 그룹만 보던 것을 풀고 다시 계산합니다.</summary>
+        private void OnClearFocus(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+            _vm.ClearFocus();
+            Recalculate(false);
+        }
+
+        /// <summary>
+        /// 메인 화면에서 그룹을 눌러 넘어왔을 때. 그 그룹의 IO 만 남기고
+        /// 다시 계산합니다.
+        /// </summary>
+        public void FocusGroup(string groupName, System.Collections.Generic.List<string> names)
+        {
+            if (_vm == null) return;
+            _vm.FocusGroup(groupName, names);
+            Map.SetResult(null);
+            Recalculate(false);
+        }
+
         private void OnHoverTextChanged(object sender, string text)
         {
             if (_vm != null) _vm.HoverText = text;

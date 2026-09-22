@@ -62,6 +62,54 @@ namespace LogScope.App.ViewModels
         }
     }
 
+    /// <summary>
+    /// 분석 칸 아래 요약의 한 줄. <b>그룹 하나</b>입니다.
+    ///
+    /// 누르면 그 그룹의 IO 만 히트맵에 남깁니다 — 어디가 어떻게 어긋났는지는
+    /// 그 화면이 제일 잘 보여 줍니다.
+    /// </summary>
+    public sealed class GroupSummaryVm
+    {
+        public string GroupName { get; private set; }
+
+        /// <summary>이 그룹에 담긴 IO 이름들. 히트맵을 추릴 때 그대로 넘깁니다.</summary>
+        public List<string> Members { get; private set; }
+
+        public int MemberCount { get; private set; }
+        public int ChangedCount { get; private set; }
+
+        public GroupSummaryVm(string groupName, List<string> members, int memberCount, int changedCount)
+        {
+            GroupName = groupName ?? string.Empty;
+            Members = members ?? new List<string>();
+            MemberCount = memberCount;
+            ChangedCount = changedCount;
+        }
+
+        public string CountText
+        {
+            get
+            {
+                if (MemberCount == 0) return "IO 없음";
+                return ChangedCount.ToString("N0") + " / " + MemberCount.ToString("N0") + " 달라짐";
+            }
+        }
+
+        /// <summary>색을 가르는 값. 하나도 안 달라졌으면 초록입니다.</summary>
+        public string Grade
+        {
+            get
+            {
+                if (MemberCount == 0) return ScoreBands.GradeNone;
+                if (ChangedCount == 0) return ScoreBands.GradeGood;
+                // 절반 넘게 어긋났으면 빨강. 몇 개만이면 노랑.
+                return ChangedCount * 2 >= MemberCount ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+            }
+        }
+
+        public bool CanOpen { get { return MemberCount > 0; } }
+    }
+
     /// <summary>분석 칸 안에 적는 숫자 하나. "달라진 IO  12개" 같은 것.</summary>
     public sealed class StatVm
     {
@@ -196,5 +244,29 @@ namespace LogScope.App.ViewModels
         }
 
         public bool HasStats { get { return _stats.Count > 0; } }
+
+        // ---- 칸 아래의 요약 (그룹별) --------------------------------------
+
+        private List<GroupSummaryVm> _groups = new List<GroupSummaryVm>();
+        public List<GroupSummaryVm> Groups { get { return _groups; } }
+
+        public void SetGroups(List<GroupSummaryVm> groups)
+        {
+            _groups = groups ?? new List<GroupSummaryVm>();
+            Raise("Groups"); Raise("HasGroups"); Raise("GroupNote");
+        }
+
+        public bool HasGroups { get { return _groups.Count > 0; } }
+
+        /// <summary>요약에 적을 것이 없을 때 그 자리에 적는 글.</summary>
+        public string GroupNote
+        {
+            get
+            {
+                if (_groups.Count > 0) return string.Empty;
+                if (!Ready) return "아직 만들지 않았습니다.";
+                return "그룹이 없거나 아직 견주지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
+            }
+        }
     }
 }

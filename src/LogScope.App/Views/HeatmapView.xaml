@@ -81,6 +81,25 @@
                                Foreground="{DynamicResource Brush.Text}" />
                 </Border>
 
+                <!-- 한 그룹만 보고 있을 때. 그렇다고 말해 주지 않으면
+                     "IO 가 왜 이것밖에 없지" 가 됩니다. -->
+                <Border Background="{DynamicResource Brush.AccentSoft}"
+                        BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
+                        CornerRadius="3" Padding="10,5" Margin="0,0,0,6"
+                        Visibility="{Binding HasFocus, Converter={StaticResource BoolToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding FocusText}" TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.Text}" />
+                        <Button Grid.Column="1" Content="모든 IO 보기" Click="OnClearFocus"
+                                Margin="10,0,0,0" />
+                    </Grid>
+                </Border>
+
                 <TextBlock Text="{Binding Summary}" TextWrapping="Wrap"
                            Foreground="{DynamicResource Brush.Text}" />
                 <WrapPanel Margin="0,6,0,0">

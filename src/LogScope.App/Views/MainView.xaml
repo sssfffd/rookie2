@@ -95,24 +95,42 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:AnalysisCardVm}">
-                        <Button Style="{StaticResource CardButton}" Click="OnCardClick"
-                                Tag="{Binding Number}" HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch">
+                        <!--
+                          칸 전체가 단추이던 것을 되돌렸습니다. 칸 안에 누를
+                          것(그룹 줄)이 생겼는데, 바깥까지 단추면 그룹을 누른
+                          손이 칸도 같이 누릅니다. 이동은 오른쪽 위 화살표만
+                          맡습니다.
+                        -->
+                        <Border Background="{DynamicResource Brush.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                CornerRadius="5" Padding="18,14" Margin="6">
                             <StackPanel>
 
-                                <!-- 번호표와 이름 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                    <Border Background="{DynamicResource Brush.AccentSoft}"
+                                <!-- 번호표 · 이름 · 이동 화살표 -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Background="{DynamicResource Brush.AccentSoft}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Badge}" FontSize="11"
                                                    Foreground="{DynamicResource Brush.Accent}"
                                                    FontWeight="SemiBold" />
                                     </Border>
-                                    <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"
-                                               VerticalAlignment="Center" Margin="9,0,0,0"
+
+                                    <TextBlock Grid.Column="1" Text="{Binding Title}" Style="{StaticResource H2}"
+                                               VerticalAlignment="Center" Margin="9,0,6,0"
                                                TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
+
+                                    <Button Grid.Column="2" Style="{StaticResource ArrowButton}"
+                                            Content="↗" Click="OnCardClick" Tag="{Binding Number}"
+                                            VerticalAlignment="Top"
+                                            ToolTip="이 분석 화면으로 넘어갑니다." />
+                                </Grid>
 
                                 <!-- 점수 -->
                                 <StackPanel Orientation="Horizontal">
@@ -148,11 +166,75 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <!-- 설명. 높이를 고정해 세 칸의 키를 맞춥니다. -->
-                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}"
-                                           TextWrapping="Wrap" Height="46" Margin="0,12,0,0" />
+                                <!-- ===== 이 분석의 요약 (그룹별) =====
+                                     줄을 누르면 그 그룹의 IO 만 히트맵에 남깁니다. -->
+                                <Border Background="{DynamicResource Brush.Window}"
+                                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="요약" Style="{StaticResource FieldLabel}"
+                                                   Margin="0,0,0,5" />
+
+                                        <TextBlock Text="{Binding GroupNote}" Style="{StaticResource Muted}"
+                                                   FontSize="11" TextWrapping="Wrap"
+                                                   Visibility="{Binding GroupNote, Converter={StaticResource TextToVisibility}}" />
+
+                                        <!-- 그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다. -->
+                                        <ScrollViewer MaxHeight="118" VerticalScrollBarVisibility="Auto"
+                                                      HorizontalScrollBarVisibility="Disabled"
+                                                      Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl ItemsSource="{Binding Groups}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:GroupSummaryVm}">
+                                                        <Button Style="{StaticResource RowButton}"
+                                                                Click="OnGroupClick" Tag="{Binding GroupName}"
+                                                                IsEnabled="{Binding CanOpen}"
+                                                                ToolTip="이 그룹의 IO 만 히트맵에서 봅니다."
+                                                                Margin="0,1,0,1">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <Border x:Name="Dot" Grid.Column="0"
+                                                                        Width="8" Height="8" CornerRadius="4"
+                                                                        VerticalAlignment="Center" Margin="0,0,7,0"
+                                                                        Background="{DynamicResource Brush.Muted}" />
+
+                                                                <TextBlock Grid.Column="1" Text="{Binding GroupName}"
+                                                                           VerticalAlignment="Center" FontSize="12"
+                                                                           TextTrimming="CharacterEllipsis" />
+
+                                                                <TextBlock Grid.Column="2" Text="{Binding CountText}"
+                                                                           Style="{StaticResource Muted}" FontSize="11"
+                                                                           VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                            </Grid>
+                                                        </Button>
+
+                                                        <DataTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding Grade}" Value="good">
+                                                                <Setter TargetName="Dot" Property="Background"
+                                                                        Value="{DynamicResource Brush.Good}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Grade}" Value="warn">
+                                                                <Setter TargetName="Dot" Property="Background"
+                                                                        Value="{DynamicResource Brush.Warn}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Grade}" Value="bad">
+                                                                <Setter TargetName="Dot" Property="Background"
+                                                                        Value="{DynamicResource Brush.Bad}" />
+                                                            </DataTrigger>
+                                                        </DataTemplate.Triggers>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                        </Button>
+                        </Border>
 
                         <DataTemplate.Triggers>
                             <!-- 점수 색은 화면 아래의 색 설명과 같은 값을 봅니다
@@ -307,20 +389,6 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     </ScrollViewer>
-                </StackPanel>
-            </Border>
-
-            <!-- ===== 요약 =====
-                 분석 셋의 결과를 한자리에 묶어 줄 자리입니다. 아직 무엇을
-                 요약할지 정해지지 않아서 비워 두되, 칸은 미리 만들어 두고
-                 "미구현" 이라고 적어 둡니다. -->
-            <Border Background="{DynamicResource Brush.Panel}"
-                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                    CornerRadius="5" Padding="18,14" Margin="6,14,6,0" MinHeight="86">
-                <StackPanel>
-                    <TextBlock Text="요약" Style="{StaticResource FieldLabel}" Margin="0,0,0,8" />
-                    <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Muted}"
-                               TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

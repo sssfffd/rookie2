@@ -94,6 +94,7 @@ namespace LogScope.Tests
                 AxisChannelSwap();
                 AxisRefusesCoarseValues();
                 AxisWarnsOnFlatRuns();
+                HeatmapNameFilter();
                 HistorySaveAndLoad();
                 HistoryEdgeCases();
                 JsonRoundTrip();
@@ -1426,6 +1427,64 @@ namespace LogScope.Tests
         /// 분석 결과를 남기고 다시 읽습니다. 기록 하나에 파일 하나이고,
         /// 최근 것이 앞에 옵니다.
         /// </summary>
+        /// <summary>
+        /// 히트맵을 한 그룹의 IO 만 보도록 추립니다. 메인 화면에서 그룹을
+        /// 눌러 넘어올 때 씁니다.
+        /// </summary>
+        private static void HeatmapNameFilter()
+        {
+            Console.WriteLine("히트맵 — 그룹만 추려 보기");
+
+            // 세 IO 가 다 달라집니다. 그중 둘만 남기는지 봅니다.
+            var b = new StringBuilder("Time,밸브 A,밸브 B,압력 PT-01\n");
+            var a = new StringBuilder("Time,밸브 A,밸브 B,압력 PT-01\n");
+            for (int i = 0; i < 40; i++)
+            {
+                b.Append(i * 1000).Append(",10,20,30\n");
+                a.Append(i * 1000).Append(",11,21,31\n");
+            }
+            LogDataset dsB = Open(WriteCsv("hmf_b.csv", b.ToString()), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("hmf_a.csv", a.ToString()), Orientation.Auto);
+
+            var all = new HeatmapOptions();
+            all.RelativePercent = 0.1;
+            HeatmapResult full = HeatmapBuilder.Build(dsB, dsA, all, null);
+            Check("추리기 전에는 셋 다", full.Rows.Count == 3, "실제 " + full.Rows.Count);
+
+            var one = new HeatmapOptions();
+            one.RelativePercent = 0.1;
+            one.OnlyNames = HeatmapOptions.NameFilter(new[] { "밸브 A", "압력 PT-01" });
+            Check("추리기가 걸림", one.HasFilter, null);
+
+            HeatmapResult part = HeatmapBuilder.Build(dsB, dsA, one, null);
+            Check("둘만 남음", part.Rows.Count == 2, "실제 " + part.Rows.Count);
+            Check("견준 수도 둘", part.ComparedChannels == 2, part.ComparedChannels.ToString());
+
+            bool hasValve = false, hasPress = false, hasB = false;
+            for (int i = 0; i < part.Rows.Count; i++)
+            {
+                if (part.Rows[i].Name == "밸브 A") hasValve = true;
+                if (part.Rows[i].Name == "압력 PT-01") hasPress = true;
+                if (part.Rows[i].Name == "밸브 B") hasB = true;
+            }
+            Check("고른 것은 남고", hasValve && hasPress, null);
+            Check("안 고른 것은 빠짐", !hasB, null);
+
+            // 이름이 살짝 달라도 붙어야 합니다. 그룹은 사람이 손으로 담습니다.
+            var loose = new HeatmapOptions();
+            loose.RelativePercent = 0.1;
+            loose.OnlyNames = HeatmapOptions.NameFilter(new[] { "밸브A", "압력_PT01" });
+            HeatmapResult l = HeatmapBuilder.Build(dsB, dsA, loose, null);
+            Check("공백과 기호가 달라도 붙음", l.Rows.Count == 2, "실제 " + l.Rows.Count);
+
+            // 빈 목록은 "추리지 않음" 입니다. 아무것도 안 남으면 안 됩니다.
+            var empty = new HeatmapOptions();
+            empty.RelativePercent = 0.1;
+            empty.OnlyNames = HeatmapOptions.NameFilter(new string[0]);
+            Check("빈 목록은 추리기가 아님", !empty.HasFilter, null);
+            Check("그래서 셋 다", HeatmapBuilder.Build(dsB, dsA, empty, null).Rows.Count == 3, null);
+        }
+
         private static void HistorySaveAndLoad()
         {
             Console.WriteLine("분석 결과 저장");

@@ -194,9 +194,46 @@ namespace LogScope.App.ViewModels
             }
         }
 
+        // ---------------- 한 그룹만 보기 ----------------
+        //
+        // 메인 화면에서 그룹을 눌러 넘어오면 그 그룹의 IO 만 남깁니다.
+        // 넘어와 놓고 수백 줄 가운데서 다시 찾아야 하면 넘어온 뜻이 없습니다.
+
+        private string _focusGroup = string.Empty;
+        private List<string> _focusNames;
+
+        /// <summary>지금 한 그룹만 보고 있는지.</summary>
+        public bool HasFocus { get { return _focusNames != null && _focusNames.Count > 0; } }
+
+        /// <summary>그 그룹의 IO 만 보도록 잡습니다.</summary>
+        public void FocusGroup(string groupName, List<string> names)
+        {
+            _focusGroup = groupName ?? string.Empty;
+            _focusNames = names;
+            Raise("HasFocus"); Raise("FocusText");
+        }
+
+        public void ClearFocus()
+        {
+            if (!HasFocus) return;
+            _focusGroup = string.Empty;
+            _focusNames = null;
+            Raise("HasFocus"); Raise("FocusText");
+        }
+
+        public string FocusText
+        {
+            get
+            {
+                if (!HasFocus) return string.Empty;
+                return "\"" + _focusGroup + "\" 그룹의 IO " + _focusNames.Count + "개만 보고 있습니다.";
+            }
+        }
+
         public HeatmapOptions BuildOptions()
         {
             var o = new HeatmapOptions();
+            o.OnlyNames = HeatmapOptions.NameFilter(_focusNames);
             o.BucketSpan = BucketSpan;
             o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             o.RelativePercent = RelativePercent;

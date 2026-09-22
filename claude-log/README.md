@@ -35,3 +35,4 @@
 | `26-four-screens.md` | 화면을 넷으로. 메인 화면과 분석 1·2·3 |
 | `27-main-screen-layout.md` | 메인 화면 — 가로로 긴 칸 셋, ??/100, 로그 요약 |
 | `28-analysis-history.md` | 분석 결과 저장. 지난번과 견주기, 기준이 다르면 빼지 않기 |
+| `29-card-summary-and-groups.md` | 칸마다 그룹별 요약, 이동 화살표, 그룹 → 히트맵 추리기 |

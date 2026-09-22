@@ -165,6 +165,33 @@ namespace LogScope.Core.Compare
         /// <summary>이후 로그의 시간을 이만큼 밀어 맞춥니다.</summary>
         public double Shift;
 
+        /// <summary>
+        /// 이 이름들만 봅니다. 비어 있으면 모두 봅니다.
+        ///
+        /// 메인 화면에서 그룹을 눌러 넘어왔을 때, 그 그룹의 IO 만 남깁니다.
+        /// 넘어와 놓고 수백 줄 가운데서 다시 찾아야 하면 넘어온 뜻이 없습니다.
+        ///
+        /// 이름은 <b>느슨하게</b> 맞춥니다 (공백·대소문자·_-. 무시). 그룹은
+        /// 사람이 손으로 담는 것이라 이전 로그와 이후 로그의 이름이 살짝
+        /// 다를 수 있는데, 그 규칙은 채널을 찾을 때 이미 쓰고 있습니다.
+        /// </summary>
+        public HashSet<string> OnlyNames;
+
+        public bool HasFilter { get { return OnlyNames != null && OnlyNames.Count > 0; } }
+
+        /// <summary>이름 목록을 느슨한 열쇠로 바꿔 담습니다.</summary>
+        public static HashSet<string> NameFilter(IEnumerable<string> names)
+        {
+            if (names == null) return null;
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string n in names)
+            {
+                if (string.IsNullOrEmpty(n)) continue;
+                set.Add(LogDataset.LooseKey(n));
+            }
+            return set.Count > 0 ? set : null;
+        }
+
         public HeatmapOptions Clone() { return (HeatmapOptions)MemberwiseClone(); }
     }
 
@@ -242,6 +269,8 @@ namespace LogScope.Core.Compare
                 }
 
                 Channel bc = before.Channels[bi];
+                if (opt.HasFilter && !opt.OnlyNames.Contains(LogDataset.LooseKey(bc.Name))) continue;
+
                 int ai = after.FindChannel(bc.Name);
                 if (ai < 0) continue;   // 한쪽에만 있는 IO 는 여기서 다루지 않습니다.
 
