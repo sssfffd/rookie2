@@ -530,3 +530,11 @@
 > 적어줄꺼거든? 그 공간까지 만들어줘
 
 → 답변: [29-card-summary-and-groups.md](29-card-summary-and-groups.md) 의 3-2 장
+
+---
+
+## 요청 38 — 열어 둔 로그에 파일 이름도
+
+> 그리고 메인화면 열어둔 로그쪽에 로그 이름들도 넣어지게
+
+→ 답변: [27-main-screen-layout.md](27-main-screen-layout.md) 의 3 장

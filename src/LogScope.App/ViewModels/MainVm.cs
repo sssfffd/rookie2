@@ -79,6 +79,7 @@ namespace LogScope.App.ViewModels
 
             Raise("HasLogs"); Raise("HasBoth"); Raise("Hint"); Raise("CanSave");
             Raise("BeforeTime"); Raise("AfterTime");
+            Raise("BeforeFileName"); Raise("AfterFileName");
             Raise("BeforeText"); Raise("AfterText");
             Raise("BeforePath"); Raise("AfterPath");
             Raise("ComparedText");
@@ -189,6 +190,13 @@ namespace LogScope.App.ViewModels
             // 자른 자리에 구분 기호가 걸리면 지저분합니다 ("2026-03-14_" 같은).
             return name.TrimEnd(' ', '_', '-', '.');
         }
+
+        /// <summary>
+        /// 열어 둔 파일의 이름. 발생시간은 이름 앞부분만 떼어 온 것이라,
+        /// 같은 날 두 번 딴 로그를 가리려면 이름이 같이 보여야 합니다.
+        /// </summary>
+        public string BeforeFileName { get { return NameOf(_state.BeforePath); } }
+        public string AfterFileName { get { return NameOf(_state.AfterPath); } }
 
         public string BeforeText { get { return Describe(_state.Before, "이전 로그를 열어 주세요"); } }
         public string AfterText { get { return Describe(_state.After, "이후 로그를 열어 주세요"); } }
