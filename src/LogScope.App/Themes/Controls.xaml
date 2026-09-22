@@ -638,6 +638,38 @@
         </Setter>
     </Style>
 
+    <!-- 목록의 한 줄을 통째로 누를 수 있게. 생김새는 그대로 두고 마우스를
+         올렸을 때만 표가 납니다. -->
+    <Style x:Key="RowButton" TargetType="{x:Type Button}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent" BorderThickness="0"
+                            CornerRadius="3" SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.RowHover}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Tile" TargetType="{x:Type Border}">
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />

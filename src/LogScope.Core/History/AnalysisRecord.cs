@@ -26,14 +26,54 @@ namespace LogScope.Core.History
         public string Label = string.Empty;
 
         // ---- 무엇을 견줬나 ----
+        //
+        // 파일 <b>이름 전체</b>를 남깁니다. 발생시간(앞 10 글자)만 남기면
+        // 같은 날 두 번 딴 로그를 나중에 가릴 수가 없습니다. 경로까지 따로
+        // 두는 이유는, 폴더를 옮겨 놓고 "이게 그때 그 파일이 맞나" 를 볼 때
+        // 이름만으로는 알 수 없기 때문입니다.
         public string BeforeName = string.Empty;
         public string AfterName = string.Empty;
+        public string BeforePath = string.Empty;
+        public string AfterPath = string.Empty;
         public string BeforeTime = string.Empty;   // 파일 이름 앞부분 (발생시간)
         public string AfterTime = string.Empty;
 
         // ---- 결과 ----
-        public bool HasScore;
-        public double Score;
+        //
+        // 분석이 셋이므로 점수도 셋입니다. 하나만 남기면 나중에 분석 2·3 이
+        // 생겼을 때 그때 기록에는 그 점수가 없어서, 견줄 수 있는 것과 없는
+        // 것이 섞입니다. 아직 없는 분석은 Has 를 거짓으로 둡니다 — 0 점으로
+        // 두면 "다 틀렸다" 는 뜻이 됩니다.
+        public const int AnalysisCount = 3;
+
+        public bool[] HasScores = new bool[AnalysisCount];
+        public double[] Scores = new double[AnalysisCount];
+
+        /// <summary>n 번 분석(1 부터)의 점수를 적습니다.</summary>
+        public void SetScore(int number, bool has, double value)
+        {
+            int i = number - 1;
+            if (i < 0 || i >= AnalysisCount) return;
+            HasScores[i] = has;
+            Scores[i] = value;
+        }
+
+        /// <summary>n 번 분석(1 부터)의 점수 글자. 없으면 "??".</summary>
+        public string ScoreText(int number)
+        {
+            int i = number - 1;
+            if (i < 0 || i >= AnalysisCount) return "??";
+            return HasScores[i] ? Scores[i].ToString("0.#", CultureInfo.InvariantCulture) : "??";
+        }
+
+        /// <summary>목록 한 줄에 적는 점수 셋.</summary>
+        public string AllScoresText
+        {
+            get
+            {
+                return ScoreText(1) + " / " + ScoreText(2) + " / " + ScoreText(3);
+            }
+        }
 
         public int ComparedCount;    // 양쪽에 다 있는 IO
         public int ChangedCount;     // 허용 오차를 넘은 IO
@@ -100,11 +140,21 @@ namespace LogScope.Core.History
 
             d["beforeName"] = BeforeName ?? string.Empty;
             d["afterName"] = AfterName ?? string.Empty;
+            d["beforePath"] = BeforePath ?? string.Empty;
+            d["afterPath"] = AfterPath ?? string.Empty;
             d["beforeTime"] = BeforeTime ?? string.Empty;
             d["afterTime"] = AfterTime ?? string.Empty;
 
-            d["hasScore"] = HasScore;
-            d["score"] = Score;
+            var scores = new List<object>();
+            for (int i = 0; i < AnalysisCount; i++)
+            {
+                var one = new Dictionary<string, object>(StringComparer.Ordinal);
+                one["n"] = (double)(i + 1);
+                one["has"] = HasScores[i];
+                one["value"] = Scores[i];
+                scores.Add(one);
+            }
+            d["scores"] = scores;
 
             d["comparedCount"] = (double)ComparedCount;
             d["changedCount"] = (double)ChangedCount;
@@ -129,11 +179,24 @@ namespace LogScope.Core.History
 
             r.BeforeName = Json.GetString(d, "beforeName", string.Empty);
             r.AfterName = Json.GetString(d, "afterName", string.Empty);
+            r.BeforePath = Json.GetString(d, "beforePath", string.Empty);
+            r.AfterPath = Json.GetString(d, "afterPath", string.Empty);
             r.BeforeTime = Json.GetString(d, "beforeTime", string.Empty);
             r.AfterTime = Json.GetString(d, "afterTime", string.Empty);
 
-            r.HasScore = Json.GetBool(d, "hasScore", false);
-            r.Score = Json.GetDouble(d, "score", 0);
+            // 점수가 하나뿐이던 시절의 파일도 읽힙니다. 그때 점수는 분석 1 것입니다.
+            if (d.ContainsKey("hasScore") || d.ContainsKey("score"))
+                r.SetScore(1, Json.GetBool(d, "hasScore", false), Json.GetDouble(d, "score", 0));
+
+            List<object> scores = Json.GetArray(d, "scores");
+            for (int i = 0; i < scores.Count; i++)
+            {
+                Dictionary<string, object> one = Json.AsObject(scores[i]);
+                if (one.Count == 0) continue;
+                r.SetScore(Json.GetInt(one, "n", i + 1),
+                           Json.GetBool(one, "has", false),
+                           Json.GetDouble(one, "value", 0));
+            }
 
             r.ComparedCount = Json.GetInt(d, "comparedCount", 0);
             r.ChangedCount = Json.GetInt(d, "changedCount", 0);

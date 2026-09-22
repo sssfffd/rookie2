@@ -215,11 +215,15 @@ namespace LogScope.App.ViewModels
 
             rec.BeforeName = NameOf(_state.BeforePath);
             rec.AfterName = NameOf(_state.AfterPath);
+            rec.BeforePath = _state.BeforePath ?? string.Empty;
+            rec.AfterPath = _state.AfterPath ?? string.Empty;
             rec.BeforeTime = Occurred(_state.Before);
             rec.AfterTime = Occurred(_state.After);
 
-            rec.HasScore = true;
-            rec.Score = AnalysisCardVm.MaxScore;      // ← 진짜 점수가 들어갈 자리
+            // 분석 셋의 점수를 그대로 남깁니다. 아직 없는 분석은 "없음" 으로
+            // 둡니다 — 0 점으로 적으면 "다 틀렸다" 는 뜻이 됩니다.
+            for (int i = 0; i < Cards.Count && i < AnalysisRecord.AnalysisCount; i++)
+                rec.SetScore(i + 1, Cards[i].HasScore, Cards[i].Score);
 
             rec.ComparedCount = r.CommonCount;
             rec.ChangedCount = r.ChangedCount;
@@ -237,6 +241,15 @@ namespace LogScope.App.ViewModels
 
             ReloadHistory();
             return string.Empty;
+        }
+
+        /// <summary>목록에서 한 건을 찾습니다. 팝업을 띄울 때 씁니다.</summary>
+        public AnalysisRecord SavedById(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            for (int i = 0; i < _history.Count; i++)
+                if (_history[i].Id == id) return _history[i].Record;
+            return null;
         }
 
         /// <summary>한 건을 지웁니다.</summary>

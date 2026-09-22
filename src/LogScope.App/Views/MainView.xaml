@@ -200,59 +200,90 @@
                                 ToolTip="{Binding HistoryFolder}" />
                     </Grid>
 
-                    <ItemsControl ItemsSource="{Binding History}"
+                    <!--
+                      세 줄까지만 보이고 그 다음부터는 이 칸 안에서 굴립니다.
+                      기록이 쌓일수록 메인 화면이 끝없이 길어지면 아래 요약
+                      칸이 화면 밖으로 밀려납니다.
+
+                      줄 하나가 약 66 (이름 17 + 파일 15 + 기준 14 + 위아래
+                      여백 16 + 줄 사이 선 1 + 여유 3) 이라 셋이면 198 입니다.
+                      네 번째 줄이 살짝 보여야 "더 있다" 는 것이 눈에 띄므로
+                      210 으로 둡니다.
+                    -->
+                    <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
                                   Visibility="{Binding HasHistory, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding History}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:HistoryRowVm}">
                                 <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
-                                        Padding="0,8,0,8">
+                                        Padding="0,6,0,6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MinWidth="200" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- 언제 것인지, 무엇을 견줬는지 -->
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center"
-                                                    Margin="0,0,14,0">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding LogsText}" Style="{StaticResource Muted}"
-                                                       FontSize="11" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding BasisText}" Style="{StaticResource Muted}"
-                                                       FontSize="10" Margin="0,2,0,0"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                        <!--
+                                          줄 전체가 단추입니다. 누르면 그때의
+                                          기록을 펼쳐 보는 창이 뜹니다.
+                                          [삭제] 는 이 단추 <b>밖</b>에 둡니다 —
+                                          안에 넣으면 삭제를 눌러도 바깥 단추의
+                                          Click 까지 같이 올라갑니다.
+                                        -->
+                                        <Button Grid.Column="0" Style="{StaticResource RowButton}"
+                                                Click="OnOpenSaved" Tag="{Binding Id}"
+                                                ToolTip="{Binding PathsText}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" MinWidth="200" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
 
-                                        <!-- 그때의 수 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
-                                                    Margin="0,0,18,0">
-                                            <TextBlock Text="{Binding ScoreText}" FontSize="14"
-                                                       FontWeight="SemiBold" HorizontalAlignment="Right" />
-                                            <TextBlock Text="{Binding CountsText}" Style="{StaticResource Muted}"
-                                                       FontSize="11" HorizontalAlignment="Right"
-                                                       Margin="0,2,0,0" />
-                                        </StackPanel>
+                                                <!-- 언제 것인지, 무엇을 견줬는지 -->
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center"
+                                                            Margin="0,0,14,0">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding LogsText}" Style="{StaticResource Muted}"
+                                                               FontSize="11" Margin="0,2,0,0"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding BasisText}" Style="{StaticResource Muted}"
+                                                               FontSize="10" Margin="0,2,0,0"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
 
-                                        <!-- 지금 결과와의 차이 -->
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="170"
-                                                    Margin="0,0,10,0"
-                                                    Visibility="{Binding HasDelta, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock x:Name="DeltaText" Text="{Binding DeltaText}"
-                                                       FontSize="12" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Right"
-                                                       Foreground="{DynamicResource Brush.Muted}" />
-                                            <TextBlock Text="{Binding BasisWarning}" Style="{StaticResource Muted}"
-                                                       FontSize="10" HorizontalAlignment="Right"
-                                                       TextWrapping="Wrap" TextAlignment="Right"
-                                                       Margin="0,2,0,0"
-                                                       Visibility="{Binding BasisWarning, Converter={StaticResource TextToVisibility}}" />
-                                        </StackPanel>
+                                                <!-- 그때의 점수 셋과 수 -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                            Margin="0,0,18,0">
+                                                    <TextBlock Text="{Binding ScoreText}" FontSize="14"
+                                                               FontWeight="SemiBold" HorizontalAlignment="Right"
+                                                               ToolTip="분석 1 / 2 / 3" />
+                                                    <TextBlock Text="{Binding CountsText}" Style="{StaticResource Muted}"
+                                                               FontSize="11" HorizontalAlignment="Right"
+                                                               Margin="0,2,0,0" />
+                                                </StackPanel>
 
-                                        <Button Grid.Column="3" Content="삭제" Click="OnDeleteSaved"
-                                                Tag="{Binding Id}" VerticalAlignment="Center" />
+                                                <!-- 지금 결과와의 차이 -->
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="170"
+                                                            Visibility="{Binding HasDelta, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock x:Name="DeltaText" Text="{Binding DeltaText}"
+                                                               FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Right"
+                                                               Foreground="{DynamicResource Brush.Muted}" />
+                                                    <TextBlock Text="{Binding BasisWarning}" Style="{StaticResource Muted}"
+                                                               FontSize="10" HorizontalAlignment="Right"
+                                                               TextWrapping="Wrap" TextAlignment="Right"
+                                                               Margin="0,2,0,0"
+                                                               Visibility="{Binding BasisWarning, Converter={StaticResource TextToVisibility}}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+
+                                        <Button Grid.Column="1" Content="삭제" Click="OnDeleteSaved"
+                                                Tag="{Binding Id}" VerticalAlignment="Center"
+                                                Margin="8,3,0,3" />
                                     </Grid>
                                 </Border>
 
@@ -275,6 +306,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </ScrollViewer>
                 </StackPanel>
             </Border>
 

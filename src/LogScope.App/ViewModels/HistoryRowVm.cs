@@ -21,20 +21,33 @@ namespace LogScope.App.ViewModels
         public string Name { get { return Record.DisplayName; } }
         public string BasisText { get { return Record.BasisText; } }
 
+        /// <summary>
+        /// 무엇을 견줬는지. 파일 <b>이름 전체</b>를 적습니다 — 발생시간만
+        /// 적으면 같은 날 두 번 딴 로그를 가릴 수가 없습니다.
+        /// </summary>
         public string LogsText
         {
             get
             {
-                string b = Record.BeforeTime.Length > 0 ? Record.BeforeTime : "-";
-                string a = Record.AfterTime.Length > 0 ? Record.AfterTime : "-";
-                return b + "  →  " + a;
+                string b = Record.BeforeName.Length > 0 ? Record.BeforeName : "-";
+                string a = Record.AfterName.Length > 0 ? Record.AfterName : "-";
+                return b + "   →   " + a;
             }
         }
 
-        public string ScoreText
+        /// <summary>풍선 도움말에 띄울 전체 경로.</summary>
+        public string PathsText
         {
-            get { return Record.HasScore ? Record.Score.ToString("0.#") + " / 100" : "?? / 100"; }
+            get
+            {
+                string b = Record.BeforePath.Length > 0 ? Record.BeforePath : Record.BeforeName;
+                string a = Record.AfterPath.Length > 0 ? Record.AfterPath : Record.AfterName;
+                return "이전  " + b + "\n이후  " + a;
+            }
         }
+
+        /// <summary>분석 셋의 점수를 한 줄로. "100 / ?? / ??".</summary>
+        public string ScoreText { get { return Record.AllScoresText; } }
 
         public string CountsText
         {
@@ -61,8 +74,10 @@ namespace LogScope.App.ViewModels
             _live = live;
             _same = sameBasis;
             _dChanged = changedCount - Record.ChangedCount;
-            _dScoreOk = hasScore && Record.HasScore;
-            _dScore = _dScoreOk ? score - Record.Score : 0;
+            // 점수 차이는 <b>분석 1</b> 것만 봅니다. 목록 한 줄에 셋을 다
+            // 빼서 적으면 읽히지 않고, 지금 점수가 있는 것도 분석 1 뿐입니다.
+            _dScoreOk = hasScore && Record.HasScores[0];
+            _dScore = _dScoreOk ? score - Record.Scores[0] : 0;
 
             Raise("DeltaText"); Raise("DeltaKind"); Raise("HasDelta"); Raise("BasisWarning");
         }

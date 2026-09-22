@@ -1439,7 +1439,11 @@ namespace LogScope.Tests
             a.AfterName = "2026-03-21_after.xlsx";
             a.BeforeTime = "2026-03-14";
             a.AfterTime = "2026-03-21";
-            a.HasScore = true; a.Score = 100;
+            a.BeforePath = @"D:\로그\2026-03-14_before.xlsx";
+            a.AfterPath = @"D:\로그\2026-03-21_after.xlsx";
+            a.SetScore(1, true, 100);
+            a.SetScore(2, true, 72);
+            a.SetScore(3, false, 0);
             a.ComparedCount = 184; a.ChangedCount = 12; a.OneSidedCount = 3;
             a.TolerancePercent = 0.1; a.AbsoluteTolerance = 0.25;
             a.AlignIo = "START 신호"; a.AxisIo = "경과 시간"; a.AppliedShift = -115;
@@ -1468,8 +1472,14 @@ namespace LogScope.Tests
             Check("이름", r.Label == "기동 전", r.Label);
             Check("이전 파일", r.BeforeName == "2026-03-14_before.xlsx", r.BeforeName);
             Check("발생시간", r.AfterTime == "2026-03-21", r.AfterTime);
-            Check("점수 있음", r.HasScore, null);
-            Near("점수", r.Score, 100, 1e-9);
+            Check("분석 1 점수 있음", r.HasScores[0], null);
+            Near("분석 1 점수", r.Scores[0], 100, 1e-9);
+            Check("분석 2 점수 있음", r.HasScores[1], null);
+            Near("분석 2 점수", r.Scores[1], 72, 1e-9);
+            Check("분석 3 은 점수 없음", !r.HasScores[2], null);
+            Check("점수 셋을 한 줄로", r.AllScoresText == "100 / 72 / ??", r.AllScoresText);
+            Check("이전 경로", r.BeforePath == @"D:\로그\2026-03-14_before.xlsx", r.BeforePath);
+            Check("이후 이름", r.AfterName == "2026-03-21_after.xlsx", r.AfterName);
             Check("견준 IO", r.ComparedCount == 184, r.ComparedCount.ToString());
             Check("달라진 IO", r.ChangedCount == 12, r.ChangedCount.ToString());
             Check("한쪽에만", r.OneSidedCount == 3, r.OneSidedCount.ToString());
@@ -1528,6 +1538,18 @@ namespace LogScope.Tests
             // 없는 폴더를 읽으면 빈 목록입니다 (터지지 않습니다).
             Check("없는 폴더는 빈 목록",
                   HistoryStore.Load(Path.Combine(_dir, "history-none")).Count == 0, null);
+
+            // 점수가 하나뿐이던 시절의 파일도 읽혀야 합니다. 그때 점수는
+            // 분석 1 것으로 봅니다.
+            string oldJson = "{\"savedAt\":\"2026-01-02T03:04:05.0000000\","
+                           + "\"label\":\"옛 기록\",\"hasScore\":true,\"score\":88,"
+                           + "\"changedCount\":7}";
+            AnalysisRecord old = AnalysisRecord.FromJson(Json.Parse(oldJson));
+            Check("옛 파일도 읽힘", old.Label == "옛 기록", old.Label);
+            Check("옛 점수는 분석 1 것", old.HasScores[0], null);
+            Near("옛 점수 값", old.Scores[0], 88, 1e-9);
+            Check("나머지는 비어 있음", !old.HasScores[1] && !old.HasScores[2], null);
+            Check("옛 파일의 점수 줄", old.AllScoresText == "88 / ?? / ??", old.AllScoresText);
         }
 
         private static void JsonRoundTrip()

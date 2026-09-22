@@ -51,8 +51,25 @@ namespace LogScope.App.Views
             }
         }
 
+        /// <summary>저장된 줄을 눌렀을 때. 그때의 기록을 펼쳐 보는 창을 띄웁니다.</summary>
+        private void OnOpenSaved(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainVm;
+            var b = sender as Button;
+            if (vm == null || b == null) return;
+
+            string id = b.Tag as string;
+            if (string.IsNullOrEmpty(id)) return;
+
+            SavedResultWindow.Show(Window.GetWindow(this), vm.SavedById(id));
+        }
+
         private void OnDeleteSaved(object sender, RoutedEventArgs e)
         {
+            // 이 단추는 줄 단추 밖에 있지만, Click 은 위로 올라가는 사건이라
+            // 혹시 모를 자리에서 겹치지 않게 여기서 끊습니다.
+            e.Handled = true;
+
             var vm = DataContext as MainVm;
             var b = sender as Button;
             if (vm == null || b == null) return;

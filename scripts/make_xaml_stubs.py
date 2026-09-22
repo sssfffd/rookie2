@@ -23,6 +23,7 @@ OURS = {
     'AlignPanel': 'LogScope.App.Views.AlignPanel',
     'MainView': 'LogScope.App.Views.MainView',
     'PlaceholderView': 'LogScope.App.Views.PlaceholderView',
+    'SavedResultWindow': 'LogScope.App.Views.SavedResultWindow',
 }
 WPF = {
     'ListView': 'System.Windows.Controls.ListView',

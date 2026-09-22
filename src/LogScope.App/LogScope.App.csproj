@@ -110,6 +110,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\SavedResultWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\TextInputWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -172,6 +176,10 @@
     </Compile>
     <Compile Include="Views\LoadingWindow.xaml.cs">
       <DependentUpon>LoadingWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\SavedResultWindow.xaml.cs">
+      <DependentUpon>SavedResultWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Views\TextInputWindow.xaml.cs">
