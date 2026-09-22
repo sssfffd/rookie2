@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
@@ -66,7 +67,10 @@ namespace LogScope.App.ViewModels
             for (int i = 1; i < Cards.Count; i++) Cards[i].ClearScore();
 
             Raise("HasLogs"); Raise("HasBoth"); Raise("Hint");
-            Raise("BeforeText"); Raise("AfterText"); Raise("RangeText");
+            Raise("BeforeTime"); Raise("AfterTime");
+            Raise("BeforeText"); Raise("AfterText");
+            Raise("BeforePath"); Raise("AfterPath");
+            Raise("ComparedText");
         }
 
         private static string Count(int n)
@@ -82,28 +86,62 @@ namespace LogScope.App.ViewModels
         public bool HasLogs { get { return _state.HasAny; } }
         public bool HasBoth { get { return _state.HasBoth; } }
 
+        /// <summary>
+        /// 로그가 언제 것인지. <b>파일 이름 앞부분</b>을 그대로 씁니다.
+        ///
+        /// 로그 파일 안에는 "이 로그가 언제 기록된 것인가" 가 적혀 있지
+        /// 않습니다. 시간 열은 0 부터 세는 경과 시간일 수도 있고, 시각이어도
+        /// 날짜가 없을 수 있습니다. 대신 파일 이름 앞에 날짜를 붙이는 것이
+        /// 보통이라 그걸 그대로 보여 줍니다 — 짐작해서 만들어 내지 않습니다.
+        /// </summary>
+        public string BeforeTime { get { return Occurred(_state.Before); } }
+        public string AfterTime { get { return Occurred(_state.After); } }
+
+        /// <summary>이름에서 앞부분을 떼어 내는 글자 수.</summary>
+        private const int OccurredLength = 10;
+
+        private static string Occurred(LogDataset ds)
+        {
+            if (ds == null) return string.Empty;
+
+            string name;
+            try { name = Path.GetFileNameWithoutExtension(ds.SourcePath); }
+            catch (ArgumentException) { name = string.Empty; }
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+
+            if (name.Length > OccurredLength) name = name.Substring(0, OccurredLength);
+
+            // 자른 자리에 구분 기호가 걸리면 지저분합니다 ("2026-03-14_" 같은).
+            return name.TrimEnd(' ', '_', '-', '.');
+        }
+
         public string BeforeText { get { return Describe(_state.Before, "이전 로그를 열어 주세요"); } }
         public string AfterText { get { return Describe(_state.After, "이후 로그를 열어 주세요"); } }
 
         private static string Describe(LogDataset ds, string none)
         {
             if (ds == null) return none;
-            return Path.GetFileName(ds.SourcePath)
-                 + "    ·  IO " + ds.ChannelCount.ToString("N0")
+            return "IO " + ds.ChannelCount.ToString("N0")
                  + "  ·  표본 " + ds.SampleCount.ToString("N0");
         }
 
-        /// <summary>두 로그가 겹치는 시간 구간.</summary>
-        public string RangeText
+        /// <summary>풍선 도움말에 띄울 전체 경로. 이름을 잘라 보여 주므로 필요합니다.</summary>
+        public string BeforePath { get { return _state.BeforePath; } }
+        public string AfterPath { get { return _state.AfterPath; } }
+
+        /// <summary>
+        /// 지금 보고 있는 결과가 언제 나온 것인지.
+        ///
+        /// 허용 오차나 시간 맞추기를 바꾸고 다시 견주는 일이 잦습니다.
+        /// 이걸 안 적어 두면 옛 결과를 새것으로 착각하게 됩니다.
+        /// </summary>
+        public string ComparedText
         {
             get
             {
-                CompareResult r = _state.Comparison;
-                LogDataset ds = _state.TimeReference;
-                if (r == null || ds == null) return string.Empty;
-                if (r.Warning.Length > 0) return r.Warning;
-                return "겹치는 구간  " + ds.FormatTime(r.OverlapStart)
-                     + "  ~  " + ds.FormatTime(r.OverlapEnd);
+                if (_state.Comparison == null) return string.Empty;
+                if (_state.ComparedAt == DateTime.MinValue) return string.Empty;
+                return "비교 실행  " + _state.ComparedAt.ToString("yyyy-MM-dd HH:mm:ss");
             }
         }
 

@@ -211,11 +211,21 @@ namespace LogScope.App.Services
             return o;
         }
 
+        /// <summary>
+        /// 마지막으로 견준 시각. 아직 안 견줬으면 <see cref="DateTime.MinValue"/>.
+        ///
+        /// 화면에 적어 주는 값입니다. 허용 오차나 시간 맞추기를 바꾸고 다시
+        /// 견주는 일이 잦아서, 지금 보고 있는 결과가 <b>언제 나온 것인지</b>
+        /// 를 알 수 없으면 옛 결과를 새것으로 착각하게 됩니다.
+        /// </summary>
+        public DateTime ComparedAt = DateTime.MinValue;
+
         public void Recompare(LoadProgress prog)
         {
             Comparison = (Before != null && After != null)
                 ? DiffEngine.Compare(Before, After, BuildDiffOptions(), prog)
                 : null;
+            ComparedAt = Comparison != null ? DateTime.Now : DateTime.MinValue;
         }
 
         /// <summary>값이 달라졌거나 한쪽에만 있는 IO 이름들.</summary>

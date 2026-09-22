@@ -25,27 +25,45 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="열어 둔 로그" Style="{StaticResource FieldLabel}" Margin="0,0,0,6" />
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                        <!--
+                          발생시간은 파일 이름 앞부분을 그대로 떼어 온 것입니다.
+                          로그 안에는 "이게 언제 것인가" 가 적혀 있지 않아서,
+                          이름에 날짜를 붙이는 관행을 그대로 씁니다.
+                          잘라 보여 주므로 전체 경로는 풍선 도움말에 둡니다.
+                        -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3"
+                                    ToolTip="{Binding BeforePath}">
                             <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
                                     Background="{DynamicResource Brush.Before}" Margin="0,0,8,0" />
                             <TextBlock Text="이전" Width="34" Foreground="{DynamicResource Brush.Muted}"
                                        VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding BeforeText}" VerticalAlignment="Center"
+                            <TextBlock Text="발생시간" Foreground="{DynamicResource Brush.Muted}"
+                                       FontSize="11" VerticalAlignment="Center" Margin="0,1,6,0" />
+                            <TextBlock Text="{Binding BeforeTime}" FontWeight="SemiBold" MinWidth="104"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding BeforeText}" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" ToolTip="{Binding AfterPath}">
                             <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
                                     Background="{DynamicResource Brush.After}" Margin="0,0,8,0" />
                             <TextBlock Text="이후" Width="34" Foreground="{DynamicResource Brush.Muted}"
                                        VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding AfterText}" VerticalAlignment="Center"
+                            <TextBlock Text="발생시간" Foreground="{DynamicResource Brush.Muted}"
+                                       FontSize="11" VerticalAlignment="Center" Margin="0,1,6,0" />
+                            <TextBlock Text="{Binding AfterTime}" FontWeight="SemiBold" MinWidth="104"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding AfterText}" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
-                        <TextBlock Text="{Binding RangeText}" Style="{StaticResource Muted}"
-                                   FontSize="11" Margin="52,6,0,0" TextWrapping="Wrap"
-                                   Visibility="{Binding RangeText, Converter={StaticResource TextToVisibility}}" />
+                        <!-- 지금 보고 있는 결과가 언제 나온 것인지. -->
+                        <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
+                                   FontSize="11" Margin="52,6,0,0"
+                                   Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
                     </StackPanel>
 
                     <TextBlock Grid.Column="1" Text="{Binding Hint}" Style="{StaticResource Muted}"
