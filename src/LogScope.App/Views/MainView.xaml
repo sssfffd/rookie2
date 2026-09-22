@@ -134,20 +134,74 @@
                         </Button>
 
                         <DataTemplate.Triggers>
-                            <!-- 만점일 때만 초록으로. 아직 안 재 본 "??" 까지
-                                 초록이면 다 맞았다는 뜻으로 읽힙니다. -->
-                            <DataTrigger Binding="{Binding IsFull}" Value="True">
+                            <!-- 점수 색은 화면 아래의 색 설명과 같은 값을 봅니다
+                                 (ScoreBands). 아직 안 재 본 "??" 는 회색 그대로 —
+                                 안 재 본 값에 색을 칠하면 재 본 값으로 읽힙니다. -->
+                            <DataTrigger Binding="{Binding Grade}" Value="good">
                                 <Setter TargetName="ScoreText" Property="Foreground"
                                         Value="{DynamicResource Brush.Good}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Grade}" Value="warn">
+                                <Setter TargetName="ScoreText" Property="Foreground"
+                                        Value="{DynamicResource Brush.Warn}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Grade}" Value="bad">
+                                <Setter TargetName="ScoreText" Property="Foreground"
+                                        Value="{DynamicResource Brush.Bad}" />
                             </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="4,12,0,0"
-                       TextWrapping="Wrap"
-                       Text="점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 견주기 전이면 ??, 견주고 나면 만점으로 둡니다." />
+            <Grid Margin="4,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Style="{StaticResource Muted}" FontSize="11"
+                           TextWrapping="Wrap" VerticalAlignment="Bottom" MaxWidth="520"
+                           Text="점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 견주기 전이면 ??, 견주고 나면 만점으로 둡니다." />
+
+                <!-- 점수 색 설명. 작게, 오른쪽 아래에. -->
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right" Margin="20,0,0,0">
+                    <TextBlock Text="점수 색" Style="{StaticResource Muted}" FontSize="10"
+                               HorizontalAlignment="Right" Margin="0,0,0,3" />
+                    <ItemsControl ItemsSource="{Binding Bands}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:BandVm}">
+                                <StackPanel Orientation="Horizontal" Margin="0,1,0,1">
+                                    <Border x:Name="Dot" Width="8" Height="8" CornerRadius="4"
+                                            VerticalAlignment="Center" Margin="0,0,6,0"
+                                            Background="{DynamicResource Brush.Muted}" />
+                                    <TextBlock Text="{Binding RangeText}" FontSize="10" Width="52"
+                                               Foreground="{DynamicResource Brush.Muted}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Meaning}" FontSize="10"
+                                               Foreground="{DynamicResource Brush.Muted}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Grade}" Value="good">
+                                        <Setter TargetName="Dot" Property="Background"
+                                                Value="{DynamicResource Brush.Good}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Grade}" Value="warn">
+                                        <Setter TargetName="Dot" Property="Background"
+                                                Value="{DynamicResource Brush.Warn}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Grade}" Value="bad">
+                                        <Setter TargetName="Dot" Property="Background"
+                                                Value="{DynamicResource Brush.Bad}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

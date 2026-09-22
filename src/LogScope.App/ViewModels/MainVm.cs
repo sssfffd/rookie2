@@ -107,6 +107,12 @@ namespace LogScope.App.ViewModels
             }
         }
 
+        /// <summary>
+        /// 화면 오른쪽 아래의 색 설명. 점수를 어느 색으로 칠하는지와 그 색이
+        /// 무슨 뜻인지 알려 줍니다. 칸의 점수 색과 <b>같은 값</b>을 봅니다.
+        /// </summary>
+        public List<BandVm> Bands { get { return ScoreBands.Legend(); } }
+
         /// <summary>칸 위에 적는 안내.</summary>
         public string Hint
         {

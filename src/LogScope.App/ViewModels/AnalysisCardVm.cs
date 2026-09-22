@@ -3,6 +3,65 @@ using LogScope.App.Infrastructure;
 
 namespace LogScope.App.ViewModels
 {
+    /// <summary>
+    /// 점수를 어느 색으로 보여 줄지 가르는 자리.
+    ///
+    /// <b>숫자는 여기 한 곳에만 둡니다.</b> 칸의 점수 색과 화면 아래의
+    /// 색 설명이 같은 값을 봐야 합니다 — 따로 적어 두면 한쪽만 고치게 되고,
+    /// 그러면 설명이 화면과 다른 말을 하게 됩니다.
+    /// </summary>
+    public static class ScoreBands
+    {
+        /// <summary>이 점수부터 초록.</summary>
+        public const double GoodFrom = 90;
+
+        /// <summary>이 점수부터 노랑. 그 아래는 빨강입니다.</summary>
+        public const double WarnFrom = 70;
+
+        public const string GradeNone = "none";
+        public const string GradeGood = "good";
+        public const string GradeWarn = "warn";
+        public const string GradeBad = "bad";
+
+        public static string GradeOf(double score)
+        {
+            if (score >= GoodFrom) return GradeGood;
+            if (score >= WarnFrom) return GradeWarn;
+            return GradeBad;
+        }
+
+        /// <summary>화면 아래에 적는 색 설명. 위에서부터 좋은 쪽입니다.</summary>
+        public static List<BandVm> Legend()
+        {
+            return new List<BandVm>
+            {
+                new BandVm(GradeGood, Range(GoodFrom, 100), "이상 없음"),
+                new BandVm(GradeWarn, Range(WarnFrom, GoodFrom - 1), "확인 필요"),
+                new BandVm(GradeBad,  Range(0, WarnFrom - 1),        "점검 필요"),
+            };
+        }
+
+        private static string Range(double a, double b)
+        {
+            return a.ToString("0") + " ~ " + b.ToString("0");
+        }
+    }
+
+    /// <summary>색 설명 한 줄. "초록  90 ~ 100  이상 없음".</summary>
+    public sealed class BandVm
+    {
+        public string Grade { get; private set; }
+        public string RangeText { get; private set; }
+        public string Meaning { get; private set; }
+
+        public BandVm(string grade, string rangeText, string meaning)
+        {
+            Grade = grade;
+            RangeText = rangeText;
+            Meaning = meaning;
+        }
+    }
+
     /// <summary>분석 칸 안에 적는 숫자 하나. "달라진 IO  12개" 같은 것.</summary>
     public sealed class StatVm
     {
@@ -78,7 +137,16 @@ namespace LogScope.App.ViewModels
         private void RaiseScore()
         {
             Raise("HasScore"); Raise("Score");
-            Raise("ScoreText"); Raise("ScoreNote"); Raise("IsFull");
+            Raise("ScoreText"); Raise("ScoreNote"); Raise("Grade");
+        }
+
+        /// <summary>
+        /// 점수 색을 가르는 값. 아직 안 재 봤으면 "none" (회색) 입니다 —
+        /// 안 재 본 값에 초록이나 빨강을 칠하면 재 본 값으로 읽힙니다.
+        /// </summary>
+        public string Grade
+        {
+            get { return _has ? ScoreBands.GradeOf(_score) : ScoreBands.GradeNone; }
         }
 
         /// <summary>칸에 크게 적는 점수. 아직 안 재 봤으면 "??".</summary>
@@ -93,9 +161,6 @@ namespace LogScope.App.ViewModels
             get { return "/ " + MaxScore.ToString("0"); }
         }
 
-        /// <summary>만점인지. 만점일 때만 초록으로 칠합니다.</summary>
-        public bool IsFull { get { return _has && _score >= MaxScore; } }
-
         /// <summary>점수 아래의 작은 글.</summary>
         public string ScoreNote
         {
@@ -103,7 +168,13 @@ namespace LogScope.App.ViewModels
             {
                 if (!Ready) return "아직 만들지 않았습니다";
                 if (!_has) return "로그를 견주면 점수가 나옵니다";
-                return _score >= MaxScore ? "만점" : "감점 " + (MaxScore - _score).ToString("0.#");
+                if (_score >= MaxScore) return "만점";
+                switch (ScoreBands.GradeOf(_score))
+                {
+                    case ScoreBands.GradeGood: return "이상 없음";
+                    case ScoreBands.GradeWarn: return "확인 필요";
+                    default: return "점검 필요";
+                }
             }
         }
 
