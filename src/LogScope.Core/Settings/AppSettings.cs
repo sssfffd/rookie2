@@ -61,6 +61,15 @@ namespace LogScope.Core.Settings
         //   AbsoluteTolerance        : 값 그대로. 기본 0 (끔).
         public double RelativeTolerancePercent = ToleranceRule.DefaultPercent;
         public double AbsoluteTolerance;
+
+        /// <summary>
+        /// IO 하나에만 따로 걸어 둔 허용 오차. 여기 없는 IO 는 위의 기본값을
+        /// 씁니다. 자세한 규칙은 <see cref="ToleranceTable"/>.
+        /// </summary>
+        public List<ToleranceOverride> Tolerances = new List<ToleranceOverride>();
+
+        /// <summary>IO 별 규칙을 너무 많이 들고 있지 않게. 설정 파일이 감당할 만큼입니다.</summary>
+        public const int MaxToleranceRules = 500;
         public DiffMetric SortMetric = DiffMetric.MaxAbs;
 
         /// <summary>목록 정렬 방향. 참이면 큰 값이 위로.</summary>
@@ -187,6 +196,21 @@ namespace LogScope.Core.Settings
 
             root["relativeTolerancePercent"] = RelativeTolerancePercent;
             root["absoluteTolerance"] = AbsoluteTolerance;
+
+            // IO 별 허용 오차. 안 정한 쪽(NaN)은 아예 안 적습니다 —
+            // JSON 에 NaN 을 담을 수 없기도 하고, 없는 것이 곧 "기본값" 입니다.
+            var tols = new List<object>();
+            for (int i = 0; i < Tolerances.Count; i++)
+            {
+                ToleranceOverride t = Tolerances[i];
+                if (t == null || t.IsEmpty) continue;
+                var one = new Dictionary<string, object>();
+                one["io"] = t.Io;
+                if (t.HasPercent) one["percent"] = t.Percent;
+                if (t.HasAbsolute) one["absolute"] = t.Absolute;
+                tols.Add(one);
+            }
+            root["tolerances"] = tols;
             root["sortMetric"] = (double)(int)SortMetric;
             root["sortDescending"] = SortDescending;
             root["sortColumn"] = (double)SortColumn;
@@ -261,6 +285,28 @@ namespace LogScope.Core.Settings
             s.AbsoluteTolerance = Json.GetDouble(root, "absoluteTolerance",
                                                  Json.GetDouble(root, "tolerance", 0));
             if (s.AbsoluteTolerance < 0) s.AbsoluteTolerance = 0;
+
+            List<object> tols = Json.GetArray(root, "tolerances");
+            for (int i = 0; i < tols.Count && s.Tolerances.Count < MaxToleranceRules; i++)
+            {
+                Dictionary<string, object> one = Json.AsObject(tols[i]);
+                if (one == null) continue;
+
+                var t = new ToleranceOverride();
+                t.Io = Json.GetString(one, "io", string.Empty);
+                // 없으면 NaN — "기본값을 쓴다" 는 뜻입니다.
+                t.Percent = one.ContainsKey("percent")
+                    ? Json.GetDouble(one, "percent", double.NaN) : double.NaN;
+                t.Absolute = one.ContainsKey("absolute")
+                    ? Json.GetDouble(one, "absolute", double.NaN) : double.NaN;
+
+                // 손으로 고친 설정 파일도 열립니다. 말이 안 되는 값은 버리되,
+                // 그 줄 전체를 버리지는 않습니다 — 나머지 한쪽은 살립니다.
+                if (t.HasPercent && (t.Percent < 0 || t.Percent > 100)) t.Percent = double.NaN;
+                if (t.HasAbsolute && t.Absolute < 0) t.Absolute = double.NaN;
+
+                if (!t.IsEmpty) s.Tolerances.Add(t);
+            }
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 7) metric = 0;
             s.SortMetric = (DiffMetric)metric;

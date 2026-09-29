@@ -310,6 +310,11 @@ namespace LogScope.App.ViewModels
                         + (_state.Settings.AbsoluteTolerance > 0
                             ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######")
                               + " 중 큰 쪽"
+                            : "")
+                        // IO 별로 따로 걸어 둔 것이 있으면 밝혀 둡니다. 안 적으면
+                        // 위 퍼센트가 모든 IO 에 걸린 줄 알고 읽습니다.
+                        + (_state.Settings.Tolerances.Count > 0
+                            ? "   /   IO 별로 따로 건 것 " + _state.Settings.Tolerances.Count + "개"
                             : "");
 
             string sb = _state.Before != null ? _state.Before.SampleCount.ToString("N0") : "-";

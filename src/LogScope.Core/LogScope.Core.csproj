@@ -65,6 +65,7 @@
     <Compile Include="Render\DifferenceSeries.cs" />
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\ToleranceRule.cs" />
+    <Compile Include="Compare\ToleranceTable.cs" />
     <Compile Include="Align\TriggerAlign.cs" />
     <Compile Include="Compare\DiffEngine.cs" />
     <Compile Include="Compare\Heatmap.cs" />

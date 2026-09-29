@@ -156,6 +156,12 @@ namespace LogScope.Core.Compare
         /// </summary>
         public double RelativePercent = ToleranceRule.DefaultPercent;
 
+        /// <summary>
+        /// IO 별 허용 오차. 있으면 이것이 이깁니다. 대시보드·그래프와 같은
+        /// 표를 씁니다 — 화면마다 "차이 난 IO" 가 달라지면 안 됩니다.
+        /// </summary>
+        public ToleranceTable Tolerances;
+
         /// <summary>칸이 너무 많아지지 않게 하는 상한.</summary>
         public int MaxBuckets = 4000;
 
@@ -379,6 +385,15 @@ namespace LogScope.Core.Compare
 
             row.Unit = byName ? string.Empty : (bc.Unit.Length > 0 ? bc.Unit : ac.Unit);
 
+            // 허용 오차는 IO 마다 다를 수 있습니다. 표본마다 표를 뒤지지 않게
+            // 채널 하나당 한 번만 풀어 둡니다.
+            double limitAbs = opt.AbsoluteTolerance, limitPct = opt.RelativePercent;
+            if (opt.Tolerances != null)
+            {
+                limitAbs = opt.Tolerances.AbsoluteFor(bc.Name);
+                limitPct = opt.Tolerances.PercentFor(bc.Name);
+            }
+
             double[] bt = before.Times, at = after.Times;
             float[] bv = bc.Values, av = ac.Values;
             int an = after.SampleCount;
@@ -440,7 +455,7 @@ namespace LogScope.Core.Compare
                     if (float.IsNaN(b) || double.IsNaN(a)) continue;
                     diff = Math.Abs(b - a);
                     pct = ToleranceRule.ErrorPercent(b, a);
-                    over = ToleranceRule.IsOver(b, a, opt.AbsoluteTolerance, opt.RelativePercent);
+                    over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
                 }
 
                 int k = (int)((t - t0) / span);

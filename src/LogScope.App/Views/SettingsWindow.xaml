@@ -1,6 +1,7 @@
 ﻿<Window x:Class="LogScope.App.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:LogScope.App.ViewModels"
         Title="설정" Width="760" Height="560" MinWidth="620" MinHeight="460"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Window}"
@@ -98,6 +99,7 @@
 
             <!-- ===================== 비교 ===================== -->
             <TabItem Header="비교">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="14">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -133,6 +135,10 @@
                         <Button Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left"
                                 Content="허용 오차를 기본값으로" Click="OnResetTolerance" />
 
+                        <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource Muted}"
+                                   Margin="10,0,0,0" VerticalAlignment="Center"
+                                   Text="위 두 값이 모든 IO 의 기본값입니다." />
+
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="목록 정렬 기준"
                                    Style="{StaticResource FieldLabel}" />
                         <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Metrics}"
@@ -150,9 +156,83 @@
                                  ToolTip="시간축 단위입니다. 시각 로그라면 밀리초." />
                     </Grid>
 
+                    <!--
+                      ================= IO 별 허용 오차 =================
+
+                      기본값 하나로 다 보는 것이 맞지 않는 경우가 있습니다.
+                      온도처럼 원래 조금씩 흔들리는 값과, 밸브 열림처럼 조금도
+                      달라지면 안 되는 값에 같은 잣대를 대면 한쪽은 늘 빨갛고
+                      다른 쪽은 놓칩니다.
+
+                      칸을 비워 두면 그 자리는 기본값입니다. 0 과 빈 칸은
+                      다릅니다 — 절대값 0 은 "절대 오차를 끈다", 퍼센트 0 은
+                      "조금이라도 벌어지면 차이" 라는 뜻이라 둘 다 쓰는 값입니다.
+                    -->
+                    <TextBlock Text="IO 별 허용 오차" Style="{StaticResource H2}" Margin="0,20,0,4" />
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Text="여기 적은 IO 만 따로 봅니다. 칸을 비워 두면 그 자리는 위의 기본값을 씁니다.&#x0a;이름은 느슨하게 맞춥니다 — 띄어쓰기나 _ - . 가 달라도 같은 IO 로 봅니다." />
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="64" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="IO 이름" Style="{StaticResource FieldLabel}" />
+                        <TextBlock Grid.Column="1" Text="퍼센트 (%)" Style="{StaticResource FieldLabel}"
+                                   Margin="6,0,0,0" />
+                        <TextBlock Grid.Column="2" Text="값 (절대)" Style="{StaticResource FieldLabel}"
+                                   Margin="6,0,0,0" />
+                    </Grid>
+
+                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="4" Padding="6"
+                            Visibility="{Binding HasTolerances, Converter={StaticResource BoolToVisibility}}">
+                        <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding Tolerances}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ToleranceRowVm}">
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="64" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!--
+                                              IsEditable: 로그를 안 열었으면 고를 것이
+                                              없습니다. 그때도 이름을 적어 둘 수 있어야
+                                              규칙을 미리 걸어 둘 수 있습니다.
+                                            -->
+                                            <ComboBox Grid.Column="0" IsEditable="True"
+                                                      ItemsSource="{Binding DataContext.IoNames,
+                                                                   RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Text="{Binding Io, UpdateSourceTrigger=LostFocus}" />
+                                            <TextBox Grid.Column="1" Margin="6,0,0,0"
+                                                     Text="{Binding PercentText, UpdateSourceTrigger=LostFocus}"
+                                                     ToolTip="비워 두면 기본값을 씁니다." />
+                                            <TextBox Grid.Column="2" Margin="6,0,0,0"
+                                                     Text="{Binding AbsoluteText, UpdateSourceTrigger=LostFocus}"
+                                                     ToolTip="비워 두면 기본값을 씁니다.&#x0a;이 값 이하로 벌어진 것은 퍼센트와 상관없이 같은 것으로 봅니다." />
+                                            <Button Grid.Column="3" Margin="6,0,0,0" Content="지우기"
+                                                    Click="OnRemoveTolerance" Tag="{Binding}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <Button HorizontalAlignment="Left" Margin="0,8,0,0" Content="IO 추가"
+                            Click="OnAddTolerance" />
+
                     <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
                                Text="오차는 그 순간의 값끼리 견줍니다.&#x0a;&#x0a;    오차(%) = |이후 − 이전| / |이전| x 100&#x0a;&#x0a;위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,&#x0a;히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.&#x0a;어느 채널이든 같은 잣대입니다.&#x0a;&#x0a;이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).&#x0a;0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면&#x0a;절대 오차를 함께 걸어 두세요.&#x0a;&#x0a;이 값은 대시보드 · 그래프 차이 영역 표시 · 히트맵이 모두 함께 씁니다.&#x0a;여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다." />
                 </StackPanel>
+              </ScrollViewer>
             </TabItem>
 
             <!-- ===================== AI 모듈 ===================== -->

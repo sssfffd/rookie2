@@ -142,6 +142,7 @@
     <Compile Include="ViewModels\DashboardVm.cs" />
     <Compile Include="ViewModels\HeatmapVm.cs" />
     <Compile Include="ViewModels\SettingsVm.cs" />
+    <Compile Include="ViewModels\ToleranceRowVm.cs" />
     <Compile Include="ViewModels\ShellVm.cs" />
     <Compile Include="Controls\GraphCanvas.cs" />
     <Compile Include="Controls\HeatmapCanvas.cs" />

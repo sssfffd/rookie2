@@ -18,9 +18,21 @@ namespace LogScope.App.ViewModels
     {
         private readonly AppSettings _s;
 
-        public SettingsVm(AppSettings settings)
+        public SettingsVm(AppSettings settings) : this(settings, null) { }
+
+        /// <param name="ioNames">
+        /// 열어 둔 로그의 IO 이름. IO 별 허용 오차를 걸 때 고르라고 내어
+        /// 줍니다. 없으면(로그를 안 열었으면) 손으로 적으면 됩니다.
+        /// </param>
+        public SettingsVm(AppSettings settings, IEnumerable<string> ioNames)
         {
             _s = settings;
+            IoNames = new ObservableCollection<string>();
+            if (ioNames != null) foreach (string n in ioNames) IoNames.Add(n);
+
+            var rows = new ObservableCollection<ToleranceRowVm>();
+            for (int i = 0; i < _s.Tolerances.Count; i++) rows.Add(new ToleranceRowVm(_s.Tolerances[i]));
+            Tolerances = rows;
             var names = new ObservableCollection<string>();
             for (int i = 0; i < AppSettings.SetCount; i++) names.Add(_s.Sets[i].DisplayName(i));
             SetNames = names;
@@ -150,6 +162,54 @@ namespace LogScope.App.ViewModels
             _s.AbsoluteTolerance = 0;
             Raise("RelativeTolerancePercentText");
             Raise("AbsoluteToleranceText");
+        }
+
+        // ---------------- IO 별 허용 오차 ----------------
+        //
+        // 기본값 하나로 다 보는 것이 맞지 않는 경우가 있습니다. 온도처럼 원래
+        // 조금씩 흔들리는 값과 밸브 열림처럼 조금도 달라지면 안 되는 값에
+        // 같은 잣대를 대면, 한쪽은 늘 빨갛고 다른 쪽은 놓칩니다.
+
+        /// <summary>고르라고 내어 주는 IO 이름. 비어 있으면 손으로 적습니다.</summary>
+        public ObservableCollection<string> IoNames { get; private set; }
+
+        public ObservableCollection<ToleranceRowVm> Tolerances { get; private set; }
+
+        public bool HasTolerances { get { return Tolerances.Count > 0; } }
+
+        /// <summary>빈 줄을 하나 답니다. IO 이름은 화면에서 고릅니다.</summary>
+        public void AddTolerance()
+        {
+            if (_s.Tolerances.Count >= AppSettings.MaxToleranceRules) return;
+
+            var rule = new ToleranceOverride();
+            _s.Tolerances.Add(rule);
+            Tolerances.Add(new ToleranceRowVm(rule));
+            Raise("HasTolerances");
+        }
+
+        public void RemoveTolerance(ToleranceRowVm row)
+        {
+            if (row == null) return;
+            _s.Tolerances.Remove(row.Rule);
+            Tolerances.Remove(row);
+            Raise("HasTolerances");
+        }
+
+        /// <summary>
+        /// 창을 닫을 때 <b>쓸모없는 줄을 버립니다.</b> 이름을 안 고르고 닫거나
+        /// 두 칸을 다 비워 둔 줄이 남아 있으면, 다음에 열었을 때 왜 있는지
+        /// 알 수 없는 빈 줄이 됩니다.
+        /// </summary>
+        public void PruneTolerances()
+        {
+            for (int i = _s.Tolerances.Count - 1; i >= 0; i--)
+                if (_s.Tolerances[i] == null || _s.Tolerances[i].IsEmpty) _s.Tolerances.RemoveAt(i);
+
+            for (int i = Tolerances.Count - 1; i >= 0; i--)
+                if (Tolerances[i].Rule.IsEmpty) Tolerances.RemoveAt(i);
+
+            Raise("HasTolerances");
         }
 
         public IEnumerable<string> Metrics { get { return DashboardVm.MetricNames; } }

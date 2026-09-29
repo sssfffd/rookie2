@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Windows;
 using LogScope.App.ViewModels;
 using LogScope.Core.Settings;
@@ -13,16 +15,43 @@ namespace LogScope.App.Views
     {
         private readonly SettingsVm _vm;
 
-        public SettingsWindow(AppSettings settings)
+        public SettingsWindow(AppSettings settings) : this(settings, null) { }
+
+        /// <param name="ioNames">
+        /// 열어 둔 로그의 IO 이름. IO 별 허용 오차를 걸 때 고르라고 내어
+        /// 줍니다. 로그를 안 열었으면 없어도 됩니다 — 손으로 적을 수 있습니다.
+        /// </param>
+        public SettingsWindow(AppSettings settings, IEnumerable<string> ioNames)
         {
             InitializeComponent();
-            _vm = new SettingsVm(settings);
+            _vm = new SettingsVm(settings, ioNames);
             DataContext = _vm;
         }
 
         private void OnClose(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        /// <summary>
+        /// 닫을 때 빈 줄을 버립니다. 이름을 안 고르고 닫은 줄이 남아 있으면
+        /// 다음에 열었을 때 왜 있는지 알 수 없는 줄이 됩니다.
+        /// </summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            _vm.PruneTolerances();
+            base.OnClosed(e);
+        }
+
+        private void OnAddTolerance(object sender, RoutedEventArgs e)
+        {
+            _vm.AddTolerance();
+        }
+
+        private void OnRemoveTolerance(object sender, RoutedEventArgs e)
+        {
+            var b = sender as FrameworkElement;
+            if (b != null) _vm.RemoveTolerance(b.Tag as ToleranceRowVm);
         }
 
         private void OnForgetFiles(object sender, RoutedEventArgs e)

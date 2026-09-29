@@ -57,6 +57,12 @@ namespace LogScope.Core.Compare
         /// </summary>
         public double RelativePercent = ToleranceRule.DefaultPercent;
 
+        /// <summary>
+        /// IO 별 허용 오차. <b>있으면 이것이 이깁니다</b> — 위의 두 값 대신
+        /// 표의 기본값과 IO 별 값을 씁니다. 없으면(null) 위의 두 값 그대로.
+        /// </summary>
+        public ToleranceTable Tolerances;
+
         /// <summary>이후 로그의 시간을 이만큼 밉니다 (시간축 단위).</summary>
         public double Shift = 0.0;
 

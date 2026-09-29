@@ -282,12 +282,13 @@ namespace LogScope.App.ViewModels
             double abs = _state.Settings.AbsoluteTolerance;
             string align = _state.Settings.AlignIo;
             string axis = _state.Settings.AxisIo;
+            string rules = ToleranceSignature();
 
             for (int i = 0; i < _history.Count; i++)
             {
                 HistoryRowVm row = _history[i];
                 row.Against(live,
-                            live && row.Record.SameBasis(pct, abs, align, axis),
+                            live && row.Record.SameBasis(pct, abs, align, axis, rules),
                             live, AnalysisCardVm.MaxScore,
                             live ? r.ChangedCount : 0);
             }
@@ -324,6 +325,8 @@ namespace LogScope.App.ViewModels
 
             rec.TolerancePercent = _state.Settings.RelativeTolerancePercent;
             rec.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
+            rec.ToleranceRules = ToleranceSignature();
+            rec.ToleranceRuleCount = Table().OverrideCount;
             rec.AlignIo = _state.Settings.AlignIo;
             rec.AxisIo = _state.Settings.AxisIo;
             rec.AppliedShift = r.AppliedShift;
@@ -334,6 +337,22 @@ namespace LogScope.App.ViewModels
 
             ReloadHistory();
             return string.Empty;
+        }
+
+        /// <summary>
+        /// 지금의 IO 별 허용 오차를 한 줄로. 저장할 때와 "같은 기준인지"
+        /// 가릴 때가 같은 값을 써야 해서 한 곳에 둡니다.
+        /// </summary>
+        private string ToleranceSignature()
+        {
+            return Table().Signature();
+        }
+
+        private ToleranceTable Table()
+        {
+            return ToleranceTable.From(_state.Settings.RelativeTolerancePercent,
+                                       _state.Settings.AbsoluteTolerance,
+                                       _state.Settings.Tolerances);
         }
 
         /// <summary>목록에서 한 건을 찾습니다. 팝업을 띄울 때 씁니다.</summary>

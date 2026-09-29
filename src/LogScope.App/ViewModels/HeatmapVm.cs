@@ -237,6 +237,11 @@ namespace LogScope.App.ViewModels
             o.BucketSpan = BucketSpan;
             o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             o.RelativePercent = RelativePercent;
+            // IO 별 허용 오차. 히트맵 위의 퍼센트 칸으로 기본값을 바꿔 가며
+            // 보는 일이 있어서, 표의 기본값은 그 값으로 만듭니다.
+            o.Tolerances = ToleranceTable.From(RelativePercent,
+                                               _state.Settings.AbsoluteTolerance,
+                                               _state.Settings.Tolerances);
             o.IncludeUnchanged = _includeUnchanged;
             o.Shift = _state.AppliedShift;
             return o;

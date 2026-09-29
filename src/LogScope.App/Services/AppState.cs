@@ -179,6 +179,34 @@ namespace LogScope.App.Services
         /// 반대쪽이 처음부터 그 값이면 거기서는 시작 지점이 그 순간이라,
         /// 그래도 맞춰집니다 — 기록을 늦게 건 로그에서 흔한 모양입니다.
         /// </summary>
+        /// <summary>
+        /// 열어 둔 로그의 IO 이름 (이전 + 이후, 겹치는 것은 한 번만).
+        /// 설정 창에서 IO 별 허용 오차를 걸 때 고르라고 내어 줍니다.
+        ///
+        /// 로그를 안 열었으면 빈 목록입니다 — 그때는 이름을 손으로 적으면
+        /// 됩니다. 규칙을 미리 걸어 두는 일이 있습니다.
+        /// </summary>
+        public List<string> IoNames()
+        {
+            var list = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+
+            for (int pass = 0; pass < 2; pass++)
+            {
+                LogDataset ds = pass == 0 ? Before : After;
+                if (ds == null) continue;
+                for (int i = 0; i < ds.ChannelCount; i++)
+                {
+                    string name = ds.Channels[i].Name;
+                    if (string.IsNullOrEmpty(name)) continue;
+                    if (!seen.Add(LogDataset.LooseKey(name))) continue;
+                    list.Add(name);
+                }
+            }
+            list.Sort(StringComparer.CurrentCultureIgnoreCase);
+            return list;
+        }
+
         public List<string> AlignCandidates()
         {
             var list = new List<string>();
@@ -200,6 +228,9 @@ namespace LogScope.App.Services
             var o = new DiffOptions();
             o.AbsoluteTolerance = Settings.AbsoluteTolerance;
             o.RelativePercent = Settings.RelativeTolerancePercent;
+            o.Tolerances = ToleranceTable.From(Settings.RelativeTolerancePercent,
+                                               Settings.AbsoluteTolerance,
+                                               Settings.Tolerances);
             // 밀기 값은 여기서 합칩니다. 사건으로 맞춰져 있으면 그 값이
             // 바탕이 되고 시작 시각 자동 맞춤은 비켜섭니다 — 둘 다 걸면
             // 서로를 밀어 엉뚱한 자리로 갑니다. 설정 창에서 손으로 넣은

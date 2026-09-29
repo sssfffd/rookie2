@@ -101,6 +101,8 @@ namespace LogScope.Tests
                 SettingsRoundTrip();
                 ScreenNamesParse();
                 ScreenNamesFile();
+                ToleranceTableRules();
+                TolerancePerIo();
             }
             finally
             {
@@ -1630,6 +1632,172 @@ namespace LogScope.Tests
             Near("숫자", Json.GetDouble(back, "n", 0), 12.5, 1e-9);
             Check("참거짓", Json.GetBool(back, "flag", false), null);
             Check("배열 길이", Json.GetArray(back, "list").Count == 3, null);
+        }
+
+        /// <summary>
+        /// IO 별 허용 오차 표. 이름을 느슨하게 맞추는 것과, 안 정한 자리가
+        /// 기본값으로 떨어지는 것이 핵심입니다.
+        /// </summary>
+        private static void ToleranceTableRules()
+        {
+            Console.WriteLine("IO 별 허용 오차 — 표");
+
+            var rules = new List<ToleranceOverride>();
+            var t1 = new ToleranceOverride(); t1.Io = "밸브 OPEN"; t1.Percent = 0.0;
+            var t2 = new ToleranceOverride(); t2.Io = "온도_TT-01"; t2.Absolute = 2.5;
+            var t3 = new ToleranceOverride(); t3.Io = "압력"; t3.Percent = 5; t3.Absolute = 0.1;
+            rules.Add(t1); rules.Add(t2); rules.Add(t3);
+
+            ToleranceTable t = ToleranceTable.From(0.1, 0, rules);
+            Check("규칙 셋", t.OverrideCount == 3, "실제 " + t.OverrideCount);
+
+            // 퍼센트만 건 IO 는 절대값이 기본값입니다. 여기서 0 과 "안 정함"
+            // 이 섞이면 절대 오차가 저절로 켜지거나 꺼집니다.
+            Near("퍼센트만 건 IO 의 퍼센트", t.PercentFor("밸브 OPEN"), 0.0, 1e-12);
+            Near("퍼센트만 건 IO 의 절대값은 기본", t.AbsoluteFor("밸브 OPEN"), 0.0, 1e-12);
+
+            // 절대값만 건 IO 는 퍼센트가 기본값입니다.
+            Near("절대값만 건 IO 의 절대값", t.AbsoluteFor("온도_TT-01"), 2.5, 1e-12);
+            Near("절대값만 건 IO 의 퍼센트는 기본", t.PercentFor("온도_TT-01"), 0.1, 1e-12);
+
+            // 이름은 느슨하게 맞춥니다 — 두 로그에서 적히는 모양이 다릅니다.
+            Near("띄어쓰기가 달라도 같은 IO", t.AbsoluteFor("온도 TT 01"), 2.5, 1e-12);
+            Near("대소문자가 달라도 같은 IO", t.PercentFor("압력"), 5, 1e-12);
+
+            // 안 건 IO 는 기본값입니다.
+            Near("안 건 IO 의 퍼센트", t.PercentFor("다른 IO"), 0.1, 1e-12);
+            Near("이름이 없어도 견딤", t.PercentFor(null), 0.1, 1e-12);
+            Check("안 건 IO 는 규칙 없음", !t.HasOverrideFor("다른 IO"), null);
+
+            // 같은 IO 가 두 번이면 뒤의 것이 이깁니다.
+            var dup = new ToleranceOverride(); dup.Io = "압력"; dup.Percent = 9;
+            rules.Add(dup);
+            ToleranceTable t2t = ToleranceTable.From(0.1, 0, rules);
+            Near("같은 IO 는 뒤의 것", t2t.PercentFor("압력"), 9, 1e-12);
+
+            // 쓸모없는 줄은 표에 들어가지 않습니다.
+            var empty = new List<ToleranceOverride>();
+            var noName = new ToleranceOverride(); noName.Percent = 1;
+            var noValue = new ToleranceOverride(); noValue.Io = "이름만";
+            empty.Add(noName); empty.Add(noValue); empty.Add(null);
+            ToleranceTable none = ToleranceTable.From(0.1, 0, empty);
+            Check("쓸모없는 줄은 안 들어감", none.OverrideCount == 0, "실제 " + none.OverrideCount);
+            Check("규칙이 없으면 없다고", !none.HasOverrides, null);
+            Check("null 목록도 견딤", !ToleranceTable.From(0.1, 0, null).HasOverrides, null);
+
+            // 한 줄로 적은 것(기준 비교용)은 줄 순서가 달라도 같아야 합니다.
+            var order1 = new List<ToleranceOverride> { t1, t2 };
+            var order2 = new List<ToleranceOverride> { t2, t1 };
+            Check("순서가 달라도 같은 서명",
+                  ToleranceTable.From(0.1, 0, order1).Signature()
+                  == ToleranceTable.From(0.1, 0, order2).Signature(),
+                  ToleranceTable.From(0.1, 0, order1).Signature());
+            Check("규칙이 없으면 서명도 빈 글자",
+                  ToleranceTable.From(0.1, 0, null).Signature().Length == 0, null);
+            Check("값이 다르면 서명도 다름",
+                  ToleranceTable.From(0.1, 0, order1).Signature()
+                  != ToleranceTable.From(0.1, 0, new List<ToleranceOverride> { dup, t2 }).Signature(), null);
+        }
+
+        /// <summary>
+        /// IO 별 허용 오차가 <b>실제 비교</b>에 먹는지. 대시보드(DiffEngine)와
+        /// 히트맵이 같은 답을 내야 합니다 — 화면마다 다르면 어느 쪽을 믿을지
+        /// 알 수 없습니다.
+        /// </summary>
+        private static void TolerancePerIo()
+        {
+            Console.WriteLine("IO 별 허용 오차 — 실제 비교");
+
+            // 두 IO 가 똑같이 10 → 11 로 벌어집니다 (10%).
+            var b = new StringBuilder("Time,흔들리는 온도,밸브 OPEN\n");
+            var a = new StringBuilder("Time,흔들리는 온도,밸브 OPEN\n");
+            for (int i = 0; i < 40; i++)
+            {
+                b.Append(i * 1000).Append(",10,10\n");
+                a.Append(i * 1000).Append(",11,11\n");
+            }
+            LogDataset dsB = Open(WriteCsv("tol_b.csv", b.ToString()), Orientation.Auto);
+            LogDataset dsA = Open(WriteCsv("tol_a.csv", a.ToString()), Orientation.Auto);
+
+            // 기본값 0.1% 면 둘 다 차이입니다.
+            var opt = new DiffOptions();
+            opt.RelativePercent = 0.1;
+            Check("기본값만 쓰면 둘 다 차이",
+                  DiffEngine.Compare(dsB, dsA, opt, null).ChangedCount == 2, null);
+
+            // 온도만 20% 까지 봐줍니다. 밸브는 그대로 0.1%.
+            var rules = new List<ToleranceOverride>();
+            var loose = new ToleranceOverride(); loose.Io = "흔들리는온도"; loose.Percent = 20;
+            rules.Add(loose);
+
+            opt.Tolerances = ToleranceTable.From(0.1, 0, rules);
+            CompareResult r = DiffEngine.Compare(dsB, dsA, opt, null);
+            Check("온도만 빠져 하나만 차이", r.ChangedCount == 1, "실제 " + r.ChangedCount);
+
+            ChannelDiff temp = r.Items.Find(d => d.Name == "흔들리는 온도");
+            ChannelDiff valve = r.Items.Find(d => d.Name == "밸브 OPEN");
+            Check("봐준 IO 는 차이 아님", temp != null && !temp.Changed, null);
+            Check("안 봐준 IO 는 차이", valve != null && valve.Changed, null);
+
+            // 최대 오차 퍼센트는 그대로 적힙니다 — 잣대를 바꾼 것이지 값이
+            // 바뀐 것이 아닙니다. 화면에 10% 로 적히고도 "차이 아님" 인 것이
+            // 맞습니다.
+            Near("봐준 IO 도 오차 퍼센트는 그대로", temp.MaxPercent, 10, 1e-6);
+
+            // 히트맵도 같은 답이어야 합니다.
+            var h = new HeatmapOptions();
+            h.RelativePercent = 0.1;
+            h.IncludeUnchanged = true;
+            h.Tolerances = ToleranceTable.From(0.1, 0, rules);
+            HeatmapResult hr = HeatmapBuilder.Build(dsB, dsA, h, null);
+
+            HeatRow hTemp = hr.Rows.Find(x => x.Name == "흔들리는 온도");
+            HeatRow hValve = hr.Rows.Find(x => x.Name == "밸브 OPEN");
+            Check("히트맵도 두 줄", hTemp != null && hValve != null, null);
+            Check("히트맵에서도 봐준 IO 는 넘은 칸이 없음", hTemp.TotalOverSamples == 0,
+                  "실제 " + hTemp.TotalOverSamples);
+            Check("히트맵에서도 안 봐준 IO 는 넘음", hValve.TotalOverSamples > 0,
+                  "실제 " + hValve.TotalOverSamples);
+
+            // 절대값으로도 됩니다. 1.5 면 1 만큼 벌어진 것은 같은 것으로 봅니다.
+            var byValue = new List<ToleranceOverride>();
+            var abs = new ToleranceOverride(); abs.Io = "밸브 OPEN"; abs.Absolute = 1.5;
+            byValue.Add(abs);
+            opt.Tolerances = ToleranceTable.From(0.1, 0, byValue);
+            CompareResult r2 = DiffEngine.Compare(dsB, dsA, opt, null);
+            ChannelDiff valve2 = r2.Items.Find(d => d.Name == "밸브 OPEN");
+            Check("절대값으로 봐준 IO 는 차이 아님", valve2 != null && !valve2.Changed, null);
+            Check("나머지는 그대로 차이", r2.ChangedCount == 1, "실제 " + r2.ChangedCount);
+
+            // 설정 파일에 담았다 꺼내도 그대로여야 합니다.
+            var s = new AppSettings();
+            s.RelativeTolerancePercent = 0.5;
+            s.Tolerances.Add(loose);
+            s.Tolerances.Add(abs);
+            var onlyName = new ToleranceOverride(); onlyName.Io = "이름만";   // 버려질 줄
+            s.Tolerances.Add(onlyName);
+
+            AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("쓸모없는 줄은 저장되지 않음", back.Tolerances.Count == 2,
+                  "실제 " + back.Tolerances.Count);
+
+            ToleranceTable bt = ToleranceTable.From(back.RelativeTolerancePercent, 0, back.Tolerances);
+            Near("퍼센트가 그대로", bt.PercentFor("흔들리는 온도"), 20, 1e-9);
+            Near("절대값이 그대로", bt.AbsoluteFor("밸브 OPEN"), 1.5, 1e-9);
+            // 안 정한 자리는 다시 읽어도 "안 정함" 이어야 합니다. 0 으로
+            // 떨어지면 절대 오차가 저절로 켜집니다.
+            Near("안 정한 자리는 기본값 그대로", bt.AbsoluteFor("흔들리는 온도"), 0, 1e-9);
+            Near("안 정한 퍼센트도 기본값", bt.PercentFor("밸브 OPEN"), 0.5, 1e-9);
+
+            // 저장해 둔 분석과 "같은 기준" 인지 가릴 때도 규칙이 들어갑니다.
+            var rec = new AnalysisRecord();
+            rec.TolerancePercent = 0.5;
+            rec.AbsoluteTolerance = 0;
+            rec.ToleranceRules = bt.Signature();
+            Check("같은 규칙이면 같은 기준",
+                  rec.SameBasis(0.5, 0, "", "", bt.Signature()), null);
+            Check("규칙이 달라지면 다른 기준",
+                  !rec.SameBasis(0.5, 0, "", "", string.Empty), null);
         }
 
         /// <summary>

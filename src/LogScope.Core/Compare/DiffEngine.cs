@@ -137,6 +137,16 @@ namespace LogScope.Core.Compare
             Channel ac = after.Channels[ai];
             d.Name = bc.Name;
             d.Presence = Presence.Both;
+
+            // 허용 오차는 IO 마다 다를 수 있습니다. 표본마다 표를 뒤지지 않게
+            // 채널 하나당 한 번만 풀어 둡니다.
+            double limitAbs = opt.AbsoluteTolerance, limitPct = opt.RelativePercent;
+            if (opt.Tolerances != null)
+            {
+                limitAbs = opt.Tolerances.AbsoluteFor(bc.Name);
+                limitPct = opt.Tolerances.PercentFor(bc.Name);
+            }
+
             d.BeforeIndex = bi;
             d.AfterIndex = ai;
 
@@ -179,7 +189,7 @@ namespace LogScope.Core.Compare
                     if (double.IsNaN(bv) || double.IsNaN(av)) { havePrev = false; continue; }
                     diff = Math.Abs(bv - av);
                     pct = ToleranceRule.ErrorPercent(bv, av);
-                    over = ToleranceRule.IsOver(bv, av, opt.AbsoluteTolerance, opt.RelativePercent);
+                    over = ToleranceRule.IsOver(bv, av, limitAbs, limitPct);
                 }
 
                 compared++;

@@ -604,3 +604,12 @@
 > 넣으면 네모 칸 사라지는거 불편
 
 → 답변: [35-clearvalue-erased-the-card.md](35-clearvalue-erased-the-card.md)
+
+---
+
+## 요청 46 — IO 별 허용 오차
+
+> 그리고 정상 오차 판정 값 설정할 때 IO별로 설정할 수 있게하고
+> 퍼센트/ Value값 둘다 가능하게
+
+→ 답변: [36-per-io-tolerance.md](36-per-io-tolerance.md)

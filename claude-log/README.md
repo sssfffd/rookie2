@@ -42,3 +42,4 @@
 | `33-screen-names.md` | 분석 1·2·3 의 이름을 screens.txt 에서 바꾸기 |
 | `34-no-auto-reopen.md` | 켤 때 지난번 로그를 저절로 열지 않기 |
 | `35-clearvalue-erased-the-card.md` | 파일을 놓으면 칸이 사라지던 것. ClearValue 가 XAML 값까지 지움 |
+| `36-per-io-tolerance.md` | IO 별 허용 오차. 퍼센트와 값 둘 다, 빈 칸은 기본값 |

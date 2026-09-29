@@ -500,7 +500,9 @@ namespace LogScope.App.Views
 
         private void OnSettings(object sender, RoutedEventArgs e)
         {
-            var dlg = new SettingsWindow(_state.Settings);
+            // 열어 둔 로그의 IO 이름을 같이 넘깁니다. IO 별 허용 오차를
+            // 걸 때 이름을 손으로 적지 않고 고를 수 있게.
+            var dlg = new SettingsWindow(_state.Settings, _state.IoNames());
             dlg.Owner = this;
             dlg.ShowDialog();
 

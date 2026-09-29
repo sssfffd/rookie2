@@ -82,6 +82,17 @@ namespace LogScope.Core.History
         // ---- 어떤 기준으로 나온 수인가 ----
         public double TolerancePercent;
         public double AbsoluteTolerance;
+
+        /// <summary>
+        /// IO 별 허용 오차를 한 줄로 적은 것 (ToleranceTable.Signature).
+        /// 이것도 <b>기준의 일부</b>입니다 — IO 하나에 다른 잣대를 걸어 두고
+        /// 견주면 수가 달라지는데, 기본값만 같다고 "같은 기준" 이라고 하면
+        /// 거짓말이 됩니다.
+        /// </summary>
+        public string ToleranceRules = string.Empty;
+
+        /// <summary>IO 별 규칙이 몇 개였는지. 화면에 한 줄로 적을 때 씁니다.</summary>
+        public int ToleranceRuleCount;
         public string AlignIo = string.Empty;
         public string AxisIo = string.Empty;
         public double AppliedShift;
@@ -107,10 +118,21 @@ namespace LogScope.Core.History
         public bool SameBasis(double tolerancePercent, double absoluteTolerance,
                               string alignIo, string axisIo)
         {
+            return SameBasis(tolerancePercent, absoluteTolerance, alignIo, axisIo, string.Empty);
+        }
+
+        /// <param name="toleranceRules">
+        /// 지금의 IO 별 규칙 (ToleranceTable.Signature). 빈 글자면 규칙이 없다는 뜻입니다.
+        /// </param>
+        public bool SameBasis(double tolerancePercent, double absoluteTolerance,
+                              string alignIo, string axisIo, string toleranceRules)
+        {
             return TolerancePercent == tolerancePercent
                 && AbsoluteTolerance == absoluteTolerance
                 && string.Equals(AlignIo ?? string.Empty, alignIo ?? string.Empty, StringComparison.Ordinal)
-                && string.Equals(AxisIo ?? string.Empty, axisIo ?? string.Empty, StringComparison.Ordinal);
+                && string.Equals(AxisIo ?? string.Empty, axisIo ?? string.Empty, StringComparison.Ordinal)
+                && string.Equals(ToleranceRules ?? string.Empty, toleranceRules ?? string.Empty,
+                                 StringComparison.Ordinal);
         }
 
         /// <summary>어떤 기준이었는지 한 줄로.</summary>
@@ -121,6 +143,8 @@ namespace LogScope.Core.History
                 string s = "허용 오차 " + TolerancePercent.ToString("0.####", CultureInfo.InvariantCulture) + "%";
                 if (AbsoluteTolerance > 0)
                     s += " / 절대 " + AbsoluteTolerance.ToString("0.######", CultureInfo.InvariantCulture);
+                if (ToleranceRuleCount > 0)
+                    s += " (IO 별 " + ToleranceRuleCount.ToString(CultureInfo.InvariantCulture) + "개)";
                 if (AlignIo.Length > 0) s += "   시간 맞추기 \"" + AlignIo + "\"";
                 if (AxisIo.Length > 0) s += "   가로축 \"" + AxisIo + "\"";
                 return s;
@@ -162,6 +186,8 @@ namespace LogScope.Core.History
 
             d["tolerancePercent"] = TolerancePercent;
             d["absoluteTolerance"] = AbsoluteTolerance;
+            d["toleranceRules"] = ToleranceRules ?? string.Empty;
+            d["toleranceRuleCount"] = (double)ToleranceRuleCount;
             d["alignIo"] = AlignIo ?? string.Empty;
             d["axisIo"] = AxisIo ?? string.Empty;
             d["appliedShift"] = AppliedShift;
@@ -204,6 +230,11 @@ namespace LogScope.Core.History
 
             r.TolerancePercent = Json.GetDouble(d, "tolerancePercent", 0);
             r.AbsoluteTolerance = Json.GetDouble(d, "absoluteTolerance", 0);
+            // 옛 기록에는 없던 값입니다. 없으면 "규칙이 없었다" 로 봅니다 —
+            // 그때는 정말 없었습니다.
+            r.ToleranceRules = Json.GetString(d, "toleranceRules", string.Empty);
+            r.ToleranceRuleCount = Json.GetInt(d, "toleranceRuleCount", 0);
+            if (r.ToleranceRuleCount < 0) r.ToleranceRuleCount = 0;
             r.AlignIo = Json.GetString(d, "alignIo", string.Empty);
             r.AxisIo = Json.GetString(d, "axisIo", string.Empty);
             r.AppliedShift = Json.GetDouble(d, "appliedShift", 0);
