@@ -1909,7 +1909,7 @@ namespace LogScope.Tests
             s.AlignLevel = 5;
             s.AxisIo = "경과 시간";
             s.RelativeTolerancePercent = 0.25;
-            s.SortMetric = DiffMetric.SegmentCount;
+            s.SortMetric = DiffMetric.TimeRatio;
 
             var g = new GroupDef("밸브 묶음");
             g.Members.Add("밸브 OPEN");
@@ -1962,7 +1962,19 @@ namespace LogScope.Tests
             Check("파형 분리만 켠 것은 그대로", sep.SeparateTraces && !sep.ShadeDifference, null);
             Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
-            Check("정렬 기준", back.SortMetric == DiffMetric.SegmentCount, back.SortMetric.ToString());
+            Check("정렬 기준", back.SortMetric == DiffMetric.TimeRatio, back.SortMetric.ToString());
+
+            // 화면에서 뺀 차이량(차이 면적 · RMS · 구간 수)이 예전 설정에
+            // 남아 있으면 기본값으로 돌아와야 합니다. 그대로 두면 안 보이는
+            // 기준으로 정렬돼 "왜 이 차례지" 를 알 수 없게 됩니다.
+            DiffMetric[] gone = { DiffMetric.Area, DiffMetric.Rms, DiffMetric.SegmentCount };
+            for (int i = 0; i < gone.Length; i++)
+            {
+                s.SortMetric = gone[i];
+                AppSettings old2 = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+                Check("뺀 차이량(" + gone[i] + ")은 기본값으로",
+                      old2.SortMetric == DiffMetric.MaxAbs, old2.SortMetric.ToString());
+            }
             Check("그룹 이름", back.Groups.Count == 1 && back.Groups[0].Name == "밸브 묶음", null);
             Check("그룹 구성원을 이름으로 저장", back.Groups[0].Members.Count == 2
                   && back.Groups[0].Members[0] == "밸브 OPEN", null);

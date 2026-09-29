@@ -613,3 +613,11 @@
 > 퍼센트/ Value값 둘다 가능하게
 
 → 답변: [36-per-io-tolerance.md](36-per-io-tolerance.md)
+
+---
+
+## 요청 47 — 대시보드에서 RMS · 구간 수 빼기
+
+> 대시보드에서 RMS 구간수는 빼줘
+
+→ 답변: [37-dashboard-columns.md](37-dashboard-columns.md)

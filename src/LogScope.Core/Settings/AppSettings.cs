@@ -310,9 +310,13 @@ namespace LogScope.Core.Settings
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 7) metric = 0;
             s.SortMetric = (DiffMetric)metric;
-            // 차이 면적은 화면에서 뺐습니다. 예전 설정에 남아 있으면
-            // 아무 칸에도 삼각형이 붙지 않으므로 기본값으로 돌립니다.
-            if (s.SortMetric == DiffMetric.Area) s.SortMetric = DiffMetric.MaxAbs;
+            // 화면에서 뺀 차이량이 예전 설정에 남아 있으면 기본값으로 돌립니다.
+            // 그대로 두면 아무 칸에도 삼각형이 붙지 않고, 목록이 안 보이는
+            // 기준으로 정렬돼 "왜 이 차례지" 를 알 수 없게 됩니다.
+            //   차이 면적 / RMS / 구간 수 — 셋 다 칸을 뺐습니다.
+            if (s.SortMetric == DiffMetric.Area
+             || s.SortMetric == DiffMetric.Rms
+             || s.SortMetric == DiffMetric.SegmentCount) s.SortMetric = DiffMetric.MaxAbs;
             s.SortDescending = Json.GetBool(root, "sortDescending", true);
             s.SortColumn = Json.GetInt(root, "sortColumn", 0);
             // 3 은 예전의 "기준값" 칸이었습니다. 이제 기준은 채널마다 다르지

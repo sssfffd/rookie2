@@ -17,9 +17,7 @@ namespace LogScope.App.ViewModels
         public string Kind { get; set; }
         public string MaxAbs { get; set; }
         public string MeanAbs { get; set; }
-        public string Rms { get; set; }
         public string TimeRatio { get; set; }
-        public string Segments { get; set; }
 
         /// <summary>
         /// 가장 크게 벌어진 순간의 오차(%). 설정에 적는 허용 오차와 같은
@@ -179,8 +177,8 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public static readonly DiffMetric[] ShownMetrics =
         {
-            DiffMetric.MaxPercent, DiffMetric.MaxAbs, DiffMetric.MeanAbs, DiffMetric.Rms,
-            DiffMetric.TimeRatio, DiffMetric.SampleCount, DiffMetric.SegmentCount,
+            DiffMetric.MaxPercent, DiffMetric.MaxAbs, DiffMetric.MeanAbs,
+            DiffMetric.TimeRatio, DiffMetric.SampleCount,
         };
 
         public static string[] MetricNames
@@ -201,9 +199,7 @@ namespace LogScope.App.ViewModels
         public ColumnHeaderVm ColKind { get; private set; }
         public ColumnHeaderVm ColMax { get; private set; }
         public ColumnHeaderVm ColMean { get; private set; }
-        public ColumnHeaderVm ColRms { get; private set; }
         public ColumnHeaderVm ColTime { get; private set; }
-        public ColumnHeaderVm ColSegments { get; private set; }
         public ColumnHeaderVm ColMaxPct { get; private set; }
 
         private List<ColumnHeaderVm> _headers;
@@ -214,14 +210,12 @@ namespace LogScope.App.ViewModels
             ColKind = ColumnHeaderVm.ForKind("구분");
             ColMax = ColumnHeaderVm.ForMetric(DiffMetric.MaxAbs, "최대 차이");
             ColMean = ColumnHeaderVm.ForMetric(DiffMetric.MeanAbs, "평균 차이");
-            ColRms = ColumnHeaderVm.ForMetric(DiffMetric.Rms, "RMS");
             ColTime = ColumnHeaderVm.ForMetric(DiffMetric.TimeRatio, "차이 시간");
-            ColSegments = ColumnHeaderVm.ForMetric(DiffMetric.SegmentCount, "구간 수");
             ColMaxPct = ColumnHeaderVm.ForMetric(DiffMetric.MaxPercent, "최대 오차 %");
 
             _headers = new List<ColumnHeaderVm>
             {
-                ColName, ColKind, ColMaxPct, ColMax, ColMean, ColRms, ColTime, ColSegments
+                ColName, ColKind, ColMaxPct, ColMax, ColMean, ColTime
             };
             MarkSorted();
         }
@@ -353,9 +347,7 @@ namespace LogScope.App.ViewModels
                         Kind = d.ByName ? "상태 다름" : "값 다름",
                         MaxAbs = d.Format(DiffMetric.MaxAbs),
                         MeanAbs = d.Format(DiffMetric.MeanAbs),
-                        Rms = d.Format(DiffMetric.Rms),
                         TimeRatio = d.Format(DiffMetric.TimeRatio),
-                        Segments = d.Format(DiffMetric.SegmentCount),
                         MaxPercent = d.ByName ? "이름 다름" : d.Format(DiffMetric.MaxPercent),
                     });
                 }

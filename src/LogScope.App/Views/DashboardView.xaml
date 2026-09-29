@@ -140,18 +140,10 @@
                                                     Header="{Binding ColMean}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding MeanAbs}" />
-                                    <GridViewColumn Width="90"
-                                                    Header="{Binding ColRms}"
-                                                    HeaderTemplate="{StaticResource SortHeader}"
-                                                    DisplayMemberBinding="{Binding Rms}" />
                                     <GridViewColumn Width="95"
                                                     Header="{Binding ColTime}"
                                                     HeaderTemplate="{StaticResource SortHeader}"
                                                     DisplayMemberBinding="{Binding TimeRatio}" />
-                                    <GridViewColumn Width="90"
-                                                    Header="{Binding ColSegments}"
-                                                    HeaderTemplate="{StaticResource SortHeader}"
-                                                    DisplayMemberBinding="{Binding Segments}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>
