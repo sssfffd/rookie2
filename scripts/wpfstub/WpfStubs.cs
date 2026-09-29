@@ -238,6 +238,12 @@ namespace System.Windows
         public bool GetDataPresent(string format) { return false; }
         public void SetData(string format, object data) { }
     }
+    public static class DataFormats
+    {
+        public const string FileDrop = "FileDrop";
+        public const string Text = "Text";
+        public const string UnicodeText = "UnicodeText";
+    }
     [Flags]
     public enum DragDropEffects { None = 0, Copy = 1, Move = 2, Link = 4, All = 7 }
     public class DragEventArgs : RoutedEventArgs

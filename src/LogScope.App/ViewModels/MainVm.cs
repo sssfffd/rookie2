@@ -27,7 +27,7 @@ namespace LogScope.App.ViewModels
             Cards = new List<AnalysisCardVm>
             {
                 new AnalysisCardVm(1, "로그 비교",
-                    "이전 로그와 이후 로그를 견줍니다. 대시보드 · 그래프 · 히트맵.", true),
+                    "이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.", true),
                 new AnalysisCardVm(2, "분석 2",
                     "아직 정해지지 않았습니다.", false),
                 new AnalysisCardVm(3, "분석 3",
@@ -57,11 +57,12 @@ namespace LogScope.App.ViewModels
             else
             {
                 Cards[0].SetScore(AnalysisCardVm.MaxScore);   // ← 진짜 점수가 들어갈 자리
+                // 칸이 좁아서 셋은 빽빽했습니다. "한쪽에만" 은 여기서 뺐습니다 —
+                // 대시보드에 그 목록이 따로 있습니다.
                 Cards[0].SetStats(new List<StatVm>
                 {
-                    new StatVm("견준 IO", Count(r.CommonCount)),
+                    new StatVm("비교한 IO", Count(r.CommonCount)),
                     new StatVm("달라진 IO", Count(r.ChangedCount)),
-                    new StatVm("한쪽에만", Count(r.OnlyBefore.Count + r.OnlyAfter.Count)),
                 });
             }
 
@@ -299,7 +300,7 @@ namespace LogScope.App.ViewModels
         public string SaveCurrent(string label)
         {
             CompareResult r = _state.Comparison;
-            if (r == null) return "견준 결과가 없습니다. 로그 두 개를 열고 비교한 뒤에 저장할 수 있습니다.";
+            if (r == null) return "비교 결과가 없습니다. Log 파일 두 개를 열고 비교한 후에 저장할 수 있습니다.";
 
             var rec = new AnalysisRecord();
             rec.SavedAt = _state.ComparedAt != DateTime.MinValue ? _state.ComparedAt : DateTime.Now;
@@ -363,9 +364,9 @@ namespace LogScope.App.ViewModels
             get
             {
                 if (_history.Count == 0)
-                    return "아직 저장한 것이 없습니다. 견준 뒤 [지금 결과 저장] 을 누르면 여기에 쌓입니다.";
+                    return "아직 저장한 것이 없습니다. Log 파일을 비교한 후 [지금 결과 저장] 을 누르면 여기에 쌓입니다.";
                 if (_state.Comparison == null)
-                    return "로그를 견주면 각 줄에 지금 결과와의 차이가 같이 뜹니다.";
+                    return "Log 파일을 비교한 후에는 각 줄에 지금 결과와의 차이가 같이 뜹니다.";
                 return "각 줄의 오른쪽이 지금 결과와의 차이입니다. 달라진 IO 가 늘면 빨강, 줄면 초록입니다.";
             }
         }
@@ -379,9 +380,9 @@ namespace LogScope.App.ViewModels
             get
             {
                 if (!_state.HasAny)
-                    return "위쪽의 [이전 로그 열기] / [이후 로그 열기] 로 파일을 먼저 열어 주세요.";
+                    return "위쪽의 [이전 로그 열기] / [이후 로그 열기] 로 파일을 먼저 열어 주세요. 창에 끌어다 놓아도 됩니다.";
                 if (!_state.HasBoth)
-                    return "로그가 하나뿐입니다. 두 개를 다 열어야 견줄 수 있습니다.";
+                    return "Log 파일이 하나뿐입니다. 두 개를 다 열어야 비교할 수 있습니다.";
                 return "칸을 누르면 그 분석 화면으로 넘어갑니다.";
             }
         }

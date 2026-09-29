@@ -23,7 +23,8 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="열어 둔 로그" Style="{StaticResource FieldLabel}" Margin="0,0,0,6" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
+                                   Text="열어 둔 로그    (Log 파일을 이 줄에 끌어다 놓을 수 있습니다)" />
 
                         <!--
                           발생시간은 파일 이름 앞부분을 그대로 떼어 온 것입니다.
@@ -37,7 +38,9 @@
                           긴 이름이 뒤의 IO·표본 수를 화면 밖으로 밀어냅니다.
                           이름 칸만 남는 폭을 가져가고 넘치면 "…" 로 잘리게 합니다.
                         -->
-                        <Grid Margin="0,0,0,3" ToolTip="{Binding BeforePath}">
+                        <Grid Margin="0,0,0,3" ToolTip="{Binding BeforePath}" Background="Transparent"
+                              AllowDrop="True" Tag="before"
+                              DragOver="OnLogRowDragOver" Drop="OnLogRowDrop">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -64,7 +67,9 @@
                                        VerticalAlignment="Center" />
                         </Grid>
 
-                        <Grid ToolTip="{Binding AfterPath}">
+                        <Grid ToolTip="{Binding AfterPath}" Background="Transparent"
+                              AllowDrop="True" Tag="after"
+                              DragOver="OnLogRowDragOver" Drop="OnLogRowDrop">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -181,7 +186,7 @@
                                               Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <UniformGrid Rows="1" Columns="3" />
+                                            <UniformGrid Rows="1" Columns="2" />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
@@ -450,7 +455,7 @@
 
                 <TextBlock Grid.Column="0" Style="{StaticResource Muted}" FontSize="11"
                            TextWrapping="Wrap" VerticalAlignment="Bottom" MaxWidth="520"
-                           Text="점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 견주기 전이면 ??, 견주고 나면 만점으로 둡니다." />
+                           Text="점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 Log 파일을 비교한 후에 100 점으로 둡니다." />
 
                 <!-- 점수 색 설명. 작게, 오른쪽 아래에. -->
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right" Margin="20,0,0,0">

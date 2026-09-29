@@ -46,7 +46,7 @@ namespace LogScope.App.Views
             Score2Text.Text = r.ScoreText(2);
             Score3Text.Text = r.ScoreText(3);
 
-            CountsText.Text = "견준 IO " + r.ComparedCount.ToString("N0")
+            CountsText.Text = "비교한 IO " + r.ComparedCount.ToString("N0")
                             + "개   ·   달라진 IO " + r.ChangedCount.ToString("N0")
                             + "개   ·   한쪽에만 " + r.OneSidedCount.ToString("N0") + "개";
             BasisText.Text = r.BasisText;

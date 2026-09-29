@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -39,11 +40,16 @@ namespace LogScope.App.Views
             _vm = new ShellVm(state);
             DataContext = _vm;
 
+            // 창 제목도 appname.txt 를 봅니다. XAML 에 적어 두면 이름을
+            // 바꿀 때 한 군데가 남습니다.
+            Title = _vm.WindowTitle;
+
             _vm.SetChanged += OnSetChanged;
             _vm.PageChanged += OnPageChanged;
             _vm.ScreenChanged += OnScreenChanged;
             Main.AnalysisOpened += OnAnalysisOpened;
             Main.GroupOpened += OnGroupOpened;
+            Main.LogDropped += OnLogDropped;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -187,6 +193,105 @@ namespace LogScope.App.Views
             if (before) { _state.Before = ds; _state.BeforePath = path; set.BeforePath = path; }
             else { _state.After = ds; _state.AfterPath = path; set.AfterPath = path; }
             return true;
+        }
+
+        // ---------------- 파일 끌어다 놓기 ----------------
+        //
+        // 창 어디에나 놓을 수 있습니다. 메인 화면의 "열어 둔 로그" 에서는
+        // 이전/이후 줄에 각각 놓을 수 있어, 어느 쪽에 넣을지 고를 수 있습니다.
+
+        private void OnFileDragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = Dropped(e).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void OnFileDrop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+            TakeFiles(Dropped(e), null);
+        }
+
+        /// <summary>
+        /// 끌어 온 것 중 <b>읽을 수 있는 로그 파일</b>만 골라 이름 순으로
+        /// 돌려줍니다.
+        ///
+        /// 이름 순인 이유가 있습니다. 두 개를 한꺼번에 놓으면 앞의 것을
+        /// 이전으로 봐야 하는데, 이 프로그램은 파일 이름 앞에 날짜가 붙는다는
+        /// 관행을 이미 쓰고 있습니다 (발생시간). 그러면 이름 순이 곧 시간
+        /// 순입니다. 파일의 수정 시각으로 정하면 복사만 해도 뒤바뀝니다.
+        /// </summary>
+        private static List<string> Dropped(DragEventArgs e)
+        {
+            var list = new List<string>();
+            if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return list;
+
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null) return list;
+
+            foreach (string p in paths)
+            {
+                if (string.IsNullOrEmpty(p)) continue;
+                if (!File.Exists(p) || !LogReader.IsSupported(p)) continue;
+                list.Add(p);
+            }
+            list.Sort(StringComparer.OrdinalIgnoreCase);
+            return list;
+        }
+
+        /// <summary>
+        /// 끌어다 놓은 파일을 받습니다.
+        ///
+        /// <paramref name="slot"/> 이 정해져 있으면(메인 화면의 줄에 놓은
+        /// 경우) 그 자리에 넣습니다. 정해지지 않았으면
+        ///
+        ///   두 개 이상 : 앞의 것을 이전, 다음을 이후
+        ///   한 개      : 비어 있는 자리에. 둘 다 차 있으면 <b>물어봅니다</b>
+        ///
+        /// 둘 다 차 있을 때 말없이 한쪽을 덮으면, 방금 덮인 것이 무엇이었는지
+        /// 알 수가 없습니다. 짐작하지 않고 묻습니다.
+        /// </summary>
+        private void TakeFiles(List<string> files, bool? slot)
+        {
+            if (files.Count == 0) return;
+
+            bool any = false;
+            if (slot.HasValue)
+            {
+                any = LoadInto(files[0], slot.Value);
+            }
+            else if (files.Count >= 2)
+            {
+                any = LoadInto(files[0], true);
+                any |= LoadInto(files[1], false);
+            }
+            else if (_state.Before == null)
+            {
+                any = LoadInto(files[0], true);
+            }
+            else if (_state.After == null)
+            {
+                any = LoadInto(files[0], false);
+            }
+            else
+            {
+                MessageBoxResult r = MessageBox.Show(this,
+                    Path.GetFileName(files[0]) + "\n\n어느 쪽으로 넣을까요?\n\n"
+                    + "[예] 이전 로그      [아니오] 이후 로그",
+                    "로그 넣기", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (r == MessageBoxResult.Cancel) return;
+                any = LoadInto(files[0], r == MessageBoxResult.Yes);
+            }
+
+            if (!any) return;
+            AfterLoad();
+            SaveSettings();
+        }
+
+        /// <summary>메인 화면의 이전/이후 줄에 놓았을 때.</summary>
+        private void OnLogDropped(object sender, MainView.LogDropEventArgs e)
+        {
+            TakeFiles(e.Files, e.Before);
         }
 
         // ---------------- 비교 ----------------

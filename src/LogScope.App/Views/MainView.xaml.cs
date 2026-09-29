@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using System.Collections.Generic;
 using System.Windows.Controls;
 using LogScope.App.ViewModels;
 
@@ -25,6 +26,56 @@ namespace LogScope.App.Views
         {
             public readonly int Number;
             public AnalysisEventArgs(int number) { Number = number; }
+        }
+
+        /// <summary>이전/이후 줄에 Log 파일을 끌어다 놓았을 때.</summary>
+        public event EventHandler<LogDropEventArgs> LogDropped;
+
+        public sealed class LogDropEventArgs : EventArgs
+        {
+            public readonly List<string> Files;
+            /// <summary>참이면 이전 로그, 거짓이면 이후 로그 자리입니다.</summary>
+            public readonly bool Before;
+
+            public LogDropEventArgs(List<string> files, bool before)
+            {
+                Files = files;
+                Before = before;
+            }
+        }
+
+        private void OnLogRowDragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = HasFiles(e) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// 줄에 놓으면 <b>그 자리</b>에 넣습니다. 창 아무 데나 놓는 것과 다른
+        /// 점이 이겁니다 — 어느 쪽인지 묻지 않고 바로 들어갑니다.
+        ///
+        /// 실제로 읽는 일은 창(ShellWindow)이 맡습니다. 진행 창을 띄워야 하고,
+        /// 읽은 뒤에 다시 견줘야 하기 때문입니다.
+        /// </summary>
+        private void OnLogRowDrop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+
+            var g = sender as FrameworkElement;
+            if (g == null || !HasFiles(e)) return;
+
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null || paths.Length == 0) return;
+
+            bool before = (g.Tag as string) == "before";
+
+            EventHandler<LogDropEventArgs> h = LogDropped;
+            if (h != null) h(this, new LogDropEventArgs(new List<string>(paths), before));
+        }
+
+        private static bool HasFiles(DragEventArgs e)
+        {
+            return e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop);
         }
 
         /// <summary>요약에서 그룹 한 줄을 눌렀을 때.</summary>

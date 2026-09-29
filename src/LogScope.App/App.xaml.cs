@@ -56,7 +56,7 @@ namespace LogScope.App
             }
             try
             {
-                MessageBox.Show(sb.ToString(), "LogScope 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(sb.ToString(), BuildInfo.Product + " 오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch (InvalidOperationException) { }
         }

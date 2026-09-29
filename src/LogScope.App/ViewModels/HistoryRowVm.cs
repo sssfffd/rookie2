@@ -53,7 +53,7 @@ namespace LogScope.App.ViewModels
         {
             get
             {
-                return "견준 " + Record.ComparedCount.ToString("N0")
+                return "비교 " + Record.ComparedCount.ToString("N0")
                      + " · 달라진 " + Record.ChangedCount.ToString("N0")
                      + " · 한쪽에만 " + Record.OneSidedCount.ToString("N0");
             }
@@ -91,7 +91,7 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public string BasisWarning
         {
-            get { return _live && !_same ? "기준이 달라 그대로 견줄 수 없습니다" : string.Empty; }
+            get { return _live && !_same ? "기준이 달라 그대로 비교할 수 없습니다" : string.Empty; }
         }
 
         public string DeltaText

@@ -46,6 +46,17 @@ namespace LogScope.App.ViewModels
 
         public string VersionText { get { return "v" + BuildInfo.Version; } }
 
+        /// <summary>
+        /// 프로그램 이름. 창 제목과 왼쪽 위 글자가 이 값을 씁니다.
+        ///
+        /// <b>바꾸는 곳은 저장소 루트의 appname.txt 한 곳입니다.</b> 버전과
+        /// 같은 방식으로, 빌드할 때 BuildInfo 로 들어옵니다 — 소스 여러 군데에
+        /// 이름을 적어 두면 바꿀 때 한두 군데가 남습니다.
+        /// </summary>
+        public string ProductName { get { return BuildInfo.Product; } }
+
+        public string WindowTitle { get { return BuildInfo.Product + " — IO 로그 그래프 뷰어"; } }
+
         // ---------------- 큰 화면 (메인 / 분석 1·2·3) ----------------
         //
         // 화면 전환이 두 겹입니다.

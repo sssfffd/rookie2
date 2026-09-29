@@ -237,8 +237,7 @@ namespace LogScope.App.ViewModels
             get
             {
                 if (!Ready) return "아직 만들지 않았습니다";
-                if (!_has) return "로그를 견주면 점수가 나옵니다";
-                if (_score >= MaxScore) return "만점";
+                if (!_has) return "Log 파일을 비교한 후 점수가 나옵니다";
                 switch (ScoreBands.GradeOf(_score))
                 {
                     case ScoreBands.GradeGood: return "이상 없음";
@@ -287,7 +286,7 @@ namespace LogScope.App.ViewModels
             {
                 if (_groups.Count > 0) return string.Empty;
                 if (!Ready) return "아직 만들지 않았습니다.";
-                return "그룹이 없거나 아직 견주지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
+                return "그룹이 없거나 아직 비교하지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
             }
         }
     }
