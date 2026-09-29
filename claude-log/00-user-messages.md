@@ -588,3 +588,19 @@
 > 변경하는 게 아니라 파일을 고쳐서 변경하고싶은데 어떻게 할까
 
 → 답변: [33-screen-names.md](33-screen-names.md)
+
+---
+
+## 요청 44 — 켤 때 지난번 파일을 열지 말 것
+
+> 아 그리고 프로그램 열면 전에 열었던 파일들 자동으로 열리는게 안하게 해주셈
+
+→ 답변: [34-no-auto-reopen.md](34-no-auto-reopen.md)
+
+---
+
+## 요청 45 — 넣으면 네모 칸이 사라짐
+
+> 넣으면 네모 칸 사라지는거 불편
+
+→ 답변: [35-clearvalue-erased-the-card.md](35-clearvalue-erased-the-card.md)

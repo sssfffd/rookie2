@@ -40,3 +40,5 @@
 | `31-drop-zones.md` | 끌어다 놓을 때 화면을 반으로 갈라 이전/이후를 고르게 |
 | `32-two-log-cards.md` | 열어 둔 로그를 좌우 두 칸으로. 31 의 큰 안내 판은 없앰 |
 | `33-screen-names.md` | 분석 1·2·3 의 이름을 screens.txt 에서 바꾸기 |
+| `34-no-auto-reopen.md` | 켤 때 지난번 로그를 저절로 열지 않기 |
+| `35-clearvalue-erased-the-card.md` | 파일을 놓으면 칸이 사라지던 것. ClearValue 가 XAML 값까지 지움 |

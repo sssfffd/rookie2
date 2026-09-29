@@ -151,6 +151,8 @@ namespace System.Windows
         public bool CaptureMouse() { return true; }
         public void ReleaseMouseCapture() { }
         public object FindResource(object key) { return null; }
+        // DynamicResource 를 코드로 거는 것. ClearValue 와 달리 값이 사라지지 않습니다.
+        public void SetResourceReference(DependencyProperty p, object key) { }
         public object TryFindResource(object key) { return null; }
         protected virtual void OnRender(System.Windows.Media.DrawingContext dc) { }
         protected virtual void OnMouseMove(System.Windows.Input.MouseEventArgs e) { }

@@ -2,7 +2,6 @@
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Controls;
-using System.Windows.Media;
 using LogScope.App.ViewModels;
 
 namespace LogScope.App.Views
@@ -67,26 +66,28 @@ namespace LogScope.App.Views
         /// <summary>
         /// 칸을 밝히거나 되돌립니다.
         ///
-        /// 되돌릴 때 값을 지웁니다(ClearValue). 색을 직접 써 놓으면 테마를
-        /// 바꿨을 때 그 칸만 옛 색으로 남습니다. 지우면 XAML 의
-        /// DynamicResource 가 다시 살아납니다.
+        /// <b>ClearValue 로 되돌리면 안 됩니다.</b> XAML 에 적은
+        /// <c>Background="{DynamicResource Brush.Panel}"</c> 도 "직접 쓴 값"
+        /// 자리에 들어갑니다. 지우면 XAML 값이 되살아나는 게 아니라 <b>같이
+        /// 지워져서</b>, 배경도 테두리도 없는 — 칸이 사라진 — 모습이 됩니다.
+        /// 0.39 에서 그렇게 해 놓아서, 파일을 놓거나 칸 밖으로 끌고 나가는
+        /// 순간 네모 칸이 사라졌습니다.
+        ///
+        /// 그래서 되돌릴 때도 <b>값을 다시 걸어 줍니다.</b>
+        /// SetResourceReference 는 DynamicResource 를 코드로 거는 것이라,
+        /// 테마를 바꾸면 이 칸도 같이 따라갑니다.
         /// </summary>
         private void Lit(Border card, bool on)
         {
             if (card == null) return;
 
-            if (!on)
-            {
-                card.ClearValue(Border.BackgroundProperty);
-                card.ClearValue(Border.BorderBrushProperty);
-                card.ClearValue(Border.BorderThicknessProperty);
-                return;
-            }
-
             bool before = (card.Tag as string) == "before";
-            card.Background = (Brush)FindResource("Brush.DropTarget");
-            card.BorderBrush = (Brush)FindResource(before ? "Brush.Before" : "Brush.After");
-            card.BorderThickness = new Thickness(2);
+
+            card.SetResourceReference(Border.BackgroundProperty,
+                on ? "Brush.DropTarget" : "Brush.Panel");
+            card.SetResourceReference(Border.BorderBrushProperty,
+                on ? (before ? "Brush.Before" : "Brush.After") : "Brush.Border");
+            card.BorderThickness = new Thickness(on ? 2 : 1);
         }
 
         /// <summary>
