@@ -23,6 +23,10 @@ namespace LogScope.App
                 Show(args.ExceptionObject as Exception);
             };
 
+            // 분석 1·2·3 의 이름. 실행 파일 옆의 screens.txt 에서 옵니다.
+            // 없으면 기본값이라 여기서 따로 막을 것이 없습니다.
+            ScreenNames.Current = ScreenNames.Load(ScreenNames.ResolvePath());
+
             AppSettings settings = SettingsStore.Load();
             ThemeManager.Apply(settings.Theme);
 

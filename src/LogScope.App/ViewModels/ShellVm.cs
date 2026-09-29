@@ -104,17 +104,31 @@ namespace LogScope.App.ViewModels
         /// <summary>위 줄에 적는 지금 화면 이름.</summary>
         public string ScreenName
         {
-            get
-            {
-                switch (_screen)
-                {
-                    case ScreenAnalysis1: return "분석 1 — 로그 비교";
-                    case ScreenAnalysis2: return "분석 2";
-                    case ScreenAnalysis3: return "분석 3";
-                    default: return "메인";
-                }
-            }
+            get { return _screen == ScreenMain ? "메인" : Named(_screen); }
         }
+
+        /// <summary>
+        /// "분석 2 — 타이밍 점검" 처럼 적습니다. 이름을 그대로 둔 자리는
+        /// "분석 2 — 분석 2" 가 되지 않게 번호만 적습니다.
+        ///
+        /// 이름은 실행 파일 옆의 <b>screens.txt</b> 에서 옵니다.
+        /// </summary>
+        private static string Named(int number)
+        {
+            string head = "분석 " + number;
+            if (ScreenNames.Current.IsDefaultTitle(number)) return head;
+            return head + " — " + ScreenNames.Current.Title(number);
+        }
+
+        /// <summary>왼쪽 위 목록에 적을 줄. 번호는 목록에서 세는 순서입니다.</summary>
+        public string MenuMain { get { return "1.  메인"; } }
+        public string MenuAnalysis1 { get { return "2.  " + Named(1); } }
+        public string MenuAnalysis2 { get { return "3.  " + Named(2); } }
+        public string MenuAnalysis3 { get { return "4.  " + Named(3); } }
+
+        /// <summary>아직 만들지 않은 화면 가운데에 크게 적을 이름.</summary>
+        public string Analysis2Name { get { return Named(2); } }
+        public string Analysis3Name { get { return Named(3); } }
 
         public void GoMain() { Screen = ScreenMain; }
 

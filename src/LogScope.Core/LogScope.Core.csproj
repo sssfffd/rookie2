@@ -71,6 +71,7 @@
     <Compile Include="Settings\Json.cs" />
     <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Settings\SettingsStore.cs" />
+    <Compile Include="Settings\ScreenNames.cs" />
     <Compile Include="Ai\AiBridge.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

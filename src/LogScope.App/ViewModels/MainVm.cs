@@ -24,14 +24,14 @@ namespace LogScope.App.ViewModels
         public MainVm(AppState state)
         {
             _state = state;
+            // 칸 이름과 한 줄 설명은 실행 파일 옆의 screens.txt 에서 옵니다.
+            // 여기에 적어 두면 이름을 바꿀 때마다 다시 빌드해야 합니다.
+            ScreenNames names = ScreenNames.Current;
             Cards = new List<AnalysisCardVm>
             {
-                new AnalysisCardVm(1, "로그 비교",
-                    "이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.", true),
-                new AnalysisCardVm(2, "분석 2",
-                    "아직 정해지지 않았습니다.", false),
-                new AnalysisCardVm(3, "분석 3",
-                    "아직 정해지지 않았습니다.", false),
+                new AnalysisCardVm(1, names.Title(1), names.Summary(1), true),
+                new AnalysisCardVm(2, names.Title(2), names.Summary(2), false),
+                new AnalysisCardVm(3, names.Title(3), names.Summary(3), false),
             };
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();

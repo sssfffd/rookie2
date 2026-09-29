@@ -39,3 +39,4 @@
 | `30-wording-and-drag-drop.md` | 말 다듬기, Log 파일 끌어다 놓기, 프로그램 이름은 appname.txt |
 | `31-drop-zones.md` | 끌어다 놓을 때 화면을 반으로 갈라 이전/이후를 고르게 |
 | `32-two-log-cards.md` | 열어 둔 로그를 좌우 두 칸으로. 31 의 큰 안내 판은 없앰 |
+| `33-screen-names.md` | 분석 1·2·3 의 이름을 screens.txt 에서 바꾸기 |

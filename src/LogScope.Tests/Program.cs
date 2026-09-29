@@ -99,6 +99,8 @@ namespace LogScope.Tests
                 HistoryEdgeCases();
                 JsonRoundTrip();
                 SettingsRoundTrip();
+                ScreenNamesParse();
+                ScreenNamesFile();
             }
             finally
             {
@@ -1628,6 +1630,100 @@ namespace LogScope.Tests
             Near("숫자", Json.GetDouble(back, "n", 0), 12.5, 1e-9);
             Check("참거짓", Json.GetBool(back, "flag", false), null);
             Check("배열 길이", Json.GetArray(back, "list").Count == 3, null);
+        }
+
+        /// <summary>
+        /// 분석 이름 파일(screens.txt) 읽기. 손으로 고치는 파일이라 <b>엉망으로
+        /// 적힌 경우</b>가 실제로 생깁니다 — 그때 기본값으로 버텨야 합니다.
+        /// </summary>
+        private static void ScreenNamesParse()
+        {
+            Console.WriteLine("분석 이름 파일 읽기");
+
+            ScreenNames def = ScreenNames.Default;
+            Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
+            Check("기본 이름 2", def.Title(2) == "분석 2", def.Title(2));
+            Check("기본은 기본으로 표시", def.IsDefaultTitle(2), null);
+
+            ScreenNames n = ScreenNames.Parse(new[]
+            {
+                "# 주석",
+                "",
+                "  타이밍 점검 | 켜고 끄는 시각이 밀렸는지 봅니다.  ",
+                "압력 비교",
+                "세 번째 | 설명만 있음",
+                "네 번째는 무시",
+            });
+            Check("이름 읽기", n.Title(1) == "타이밍 점검", n.Title(1));
+            Check("설명 읽기", n.Summary(1) == "켜고 끄는 시각이 밀렸는지 봅니다.", n.Summary(1));
+            Check("설명 없으면 기본 설명", n.Summary(2) == def.Summary(2), n.Summary(2));
+            Check("두 번째 이름", n.Title(2) == "압력 비교", n.Title(2));
+            Check("세 번째 이름", n.Title(3) == "세 번째", n.Title(3));
+            Check("네 줄째는 안 봄", n.Title(3) != "네 번째는 무시", n.Title(3));
+            Check("바꾼 이름은 기본이 아님", !n.IsDefaultTitle(1), null);
+
+            // 이름 자리를 비워 둔 줄은 그 자리의 기본값입니다. 빈 글자가
+            // 화면에 그대로 나가면 어느 화면인지 알 수가 없습니다.
+            ScreenNames blank = ScreenNames.Parse(new[] { " | 설명만", "둘째" });
+            Check("이름 비운 줄은 기본 이름", blank.Title(1) == "로그 비교", blank.Title(1));
+            Check("그 줄의 설명은 살림", blank.Summary(1) == "설명만", blank.Summary(1));
+            Check("빈 줄 다음 줄은 둘째 자리", blank.Title(2) == "둘째", blank.Title(2));
+
+            // 줄이 모자라거나 아예 없어도 됩니다.
+            ScreenNames none = ScreenNames.Parse(new string[0]);
+            Check("빈 파일은 기본값", none.Title(1) == "로그 비교" && none.Title(3) == "분석 3", null);
+            Check("null 도 견딤", ScreenNames.Parse(null).Title(1) == "로그 비교", null);
+
+            // 범위 밖은 빈 글자입니다. 터지면 안 됩니다.
+            Check("0 번은 빈 글자", def.Title(0) == "", def.Title(0));
+            Check("4 번은 빈 글자", def.Title(4) == "", def.Title(4));
+            Check("범위 밖은 기본도 아님", !def.IsDefaultTitle(0), null);
+        }
+
+        /// <summary>
+        /// 파일로 읽을 때. 메모장이 UTF-8 로도, CP949 로도 저장하므로 둘 다
+        /// 읽혀야 합니다.
+        /// </summary>
+        private static void ScreenNamesFile()
+        {
+            Console.WriteLine("분석 이름 파일 인코딩");
+
+            string path = Path.Combine(_dir, "screens.txt");
+            string body = "타이밍 점검 | 밀렸는지 봅니다\n압력 비교\n셋째\n";
+
+            File.WriteAllText(path, body, new UTF8Encoding(true));
+            Check("BOM 붙은 UTF-8", ScreenNames.Load(path).Title(1) == "타이밍 점검",
+                  ScreenNames.Load(path).Title(1));
+
+            File.WriteAllText(path, body, new UTF8Encoding(false));
+            Check("BOM 없는 UTF-8", ScreenNames.Load(path).Title(2) == "압력 비교",
+                  ScreenNames.Load(path).Title(2));
+
+            // CP949 는 리눅스 mono 에 없을 수 있습니다. 있을 때만 봅니다.
+            Encoding cp949 = null;
+            try { cp949 = Encoding.GetEncoding(949); }
+            catch (ArgumentException) { }
+            catch (NotSupportedException) { }
+            if (cp949 != null)
+            {
+                File.WriteAllBytes(path, cp949.GetBytes(body));
+                Check("메모장 ANSI(CP949)", ScreenNames.Load(path).Title(1) == "타이밍 점검",
+                      ScreenNames.Load(path).Title(1));
+            }
+
+            // 없는 파일은 기본값입니다. 이름 하나 때문에 안 켜지면 안 됩니다.
+            string gone = Path.Combine(_dir, "없는파일.txt");
+            Check("없는 파일은 기본값", ScreenNames.Load(gone).Title(1) == "로그 비교", null);
+            Check("빈 경로도 견딤", ScreenNames.Load(null).Title(1) == "로그 비교", null);
+
+            // 본보기 글은 그대로 읽혀야 합니다 — build.bat 이 out 폴더에
+            // 넣어 주는 것이 이 글입니다.
+            ScreenNames sample = ScreenNames.Parse(
+                ScreenNames.Sample().Replace("\r\n", "\n").Split('\n'));
+            Check("본보기는 기본값과 같음",
+                  sample.Title(1) == "로그 비교" && sample.Title(3) == "분석 3", sample.Title(1));
+            Check("본보기 설명도 같음",
+                  sample.Summary(2) == ScreenNames.Default.Summary(2), sample.Summary(2));
         }
 
         private static void SettingsRoundTrip()

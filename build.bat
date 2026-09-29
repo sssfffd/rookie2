@@ -198,6 +198,13 @@ if /i "%CONFIG%"=="Debug" (
   copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\*.pdb" "%OUT%\" >nul 2>nul
 )
 
+rem  screens.txt: analysis names. The exe reads it from its own folder, so a
+rem  name change needs no rebuild -- edit out\screens.txt and restart.
+rem  We do not overwrite one that is already there: it may be edited.
+if not exist "%OUT%\screens.txt" (
+  if exist "%ROOT%screens.txt" copy /y "%ROOT%screens.txt" "%OUT%\" >nul
+)
+
 echo.
 echo   ============================================================
 call :msg " ¿Ï·á." " Done."
