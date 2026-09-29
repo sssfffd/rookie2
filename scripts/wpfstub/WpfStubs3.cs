@@ -27,7 +27,16 @@ namespace System.Windows.Controls
     public class WrapPanel : Panel { }
     public class DockPanel : Panel { }
     public class Canvas : Panel { }
-    public class Border : FrameworkElement { public Brush Background, BorderBrush; public Thickness BorderThickness, Padding; public object Child; }
+    public class Border : FrameworkElement
+    {
+        public Brush Background, BorderBrush;
+        public Thickness BorderThickness, Padding;
+        public object Child;
+        // 진짜 WPF 의 의존 속성. ClearValue 로 "직접 쓴 값"을 지우는 데 씁니다.
+        public static readonly DependencyProperty BackgroundProperty = null;
+        public static readonly DependencyProperty BorderBrushProperty = null;
+        public static readonly DependencyProperty BorderThicknessProperty = null;
+    }
     public class TextBlock : FrameworkElement
     {
         public string Text;

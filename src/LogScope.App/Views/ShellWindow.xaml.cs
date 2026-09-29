@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using LogScope.App.Services;
 using LogScope.Core.Align;
 using LogScope.App.ViewModels;
@@ -199,128 +197,23 @@ namespace LogScope.App.Views
 
         // ---------------- 파일 끌어다 놓기 ----------------
         //
-        // 파일이 창에 들어오는 순간 화면을 반으로 갈라 크게 보여 줍니다.
-        // 왼쪽 = 이전, 오른쪽 = 이후. 가는 글씨 한 줄을 겨냥해서 놓게 하면
-        // 어디가 어느 쪽인지 알 수가 없어서 이렇게 했습니다.
+        // 놓을 자리는 메인 화면의 <b>이전 / 이후 두 칸</b>입니다. 칸 자체가
+        // 과녁이고, 커서를 올리면 그 칸이 밝아집니다 (MainView.Lit).
         //
-        // 메인 화면의 이전/이후 줄도 그대로 놓을 수 있습니다 (안내 판이
-        // 안 뜬 경우를 위해 남겨 뒀습니다).
-
-        private void OnFileDragEnter(object sender, DragEventArgs e)
-        {
-            ShowDropOverlay(Dropped(e));
-        }
+        // 여기(창 전체)는 그 밖에 놓았을 때를 받습니다. 다른 화면(분석 1·2·3)
+        // 에서도 놓을 수 있어야 하니까요. 어느 쪽인지 알 수 없으므로 아래
+        // TakeFiles 의 규칙을 따릅니다.
 
         private void OnFileDragOver(object sender, DragEventArgs e)
         {
-            List<string> files = Dropped(e);
-            e.Effects = files.Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
-
-            // DragEnter 를 놓쳤을 때(다른 창에서 바로 들어온 경우 등)를 위해
-            // 여기서도 한 번 열어 둡니다.
-            if (files.Count > 0 && DropOverlay.Visibility != Visibility.Visible) ShowDropOverlay(files);
+            e.Effects = Dropped(e).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
-        }
-
-        /// <summary>
-        /// 자식 사이를 지날 때도 DragLeave 가 여기까지 올라옵니다. 그때마다
-        /// 안내 판을 닫으면 깜빡이므로, <b>창 밖으로 나갔을 때만</b> 닫습니다.
-        /// </summary>
-        private void OnFileDragLeave(object sender, DragEventArgs e)
-        {
-            Point p = e.GetPosition(this);
-            if (p.X <= 0.5 || p.Y <= 0.5 || p.X >= ActualWidth - 0.5 || p.Y >= ActualHeight - 0.5)
-                HideDropOverlay();
         }
 
         private void OnFileDrop(object sender, DragEventArgs e)
         {
             e.Handled = true;
-            HideDropOverlay();
             TakeFiles(Dropped(e), null);
-        }
-
-        /// <summary>
-        /// 끌기가 끝났는데 안내 판이 남아 있는 경우를 위한 보험입니다.
-        /// 끌고 있는 동안에는 MouseMove 가 오지 않으므로(마우스를 끌기 원본이
-        /// 잡고 있습니다), MouseMove 가 왔다는 것은 끌기가 끝났다는 뜻입니다.
-        /// </summary>
-        private void OnWindowMouseMove(object sender, MouseEventArgs e)
-        {
-            if (DropOverlay.Visibility == Visibility.Visible) HideDropOverlay();
-        }
-
-        private void ShowDropOverlay(List<string> files)
-        {
-            if (files.Count == 0) return;
-
-            DropTitle.Text = files.Count == 1
-                ? "끌고 온 파일 : " + Path.GetFileName(files[0])
-                : "끌고 온 파일 " + files.Count + " 개 : "
-                  + Path.GetFileName(files[0]) + ", " + Path.GetFileName(files[1])
-                  + (files.Count > 2 ? " …" : string.Empty);
-
-            DropZoneBeforeNow.Text = SlotNote(_state.BeforePath, _state.Before != null);
-            DropZoneAfterNow.Text = SlotNote(_state.AfterPath, _state.After != null);
-
-            DropHint.Text = files.Count >= 2
-                ? "두 개를 한꺼번에 놓으면 어느 쪽에 놓아도 이름 순으로 앞의 것이 이전, 다음이 이후로 들어갑니다."
-                : "창 밖으로 끌고 나가면 취소됩니다.";
-
-            Lit(null);
-            DropOverlay.Visibility = Visibility.Visible;
-        }
-
-        private void HideDropOverlay()
-        {
-            DropOverlay.Visibility = Visibility.Collapsed;
-        }
-
-        /// <summary>그 자리에 지금 무엇이 들어 있는지. 덮어쓰게 되면 그것도 알립니다.</summary>
-        private static string SlotNote(string path, bool loaded)
-        {
-            if (!loaded) return "지금 비어 있습니다";
-            string name = string.IsNullOrEmpty(path) ? "열어 둔 로그" : Path.GetFileName(path);
-            return "지금 : " + name + "\n놓으면 이것을 덮어씁니다";
-        }
-
-        /// <summary>어느 쪽에 올려 뒀는지 밝혀 줍니다. null 이면 둘 다 끕니다.</summary>
-        private void Lit(Border hot)
-        {
-            var zone = (Brush)FindResource("Brush.DropZone");
-            var zoneHot = (Brush)FindResource("Brush.DropZoneHot");
-
-            DropZoneBefore.Background = ReferenceEquals(hot, DropZoneBefore) ? zoneHot : zone;
-            DropZoneAfter.Background = ReferenceEquals(hot, DropZoneAfter) ? zoneHot : zone;
-            DropZoneBefore.BorderThickness = new Thickness(ReferenceEquals(hot, DropZoneBefore) ? 4 : 2);
-            DropZoneAfter.BorderThickness = new Thickness(ReferenceEquals(hot, DropZoneAfter) ? 4 : 2);
-        }
-
-        private void OnZoneDragOver(object sender, DragEventArgs e)
-        {
-            // e.Handled 을 두지 않습니다. 창까지 올라가야 DragLeave 로 판을
-            // 닫는 판단을 할 수 있습니다.
-            Lit(sender as Border);
-            e.Effects = Dropped(e).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
-        }
-
-        private void OnZoneDragLeave(object sender, DragEventArgs e)
-        {
-            Lit(null);
-        }
-
-        /// <summary>
-        /// 반쪽에 놓았을 때. <b>여기서 e.Handled 을 반드시 세웁니다</b> —
-        /// 안 세우면 창의 Drop 까지 올라가서 같은 파일을 두 번 읽습니다.
-        /// </summary>
-        private void OnZoneDrop(object sender, DragEventArgs e)
-        {
-            e.Handled = true;
-            HideDropOverlay();
-
-            var zone = sender as FrameworkElement;
-            string tag = zone == null ? null : zone.Tag as string;
-            TakeFiles(Dropped(e), tag == "before" ? true : tag == "after" ? (bool?)false : null);
         }
 
         /// <summary>

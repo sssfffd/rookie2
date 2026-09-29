@@ -73,6 +73,7 @@ namespace System.Windows
     {
         public object GetValue(DependencyProperty p) { return null; }
         public void SetValue(DependencyProperty p, object v) { }
+        public void ClearValue(DependencyProperty p) { }
     }
 
     public class DependencyProperty

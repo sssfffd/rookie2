@@ -8,15 +8,7 @@
         Foreground="{DynamicResource Brush.Text}"
         FontFamily="Segoe UI" FontSize="12"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
-        AllowDrop="True" DragEnter="OnFileDragEnter" DragOver="OnFileDragOver"
-        DragLeave="OnFileDragLeave" Drop="OnFileDrop"
-        PreviewMouseMove="OnWindowMouseMove">
-
-    <!--
-      바깥이 Grid 인 이유: 파일을 끌고 오면 화면 위에 안내 판(DropOverlay)을
-      덮어 씌워야 합니다. DockPanel 만으로는 겹쳐 놓을 수 없습니다.
-    -->
-    <Grid>
+        AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
 
     <DockPanel>
 
@@ -148,85 +140,4 @@
                                Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
     </DockPanel>
-
-    <!--
-      ================= 파일을 끌고 왔을 때 =================
-
-      가는 글씨 한 줄을 겨냥해서 놓게 하면 어디가 이전이고 어디가 이후인지
-      알 수가 없습니다. 그래서 파일이 창에 들어오는 순간 화면을 반으로 갈라
-      크게 보여 줍니다. 왼쪽 = 이전, 오른쪽 = 이후. 색은 본문 그래프의
-      이전/이후 색과 같은 색입니다.
-
-      어느 화면에 있든(메인·분석 1·2·3) 똑같이 나옵니다.
-    -->
-    <Grid x:Name="DropOverlay" Visibility="Collapsed"
-          Background="{DynamicResource Brush.DropBack}">
-        <Grid Margin="36,28,36,28">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <TextBlock x:Name="DropTitle" Grid.Row="0" FontSize="14"
-                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       Foreground="{DynamicResource Brush.Text}" />
-
-            <Grid Grid.Row="1" Margin="0,16,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Border x:Name="DropZoneBefore" Grid.Column="0" Tag="before"
-                        AllowDrop="True" CornerRadius="12" BorderThickness="2"
-                        Background="{DynamicResource Brush.DropZone}"
-                        BorderBrush="{DynamicResource Brush.Before}"
-                        DragOver="OnZoneDragOver" DragLeave="OnZoneDragLeave" Drop="OnZoneDrop">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16">
-                        <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Center"
-                                Background="{DynamicResource Brush.Before}" />
-                        <TextBlock Text="이전" FontSize="40" FontWeight="Bold" Margin="0,12,0,0"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.Before}" />
-                        <TextBlock Text="여기에 놓으면 이전 로그 (기준)" Margin="0,6,0,0"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.Text}" />
-                        <TextBlock x:Name="DropZoneBeforeNow" Style="{StaticResource Muted}"
-                                   Margin="0,10,0,0" HorizontalAlignment="Center"
-                                   TextAlignment="Center" MaxWidth="320"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-
-                <Border x:Name="DropZoneAfter" Grid.Column="2" Tag="after"
-                        AllowDrop="True" CornerRadius="12" BorderThickness="2"
-                        Background="{DynamicResource Brush.DropZone}"
-                        BorderBrush="{DynamicResource Brush.After}"
-                        DragOver="OnZoneDragOver" DragLeave="OnZoneDragLeave" Drop="OnZoneDrop">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16">
-                        <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Center"
-                                Background="{DynamicResource Brush.After}" />
-                        <TextBlock Text="이후" FontSize="40" FontWeight="Bold" Margin="0,12,0,0"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.After}" />
-                        <TextBlock Text="여기에 놓으면 이후 로그 (견줄 것)" Margin="0,6,0,0"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.Text}" />
-                        <TextBlock x:Name="DropZoneAfterNow" Style="{StaticResource Muted}"
-                                   Margin="0,10,0,0" HorizontalAlignment="Center"
-                                   TextAlignment="Center" MaxWidth="320"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <TextBlock x:Name="DropHint" Grid.Row="2" HorizontalAlignment="Center"
-                       Style="{StaticResource Muted}" TextAlignment="Center"
-                       TextWrapping="Wrap" />
-        </Grid>
-    </Grid>
-
-    </Grid>
 </Window>

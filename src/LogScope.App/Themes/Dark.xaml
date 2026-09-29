@@ -28,9 +28,5 @@
 
     <SolidColorBrush x:Key="Brush.RowHover"     Color="#FF232830" />
 
-    <!-- 파일을 끌고 왔을 때 나오는 안내 판. -->
-    <SolidColorBrush x:Key="Brush.DropBack"    Color="#E6101319" />
-    <SolidColorBrush x:Key="Brush.DropZone"    Color="#14FFFFFF" />
-    <SolidColorBrush x:Key="Brush.DropZoneHot" Color="#3D5AA6FF" />
     <SolidColorBrush x:Key="Brush.DropTarget"   Color="#FF23405F" />
 </ResourceDictionary>

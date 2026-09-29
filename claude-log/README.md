@@ -38,3 +38,4 @@
 | `29-card-summary-and-groups.md` | 칸마다 그룹별 요약, 이동 화살표, 그룹 → 히트맵 추리기 |
 | `30-wording-and-drag-drop.md` | 말 다듬기, Log 파일 끌어다 놓기, 프로그램 이름은 appname.txt |
 | `31-drop-zones.md` | 끌어다 놓을 때 화면을 반으로 갈라 이전/이후를 고르게 |
+| `32-two-log-cards.md` | 열어 둔 로그를 좌우 두 칸으로. 31 의 큰 안내 판은 없앰 |

@@ -12,101 +12,131 @@
 
             <!-- ===== 지금 열어 둔 로그 =====
                  이 정보가 아래 알림 줄 한 줄에만 있었습니다. 메인 화면이라면
-                 "지금 무엇을 보고 있는가" 가 제일 먼저 보여야 합니다. -->
-            <Border Background="{DynamicResource Brush.Panel}"
-                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                    CornerRadius="5" Padding="18,13" Margin="0,0,0,14">
+                 "지금 무엇을 보고 있는가" 가 제일 먼저 보여야 합니다.
+
+                 칸을 <b>좌우로 둘</b> 나눈 이유가 있습니다. 한 칸에 두 줄로
+                 넣었을 때는 끌어다 놓을 자리가 높이 20 픽셀짜리 글자 줄이라
+                 겨냥할 수가 없었습니다. 이제 칸 자체가 놓을 자리입니다 —
+                 왼쪽이 이전, 오른쪽이 이후. 커서를 올리면 그 칸이 밝아집니다.
+            -->
+            <StackPanel Margin="0,0,0,14">
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
+                           Text="열어 둔 로그    (칸에 Log 파일을 끌어다 놓으면 열립니다)" />
+
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
-                                   Text="열어 둔 로그    (Log 파일을 이 줄에 끌어다 놓을 수 있습니다)" />
-
-                        <!--
-                          발생시간은 파일 이름 앞부분을 그대로 떼어 온 것입니다.
-                          로그 안에는 "이게 언제 것인가" 가 적혀 있지 않아서,
-                          이름에 날짜를 붙이는 관행을 그대로 씁니다.
-                          잘라 보여 주므로 전체 경로는 풍선 도움말에 둡니다.
-                        -->
-                        <!--
-                          줄이 StackPanel 이 아니라 Grid 인 이유가 있습니다.
-                          파일 이름은 길이가 제각각이라, 옆으로 늘어놓기만 하면
-                          긴 이름이 뒤의 IO·표본 수를 화면 밖으로 밀어냅니다.
-                          이름 칸만 남는 폭을 가져가고 넘치면 "…" 로 잘리게 합니다.
-                        -->
-                        <Grid Margin="0,0,0,3" ToolTip="{Binding BeforePath}" Background="Transparent"
-                              AllowDrop="True" Tag="before"
-                              DragOver="OnLogRowDragOver" Drop="OnLogRowDrop">
+                    <Border x:Name="BeforeCard" Grid.Column="0" Tag="before"
+                            Background="{DynamicResource Brush.Panel}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="5" Padding="14,11" ToolTip="{Binding BeforePath}"
+                            AllowDrop="True" DragOver="OnLogRowDragOver"
+                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" MinWidth="60" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource Brush.Before}" Margin="0,0,8,0" />
-                            <TextBlock Grid.Column="1" Text="이전" Width="34"
-                                       Foreground="{DynamicResource Brush.Muted}" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="발생시간" Foreground="{DynamicResource Brush.Muted}"
-                                       FontSize="11" VerticalAlignment="Center" Margin="0,1,6,0" />
-                            <TextBlock Grid.Column="3" Text="{Binding BeforeTime}" FontWeight="SemiBold"
-                                       MinWidth="104" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Grid.Column="4" Text="{Binding BeforeFileName}"
-                                       VerticalAlignment="Center" Margin="10,0,10,0"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Grid.Column="5" Text="{Binding BeforeText}" Style="{StaticResource Muted}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
+                            <!-- 첫 줄: 어느 쪽 칸인지. 색은 그래프의 이전 곡선과 같은 색입니다. -->
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                        Background="{DynamicResource Brush.Before}" Margin="0,0,8,0" />
+                                <TextBlock Text="이전" FontWeight="Bold" FontSize="14"
+                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                <TextBlock Text="(기준)" Style="{StaticResource Muted}" FontSize="11"
+                                           Margin="8,3,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
 
-                        <Grid ToolTip="{Binding AfterPath}" Background="Transparent"
-                              AllowDrop="True" Tag="after"
-                              DragOver="OnLogRowDragOver" Drop="OnLogRowDrop">
+                            <!-- 발생시간 = 파일 이름 앞 10 글자. 로그 안에는 언제 것인지가 없습니다. -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="발생시간" Margin="0,8,6,0"
+                                       Foreground="{DynamicResource Brush.Muted}" FontSize="11"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BeforeTime}"
+                                       FontWeight="SemiBold" Margin="0,8,0,0"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+
+                            <!--
+                              파일 이름은 길이가 제각각입니다. 칸 폭을 넘으면 "…" 로
+                              자릅니다. 전체 경로는 칸에 마우스를 올리면 나옵니다.
+                            -->
+                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding BeforeFileName}"
+                                       Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding BeforeFileName, Converter={StaticResource TextToVisibility}}" />
+                            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding BeforeText}"
+                                       Style="{StaticResource Muted}" Margin="0,4,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="AfterCard" Grid.Column="2" Tag="after"
+                            Background="{DynamicResource Brush.Panel}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="5" Padding="14,11" ToolTip="{Binding AfterPath}"
+                            AllowDrop="True" DragOver="OnLogRowDragOver"
+                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" MinWidth="60" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource Brush.After}" Margin="0,0,8,0" />
-                            <TextBlock Grid.Column="1" Text="이후" Width="34"
-                                       Foreground="{DynamicResource Brush.Muted}" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="발생시간" Foreground="{DynamicResource Brush.Muted}"
-                                       FontSize="11" VerticalAlignment="Center" Margin="0,1,6,0" />
-                            <TextBlock Grid.Column="3" Text="{Binding AfterTime}" FontWeight="SemiBold"
-                                       MinWidth="104" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Grid.Column="4" Text="{Binding AfterFileName}"
-                                       VerticalAlignment="Center" Margin="10,0,10,0"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Grid.Column="5" Text="{Binding AfterText}" Style="{StaticResource Muted}"
+                            <!-- 첫 줄: 어느 쪽 칸인지. 색은 그래프의 이후 곡선과 같은 색입니다. -->
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                        Background="{DynamicResource Brush.After}" Margin="0,0,8,0" />
+                                <TextBlock Text="이후" FontWeight="Bold" FontSize="14"
+                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                <TextBlock Text="(견줄 것)" Style="{StaticResource Muted}" FontSize="11"
+                                           Margin="8,3,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- 발생시간 = 파일 이름 앞 10 글자. 로그 안에는 언제 것인지가 없습니다. -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="발생시간" Margin="0,8,6,0"
+                                       Foreground="{DynamicResource Brush.Muted}" FontSize="11"
                                        VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AfterTime}"
+                                       FontWeight="SemiBold" Margin="0,8,0,0"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+
+                            <!--
+                              파일 이름은 길이가 제각각입니다. 칸 폭을 넘으면 "…" 로
+                              자릅니다. 전체 경로는 칸에 마우스를 올리면 나옵니다.
+                            -->
+                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding AfterFileName}"
+                                       Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding AfterFileName, Converter={StaticResource TextToVisibility}}" />
+                            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding AfterText}"
+                                       Style="{StaticResource Muted}" Margin="0,4,0,0"
+                                       TextTrimming="CharacterEllipsis" />
                         </Grid>
-
-                        <!-- 지금 보고 있는 결과가 언제 나온 것인지. -->
-                        <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
-                                   FontSize="11" Margin="52,6,0,0"
-                                   Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Column="1" Text="{Binding Hint}" Style="{StaticResource Muted}"
-                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="260"
-                               TextAlignment="Right" Margin="16,0,0,0" />
+                    </Border>
                 </Grid>
-            </Border>
+
+                <!-- 지금 보고 있는 결과가 언제 나온 것인지. -->
+                <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
+                           FontSize="11" Margin="2,7,0,0"
+                           Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
+
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}"
+                           Margin="2,4,0,0" TextWrapping="Wrap" />
+            </StackPanel>
 
             <TextBlock Text="분석 결과" Style="{StaticResource H1}" Margin="2,4,0,8" />
 

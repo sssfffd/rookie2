@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using System.Windows.Media;
 using LogScope.App.ViewModels;
 
 namespace LogScope.App.Views
@@ -44,14 +45,52 @@ namespace LogScope.App.Views
             }
         }
 
+        /// <summary>
+        /// 칸 위에 올라와 있는 동안 <b>그 칸을 밝힙니다</b>. 놓기 전에 어느
+        /// 쪽으로 들어갈지 보여야 해서입니다. 이게 없으면 커서 옆의 파일
+        /// 아이콘이 글자를 가려 어느 칸인지 알 수가 없습니다.
+        /// </summary>
         private void OnLogRowDragOver(object sender, DragEventArgs e)
         {
-            e.Effects = HasFiles(e) ? DragDropEffects.Copy : DragDropEffects.None;
+            bool ok = HasFiles(e);
+            e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
+            if (ok) Lit(sender as Border, true);
+            e.Handled = true;
+        }
+
+        private void OnLogRowDragLeave(object sender, DragEventArgs e)
+        {
+            Lit(sender as Border, false);
             e.Handled = true;
         }
 
         /// <summary>
-        /// 줄에 놓으면 <b>그 자리</b>에 넣습니다. 창 아무 데나 놓는 것과 다른
+        /// 칸을 밝히거나 되돌립니다.
+        ///
+        /// 되돌릴 때 값을 지웁니다(ClearValue). 색을 직접 써 놓으면 테마를
+        /// 바꿨을 때 그 칸만 옛 색으로 남습니다. 지우면 XAML 의
+        /// DynamicResource 가 다시 살아납니다.
+        /// </summary>
+        private void Lit(Border card, bool on)
+        {
+            if (card == null) return;
+
+            if (!on)
+            {
+                card.ClearValue(Border.BackgroundProperty);
+                card.ClearValue(Border.BorderBrushProperty);
+                card.ClearValue(Border.BorderThicknessProperty);
+                return;
+            }
+
+            bool before = (card.Tag as string) == "before";
+            card.Background = (Brush)FindResource("Brush.DropTarget");
+            card.BorderBrush = (Brush)FindResource(before ? "Brush.Before" : "Brush.After");
+            card.BorderThickness = new Thickness(2);
+        }
+
+        /// <summary>
+        /// 칸에 놓으면 <b>그 자리</b>에 넣습니다. 창 아무 데나 놓는 것과 다른
         /// 점이 이겁니다 — 어느 쪽인지 묻지 않고 바로 들어갑니다.
         ///
         /// 실제로 읽는 일은 창(ShellWindow)이 맡습니다. 진행 창을 띄워야 하고,
@@ -60,6 +99,7 @@ namespace LogScope.App.Views
         private void OnLogRowDrop(object sender, DragEventArgs e)
         {
             e.Handled = true;
+            Lit(sender as Border, false);
 
             var g = sender as FrameworkElement;
             if (g == null || !HasFiles(e)) return;
