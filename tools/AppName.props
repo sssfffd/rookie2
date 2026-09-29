@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 프로그램 이름 한 곳 = 저장소 루트의 appname.txt.
+
+     여기서 읽어 AppName 으로 넘깁니다. BuildInfo.targets 와 달리 이 파일은
+     <b>평가할 때</b> 읽습니다 (Target 이 아니라 PropertyGroup). AssemblyName
+     처럼 빌드가 시작되기 전에 정해져 있어야 하는 값에 쓰려면 그래야 합니다.
+
+     appname.txt 는 실행 파일 이름이 되기도 하므로 <b>영문/숫자</b>로 두는 것을
+     권합니다. 한글로 두면 파일 이름은 만들어지지만, 콘솔 코드 페이지가 다른
+     환경에서 build.bat 의 복사 줄이 그 이름을 못 찾을 수 있습니다. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(AppName)' == '' ">
+    <_AppNameFile>$(MSBuildThisFileDirectory)..\appname.txt</_AppNameFile>
+    <_RawAppName Condition="Exists('$(_AppNameFile)')">$([System.IO.File]::ReadAllText('$(_AppNameFile)'))</_RawAppName>
+    <AppName Condition=" '$(_RawAppName)' != '' ">$(_RawAppName.Trim())</AppName>
+    <AppName Condition=" '$(AppName)' == '' ">LogScope</AppName>
+  </PropertyGroup>
+</Project>

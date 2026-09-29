@@ -39,8 +39,8 @@ rem     build.bat Debug        Debug
 rem     build.bat Release nt   skip the tests
 rem
 rem  Output:
-rem     out\LogScope.exe                          <- copy this folder as-is
-rem     src\LogScope.App\bin\Release\LogScope.exe
+rem     out\<appname.txt>.exe                     <- copy this folder as-is
+rem     src\LogScope.App\bin\Release\<appname.txt>.exe
 rem
 rem  Logs:
 rem     build.log       everything, UTF-8, meant to be opened in an editor
@@ -58,6 +58,17 @@ if "%CONFIG%"=="" set "CONFIG=Release"
 set "SKIPTEST=%~2"
 set "LOG=%ROOT%build.log"
 set "ERRLOG=%ROOT%build.err.log"
+
+rem ---- program name: one place, appname.txt --------------------------
+rem  The exe is named after it (see tools\AppName.props), so these copy
+rem  lines have to read the same file instead of spelling it out again.
+set "APPNAME=LogScope"
+if exist "%ROOT%appname.txt" (
+  for /f "usebackq tokens=* delims= " %%N in ("%ROOT%appname.txt") do (
+    if not "%%N"=="" set "APPNAME=%%N"
+  )
+)
+for /l %%i in (1,1,16) do if "!APPNAME:~-1!"==" " set "APPNAME=!APPNAME:~0,-1!"
 
 rem ---- keep the window open when started by double-click ------------
 set "HOLD="
@@ -77,7 +88,7 @@ echo.
 if not defined KO echo   [note] console code page is %CP%, not 949 -- using English messages.
 if not defined KO echo.
 
-call :msg "LogScope 빌드  [%CONFIG%]" "LogScope build  [%CONFIG%]"
+call :msg "!APPNAME! 빌드  [%CONFIG%]" "!APPNAME! build  [%CONFIG%]"
 echo   ------------------------------------------------------------
 
 rem ---- find MSBuild -------------------------------------------------
@@ -178,10 +189,10 @@ if not "%RC%"=="0" (
 rem ---- gather the output --------------------------------------------
 set "OUT=%ROOT%out"
 if not exist "%OUT%" mkdir "%OUT%"
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe"      "%OUT%\" >nul
+copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe"      "%OUT%\" >nul
 copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Core.dll" "%OUT%\" >nul
-if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" (
-  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" "%OUT%\" >nul
+if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe.config" (
+  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe.config" "%OUT%\" >nul
 )
 if /i "%CONFIG%"=="Debug" (
   copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\*.pdb" "%OUT%\" >nul 2>nul
@@ -191,7 +202,7 @@ echo.
 echo   ============================================================
 call :msg " 완료." " Done."
 echo.
-call :msg " 실행 파일 : %OUT%\LogScope.exe" " Executable : %OUT%\LogScope.exe"
+call :msg " 실행 파일 : %OUT%\!APPNAME!.exe" " Executable : %OUT%\!APPNAME!.exe"
 call :msg " out 폴더를 통째로 복사해서 쓰면 됩니다." " Copy the whole out folder and run it."
 call :msg " 설치 프로그램은 필요 없습니다." " No installer is needed."
 echo   ============================================================

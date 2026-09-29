@@ -117,3 +117,58 @@ appname.txt  →  LogScope
 그래프 화면의 IO 끌어다 놓기(그룹에 담기)와 부딪히지 않는지 — 그쪽은 창
 안에서 시작한 끌기이고 이쪽은 탐색기에서 온 파일 끌기라 형식이 달라
 갈라지지만, 실제로 겪어 봐야 확실합니다.
+
+---
+
+## 5. 뒷이야기 — "파일들 이름은 그대로인데" (0.37)
+
+`appname.txt` 를 만들어 놨는데도 **실행 파일과 코드 안의 이름은 그대로**
+`LogScope` 였습니다. 이 둘은 성격이 다릅니다.
+
+### 실행 파일 이름 — 따라오게 했습니다
+
+`AssemblyName` 은 빌드가 시작되기 <b>전에</b> 정해져 있어야 해서,
+`BuildInfo.targets` 의 Target(빌드 중에 도는 것)으로는 늦습니다. 그래서
+`tools/AppName.props` 를 따로 만들어 **평가할 때** 읽게 했습니다.
+
+```xml
+<_RawAppName Condition="Exists('$(_AppNameFile)')">$([System.IO.File]::ReadAllText('$(_AppNameFile)'))</_RawAppName>
+<AppName Condition=" '$(_RawAppName)' != '' ">$(_RawAppName.Trim())</AppName>
+<AppName Condition=" '$(AppName)' == '' ">LogScope</AppName>
+```
+
+- `LogScope.App.csproj` → `<AssemblyName>$(AppName)</AssemblyName>`
+- `BuildInfo.targets` → 이름 읽는 부분을 지우고 이 props 를 가져다 씁니다
+- `build.bat` → 같은 파일을 읽어 `!APPNAME!.exe` 를 복사합니다
+- `AssemblyInfo.cs` → `AssemblyTitle(LogScope.Core.BuildInfo.Product)`.
+  `const` 는 컴파일할 때 값이 박히므로 어트리뷰트 인자로 쓸 수 있습니다.
+
+이제 **손으로 고칠 곳이 없습니다.** `appname.txt` 는 파일 이름이 되므로
+영문/숫자로 두는 것이 안전합니다.
+
+### 코드 안의 이름 — 그대로 둡니다
+
+네임스페이스, `.csproj`, `.sln`, `src/LogScope.*` 폴더까지 합치면
+**파일 111 개, 410 군데**입니다.
+
+바꾸지 않는 이유:
+
+1. **화면에 안 나옵니다.** 사용자가 보는 이름은 이미 다 `appname.txt` 를 봅니다.
+2. **`git blame` 이 덮입니다.** 410 군데를 건드린 커밋 하나가 모든 줄의
+   마지막 수정자가 됩니다. 왜 이렇게 고쳤는지 찾아 올라가기가 어려워집니다.
+3. **이름은 또 바뀔 수 있습니다.** 그때마다 410 군데를 다시 해야 합니다.
+   내부 코드명을 고정해 두는 관행이 있는 이유입니다.
+4. 설정 폴더 이름과 엮여 있습니다 — 이건 어차피 바꾸면 안 됩니다.
+
+필요하면 한 번에 할 수 있습니다. 순수한 식별자 치환이라 빠뜨리면 컴파일러가
+잡아 주고, 검사 스크립트가 그 자리에서 답을 줍니다.
+
+### 확인 못 한 것
+
+`$([System.IO.File]::ReadAllText(...))` 는 MSBuild 가 허용하는 property
+function 이지만, **이 컨테이너에는 MSBuild 가 없어서 직접 돌려 보지
+못했습니다** (mono 의 mcs 로는 csproj 를 평가할 수 없습니다). 혹시 MSBuild
+가 이 줄을 거부하면 `AppName.props` 를 지우고 `.csproj` 에
+`<AssemblyName>LogScope</AssemblyName>` 로 되돌리면 됩니다 — 그 한 줄이
+전부입니다.
+

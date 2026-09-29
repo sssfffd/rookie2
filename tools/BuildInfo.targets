@@ -5,12 +5,15 @@
      이름을 두 번 적을 일이 없습니다. git 이 없으면 해시는 "unknown" 입니다.
 
      프로그램 이름을 바꾸려면 appname.txt 만 고치면 됩니다. 창 제목, 왼쪽 위
-     글자, 오류 창 제목이 다 여기를 봅니다.
+     글자, 오류 창 제목, 그리고 <b>실행 파일 이름</b>이 다 여기를 봅니다.
+     이름 자체를 읽는 일은 AppName.props 가 합니다 (평가할 때 읽어야 하는
+     AssemblyName 에도 쓰이므로).
 
      설정 파일과 기록 폴더 이름은 <b>따라가지 않습니다</b> (SettingsStore /
      HistoryStore). 이름을 바꿨다고 그때까지 쌓인 설정과 기록을 못 찾으면
      안 되기 때문입니다. -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildThisFileDirectory)AppName.props" />
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
     <BuildInfoFile>$(MSBuildThisFileDirectory)..\src\LogScope.Core\BuildInfo.g.cs</BuildInfoFile>
@@ -25,15 +28,6 @@
       <_RawVersion>@(_VersionLines)</_RawVersion>
       <AppVersion>$(_RawVersion.Trim())</AppVersion>
       <AppVersion Condition=" '$(AppVersion)' == '' ">0.00</AppVersion>
-    </PropertyGroup>
-
-    <ReadLinesFromFile File="$(RepoRoot)appname.txt" Condition="Exists('$(RepoRoot)appname.txt')">
-      <Output TaskParameter="Lines" ItemName="_NameLines" />
-    </ReadLinesFromFile>
-    <PropertyGroup>
-      <_RawName>@(_NameLines)</_RawName>
-      <AppName>$(_RawName.Trim())</AppName>
-      <AppName Condition=" '$(AppName)' == '' ">LogScope</AppName>
     </PropertyGroup>
 
     <Exec Command="git -C &quot;$(RepoRoot).&quot; rev-parse --short=12 HEAD"

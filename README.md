@@ -20,6 +20,8 @@ build.bat
 out\LogScope.exe
 ```
 
+(실행 파일 이름은 `appname.txt` 를 따라갑니다. 기본이 `LogScope` 입니다.)
+
 `out` 폴더를 통째로 복사하면 다른 PC 에서도 그대로 실행됩니다.
 설치 프로그램이 없고, 레지스트리도 건드리지 않습니다.
 
@@ -183,7 +185,7 @@ docs/                    보안 메모, 구조 설명
 
 | 프로젝트 | 무엇 | 결과물 |
 |---|---|---|
-| **LogScope.App** | **실행 파일. 이게 시작 프로젝트입니다** | `LogScope.exe` |
+| **LogScope.App** | **실행 파일. 이게 시작 프로젝트입니다** | `LogScope.exe` (이름은 `appname.txt`) |
 | LogScope.Core | App 이 참조하는 라이브러리 (자동으로 같이 빌드됨) | `LogScope.Core.dll` |
 | LogScope.Tests | 콘솔 자체 테스트 (실행 파일과 무관) | `LogScope.Tests.exe` |
 
@@ -335,15 +337,27 @@ git 이 PATH 에 없으면 이 줄들은 그냥 나오지 않습니다.
 `version.txt` 옆). 화면에 보이는 이름이 다 따라옵니다 — 창 제목, 왼쪽 위
 글자, 오류 창 제목, 설정 파일 안에 적히는 `savedBy`.
 
-따라가지 **않는** 것이 셋 있습니다.
+따라오는 것은 이렇습니다. **손으로 고칠 곳은 없습니다.**
 
-| 무엇 | 어디서 바꾸나 | 왜 안 따라가나 |
-|---|---|---|
-| 설정 파일 `LogScope.settings.json`, `%APPDATA%\LogScope`, `history` 폴더 | `SettingsStore` / `HistoryStore` | 이름을 바꿨다고 그때까지 쌓인 설정과 저장된 분석을 못 찾으면 안 됩니다 |
-| 실행 파일 이름 `LogScope.exe` | `src/LogScope.App/LogScope.App.csproj` 의 `<AssemblyName>` | 빌드 산출물 이름이라 `build.bat` 이 복사하는 이름과 맞춰야 합니다 |
-| 파일 속성 창에 보이는 이름 | `src/LogScope.App/Properties/AssemblyInfo.cs` 의 `AssemblyTitle` / `AssemblyProduct` | 같은 이유 |
+| 무엇 | 어떻게 따라오나 |
+|---|---|
+| 창 제목, 왼쪽 위 글자, 오류 창 제목 | `BuildInfo.Product` (빌드할 때 `tools/BuildInfo.targets` 가 넣습니다) |
+| 설정 파일 안의 `savedBy` | 같음 |
+| **실행 파일 이름** `LogScope.exe` | `tools/AppName.props` → `<AssemblyName>$(AppName)</AssemblyName>`, `build.bat` 도 같은 파일을 읽습니다 |
+| 파일 속성 창에 보이는 이름 | `AssemblyInfo.cs` 가 `BuildInfo.Product` 를 그대로 씁니다 (const 라 어트리뷰트에 쓸 수 있습니다) |
 
-화면에 보이는 이름만 바꿀 거면 `appname.txt` 하나로 끝입니다.
+`appname.txt` 는 **실행 파일 이름이 되므로 영문/숫자로** 두는 것이 안전합니다.
+
+### 따라가지 **않는** 것 — 일부러 그렇게 뒀습니다
+
+| 무엇 | 왜 |
+|---|---|
+| 설정 파일 `LogScope.settings.json`, `%APPDATA%\LogScope`, `history` 폴더 (`SettingsStore` / `HistoryStore`) | 이름을 바꿨다고 그때까지 쌓인 설정과 저장된 분석을 못 찾으면 안 됩니다 |
+| 네임스페이스 · 프로젝트 파일 · `LogScope.sln` · `src/LogScope.*` 폴더 이름 | **코드 안의 이름은 내부 코드명으로 둡니다.** 111 개 파일, 410 군데에 퍼져 있어서 바꾸면 `git blame` 이 그 커밋 하나로 다 덮이고, 이름을 또 바꾸면 또 해야 합니다. 화면에 나오지 않는 이름입니다 |
+
+정말 코드 안의 이름까지 바꿔야 하면 기계적인 치환이라 한 번에 할 수 있습니다
+(식별자 치환이라 컴파일러가 빠짐을 잡아 줍니다). 다만 위의 값을 생각하면
+권하지 않습니다.
 
 ---
 
