@@ -552,3 +552,21 @@
 > 프로그램명을 내가 직접바꾸고싶은데 어디서 바꿔야할까
 
 → 답변: [30-wording-and-drag-drop.md](30-wording-and-drag-drop.md)
+
+---
+
+## 요청 40 — 이름이 안 따라오는 파일들
+
+> 이거 파일들 이름은 그대로인데 어떻게 하는게 좋을까
+
+→ 답변: [30-wording-and-drag-drop.md](30-wording-and-drag-drop.md) 의 5 장
+
+---
+
+## 요청 41 — 끌어다 놓을 때 이전/이후 구분
+
+> 드래그해서 log올릴 때 어떤 곳에 놓아야 이전 log고 어떤 곳이 이후 log인지
+> 구분이 힘든데
+
+→ 답변: [31-drop-zones.md](31-drop-zones.md)
+
