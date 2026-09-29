@@ -82,11 +82,15 @@ namespace LogScope.App.Views
                 return;
             }
 
-            // 지난번에 보던 세트를 그대로 다시 엽니다.
-            LogSet s = _state.Settings.ActiveLogSet;
-            bool any = (!string.IsNullOrEmpty(s.BeforePath) && File.Exists(s.BeforePath))
-                    || (!string.IsNullOrEmpty(s.AfterPath) && File.Exists(s.AfterPath));
-            if (any) LoadSet();
+            // 지난번에 보던 로그는 <b>저절로 열지 않습니다.</b>
+            //
+            // 로그가 1000 만 칸까지 갑니다. 켤 때마다 몇십 초씩 읽고 앉아
+            // 있는데 정작 열고 싶은 것은 대개 다른 파일입니다. 열려면
+            // [이전 로그 열기] / [이후 로그 열기] 를 누르거나, 파일을 메인
+            // 화면의 칸에 끌어다 놓으면 됩니다.
+            //
+            // 경로는 세트에 그대로 남습니다. 세트를 바꾸면(OnSetChanged →
+            // LoadSet) 그때는 엽니다 — 그건 누른 것이니까요.
         }
 
         // ---------------- 로그 세트 ----------------
