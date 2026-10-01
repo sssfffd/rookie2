@@ -1811,7 +1811,7 @@ namespace LogScope.Tests
             ScreenNames def = ScreenNames.Default;
             Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
             Check("기본 이름 2", def.Title(2) == "분석 2", def.Title(2));
-            Check("기본은 기본으로 표시", def.IsDefaultTitle(2), null);
+            Check("기본 이름 3", def.Title(3) == "분석 3", def.Title(3));
 
             ScreenNames n = ScreenNames.Parse(new[]
             {
@@ -1828,7 +1828,7 @@ namespace LogScope.Tests
             Check("두 번째 이름", n.Title(2) == "압력 비교", n.Title(2));
             Check("세 번째 이름", n.Title(3) == "세 번째", n.Title(3));
             Check("네 줄째는 안 봄", n.Title(3) != "네 번째는 무시", n.Title(3));
-            Check("바꾼 이름은 기본이 아님", !n.IsDefaultTitle(1), null);
+            Check("바꾼 이름이 기본을 덮음", n.Title(1) != def.Title(1), n.Title(1));
 
             // 이름 자리를 비워 둔 줄은 그 자리의 기본값입니다. 빈 글자가
             // 화면에 그대로 나가면 어느 화면인지 알 수가 없습니다.
@@ -1845,7 +1845,7 @@ namespace LogScope.Tests
             // 범위 밖은 빈 글자입니다. 터지면 안 됩니다.
             Check("0 번은 빈 글자", def.Title(0) == "", def.Title(0));
             Check("4 번은 빈 글자", def.Title(4) == "", def.Title(4));
-            Check("범위 밖은 기본도 아님", !def.IsDefaultTitle(0), null);
+            Check("범위 밖 설명도 빈 글자", def.Summary(0) == "", def.Summary(0));
         }
 
         /// <summary>

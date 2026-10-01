@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -65,12 +65,6 @@ namespace LogScope.Core.Settings
         public string Summary(int number)
         {
             return In(number) ? _summaries[number - 1] : string.Empty;
-        }
-
-        /// <summary>이름을 그대로 두었는지. 위 줄에 "분석 2 — 분석 2" 로 적지 않으려고 씁니다.</summary>
-        public bool IsDefaultTitle(int number)
-        {
-            return In(number) && _titles[number - 1] == DefaultTitles[number - 1];
         }
 
         private static bool In(int number)

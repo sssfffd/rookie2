@@ -79,7 +79,7 @@ namespace LogScope.App.ViewModels
                 if (value < ScreenMain || value > ScreenAnalysis3) return;
                 if (_screen == value) return;
                 _screen = value;
-                Raise("Screen"); Raise("ScreenName");
+                Raise("Screen");
                 Raise("ShowMain"); Raise("ShowAnalysis1");
                 Raise("ShowAnalysis2"); Raise("ShowAnalysis3");
                 EventHandler h = ScreenChanged;
@@ -116,34 +116,22 @@ namespace LogScope.App.ViewModels
             set { if (value) Screen = ScreenAnalysis3; }
         }
 
-        /// <summary>화면 단추에 적는 이름. 분석 이름은 screens.txt 에서 옵니다.</summary>
-        public string TabMain { get { return "메인"; } }
-        public string TabAnalysis1 { get { return Named(1); } }
-        public string TabAnalysis2 { get { return Named(2); } }
-        public string TabAnalysis3 { get { return Named(3); } }
-
-        /// <summary>위 줄에 적는 지금 화면 이름.</summary>
-        public string ScreenName
-        {
-            get { return _screen == ScreenMain ? "메인" : Named(_screen); }
-        }
-
         /// <summary>
-        /// "분석 2 — 타이밍 점검" 처럼 적습니다. 이름을 그대로 둔 자리는
-        /// "분석 2 — 분석 2" 가 되지 않게 번호만 적습니다.
+        /// 화면 단추에 적는 이름. <b>screens.txt 에 적은 이름 그대로</b>입니다.
         ///
-        /// 이름은 실행 파일 옆의 <b>screens.txt</b> 에서 옵니다.
+        /// "분석 1" 같은 번호를 앞에 붙이지 않습니다. 이름을 "로그 비교" 로
+        /// 정해 놓고 단추에는 "분석 1" 이 적혀 있으면, 정한 이름이 어디에
+        /// 쓰이는지 알 수가 없습니다. 번호는 screens.txt 의 줄 순서가 이미
+        /// 말해 줍니다.
         /// </summary>
-        private static string Named(int number)
-        {
-            string head = "분석 " + number;
-            if (ScreenNames.Current.IsDefaultTitle(number)) return head;
-            return head + " — " + ScreenNames.Current.Title(number);
-        }
+        public string TabMain { get { return "메인"; } }
+        public string TabAnalysis1 { get { return ScreenNames.Current.Title(1); } }
+        public string TabAnalysis2 { get { return ScreenNames.Current.Title(2); } }
+        public string TabAnalysis3 { get { return ScreenNames.Current.Title(3); } }
 
         /// <summary>아직 만들지 않은 화면 가운데에 크게 적을 이름.</summary>
-        public string Analysis2Name { get { return Named(2); } }
-        public string Analysis3Name { get { return Named(3); } }
+        public string Analysis2Name { get { return ScreenNames.Current.Title(2); } }
+        public string Analysis3Name { get { return ScreenNames.Current.Title(3); } }
 
         public void GoMain() { Screen = ScreenMain; }
 
