@@ -73,6 +73,8 @@ namespace LogScope.App.Views
             Plot.FitVisible = _vm.FitVisible;
             Plot.ShadeDifference = _vm.ShadeDifference;
             Plot.SeparateTraces = _vm.SeparateTraces;
+            Plot.ShowBefore = _vm.ShowBefore;
+            Plot.ShowAfter = _vm.ShowAfter;
 
             double percent;
             if (double.TryParse(_vm.RelativeTolerancePercentText, System.Globalization.NumberStyles.Float,

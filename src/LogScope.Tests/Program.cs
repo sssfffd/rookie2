@@ -1955,6 +1955,32 @@ namespace LogScope.Tests
                   "음영 " + both.ShadeDifference + " / 분리 " + both.SeparateTraces);
             Check("차이 영역 쪽을 남김", both.ShadeDifference, null);
 
+            // 선 하나씩 끄고 보기. 둘 다 꺼진 파일로 켜면 빈 그래프가 뜨고,
+            // 그 기억이 하루 뒤에도 남아 "그래프가 안 나온다" 가 됩니다.
+            s.ShowBefore = false;
+            s.ShowAfter = false;
+            AppSettings both2 = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("둘 다 끈 것은 둘 다 켠 것으로", both2.ShowBefore && both2.ShowAfter, null);
+
+            // 한쪽만 끈 것은 그대로 살아야 합니다 — 그게 쓰는 상태입니다.
+            s.ShowBefore = true;
+            s.ShowAfter = false;
+            AppSettings oneSide = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("이전만 켠 것은 그대로", oneSide.ShowBefore && !oneSide.ShowAfter, null);
+
+            s.ShowBefore = false;
+            s.ShowAfter = true;
+            AppSettings otherSide = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("이후만 켠 것도 그대로", !otherSide.ShowBefore && otherSide.ShowAfter, null);
+
+            // 옛 설정 파일에는 이 열쇠가 없습니다. 그때는 둘 다 그렸습니다.
+            var old3 = new Dictionary<string, object>();
+            AppSettings legacy = AppSettings.FromJson(old3);
+            Check("옛 설정은 둘 다 켠 것", legacy.ShowBefore && legacy.ShowAfter, null);
+
+            s.ShowBefore = true;
+            s.ShowAfter = true;
+
             // 파형 분리만 켜 둔 것은 그대로 살아야 합니다.
             s.ShadeDifference = false;
             s.SeparateTraces = true;

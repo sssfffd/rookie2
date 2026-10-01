@@ -46,3 +46,4 @@
 | `37-dashboard-columns.md` | 대시보드에서 RMS · 구간 수 칸 빼기 |
 | `38-top-bar-rework.md` | 위 줄 두 칸으로. 화면 단추 넷, 로그 세트와 다시 읽기 제거 |
 | `39-graph-legend-and-band-zoom.md` | 그래프 이전/이후 범례, 오른쪽 끌기로 네모 확대 |
+| `40-show-one-side.md` | 이전 선 / 이후 선 하나씩 끄고 보기 |

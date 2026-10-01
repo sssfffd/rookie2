@@ -297,6 +297,34 @@
                         </StackPanel>
                     </Border>
 
+                    <!--
+                      선 하나씩 끄고 보기.
+
+                      두 선이 거의 같은 자리에 겹쳐 있으면 뒤에 그려진 쪽이 앞의
+                      쪽을 덮습니다. 한쪽을 끄면 가려졌던 선이 그대로 보입니다.
+                      단추 글자색을 그 선의 색으로 둬서, 어느 쪽을 끄는 단추인지
+                      글자를 읽지 않고도 알 수 있게 했습니다.
+
+                      차이 눈금에서는 선이 하나뿐이고 두 로그가 다 필요한 값이라
+                      뜻이 없습니다. 그래서 그 모드에서는 꺼져 보입니다
+                      (IsEnabled = ScaleRaw).
+                    -->
+                    <Border Style="{StaticResource ToolGroup}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="선 보기" />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이전"
+                                          Foreground="{DynamicResource Brush.Before}"
+                                          IsChecked="{Binding ShowBefore, Mode=TwoWay}"
+                                          IsEnabled="{Binding ScaleRaw}"
+                                          ToolTip="이전 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이후"
+                                          Foreground="{DynamicResource Brush.After}"
+                                          IsChecked="{Binding ShowAfter, Mode=TwoWay}"
+                                          IsEnabled="{Binding ScaleRaw}"
+                                          ToolTip="이후 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
+                        </StackPanel>
+                    </Border>
+
                     <!-- 이전 로그와 이후 로그를 견주는 것들 -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
@@ -374,7 +402,7 @@
                     <!-- 마우스 쓰는 법. 도구 줄에 있던 것을 여기로 내렸습니다 —
                          거기 두면 도구 줄 한 줄을 통째로 먹었습니다. -->
                     <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
+                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B&#x0a;두 선이 겹쳐 보이면 [선 보기] 에서 한쪽을 끄고 보세요." />
                 </StackPanel>
             </Border>
 

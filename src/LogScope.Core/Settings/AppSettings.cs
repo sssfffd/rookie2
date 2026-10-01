@@ -120,6 +120,11 @@ namespace LogScope.Core.Settings
         public bool ShadeDifference = true;         // 차이 영역 표시
         public bool SeparateTraces;                 // 파형 분리 보기
 
+        // 선 하나씩 끄고 보기. 두 선이 겹쳐 있을 때 한쪽만 켜 두면 가려졌던
+        // 쪽이 그대로 보입니다.
+        public bool ShowBefore = true;
+        public bool ShowAfter = true;
+
         // 그래프 기본값
         public bool LaneMode = true;                // true = 레인, false = 겹쳐보기
         /// <summary>
@@ -225,6 +230,8 @@ namespace LogScope.Core.Settings
             root["manualShift"] = ManualShift;
             root["shadeDifference"] = ShadeDifference;
             root["separateTraces"] = SeparateTraces;
+            root["showBefore"] = ShowBefore;
+            root["showAfter"] = ShowAfter;
 
             root["laneMode"] = LaneMode;
             root["valueScaleMode"] = ValueScaleMode ?? "raw";
@@ -339,6 +346,12 @@ namespace LogScope.Core.Settings
             // 둘을 따로 켜던 시절의 설정 파일이 남아 있을 수 있습니다. 그대로
             // 두면 화면에서는 만들 수 없는 상태로 뜹니다. 차이 영역 쪽을 남깁니다.
             if (s.ShadeDifference && s.SeparateTraces) s.SeparateTraces = false;
+
+            s.ShowBefore = Json.GetBool(root, "showBefore", true);
+            s.ShowAfter = Json.GetBool(root, "showAfter", true);
+            // 둘 다 꺼진 설정 파일로 켜면 빈 그래프가 뜹니다. 끈 기억이 하루
+            // 뒤에도 남아 "그래프가 안 나온다" 가 되므로 둘 다 켭니다.
+            if (!s.ShowBefore && !s.ShowAfter) { s.ShowBefore = true; s.ShowAfter = true; }
 
             s.LaneMode = Json.GetBool(root, "laneMode", true);
             s.ValueScaleMode = Json.GetString(root, "valueScaleMode", "raw");

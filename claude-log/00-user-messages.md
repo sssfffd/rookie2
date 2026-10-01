@@ -653,3 +653,12 @@
 > 그래프 우클릭 드래그 하면 해당 영역만큼 확대되게 해줘
 
 → 답변: [39-graph-legend-and-band-zoom.md](39-graph-legend-and-band-zoom.md)
+
+---
+
+## 요청 51 — 이전/이후 선 하나씩 끄기
+
+> 그리고 그래프에서 이전과이후 그래프 하나씩 끄기 켜기로 선택할 수 있어서
+> 비교하기 더 쉽게 해줘
+
+→ 답변: [40-show-one-side.md](40-show-one-side.md)

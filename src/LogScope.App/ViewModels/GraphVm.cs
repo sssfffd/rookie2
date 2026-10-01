@@ -131,6 +131,43 @@ namespace LogScope.App.ViewModels
         /// 되어, 눈으로 재는 넓이가 눈금과 안 맞게 됩니다. 둘 다 끄는 것은
         /// 됩니다 — 켜져 있는 것을 다시 누르면 꺼집니다.
         /// </summary>
+        /// <summary>
+        /// 이전 선만 / 이후 선만 보기.
+        ///
+        /// 두 선이 거의 같은 자리에 겹쳐 있으면 뒤에 그려진 쪽이 앞의 쪽을
+        /// 덮습니다. 한쪽을 끄면 가려졌던 선이 그대로 보입니다.
+        ///
+        /// <b>둘 다 끌 수 있습니다.</b> 그때는 그래프에 그 사실을 적습니다 —
+        /// 끄지 못하게 막으면 왜 안 꺼지는지 알 수 없고, 말없이 비워 두면
+        /// 고장으로 보입니다.
+        ///
+        /// 차이 눈금에서는 뜻이 없습니다 (선이 하나뿐이고 두 로그가 다 필요한
+        /// 값입니다). 그 모드에서는 단추가 꺼져 보입니다 — ScaleRaw 를 봅니다.
+        /// </summary>
+        public bool ShowBefore
+        {
+            get { return S.ShowBefore; }
+            set
+            {
+                if (S.ShowBefore == value) return;
+                S.ShowBefore = value;
+                Raise();
+                Changed();
+            }
+        }
+
+        public bool ShowAfter
+        {
+            get { return S.ShowAfter; }
+            set
+            {
+                if (S.ShowAfter == value) return;
+                S.ShowAfter = value;
+                Raise();
+                Changed();
+            }
+        }
+
         public bool ShadeDifference
         {
             get { return S.ShadeDifference; }

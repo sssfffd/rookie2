@@ -179,6 +179,30 @@ namespace LogScope.App.Controls
             set { if (_separate != value) { _separate = value; InvalidateVisual(); } }
         }
 
+        // 선 하나씩 끄고 보기. 꺼진 쪽은 <b>세로 눈금 계산에서도</b> 빠집니다
+        // (ChannelRange) — 안 보이는 선 때문에 눈금이 넓어지면 보이는 쪽이
+        // 납작해져서, 끈 보람이 없습니다.
+        private bool _showBefore = true;
+        public bool ShowBefore
+        {
+            get { return _showBefore; }
+            set { if (_showBefore != value) { _showBefore = value; InvalidateVisual(); } }
+        }
+
+        private bool _showAfter = true;
+        public bool ShowAfter
+        {
+            get { return _showAfter; }
+            set { if (_showAfter != value) { _showAfter = value; InvalidateVisual(); } }
+        }
+
+        /// <summary>
+        /// 차이 눈금은 두 로그가 다 필요한 값이라 한쪽만 끌 수가 없습니다.
+        /// 그 모드에서는 켜고 끄기를 <b>무시</b>합니다.
+        /// </summary>
+        private bool ShownB { get { return Diffing || _showBefore; } }
+        private bool ShownA { get { return Diffing || _showAfter; } }
+
         // 허용 오차. 그 순간의 값끼리 견줍니다 — |이후 − 이전| / |이전| x 100.
         // 실제 계산은 Core 의 ToleranceRule 이 하고, 대시보드·히트맵도 같은
         // 함수를 씁니다. 그래야 세 화면이 같은 IO 를 같게 판정합니다.
@@ -480,6 +504,8 @@ namespace LogScope.App.Controls
             }
             dc.Pop();
 
+            if (!Diffing && !_showBefore && !_showAfter) DrawBothOff(dc, p, plot);
+
             DrawTimeAxis(dc, p, plot);
             DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
             DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
@@ -513,17 +539,33 @@ namespace LogScope.App.Controls
                 secondPen = null; secondText = null;
                 note = null;
             }
-            else if (_laneMode)
+            else if (!_showBefore && !_showAfter)
             {
-                firstPen = p.BeforePen; firstText = "이전";
-                secondPen = p.AfterPen; secondText = "이후";
-                note = null;
+                return;   // 그릴 선이 없습니다. 아래 안내가 대신 적힙니다.
             }
             else
             {
-                firstPen = p.SeriesPen(0); firstText = "이전";
-                secondPen = PairPen(p, 0); secondText = "이후";
-                note = _channels.Count > 1 ? "IO 마다 색이 짝을 이룹니다" : null;
+                Pen bPen = _laneMode ? p.BeforePen : p.SeriesPen(0);
+                Pen aPen = _laneMode ? p.AfterPen : PairPen(p, 0);
+                note = (!_laneMode && _channels.Count > 1) ? "IO 마다 색이 짝을 이룹니다" : null;
+
+                // 꺼 둔 쪽은 적지 않습니다. 없는 선을 설명하면 그게 어디
+                // 있는지 찾게 됩니다.
+                if (_showBefore && _showAfter)
+                {
+                    firstPen = bPen; firstText = "이전";
+                    secondPen = aPen; secondText = "이후";
+                }
+                else if (_showBefore)
+                {
+                    firstPen = bPen; firstText = "이전만 보기";
+                    secondPen = null; secondText = null;
+                }
+                else
+                {
+                    firstPen = aPen; firstText = "이후만 보기";
+                    secondPen = null; secondText = null;
+                }
             }
 
             const double sample = 18, gap = 6, padX = 8, padY = 5, lineH = 16;
@@ -570,6 +612,17 @@ namespace LogScope.App.Controls
                 y += lineH;
                 dc.DrawText(t3, new Point(x0, y - t3.Height * 0.5));
             }
+        }
+
+        /// <summary>
+        /// 이전·이후를 둘 다 꺼 두었을 때. 말없이 비워 두면 고장으로 보입니다.
+        /// </summary>
+        private void DrawBothOff(DrawingContext dc, Palette p, Rect plot)
+        {
+            FormattedText ft = Text("이전 선과 이후 선을 둘 다 꺼 두었습니다.\n위 도구 줄의 [선 보기] 에서 하나를 켜 주세요.",
+                                    FontNormal, p.MutedBrush);
+            dc.DrawText(ft, new Point(plot.Left + Math.Max(0, (plot.Width - ft.Width) * 0.5),
+                                      plot.Top + Math.Max(0, (plot.Height - ft.Height) * 0.5)));
         }
 
         /// <summary>오른쪽 단추로 끌고 있는 동안의 네모.</summary>
@@ -918,22 +971,22 @@ namespace LogScope.App.Controls
 
             if (_fitVisible)
             {
-                if (vm.InBefore && _state.Before != null
+                if (ShownB && vm.InBefore && _state.Before != null
                     && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
-                if (vm.InAfter && _state.After != null
+                if (ShownA && vm.InAfter && _state.After != null
                     && Decimator.RangeIn(_state.After, vm.AfterIndex,
                         _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1))
                 { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
                 if (any) return true;
             }
 
-            if (vm.InBefore && _state.Before != null)
+            if (ShownB && vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
                 if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
             }
-            if (vm.InAfter && _state.After != null)
+            if (ShownA && vm.InAfter && _state.After != null)
             {
                 Channel c = _state.After.Channels[vm.AfterIndex];
                 if (!double.IsNaN(c.Min)) { lo = Math.Min(lo, c.Min); hi = Math.Max(hi, c.Max); any = true; }
@@ -1000,14 +1053,16 @@ namespace LogScope.App.Controls
         {
             if (_state == null || inner.Width <= 1) return;
 
-            bool haveB = vm.InBefore && _state.Before != null;
-            bool haveA = vm.InAfter && _state.After != null;
+            bool haveB = ShownB && vm.InBefore && _state.Before != null;
+            bool haveA = ShownA && vm.InAfter && _state.After != null;
 
             double shift = _state.AppliedShift;
             double bt0 = _t0, bt1 = _t1;                  // 이전 로그의 시간 기준
             double at0 = _t0 - shift, at1 = _t1 - shift;  // 이후 로그의 시간 기준
 
-            double sep = _separate ? inner.Height * 0.02 : 0.0;
+            // 한쪽만 켜 두었으면 벌리지 않습니다. 벌릴 상대가 없는데 비켜
+            // 그리면 그 선만 눈금에서 어긋나 보입니다.
+            double sep = (_separate && haveB && haveA) ? inner.Height * 0.02 : 0.0;
 
             // ---- 차이 눈금: 선 하나 -------------------------------------
             if (Diffing)
