@@ -39,8 +39,8 @@ rem     build.bat Debug        Debug
 rem     build.bat Release nt   skip the tests
 rem
 rem  Output:
-rem     out\<appname.txt>.exe                     <- copy this folder as-is
-rem     src\LogScope.App\bin\Release\<appname.txt>.exe
+rem     out\<config.txt name>.exe                 <- copy this folder as-is
+rem     src\LogScope.App\bin\Release\LogScope.exe
 rem
 rem  Logs:
 rem     build.log       everything, UTF-8, meant to be opened in an editor
@@ -59,13 +59,17 @@ set "SKIPTEST=%~2"
 set "LOG=%ROOT%build.log"
 set "ERRLOG=%ROOT%build.err.log"
 
-rem ---- program name: one place, appname.txt --------------------------
-rem  The exe is named after it (see tools\AppName.props), so these copy
-rem  lines have to read the same file instead of spelling it out again.
+rem ---- program name: one place, config.txt ---------------------------
+rem  config.txt holds everything the user edits by hand. The exe is built as
+rem  LogScope.exe and gets this name on the way to out\, so this has to read
+rem  the same "name =" line the program reads at run time.
+rem
+rem  eol=# skips comment lines. "tokens=1,* delims==" splits on the first "="
+rem  only, so a value may contain "=" too.
 set "APPNAME=LogScope"
-if exist "%ROOT%appname.txt" (
-  for /f "usebackq tokens=* delims= " %%N in ("%ROOT%appname.txt") do (
-    if not "%%N"=="" set "APPNAME=%%N"
+if exist "%ROOT%config.txt" (
+  for /f "usebackq eol=# tokens=1,* delims==" %%K in ("%ROOT%config.txt") do (
+    call :kv "%%K" "%%L"
   )
 )
 for /l %%i in (1,1,16) do if "!APPNAME:~-1!"==" " set "APPNAME=!APPNAME:~0,-1!"
@@ -189,20 +193,24 @@ if not "%RC%"=="0" (
 rem ---- gather the output --------------------------------------------
 set "OUT=%ROOT%out"
 if not exist "%OUT%" mkdir "%OUT%"
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe"      "%OUT%\" >nul
+rem  The build always makes LogScope.exe; the name from config.txt goes on
+rem  here. Renaming on copy keeps MSBuild out of parsing config.txt -- one
+rem  bad line there would stop the whole build.
+copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe" "%OUT%\!APPNAME!.exe" >nul
 copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Core.dll" "%OUT%\" >nul
-if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe.config" (
-  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\!APPNAME!.exe.config" "%OUT%\" >nul
+if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" (
+  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" "%OUT%\!APPNAME!.exe.config" >nul
 )
 if /i "%CONFIG%"=="Debug" (
   copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\*.pdb" "%OUT%\" >nul 2>nul
 )
 
-rem  screens.txt: analysis names. The exe reads it from its own folder, so a
-rem  name change needs no rebuild -- edit out\screens.txt and restart.
+rem  config.txt: the one file the user edits (program name, analysis names).
+rem  The exe reads it from its own folder, so a change needs no rebuild --
+rem  edit out\config.txt and restart.
 rem  We do not overwrite one that is already there: it may be edited.
-if not exist "%OUT%\screens.txt" (
-  if exist "%ROOT%screens.txt" copy /y "%ROOT%screens.txt" "%OUT%\" >nul
+if not exist "%OUT%\config.txt" (
+  if exist "%ROOT%config.txt" copy /y "%ROOT%config.txt" "%OUT%\" >nul
 )
 
 echo.
@@ -238,6 +246,16 @@ echo   %~2
 goto :eof
 :msg_ko
 echo   %~1
+goto :eof
+
+:kv
+rem  one "key = value" line from config.txt. Only "name" matters here.
+set "K=%~1"
+set "V=%~2"
+for /f "tokens=* delims= " %%a in ("%K%") do set "K=%%a"
+if not defined V goto :eof
+for /f "tokens=* delims= " %%a in ("%V%") do set "V=%%a"
+if /i "%K%"=="name" if not "%V%"=="" set "APPNAME=%V%"
 goto :eof
 
 rem  Put the console code page back the way we found it.

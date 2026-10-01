@@ -23,9 +23,9 @@ namespace LogScope.App
                 Show(args.ExceptionObject as Exception);
             };
 
-            // 분석 1·2·3 의 이름. 실행 파일 옆의 screens.txt 에서 옵니다.
+            // 손으로 고치는 설정 한 파일 (실행 파일 옆의 config.txt).
             // 없으면 기본값이라 여기서 따로 막을 것이 없습니다.
-            ScreenNames.Current = ScreenNames.Load(ScreenNames.ResolvePath());
+            AppConfig.Current = AppConfig.Load(AppConfig.ResolvePath());
 
             AppSettings settings = SettingsStore.Load();
             ThemeManager.Apply(settings.Theme);
@@ -60,7 +60,8 @@ namespace LogScope.App
             }
             try
             {
-                MessageBox.Show(sb.ToString(), BuildInfo.Product + " 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(sb.ToString(), AppConfig.Current.Name + " 오류",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch (InvalidOperationException) { }
         }

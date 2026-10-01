@@ -169,7 +169,7 @@ namespace LogScope.Core.Settings
         {
             var root = new Dictionary<string, object>(StringComparer.Ordinal);
             root["fileVersion"] = (double)FileVersion;
-            root["savedBy"] = BuildInfo.Product + " " + BuildInfo.Version;
+            root["savedBy"] = AppConfig.Current.Name + " " + BuildInfo.Version;
             root["theme"] = Theme;
             root["activeSet"] = (double)ActiveSet;
 

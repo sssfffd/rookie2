@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 버전과 프로그램 이름은 저장소 루트의 version.txt / appname.txt
-     한 곳에만 있습니다. 빌드할 때마다 여기서 BuildInfo.g.cs 를 만들어
-     그 값과 git 커밋 해시를 코드에 넣습니다. 그래서 소스 어디에도 버전이나
-     이름을 두 번 적을 일이 없습니다. git 이 없으면 해시는 "unknown" 입니다.
+<!-- 버전은 저장소 루트의 version.txt 한 곳에만 있습니다. 빌드할 때마다
+     여기서 BuildInfo.g.cs 를 만들어 그 값과 git 커밋 해시를 코드에 넣습니다.
+     git 이 없으면 해시는 "unknown" 입니다.
 
-     프로그램 이름을 바꾸려면 appname.txt 만 고치면 됩니다. 창 제목, 왼쪽 위
-     글자, 오류 창 제목, 그리고 <b>실행 파일 이름</b>이 다 여기를 봅니다.
-     이름 자체를 읽는 일은 AppName.props 가 합니다 (평가할 때 읽어야 하는
-     AssemblyName 에도 쓰이므로).
+     <b>프로그램 이름은 여기서 다루지 않습니다.</b> 실행할 때 읽는
+     config.txt 의 name 줄입니다 (Core 의 AppConfig). 버전은 빌드할 때
+     박혀야 하는 값이고 이름은 아니라서, 둘을 같은 자리에서 다루지 않습니다.
 
-     설정 파일과 기록 폴더 이름은 <b>따라가지 않습니다</b> (SettingsStore /
-     HistoryStore). 이름을 바꿨다고 그때까지 쌓인 설정과 기록을 못 찾으면
-     안 되기 때문입니다. -->
+     설정 파일과 기록 폴더 이름은 이름을 <b>따라가지 않습니다</b>
+     (SettingsStore / HistoryStore). 이름을 바꿨다고 그때까지 쌓인 설정과
+     기록을 못 찾으면 안 되기 때문입니다. -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildThisFileDirectory)AppName.props" />
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
     <BuildInfoFile>$(MSBuildThisFileDirectory)..\src\LogScope.Core\BuildInfo.g.cs</BuildInfoFile>
@@ -61,7 +58,6 @@
       <_BuildInfoLines Include="        public const string Commit = &quot;$(CommitHash)&quot;%3B" />
       <_BuildInfoLines Include="        public const bool  Modified = $(IsDirty)%3B" />
       <_BuildInfoLines Include="        public const string BuiltAt = &quot;$(BuiltAt)&quot;%3B" />
-      <_BuildInfoLines Include="        public const string Product = &quot;$(AppName)&quot;%3B" />
       <_BuildInfoLines Include="    }" />
       <_BuildInfoLines Include="}" />
     </ItemGroup>

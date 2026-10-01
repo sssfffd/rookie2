@@ -43,7 +43,6 @@ namespace LogScope.Core
         public const string Commit = "check";
         public const bool  Modified = false;
         public const string BuiltAt = "check";
-        public const string Product = "LogScope";
     }
 }
 CS

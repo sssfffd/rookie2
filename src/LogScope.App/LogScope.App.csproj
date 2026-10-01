@@ -5,9 +5,6 @@
      1000만 칸짜리 로그를 이전/이후 두 개 여는 데 필요합니다. -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <!-- 실행 파일 이름은 appname.txt 를 따라갑니다. 여기에 이름을 또 적지
-       않습니다 (AssemblyName 아래). -->
-  <Import Project="$(MSBuildThisFileDirectory)..\..\tools\AppName.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -17,7 +14,12 @@
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>WinExe</OutputType>
     <RootNamespace>LogScope.App</RootNamespace>
-    <AssemblyName>$(AppName)</AssemblyName>
+    <!-- 빌드 산출물의 이름입니다. 화면에 보이는 이름(config.txt 의 name)과는
+         다릅니다 — out 폴더로 복사할 때 build.bat 이 그 이름을 붙입니다.
+         여기서 config.txt 를 읽으려면 MSBuild 가 줄을 갈라 읽어야 하는데,
+         그 한 줄을 위해 빌드가 멈출 위험을 지는 것보다 복사할 때 붙이는
+         편이 안전합니다. -->
+    <AssemblyName>LogScope</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <LangVersion>7.3</LangVersion>
     <Deterministic>true</Deterministic>

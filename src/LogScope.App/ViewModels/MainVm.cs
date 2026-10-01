@@ -24,9 +24,9 @@ namespace LogScope.App.ViewModels
         public MainVm(AppState state)
         {
             _state = state;
-            // 칸 이름과 한 줄 설명은 실행 파일 옆의 screens.txt 에서 옵니다.
+            // 칸 이름과 한 줄 설명은 실행 파일 옆의 config.txt 에서 옵니다.
             // 여기에 적어 두면 이름을 바꿀 때마다 다시 빌드해야 합니다.
-            ScreenNames names = ScreenNames.Current;
+            AppConfig names = AppConfig.Current;
             Cards = new List<AnalysisCardVm>
             {
                 new AnalysisCardVm(1, names.Title(1), names.Summary(1), true),

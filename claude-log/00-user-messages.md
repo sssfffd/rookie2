@@ -662,3 +662,12 @@
 > 비교하기 더 쉽게 해줘
 
 → 답변: [40-show-one-side.md](40-show-one-side.md)
+
+---
+
+## 요청 52 — 설정 파일 하나로 통합
+
+> 이거Appname이나 screen.txt로 여러개 text파일에서 변경하잖아 근데 config
+> txt파일 하나로 통합해서 해당파일에서 변경 가능하게
+
+→ 답변: [41-one-config-file.md](41-one-config-file.md)

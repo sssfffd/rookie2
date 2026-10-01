@@ -99,8 +99,8 @@ namespace LogScope.Tests
                 HistoryEdgeCases();
                 JsonRoundTrip();
                 SettingsRoundTrip();
-                ScreenNamesParse();
-                ScreenNamesFile();
+                AppConfigParse();
+                AppConfigFile();
                 ToleranceTableRules();
                 TolerancePerIo();
             }
@@ -1801,46 +1801,53 @@ namespace LogScope.Tests
         }
 
         /// <summary>
-        /// 분석 이름 파일(screens.txt) 읽기. 손으로 고치는 파일이라 <b>엉망으로
+        /// 설정 파일(config.txt) 읽기. 손으로 고치는 파일이라 <b>엉망으로
         /// 적힌 경우</b>가 실제로 생깁니다 — 그때 기본값으로 버텨야 합니다.
         /// </summary>
-        private static void ScreenNamesParse()
+        private static void AppConfigParse()
         {
-            Console.WriteLine("분석 이름 파일 읽기");
+            Console.WriteLine("설정 파일(config.txt) 읽기");
 
-            ScreenNames def = ScreenNames.Default;
+            AppConfig def = AppConfig.Default;
+            Check("기본 프로그램 이름", def.Name == "LogScope", def.Name);
             Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
             Check("기본 이름 2", def.Title(2) == "분석 2", def.Title(2));
             Check("기본 이름 3", def.Title(3) == "분석 3", def.Title(3));
 
-            ScreenNames n = ScreenNames.Parse(new[]
+            AppConfig c = AppConfig.Parse(new[]
             {
                 "# 주석",
                 "",
-                "  타이밍 점검 | 켜고 끄는 시각이 밀렸는지 봅니다.  ",
-                "압력 비교",
-                "세 번째 | 설명만 있음",
-                "네 번째는 무시",
+                "  Name  =  로그보기  ",
+                "analysis1 = 타이밍 점검 | 켜고 끄는 시각이 밀렸는지 봅니다.",
+                "ANALYSIS2=압력 비교",
+                "analysis3 = 세 번째 | 설명만 있음",
+                "analysis9 = 없는 자리",
+                "열쇠없는줄",
+                "= 값만",
+                "모르는열쇠 = 아무거나",
             });
-            Check("이름 읽기", n.Title(1) == "타이밍 점검", n.Title(1));
-            Check("설명 읽기", n.Summary(1) == "켜고 끄는 시각이 밀렸는지 봅니다.", n.Summary(1));
-            Check("설명 없으면 기본 설명", n.Summary(2) == def.Summary(2), n.Summary(2));
-            Check("두 번째 이름", n.Title(2) == "압력 비교", n.Title(2));
-            Check("세 번째 이름", n.Title(3) == "세 번째", n.Title(3));
-            Check("네 줄째는 안 봄", n.Title(3) != "네 번째는 무시", n.Title(3));
-            Check("바꾼 이름이 기본을 덮음", n.Title(1) != def.Title(1), n.Title(1));
+            Check("이름 읽기 (앞뒤 공백 떼기)", c.Name == "로그보기", c.Name);
+            Check("열쇠는 대소문자 안 가림", c.Title(2) == "압력 비교", c.Title(2));
+            Check("분석 이름 읽기", c.Title(1) == "타이밍 점검", c.Title(1));
+            Check("분석 설명 읽기", c.Summary(1) == "켜고 끄는 시각이 밀렸는지 봅니다.", c.Summary(1));
+            Check("설명 없으면 기본 설명", c.Summary(2) == def.Summary(2), c.Summary(2));
+            Check("세 번째 이름", c.Title(3) == "세 번째", c.Title(3));
 
-            // 이름 자리를 비워 둔 줄은 그 자리의 기본값입니다. 빈 글자가
-            // 화면에 그대로 나가면 어느 화면인지 알 수가 없습니다.
-            ScreenNames blank = ScreenNames.Parse(new[] { " | 설명만", "둘째" });
+            // 모르는 열쇠, 열쇠 없는 줄, 값 없는 줄은 건너뜁니다. 뒤 버전에서
+            // 생긴 열쇠가 적힌 파일로 옛 프로그램을 켜도 터지면 안 됩니다.
+            AppConfig junk = AppConfig.Parse(new[] { "모르는 열쇠 = 1", "그냥 글자", "name =" });
+            Check("모르는 줄은 기본값 그대로", junk.Name == "LogScope", junk.Name);
+
+            // 이름 자리를 비워 둔 분석 줄은 그 자리의 기본값입니다.
+            AppConfig blank = AppConfig.Parse(new[] { "analysis1 = | 설명만" });
             Check("이름 비운 줄은 기본 이름", blank.Title(1) == "로그 비교", blank.Title(1));
             Check("그 줄의 설명은 살림", blank.Summary(1) == "설명만", blank.Summary(1));
-            Check("빈 줄 다음 줄은 둘째 자리", blank.Title(2) == "둘째", blank.Title(2));
 
-            // 줄이 모자라거나 아예 없어도 됩니다.
-            ScreenNames none = ScreenNames.Parse(new string[0]);
-            Check("빈 파일은 기본값", none.Title(1) == "로그 비교" && none.Title(3) == "분석 3", null);
-            Check("null 도 견딤", ScreenNames.Parse(null).Title(1) == "로그 비교", null);
+            // 아예 없어도 됩니다.
+            AppConfig none = AppConfig.Parse(new string[0]);
+            Check("빈 파일은 기본값", none.Name == "LogScope" && none.Title(3) == "분석 3", null);
+            Check("null 도 견딤", AppConfig.Parse(null).Title(1) == "로그 비교", null);
 
             // 범위 밖은 빈 글자입니다. 터지면 안 됩니다.
             Check("0 번은 빈 글자", def.Title(0) == "", def.Title(0));
@@ -1850,22 +1857,25 @@ namespace LogScope.Tests
 
         /// <summary>
         /// 파일로 읽을 때. 메모장이 UTF-8 로도, CP949 로도 저장하므로 둘 다
-        /// 읽혀야 합니다.
+        /// 읽혀야 합니다. 전에 쓰던 두 파일(appname.txt / screens.txt)도
+        /// 그대로 읽혀야 합니다 — 적어 둔 것을 파일 이름이 바뀌었다는 이유로
+        /// 잃으면 안 됩니다.
         /// </summary>
-        private static void ScreenNamesFile()
+        private static void AppConfigFile()
         {
-            Console.WriteLine("분석 이름 파일 인코딩");
+            Console.WriteLine("설정 파일 인코딩과 옛 파일");
 
-            string path = Path.Combine(_dir, "screens.txt");
-            string body = "타이밍 점검 | 밀렸는지 봅니다\n압력 비교\n셋째\n";
+            string dir = Path.Combine(_dir, "cfg");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, AppConfig.FileName);
+            string body = "name = 로그보기\nanalysis1 = 타이밍 점검 | 밀렸는지 봅니다\nanalysis2 = 압력 비교\n";
 
             File.WriteAllText(path, body, new UTF8Encoding(true));
-            Check("BOM 붙은 UTF-8", ScreenNames.Load(path).Title(1) == "타이밍 점검",
-                  ScreenNames.Load(path).Title(1));
+            Check("BOM 붙은 UTF-8", AppConfig.Load(path).Name == "로그보기", AppConfig.Load(path).Name);
 
             File.WriteAllText(path, body, new UTF8Encoding(false));
-            Check("BOM 없는 UTF-8", ScreenNames.Load(path).Title(2) == "압력 비교",
-                  ScreenNames.Load(path).Title(2));
+            Check("BOM 없는 UTF-8", AppConfig.Load(path).Title(2) == "압력 비교",
+                  AppConfig.Load(path).Title(2));
 
             // CP949 는 리눅스 mono 에 없을 수 있습니다. 있을 때만 봅니다.
             Encoding cp949 = null;
@@ -1875,23 +1885,48 @@ namespace LogScope.Tests
             if (cp949 != null)
             {
                 File.WriteAllBytes(path, cp949.GetBytes(body));
-                Check("메모장 ANSI(CP949)", ScreenNames.Load(path).Title(1) == "타이밍 점검",
-                      ScreenNames.Load(path).Title(1));
+                Check("메모장 ANSI(CP949)", AppConfig.Load(path).Title(1) == "타이밍 점검",
+                      AppConfig.Load(path).Title(1));
             }
 
             // 없는 파일은 기본값입니다. 이름 하나 때문에 안 켜지면 안 됩니다.
-            string gone = Path.Combine(_dir, "없는파일.txt");
-            Check("없는 파일은 기본값", ScreenNames.Load(gone).Title(1) == "로그 비교", null);
-            Check("빈 경로도 견딤", ScreenNames.Load(null).Title(1) == "로그 비교", null);
+            string empty = Path.Combine(_dir, "nothing");
+            Directory.CreateDirectory(empty);
+            Check("없는 파일은 기본값",
+                  AppConfig.Load(Path.Combine(empty, AppConfig.FileName)).Name == "LogScope", null);
+            Check("빈 경로도 견딤", AppConfig.Load(null).Title(1) == "로그 비교", null);
+
+            // ---- 옛 파일 두 개 ----
+            string old = Path.Combine(_dir, "old");
+            Directory.CreateDirectory(old);
+            File.WriteAllText(Path.Combine(old, AppConfig.LegacyNameFile), "옛이름\n",
+                              new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(old, AppConfig.LegacyScreenFile),
+                              "# 주석\n옛 분석 | 옛 설명\n둘째\n", new UTF8Encoding(false));
+
+            AppConfig legacy = AppConfig.Load(Path.Combine(old, AppConfig.FileName));
+            Check("옛 appname.txt 를 읽음", legacy.Name == "옛이름", legacy.Name);
+            Check("옛 screens.txt 를 읽음", legacy.Title(1) == "옛 분석", legacy.Title(1));
+            Check("옛 파일의 설명도 읽음", legacy.Summary(1) == "옛 설명", legacy.Summary(1));
+            Check("옛 파일 둘째 줄", legacy.Title(2) == "둘째", legacy.Title(2));
+
+            // config.txt 가 있으면 옛 파일은 보지 않습니다. 둘 다 있을 때
+            // 어느 것이 이기는지 헷갈리면 안 됩니다.
+            File.WriteAllText(Path.Combine(old, AppConfig.FileName), "name = 새이름\n",
+                              new UTF8Encoding(false));
+            AppConfig both = AppConfig.Load(Path.Combine(old, AppConfig.FileName));
+            Check("config.txt 가 이김", both.Name == "새이름", both.Name);
+            Check("그때 옛 분석 이름은 안 읽음", both.Title(1) == "로그 비교", both.Title(1));
 
             // 본보기 글은 그대로 읽혀야 합니다 — build.bat 이 out 폴더에
             // 넣어 주는 것이 이 글입니다.
-            ScreenNames sample = ScreenNames.Parse(
-                ScreenNames.Sample().Replace("\r\n", "\n").Split('\n'));
+            AppConfig sample = AppConfig.Parse(
+                AppConfig.Sample().Replace("\r\n", "\n").Split('\n'));
             Check("본보기는 기본값과 같음",
-                  sample.Title(1) == "로그 비교" && sample.Title(3) == "분석 3", sample.Title(1));
+                  sample.Name == "LogScope" && sample.Title(1) == "로그 비교"
+                  && sample.Title(3) == "분석 3", sample.Title(1));
             Check("본보기 설명도 같음",
-                  sample.Summary(2) == ScreenNames.Default.Summary(2), sample.Summary(2));
+                  sample.Summary(2) == AppConfig.Default.Summary(2), sample.Summary(2));
         }
 
         private static void SettingsRoundTrip()

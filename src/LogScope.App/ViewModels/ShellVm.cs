@@ -43,13 +43,12 @@ namespace LogScope.App.ViewModels
         /// <summary>
         /// 프로그램 이름. 창 제목과 왼쪽 위 글자가 이 값을 씁니다.
         ///
-        /// <b>바꾸는 곳은 저장소 루트의 appname.txt 한 곳입니다.</b> 버전과
-        /// 같은 방식으로, 빌드할 때 BuildInfo 로 들어옵니다 — 소스 여러 군데에
-        /// 이름을 적어 두면 바꿀 때 한두 군데가 남습니다.
+        /// <b>바꾸는 곳은 실행 파일 옆의 config.txt 한 곳입니다</b> (name 줄).
+        /// 소스 여러 군데에 이름을 적어 두면 바꿀 때 한두 군데가 남습니다.
         /// </summary>
-        public string ProductName { get { return BuildInfo.Product; } }
+        public string ProductName { get { return AppConfig.Current.Name; } }
 
-        public string WindowTitle { get { return BuildInfo.Product + " — IO 로그 그래프 뷰어"; } }
+        public string WindowTitle { get { return AppConfig.Current.Name + " — IO 로그 그래프 뷰어"; } }
 
         // ---------------- 큰 화면 (메인 / 분석 1·2·3) ----------------
         //
@@ -117,21 +116,21 @@ namespace LogScope.App.ViewModels
         }
 
         /// <summary>
-        /// 화면 단추에 적는 이름. <b>screens.txt 에 적은 이름 그대로</b>입니다.
+        /// 화면 단추에 적는 이름. <b>config.txt 에 적은 이름 그대로</b>입니다.
         ///
         /// "분석 1" 같은 번호를 앞에 붙이지 않습니다. 이름을 "로그 비교" 로
         /// 정해 놓고 단추에는 "분석 1" 이 적혀 있으면, 정한 이름이 어디에
-        /// 쓰이는지 알 수가 없습니다. 번호는 screens.txt 의 줄 순서가 이미
+        /// 쓰이는지 알 수가 없습니다. 번호는 열쇠(analysis1·2·3)가 이미
         /// 말해 줍니다.
         /// </summary>
         public string TabMain { get { return "메인"; } }
-        public string TabAnalysis1 { get { return ScreenNames.Current.Title(1); } }
-        public string TabAnalysis2 { get { return ScreenNames.Current.Title(2); } }
-        public string TabAnalysis3 { get { return ScreenNames.Current.Title(3); } }
+        public string TabAnalysis1 { get { return AppConfig.Current.Title(1); } }
+        public string TabAnalysis2 { get { return AppConfig.Current.Title(2); } }
+        public string TabAnalysis3 { get { return AppConfig.Current.Title(3); } }
 
         /// <summary>아직 만들지 않은 화면 가운데에 크게 적을 이름.</summary>
-        public string Analysis2Name { get { return ScreenNames.Current.Title(2); } }
-        public string Analysis3Name { get { return ScreenNames.Current.Title(3); } }
+        public string Analysis2Name { get { return AppConfig.Current.Title(2); } }
+        public string Analysis3Name { get { return AppConfig.Current.Title(3); } }
 
         public void GoMain() { Screen = ScreenMain; }
 
