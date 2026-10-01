@@ -48,3 +48,4 @@
 | `39-graph-legend-and-band-zoom.md` | 그래프 이전/이후 범례, 오른쪽 끌기로 네모 확대 |
 | `40-show-one-side.md` | 이전 선 / 이후 선 하나씩 끄고 보기 |
 | `41-one-config-file.md` | appname.txt + screens.txt 를 config.txt 한 파일로 |
+| `42-two-row-toolbar.md` | 도구 줄 두 줄, [그릴 로그] 를 왼쪽 IO 칸으로 |

@@ -619,7 +619,7 @@ namespace LogScope.App.Controls
         /// </summary>
         private void DrawBothOff(DrawingContext dc, Palette p, Rect plot)
         {
-            FormattedText ft = Text("이전 선과 이후 선을 둘 다 꺼 두었습니다.\n위 도구 줄의 [선 보기] 에서 하나를 켜 주세요.",
+            FormattedText ft = Text("이전 선과 이후 선을 둘 다 꺼 두었습니다.\n왼쪽 IO 칸의 [그릴 로그] 에서 하나를 켜 주세요.",
                                     FontNormal, p.MutedBrush);
             dc.DrawText(ft, new Point(plot.Left + Math.Max(0, (plot.Width - ft.Width) * 0.5),
                                       plot.Top + Math.Max(0, (plot.Height - ft.Height) * 0.5)));

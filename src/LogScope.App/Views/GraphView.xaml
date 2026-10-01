@@ -57,6 +57,40 @@
                             <Button Content="전체 선택" Click="OnSelectAll" />
                             <Button Content="전체 해제" Click="OnClearAll" />
                         </WrapPanel>
+
+                        <!--
+                          그릴 로그. 두 선이 거의 같은 자리에 겹쳐 있으면 뒤에
+                          그려진 쪽이 앞의 쪽을 덮습니다. 한쪽을 끄면 가려졌던
+                          선이 그대로 보입니다.
+
+                          <b>도구 줄이 아니라 여기</b>입니다. "무엇을 그릴까" 는
+                          IO 를 고르는 일과 같은 종류라 이 칸이 제자리이고,
+                          위 도구 줄은 두 줄을 넘지 않아야 합니다.
+
+                          이 블록의 DataContext 는 List(IO 목록)이라, 그래프
+                          뷰모델의 값은 UserControl 을 거쳐 찾습니다.
+
+                          차이 눈금에서는 선이 하나뿐이고 두 로그가 다 필요한
+                          값이라 뜻이 없습니다. 그때는 꺼져 보입니다.
+                        -->
+                        <WrapPanel Margin="0,6,0,0">
+                            <TextBlock Text="그릴 로그" Style="{StaticResource FieldLabel}"
+                                       VerticalAlignment="Center" Margin="2,0,8,0" />
+                            <CheckBox Content="이전" Margin="0,0,10,0" VerticalAlignment="Center"
+                                      IsChecked="{Binding DataContext.ShowBefore,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl},
+                                                  Mode=TwoWay}"
+                                      IsEnabled="{Binding DataContext.ScaleRaw,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      ToolTip="이전 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
+                            <CheckBox Content="이후" VerticalAlignment="Center"
+                                      IsChecked="{Binding DataContext.ShowAfter,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl},
+                                                  Mode=TwoWay}"
+                                      IsEnabled="{Binding DataContext.ScaleRaw,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      ToolTip="이후 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -209,25 +243,28 @@
             <!--
               도구 줄.
 
-              <b>세 줄을 넘지 않습니다.</b> WrapPanel 은 좁아지면 저절로 줄을
+              <b>두 줄을 넘지 않습니다.</b> WrapPanel 은 좁아지면 저절로 줄을
               바꾸는데, 단추가 많으면 다섯 줄 여섯 줄로 자라서 정작 그래프가
-              들어갈 자리가 없어집니다. 그래서 두 가지를 했습니다.
+              들어갈 자리가 없어집니다. 그래서 세 가지를 했습니다.
 
                 1. 글자를 줄였습니다. 무슨 뜻인지는 풍선 도움말에 적습니다.
                 2. 한 번 정해 놓고 쓰는 것들(가로축 · 시간 맞추기)은 접어서
                    팝업으로 넘겼습니다.
+                3. "무엇을 그릴까" (그릴 로그)는 <b>왼쪽 IO 칸</b>으로 옮겼습니다.
+                   IO 를 고르는 일과 같은 종류라 그쪽이 제자리이고, 도구 줄은
+                   그만큼 짧아집니다.
 
-              그래도 창이 아주 좁으면 네 줄이 될 수 있어서, 높이 상한을 걸고
+              그래도 창이 아주 좁으면 더 접힐 수 있어서, 높이 상한을 걸고
               넘치면 세로로 굴리게 했습니다. 줄 하나가 42 (단추 28 + 위아래
-              여백 6 + 묶음 테두리 2) 라 세 줄이면 126 입니다. 여기에 글꼴
-              차이만큼 몇 px 만 얹습니다 — 넉넉히 주면 네 번째 줄이 반쯤
+              여백 6 + 묶음 테두리 2) 라 두 줄이면 84 입니다. 여기에 글꼴
+              차이만큼 몇 px 만 얹습니다 — 넉넉히 주면 세 번째 줄이 반쯤
               보여서 상한을 건 뜻이 없어집니다. 바깥 Border 의 안쪽 여백은
               이 상한 밖이라 더하지 않습니다.
             -->
             <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                     Padding="8,4">
-                <ScrollViewer MaxHeight="132" VerticalScrollBarVisibility="Auto"
+                <ScrollViewer MaxHeight="88" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                 <WrapPanel>
 
@@ -255,7 +292,7 @@
                                          Content="기존 값" IsChecked="{Binding ScaleRaw, Mode=TwoWay}"
                                          ToolTip="이전 로그와 이후 로그를 각각 그립니다. 로그에 적힌 값 그대로." />
                             <RadioButton GroupName="scale" Style="{StaticResource SegmentButton}"
-                                         Content="차이 (이후−이전)" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
+                                         Content="차이" IsChecked="{Binding ScaleDelta, Mode=TwoWay}"
                                          ToolTip="두 로그의 차이를 선 하나로 그립니다.&#x0a;같으면 0, 이후가 1 크면 +1, 1 작으면 -1.&#x0a;상태 채널은 이름이 같으면 0, 다르면 1 입니다.&#x0a;한쪽에만 있는 IO 는 견줄 상대가 없어 비어 있습니다." />
                         </StackPanel>
                     </Border>
@@ -294,34 +331,6 @@
                             <ToggleButton Style="{StaticResource ToolToggle}" Content="계속 맞춤"
                                           IsChecked="{Binding FitVisible, Mode=TwoWay}"
                                           ToolTip="켜 두면 시간축을 밀 때마다 세로 눈금을 다시 맞춥니다. 위아래 움직임이 심하면 끄고 쓰세요." />
-                        </StackPanel>
-                    </Border>
-
-                    <!--
-                      선 하나씩 끄고 보기.
-
-                      두 선이 거의 같은 자리에 겹쳐 있으면 뒤에 그려진 쪽이 앞의
-                      쪽을 덮습니다. 한쪽을 끄면 가려졌던 선이 그대로 보입니다.
-                      단추 글자색을 그 선의 색으로 둬서, 어느 쪽을 끄는 단추인지
-                      글자를 읽지 않고도 알 수 있게 했습니다.
-
-                      차이 눈금에서는 선이 하나뿐이고 두 로그가 다 필요한 값이라
-                      뜻이 없습니다. 그래서 그 모드에서는 꺼져 보입니다
-                      (IsEnabled = ScaleRaw).
-                    -->
-                    <Border Style="{StaticResource ToolGroup}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="선 보기" />
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이전"
-                                          Foreground="{DynamicResource Brush.Before}"
-                                          IsChecked="{Binding ShowBefore, Mode=TwoWay}"
-                                          IsEnabled="{Binding ScaleRaw}"
-                                          ToolTip="이전 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="이후"
-                                          Foreground="{DynamicResource Brush.After}"
-                                          IsChecked="{Binding ShowAfter, Mode=TwoWay}"
-                                          IsEnabled="{Binding ScaleRaw}"
-                                          ToolTip="이후 로그의 선을 그립니다.&#x0a;끄면 세로 눈금도 켜 둔 쪽에만 맞춰집니다." />
                         </StackPanel>
                     </Border>
 
@@ -402,7 +411,7 @@
                     <!-- 마우스 쓰는 법. 도구 줄에 있던 것을 여기로 내렸습니다 —
                          거기 두면 도구 줄 한 줄을 통째로 먹었습니다. -->
                     <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B&#x0a;두 선이 겹쳐 보이면 [선 보기] 에서 한쪽을 끄고 보세요." />
+                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B&#x0a;두 선이 겹쳐 보이면 왼쪽 IO 칸의 [그릴 로그] 에서 한쪽을 끄고 보세요." />
                 </StackPanel>
             </Border>
 
