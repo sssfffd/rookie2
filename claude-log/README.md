@@ -44,3 +44,4 @@
 | `35-clearvalue-erased-the-card.md` | 파일을 놓으면 칸이 사라지던 것. ClearValue 가 XAML 값까지 지움 |
 | `36-per-io-tolerance.md` | IO 별 허용 오차. 퍼센트와 값 둘 다, 빈 칸은 기본값 |
 | `37-dashboard-columns.md` | 대시보드에서 RMS · 구간 수 칸 빼기 |
+| `38-top-bar-rework.md` | 위 줄 두 칸으로. 화면 단추 넷, 로그 세트와 다시 읽기 제거 |

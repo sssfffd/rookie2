@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using System.IO;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
@@ -35,11 +34,6 @@ namespace LogScope.App.ViewModels
             Dashboard = new DashboardVm(state);
             Graph = new GraphVm(state, Align);
             Heatmap = new HeatmapVm(state, Align);
-
-            var names = new ObservableCollection<string>();
-            for (int i = 0; i < AppSettings.SetCount; i++) names.Add(state.Settings.Sets[i].DisplayName(i));
-            SetNames = names;
-            _activeSet = state.Settings.ActiveSet;
 
             UpdateStatus();
         }
@@ -96,10 +90,37 @@ namespace LogScope.App.ViewModels
         /// <summary>큰 화면이 바뀌면 불립니다.</summary>
         public event EventHandler ScreenChanged;
 
-        public bool ShowMain { get { return _screen == ScreenMain; } }
-        public bool ShowAnalysis1 { get { return _screen == ScreenAnalysis1; } }
-        public bool ShowAnalysis2 { get { return _screen == ScreenAnalysis2; } }
-        public bool ShowAnalysis3 { get { return _screen == ScreenAnalysis3; } }
+        // 위 줄의 화면 단추가 이 넷에 TwoWay 로 걸립니다. 그래서 읽기만
+        // 되는 속성이 아니라 "참을 넣으면 그 화면으로" 가 되어야 합니다.
+        public bool ShowMain
+        {
+            get { return _screen == ScreenMain; }
+            set { if (value) Screen = ScreenMain; }
+        }
+
+        public bool ShowAnalysis1
+        {
+            get { return _screen == ScreenAnalysis1; }
+            set { if (value) Screen = ScreenAnalysis1; }
+        }
+
+        public bool ShowAnalysis2
+        {
+            get { return _screen == ScreenAnalysis2; }
+            set { if (value) Screen = ScreenAnalysis2; }
+        }
+
+        public bool ShowAnalysis3
+        {
+            get { return _screen == ScreenAnalysis3; }
+            set { if (value) Screen = ScreenAnalysis3; }
+        }
+
+        /// <summary>화면 단추에 적는 이름. 분석 이름은 screens.txt 에서 옵니다.</summary>
+        public string TabMain { get { return "메인"; } }
+        public string TabAnalysis1 { get { return Named(1); } }
+        public string TabAnalysis2 { get { return Named(2); } }
+        public string TabAnalysis3 { get { return Named(3); } }
 
         /// <summary>위 줄에 적는 지금 화면 이름.</summary>
         public string ScreenName
@@ -119,12 +140,6 @@ namespace LogScope.App.ViewModels
             if (ScreenNames.Current.IsDefaultTitle(number)) return head;
             return head + " — " + ScreenNames.Current.Title(number);
         }
-
-        /// <summary>왼쪽 위 목록에 적을 줄. 번호는 목록에서 세는 순서입니다.</summary>
-        public string MenuMain { get { return "1.  메인"; } }
-        public string MenuAnalysis1 { get { return "2.  " + Named(1); } }
-        public string MenuAnalysis2 { get { return "3.  " + Named(2); } }
-        public string MenuAnalysis3 { get { return "4.  " + Named(3); } }
 
         /// <summary>아직 만들지 않은 화면 가운데에 크게 적을 이름.</summary>
         public string Analysis2Name { get { return Named(2); } }
@@ -188,40 +203,9 @@ namespace LogScope.App.ViewModels
         public void GoGraph() { Screen = ScreenAnalysis1; Page = PageGraph; }
         public void GoHeatmap() { Screen = ScreenAnalysis1; Page = PageHeatmap; }
 
-        // ---------------- 로그 세트 ----------------
-
-        public ObservableCollection<string> SetNames { get; private set; }
-
-        private int _activeSet;
-        /// <summary>
-        /// 고른 세트. 실제로 로그를 여는 일은 창(ShellWindow)이 맡습니다 —
-        /// 진행 창을 띄워야 하기 때문입니다.
-        /// </summary>
-        public int ActiveSet
-        {
-            get { return _activeSet; }
-            set
-            {
-                if (value < 0 || value >= AppSettings.SetCount) return;
-                if (!Set(ref _activeSet, value)) return;
-                _state.Settings.ActiveSet = value;
-                EventHandler h = SetChanged;
-                if (h != null) h(this, EventArgs.Empty);
-            }
-        }
-
-        public event EventHandler SetChanged;
-
-        public void RefreshSetNames()
-        {
-            for (int i = 0; i < AppSettings.SetCount; i++)
-                SetNames[i] = _state.Settings.Sets[i].DisplayName(i);
-            if (_activeSet != _state.Settings.ActiveSet)
-            {
-                _activeSet = _state.Settings.ActiveSet;
-                Raise("ActiveSet");
-            }
-        }
+        // 로그 세트(여러 쌍을 골라 가며 보기)는 없앴습니다. 쓰이지 않는데
+        // 위 줄에서 자리를 제일 많이 차지했습니다. 기억된 경로와 기본 폴더는
+        // 그대로 쓰므로(AppSettings 의 첫 세트) 설정은 그대로 살아 있습니다.
 
         // ---------------- 아래쪽 알림 줄 ----------------
 
@@ -268,7 +252,6 @@ namespace LogScope.App.ViewModels
             Graph.Reload();
             Dashboard.Refresh();
             Main.Refresh();
-            RefreshSetNames();
             UpdateStatus();
         }
     }

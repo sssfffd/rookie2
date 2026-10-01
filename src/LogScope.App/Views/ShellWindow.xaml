@@ -12,87 +12,98 @@
 
     <DockPanel>
 
-        <!-- ================= 위쪽 메뉴 줄 (진한 파랑) ================= -->
+        <!-- ================= 위쪽 메뉴 줄 (진한 파랑) =================
+
+             두 칸으로 나눕니다.
+
+               왼쪽  화면 전환 (메인 · 분석 1 · 2 · 3) — 어느 화면에서든 다 보입니다
+               오른쪽 그 화면에서 할 일 — 분석 1 의 안쪽 화면과 로그 열기
+
+             전에는 왼쪽 위 프로그램 이름을 눌러 목록을 펼쳐야 화면을 옮길 수
+             있었습니다. 네 화면을 오가는 것이 이 프로그램의 기본 동작인데,
+             그걸 접어 두고 두 번 눌러야 했습니다. 이제 늘 보입니다.
+
+             <b>로그 열기 쪽은 분석 1 에서만 보입니다.</b> 메인 화면에는 이전 /
+             이후 칸이 있어 거기에 끌어다 놓으면 되고, 분석 2 · 3 에는 아직
+             아무것도 없습니다.
+        -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,6">
-            <WrapPanel>
-                <!--
-                  [LogScope] 를 누르면 큰 화면 목록이 내려옵니다.
-                  분석이 늘어나도 위 줄이 길어지지 않게 접어 둡니다.
-                -->
-                <Button x:Name="BrandButton" Style="{StaticResource BrandButton}" Click="OnBrandClick"
-                        ToolTip="누르면 화면 목록이 열립니다.">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
-                                   Foreground="{DynamicResource Brush.TopBarText}"
-                                   VerticalAlignment="Center" />
-                        <TextBlock Text="▾" FontSize="11" Margin="6,2,0,0"
-                                   Foreground="{DynamicResource Brush.TopBarMuted}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                <Popup x:Name="BrandMenu" PlacementTarget="{Binding ElementName=BrandButton}"
-                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
-                       Closed="OnBrandMenuClosed">
-                    <Border Background="{DynamicResource Brush.Panel}"
-                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            Padding="0,5">
-                        <StackPanel>
-                            <TextBlock Text="화면" Style="{StaticResource FieldLabel}" Margin="14,2,14,5" />
-                            <Button Style="{StaticResource MenuItemButton}" Content="{Binding MenuMain}"
-                                    Tag="0" Click="OnGoScreen" />
-                            <Button Style="{StaticResource MenuItemButton}" Content="{Binding MenuAnalysis1}"
-                                    Tag="1" Click="OnGoScreen" />
-                            <Button Style="{StaticResource MenuItemButton}" Content="{Binding MenuAnalysis2}"
-                                    Tag="2" Click="OnGoScreen" />
-                            <Button Style="{StaticResource MenuItemButton}" Content="{Binding MenuAnalysis3}"
-                                    Tag="3" Click="OnGoScreen" />
-                        </StackPanel>
-                    </Border>
-                </Popup>
+                <!-- 왼쪽 : 프로그램 이름과 화면 전환 -->
+                <WrapPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
+                               Foreground="{DynamicResource Brush.TopBarText}"
+                               VerticalAlignment="Center" Margin="2,0,4,0" />
+                    <TextBlock Text="{Binding VersionText}" FontSize="11"
+                               Foreground="{DynamicResource Brush.TopBarMuted}"
+                               VerticalAlignment="Bottom" Margin="0,0,14,3" />
 
-                <TextBlock Text="{Binding ScreenName}" FontSize="12"
-                           Foreground="{DynamicResource Brush.TopBarMuted}"
-                           VerticalAlignment="Center" Margin="2,0,10,0" />
-                <TextBlock Text="{Binding VersionText}" FontSize="11"
-                           Foreground="{DynamicResource Brush.TopBarMuted}"
-                           VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabMain}"
+                                 IsChecked="{Binding ShowMain, Mode=TwoWay}"
+                                 ToolTip="점수와 저장된 분석을 봅니다." />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis1}"
+                                 IsChecked="{Binding ShowAnalysis1, Mode=TwoWay}"
+                                 ToolTip="두 로그를 견주는 화면입니다." />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis2}"
+                                 IsChecked="{Binding ShowAnalysis2, Mode=TwoWay}" />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis3}"
+                                 IsChecked="{Binding ShowAnalysis3, Mode=TwoWay}" />
 
-                <!--
-                  대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
-                  있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
-                  하게 됩니다.
-                -->
-                <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="대시보드"
-                             IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
-                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                             ToolTip="요약 화면입니다 (F1)." />
-                <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="그래프"
-                             IsChecked="{Binding ShowGraph, Mode=TwoWay}"
-                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                             ToolTip="시간에 따른 파형을 봅니다 (F2)." />
-                <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="히트맵"
-                             IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
-                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                             ToolTip="시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3)." />
+                    <!-- 칸 구분 선. 왼쪽은 "어디를 볼까", 오른쪽은 "무엇을 할까" 입니다. -->
+                    <Border Width="1" Margin="14,4,4,4"
+                            Background="{DynamicResource Brush.TopBarMuted}" Opacity="0.45" />
+                </WrapPanel>
 
-                <TextBlock Text="로그 세트" Foreground="{DynamicResource Brush.TopBarMuted}"
-                           VerticalAlignment="Center" Margin="18,0,6,0" />
-                <ComboBox MinWidth="150" ItemsSource="{Binding SetNames}"
-                          SelectedIndex="{Binding ActiveSet, Mode=TwoWay}"
-                          ToolTip="한 세트 = 이전 로그 + 이후 로그 한 쌍입니다." />
+                <!-- 오른쪽 : 그 화면에서 할 일 -->
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <!--
+                      대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
+                      있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
+                      하게 됩니다.
+                    -->
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="대시보드"
+                                 IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="요약 화면입니다 (F1)." />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="그래프"
+                                 IsChecked="{Binding ShowGraph, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="시간에 따른 파형을 봅니다 (F2)." />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="히트맵"
+                                 IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3)." />
 
-                <Button Style="{StaticResource TopBarButton}" Content="이전 로그 열기"
-                        Click="OnOpenBefore" Margin="10,3,3,3" />
-                <Button Style="{StaticResource TopBarButton}" Content="이후 로그 열기"
-                        Click="OnOpenAfter" />
-                <Button Style="{StaticResource TopBarButton}" Content="다시 읽기"
-                        Click="OnReload" ToolTip="이 세트에 기억된 파일을 다시 읽습니다." />
-                <Button Style="{StaticResource TopBarButton}" Content="비교 다시 하기"
-                        Click="OnRecompare" ToolTip="허용 오차 등을 바꾼 뒤 누르세요 (F5)." />
-                <Button Style="{StaticResource TopBarButton}" Content="설정"
-                        Click="OnSettings" Margin="10,3,3,3" />
-            </WrapPanel>
+                    <Button Style="{StaticResource TopBarButton}" Content="이전 로그 열기"
+                            Click="OnOpenBefore" Margin="10,3,3,3"
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+                    <Button Style="{StaticResource TopBarButton}" Content="이후 로그 열기"
+                            Click="OnOpenAfter"
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+                    <!--
+                      [다시 읽기] 를 없애고 이것만 남겼습니다. 둘이 하는 일이
+                      겹치는데, 파일을 다시 읽는 쪽은 1000 만 칸을 또 읽어
+                      몇십 초가 걸립니다. 파일이 바뀌었으면 다시 열거나 끌어다
+                      놓으면 되고, 허용 오차를 고친 뒤에 눌러야 하는 것은
+                      이쪽입니다.
+                    -->
+                    <Button Style="{StaticResource TopBarButton}" Content="비교 다시 하기"
+                            Click="OnRecompare" ToolTip="허용 오차 등을 바꾼 뒤 누르세요 (F5)."
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+
+                    <Button Style="{StaticResource TopBarButton}" Content="설정"
+                            Click="OnSettings" Margin="10,3,3,3" />
+                </WrapPanel>
+            </Grid>
         </Border>
 
         <!-- ================= 아래쪽 알림 줄 ================= -->

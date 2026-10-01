@@ -44,7 +44,6 @@ namespace LogScope.App.Views
             // 바꿀 때 한 군데가 남습니다.
             Title = _vm.WindowTitle;
 
-            _vm.SetChanged += OnSetChanged;
             _vm.PageChanged += OnPageChanged;
             _vm.ScreenChanged += OnScreenChanged;
             Main.AnalysisOpened += OnAnalysisOpened;
@@ -89,34 +88,8 @@ namespace LogScope.App.Views
             // [이전 로그 열기] / [이후 로그 열기] 를 누르거나, 파일을 메인
             // 화면의 칸에 끌어다 놓으면 됩니다.
             //
-            // 경로는 세트에 그대로 남습니다. 세트를 바꾸면(OnSetChanged →
-            // LoadSet) 그때는 엽니다 — 그건 누른 것이니까요.
-        }
-
-        // ---------------- 로그 세트 ----------------
-
-        private void OnSetChanged(object sender, EventArgs e)
-        {
-            LoadSet();
-            SaveSettings();
-        }
-
-        private void LoadSet()
-        {
-            LogSet s = _state.Settings.ActiveLogSet;
-
-            _state.Before = null;
-            _state.After = null;
-            _state.Comparison = null;
-            _state.BeforePath = string.Empty;
-            _state.AfterPath = string.Empty;
-
-            if (!string.IsNullOrEmpty(s.BeforePath) && File.Exists(s.BeforePath))
-                LoadInto(s.BeforePath, true);
-            if (!string.IsNullOrEmpty(s.AfterPath) && File.Exists(s.AfterPath))
-                LoadInto(s.AfterPath, false);
-
-            AfterLoad();
+            // 경로는 설정에 그대로 남습니다 — 파일 열기 창이 그 폴더에서
+            // 시작하는 데 씁니다.
         }
 
         // ---------------- 로그 열기 ----------------
@@ -150,24 +123,6 @@ namespace LogScope.App.Views
 
             AfterLoad();
             SaveSettings();
-        }
-
-        private void OnReload(object sender, RoutedEventArgs e)
-        {
-            LogSet set = _state.Settings.ActiveLogSet;
-            bool any = false;
-            if (!string.IsNullOrEmpty(set.BeforePath) && File.Exists(set.BeforePath))
-                any |= LoadInto(set.BeforePath, true);
-            if (!string.IsNullOrEmpty(set.AfterPath) && File.Exists(set.AfterPath))
-                any |= LoadInto(set.AfterPath, false);
-
-            if (!any)
-            {
-                MessageBox.Show(this, "이 세트에 기억된 로그 파일이 없습니다.", "다시 읽기",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            AfterLoad();
         }
 
         /// <summary>파일 하나를 배경 스레드에서 읽습니다. 성공하면 true.</summary>
@@ -449,38 +404,6 @@ namespace LogScope.App.Views
             Heatmap.FocusGroup(e.GroupName, e.Members);
         }
 
-        // ---- 왼쪽 위 [LogScope] 의 화면 목록 ----
-        //
-        // 팝업은 바깥을 누르면 닫히는데, 그 "바깥" 에는 팝업을 연 단추도
-        // 들어갑니다. 팝업이 먼저 그 누름을 받아 닫고 그 다음에 Click 이
-        // 도착해 다시 엽니다. 그래서 방금 닫혔으면 그 한 번은 무시합니다.
-        // (가로축·시간 맞추기 판과 같은 자리입니다.)
-        private DateTime _brandClosedAt;
-
-        private void OnBrandMenuClosed(object sender, EventArgs e)
-        {
-            _brandClosedAt = DateTime.UtcNow;
-        }
-
-        private void OnBrandClick(object sender, RoutedEventArgs e)
-        {
-            if ((DateTime.UtcNow - _brandClosedAt).TotalMilliseconds < 250) return;
-            BrandMenu.IsOpen = true;
-        }
-
-        private void OnGoScreen(object sender, RoutedEventArgs e)
-        {
-            BrandMenu.IsOpen = false;
-
-            var b = sender as System.Windows.Controls.Button;
-            if (b == null) return;
-
-            int n;
-            if (!int.TryParse(b.Tag as string, System.Globalization.NumberStyles.Integer,
-                              System.Globalization.CultureInfo.InvariantCulture, out n)) return;
-            _vm.Screen = n;
-        }
-
         private void OnDashboardIoActivated(object sender, DashboardView.IoEventArgs e)
         {
             _vm.GoGraph();
@@ -507,7 +430,6 @@ namespace LogScope.App.Views
             dlg.ShowDialog();
 
             SaveSettings();
-            _vm.RefreshSetNames();
             _vm.Dashboard.Refresh();
             _vm.Graph.Reload();
             Graph.OnDataChanged();
@@ -547,8 +469,7 @@ namespace LogScope.App.Views
                 case Key.F2: _vm.GoGraph(); e.Handled = true; break;
                 case Key.F3: _vm.GoHeatmap(); e.Handled = true; break;
                 case Key.Escape:
-                    if (BrandMenu.IsOpen) { BrandMenu.IsOpen = false; e.Handled = true; }
-                    else if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
+                    if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
                     break;
                 case Key.F5: OnRecompare(this, null); e.Handled = true; break;
                 case Key.O:

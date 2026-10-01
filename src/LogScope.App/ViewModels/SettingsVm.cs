@@ -33,47 +33,12 @@ namespace LogScope.App.ViewModels
             var rows = new ObservableCollection<ToleranceRowVm>();
             for (int i = 0; i < _s.Tolerances.Count; i++) rows.Add(new ToleranceRowVm(_s.Tolerances[i]));
             Tolerances = rows;
-            var names = new ObservableCollection<string>();
-            for (int i = 0; i < AppSettings.SetCount; i++) names.Add(_s.Sets[i].DisplayName(i));
-            SetNames = names;
-            _selectedSet = _s.ActiveSet;
         }
 
-        public ObservableCollection<string> SetNames { get; private set; }
-
-        private int _selectedSet;
-        public int SelectedSet
-        {
-            get { return _selectedSet; }
-            set
-            {
-                if (value < 0 || value >= AppSettings.SetCount) return;
-                if (!Set(ref _selectedSet, value)) return;
-                RaiseSetDetail();
-            }
-        }
-
-        private LogSet Current { get { return _s.Sets[_selectedSet]; } }
-
-        private void RaiseSetDetail()
-        {
-            Raise("SetTitle");
-            Raise("BeforeFolder");
-            Raise("AfterFolder");
-            Raise("BeforeFile");
-            Raise("AfterFile");
-        }
-
-        private void RefreshSetName()
-        {
-            SetNames[_selectedSet] = Current.DisplayName(_selectedSet);
-        }
-
-        public string SetTitle
-        {
-            get { return Current.Title ?? string.Empty; }
-            set { Current.Title = value ?? string.Empty; Raise(); RefreshSetName(); }
-        }
+        // 로그 세트(쌍을 여러 개 골라 가며 보기)는 없앴습니다. 설정은 그대로
+        // 쓰므로 지금 세트 하나만 다룹니다 — 기본 폴더와 기억된 경로가 거기
+        // 들어 있어서, 세트를 지웠다고 그 값을 버리면 안 됩니다.
+        private LogSet Current { get { return _s.ActiveLogSet; } }
 
         public string BeforeFolder
         {
