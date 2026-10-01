@@ -163,6 +163,7 @@ namespace System.Windows
         protected virtual void OnMouseLeftButtonDown(System.Windows.Input.MouseButtonEventArgs e) { }
         protected virtual void OnMouseLeftButtonUp(System.Windows.Input.MouseButtonEventArgs e) { }
         protected virtual void OnMouseRightButtonDown(System.Windows.Input.MouseButtonEventArgs e) { }
+        protected virtual void OnMouseRightButtonUp(System.Windows.Input.MouseButtonEventArgs e) { }
         protected virtual void OnMouseWheel(System.Windows.Input.MouseWheelEventArgs e) { }
         protected virtual void OnKeyDown(System.Windows.Input.KeyEventArgs e) { }
         protected virtual void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e) { }

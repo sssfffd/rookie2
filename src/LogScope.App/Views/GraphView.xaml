@@ -374,7 +374,7 @@
                     <!-- 마우스 쓰는 법. 도구 줄에 있던 것을 여기로 내렸습니다 —
                          거기 두면 도구 줄 한 줄을 통째로 먹었습니다. -->
                     <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
+                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B" />
                 </StackPanel>
             </Border>
 

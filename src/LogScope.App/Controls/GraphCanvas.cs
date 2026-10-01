@@ -79,6 +79,11 @@ namespace LogScope.App.Controls
         private double _dragT0, _dragT1, _dragCenter;
         private string _dragLane;
 
+        // 오른쪽 단추로 끌어 네모를 그리면 그 자리만큼 확대합니다.
+        private bool _band;
+        private Point _bandFrom, _bandTo;
+        private string _bandLane;
+
         private Decimator.Column[] _colsBefore = new Decimator.Column[0];
         private Decimator.Column[] _colsAfter = new Decimator.Column[0];
         private float[] _bandBefore = new float[0];
@@ -478,6 +483,119 @@ namespace LogScope.App.Controls
             DrawTimeAxis(dc, p, plot);
             DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
             DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
+            DrawLegend(dc, p, plot);
+            DrawBand(dc, p, plot);
+        }
+
+        /// <summary>
+        /// 어느 선이 이전이고 어느 선이 이후인지.
+        ///
+        /// 색만 다르게 그려 놓고 어디에도 적어 두지 않으면, 두 선 중 무엇이
+        /// 무엇인지 알 수가 없습니다. 도구 줄의 글자로 적어 두는 것으로는
+        /// 부족합니다 — 보고 있는 자리에서 멀고, 겹쳐보기에서는 IO 마다 색이
+        /// 달라 설명이 성립하지 않습니다.
+        ///
+        /// 그래서 <b>그 화면에서 실제로 쓰는 선을 그대로</b> 보여 줍니다.
+        ///   레인   : 이전 = 파랑 선, 이후 = 주황 선 (어느 IO 든 같습니다)
+        ///   겹쳐보기 : 첫 IO 의 두 선. IO 마다 색이 짝을 이룹니다
+        ///   차이 눈금 : 선이 하나뿐이라 그 하나만
+        /// </summary>
+        private void DrawLegend(DrawingContext dc, Palette p, Rect plot)
+        {
+            if (_channels.Count == 0) return;
+
+            Pen firstPen, secondPen;
+            string firstText, secondText, note;
+
+            if (Diffing)
+            {
+                firstPen = p.DiffPen; firstText = "차이 (이후 − 이전)";
+                secondPen = null; secondText = null;
+                note = null;
+            }
+            else if (_laneMode)
+            {
+                firstPen = p.BeforePen; firstText = "이전";
+                secondPen = p.AfterPen; secondText = "이후";
+                note = null;
+            }
+            else
+            {
+                firstPen = p.SeriesPen(0); firstText = "이전";
+                secondPen = PairPen(p, 0); secondText = "이후";
+                note = _channels.Count > 1 ? "IO 마다 색이 짝을 이룹니다" : null;
+            }
+
+            const double sample = 18, gap = 6, padX = 8, padY = 5, lineH = 16;
+
+            FormattedText t1 = Text(firstText, FontSmall, p.TextBrush);
+            FormattedText t2 = secondText != null ? Text(secondText, FontSmall, p.TextBrush) : null;
+            FormattedText t3 = note != null ? Text(note, FontSmall, p.MutedBrush) : null;
+
+            double textW = t1.Width;
+            if (t2 != null) textW = Math.Max(textW, t2.Width);
+            double w = sample + gap + textW + padX * 2;
+            if (t3 != null) w = Math.Max(w, t3.Width + padX * 2);
+
+            int rows = 1 + (t2 != null ? 1 : 0);
+            double h = rows * lineH + (t3 != null ? lineH : 0) + padY * 2;
+
+            // 오른쪽 위, <b>레인 머리글 아래</b>. 머리글 오른쪽에는 커서 값이
+            // 적히므로 그 줄을 비켜야 합니다.
+            double right = plot.Right - 6, top = plot.Top + HeaderH + 6;
+            var box = new Rect(right - w, top, w, h);
+            if (box.Left < plot.Left || box.Bottom > plot.Bottom) return;   // 너무 좁으면 접습니다
+
+            // 살짝 투명하게. 뒤에 선이 지나가도 아주 가려 버리지는 않습니다.
+            var back = new SolidColorBrush(p.Panel);
+            back.Opacity = 0.88;
+            back.Freeze();
+            dc.DrawRectangle(back, p.BorderPen, box);
+
+            double y = box.Top + padY + lineH * 0.5;
+            double x0 = box.Left + padX, x1 = x0 + sample;
+
+            dc.DrawLine(firstPen, new Point(x0, Snap(y)), new Point(x1, Snap(y)));
+            dc.DrawText(t1, new Point(x1 + gap, y - t1.Height * 0.5));
+
+            if (t2 != null)
+            {
+                y += lineH;
+                dc.DrawLine(secondPen, new Point(x0, Snap(y)), new Point(x1, Snap(y)));
+                dc.DrawText(t2, new Point(x1 + gap, y - t2.Height * 0.5));
+            }
+
+            if (t3 != null)
+            {
+                y += lineH;
+                dc.DrawText(t3, new Point(x0, y - t3.Height * 0.5));
+            }
+        }
+
+        /// <summary>오른쪽 단추로 끌고 있는 동안의 네모.</summary>
+        private void DrawBand(DrawingContext dc, Palette p, Rect plot)
+        {
+            if (!_band) return;
+
+            Rect r = BandRect(plot);
+            if (r.Width < 1 && r.Height < 1) return;
+
+            var fill = new SolidColorBrush(p.Accent);
+            fill.Opacity = 0.16;
+            fill.Freeze();
+            dc.DrawRectangle(fill, p.CursorAPen, r);
+        }
+
+        private Rect BandRect(Rect plot)
+        {
+            double x0 = Math.Min(_bandFrom.X, _bandTo.X), x1 = Math.Max(_bandFrom.X, _bandTo.X);
+            double y0 = Math.Min(_bandFrom.Y, _bandTo.Y), y1 = Math.Max(_bandFrom.Y, _bandTo.Y);
+
+            x0 = Clamp(x0, plot.Left, plot.Right);
+            x1 = Clamp(x1, plot.Left, plot.Right);
+            y0 = Clamp(y0, plot.Top, plot.Bottom);
+            y1 = Clamp(y1, plot.Top, plot.Bottom);
+            return new Rect(x0, y0, Math.Max(0, x1 - x0), Math.Max(0, y1 - y0));
         }
 
         private static Brush Frozen(Color c)
@@ -1580,6 +1698,14 @@ namespace LogScope.App.Controls
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            if (_band)
+            {
+                _bandTo = e.GetPosition(this);
+                InvalidateVisual();
+                return;
+            }
+
             if (!_dragging) return;
 
             Point now = e.GetPosition(this);
@@ -1630,6 +1756,141 @@ namespace LogScope.App.Controls
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) _cursorB = t; else _cursorA = t;
             InvalidateVisual();
             RaiseViewChanged();
+        }
+
+        // ---------------- 오른쪽 단추로 네모 확대 ----------------
+        //
+        // 휠로 확대하면 가운데를 기준으로 커지고 작아지는데, "이 구간만 크게"
+        // 를 하려면 휠과 끌기를 번갈아 여러 번 해야 했습니다. 네모를 그리면
+        // 그만큼 한 번에 맞춰 줍니다.
+        //
+        // <b>가로만 끌면 시간만</b> 확대합니다. 세로로도 끌었으면 그 레인의
+        // 값 범위까지 같이 맞춥니다 — 네모를 그렸는데 위아래가 그대로면
+        // "영역만큼" 이라는 말과 어긋납니다.
+
+        protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseRightButtonDown(e);
+            Focus();
+            if (_state == null || _channels.Count == 0) return;
+
+            Point at = e.GetPosition(this);
+            Rect plot = PlotArea;
+            if (at.X < plot.Left || at.X > plot.Right || at.Y < plot.Top || at.Y > plot.Bottom) return;
+
+            _band = true;
+            _bandFrom = at;
+            _bandTo = at;
+
+            // 어느 레인에서 시작했는지 적어 둡니다. 세로 확대는 그 레인에만
+            // 걸어야 합니다 — 레인을 넘나든 네모의 값 범위는 뜻이 없습니다.
+            string key; Rect inner; IoRowVm[] ios;
+            _bandLane = LaneAt(at, out key, out inner, out ios) ? key : null;
+
+            CaptureMouse();
+            e.Handled = true;
+        }
+
+        protected override void OnMouseRightButtonUp(MouseButtonEventArgs e)
+        {
+            base.OnMouseRightButtonUp(e);
+            if (!_band) return;
+
+            _band = false;
+            ReleaseMouseCapture();
+            e.Handled = true;
+
+            Rect plot = PlotArea;
+            _bandTo = e.GetPosition(this);
+            Rect r = BandRect(plot);
+
+            // 손이 떨린 정도는 확대가 아닙니다. 그냥 누른 것으로 봅니다.
+            if (r.Width < 6 && r.Height < 6) { InvalidateVisual(); return; }
+
+            // 세로 먼저. 시간을 바꾸면 BaseRange(보이는 구간 맞춤)가 달라져
+            // 값 범위 계산이 어긋납니다.
+            if (r.Height >= 6) ZoomBandValue(r);
+            if (r.Width >= 6) ZoomBandTime(r);
+
+            InvalidateVisual();
+            RaiseViewChanged();
+        }
+
+        private void ZoomBandTime(Rect r)
+        {
+            double a = XToTime(r.Left), b = XToTime(r.Right);
+            if (!(b > a)) return;
+
+            // 너무 얇게 자르는 것은 막습니다 (휠 확대와 같은 한계).
+            double full0, full1;
+            _state.FullTimeRange(out full0, out full1);
+            double minSpan = (full1 - full0) * 1e-7;
+            if (minSpan <= 0) minSpan = 1e-9;
+            if (b - a < minSpan)
+            {
+                double mid = (a + b) * 0.5;
+                a = mid - minSpan * 0.5;
+                b = mid + minSpan * 0.5;
+            }
+
+            _t0 = a;
+            _t1 = b;
+        }
+
+        /// <summary>
+        /// 네모의 위아래만큼 그 레인의 값 범위를 좁힙니다.
+        ///
+        /// 그리는 쪽과 <b>같은 식을 거꾸로</b> 풉니다 (FitLaneToVisible 과 같은
+        /// 자리입니다) — 기준 범위를 Zoom 으로 나누고 Center 에 놓는 것이
+        /// 그리는 규칙이므로, 원하는 vlo~vhi 에서 Zoom 과 Center 를 냅니다.
+        /// </summary>
+        private void ZoomBandValue(Rect r)
+        {
+            if (_bandLane == null) return;
+
+            // [구간 맞춤] 이 켜져 있으면 값 범위는 보이는 시간 구간을 따라
+            // 저절로 맞춰집니다. 거기에 네모 값을 적어 둬도 다음 그림에서
+            // 덮이므로, 손대지 않습니다 — 시간만 좁혀도 위아래는 알아서
+            // 그 구간에 맞습니다.
+            if (_fitVisible) return;
+
+            string key; Rect inner; IoRowVm[] ios;
+            if (!LaneAt(_bandFrom, out key, out inner, out ios)) return;
+            if (key != _bandLane || inner.Height <= 0) return;
+
+            double lo, hi;
+            bool usable;
+            BaseRange(ios, out lo, out hi, out usable);
+            if (!usable) return;
+
+            double full = hi - lo;
+            if (!(full > 0)) return;
+
+            LaneY ly = LaneFor(key);
+            double span = full / ly.Zoom;
+            if (!(span > 0)) return;
+            double center = CenterOf(ly, lo, hi, true);
+            double vlo = center - span * 0.5, vhi = center + span * 0.5;
+
+            // 네모가 레인 밖으로 나갔으면 그 레인 안으로 잘라 씁니다.
+            double y0 = Clamp(r.Top, inner.Top, inner.Bottom);
+            double y1 = Clamp(r.Bottom, inner.Top, inner.Bottom);
+            if (y1 - y0 < 4) return;
+
+            double vTop = YToValue(y0, inner, vlo, vhi);
+            double vBottom = YToValue(y1, inner, vlo, vhi);
+            if (!(vTop > vBottom)) return;
+
+            ly.Center = (vTop + vBottom) * 0.5;
+            ly.Zoom = full / (vTop - vBottom);
+            ClampZooms();
+        }
+
+        /// <summary>ValueToY 의 거꾸로. 둘이 어긋나면 네모와 다른 자리로 확대됩니다.</summary>
+        private static double YToValue(double y, Rect inner, double vlo, double vhi)
+        {
+            if (!(inner.Height > 0)) return vlo;
+            return vlo + (inner.Bottom - y) * (vhi - vlo) / inner.Height;
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
