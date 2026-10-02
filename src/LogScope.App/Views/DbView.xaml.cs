@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -125,23 +126,27 @@ namespace LogScope.App.Views
             if (cfg.Ibd2SdiPath.Length == 0) return;
             if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
 
-            string[] ibds;
-            try { ibds = Directory.GetFiles(path, "*.ibd"); }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { return; }
-            if (ibds.Length == 0) return;
+            // 파일 모으기는 폴더 읽기와 <b>같은 걸음</b>을 씁니다 — 하위 폴더까지,
+            // 바로 가기 고리는 건너뛰고, 겹 수 상한도 같습니다. 따로 훑으면
+            // 한쪽만 하위 폴더를 보게 되어 엇갈립니다.
+            var notes = new List<string>();
+            List<string> all = DbFolderReader.Files(path, null, notes);
 
-            Array.Sort(ibds, StringComparer.OrdinalIgnoreCase);
             int added = 0, failed = 0;
-
-            foreach (string ibd in ibds)
+            foreach (string ibd in all)
             {
+                string ext = (Path.GetExtension(ibd) ?? string.Empty).ToLowerInvariant();
+                if (ext != ".ibd") continue;
+
                 var side = new DbSnapshot();
                 DbTools.Run r = DbTools.ReadIbd(cfg.Ibd2SdiPath, ibd, side, DbTools.DefaultTimeoutMs);
                 if (!r.Ok) { failed++; continue; }
 
+                string prefix = DbFolderReader.Prefix(path, ibd);
                 for (int i = 0; i < side.Tables.Count; i++)
                 {
                     DbTable t = side.Tables[i];
+                    t.Name = prefix + t.Name;
                     DbTable have = snap.Find(t.Name);
                     if (have != null && have.HasRows) continue;   // .sql 쪽이 더 많이 압니다
                     if (have != null) snap.Tables.Remove(have);

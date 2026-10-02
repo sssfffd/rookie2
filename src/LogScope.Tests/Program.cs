@@ -104,6 +104,7 @@ namespace LogScope.Tests
                 AppConfigFile();
                 DbSqlDump();
                 DbCsvTable();
+                DbNestedFolders();
                 DbCompare();
                 DbScript();
                 ToleranceTableRules();
@@ -1927,6 +1928,94 @@ namespace LogScope.Tests
 
             DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는폴더"), null);
             Check("없는 폴더는 그렇다고만", none.Tables.Count == 0 && none.Notes.Count == 1, null);
+        }
+
+
+        /// <summary>
+        /// 폴더 안에 폴더가 나뉘어 있을 때. MySQL 데이터 폴더가
+        /// Data\&lt;DB 이름&gt;\&lt;표&gt; 꼴이라 이 모양이 실제 모양입니다.
+        /// </summary>
+        private static void DbNestedFolders()
+        {
+            Console.WriteLine("DB — 하위 폴더까지 읽기");
+
+            string root = Path.Combine(_dir, "nested");
+            Directory.CreateDirectory(Path.Combine(root, "db1"));
+            Directory.CreateDirectory(Path.Combine(root, "db2", "깊은곳"));
+
+            // 뿌리에 바로 있는 것, 그리고 폴더마다 같은 이름의 표
+            File.WriteAllText(Path.Combine(root, "root_table.csv"), "a\n1\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(root, "db1", "users.csv"), "id,name\n1,가\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(root, "db2", "users.csv"), "id,name\n1,나\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(root, "db2", "깊은곳", "deep.sql"),
+                "CREATE TABLE `t` (`k` int NOT NULL, PRIMARY KEY (`k`));\nINSERT INTO `t` VALUES (1);\n",
+                new UTF8Encoding(false));
+            File.WriteAllBytes(Path.Combine(root, "db1", "users.ibd"), new byte[] { 1, 2, 3 });
+
+            DbSnapshot snap = DbFolderReader.Read(root, null);
+
+            // 같은 이름의 표가 폴더마다 있어도 덮이지 않아야 합니다. 덮이면
+            // 한쪽 DB 가 조용히 사라집니다.
+            Check("뿌리의 표는 이름 그대로", snap.Find("root_table") != null, null);
+            Check("폴더 이름이 붙음 (db1)", snap.Find("db1.users") != null, null);
+            Check("폴더 이름이 붙음 (db2)", snap.Find("db2.users") != null, null);
+            Check("표 넷을 다 읽음", snap.Tables.Count == 4, "실제 " + snap.Tables.Count);
+
+            DbTable u1 = snap.Find("db1.users");
+            DbTable u2 = snap.Find("db2.users");
+            Check("같은 이름이어도 값이 섞이지 않음",
+                  u1.Rows[0].Get(1) == "가" && u2.Rows[0].Get(1) == "나",
+                  u1.Rows[0].Get(1) + "/" + u2.Rows[0].Get(1));
+
+            // 두 겹 아래의 .sql 도, 그 안의 표 이름에 폴더가 붙습니다.
+            Check("두 겹 아래의 덤프", snap.Find("db2.깊은곳.t") != null, null);
+
+            // 하위 폴더를 읽었다는 것과 .ibd 를 못 읽는다는 것을 둘 다 적습니다.
+            string notes = string.Join(" / ", snap.Notes.ToArray());
+            Check("하위 폴더를 읽었다고 적음", notes.Contains("하위 폴더"), notes);
+            Check("ibd 는 못 읽는다고 적음", notes.Contains(".ibd"), notes);
+
+            // 겹 수 상한: 0 이면 뿌리만 봅니다.
+            var shallow = new DbFolderReader.Options();
+            shallow.MaxDepth = 0;
+            DbSnapshot top = DbFolderReader.Read(root, shallow);
+            Check("겹 수 상한이 걸림", top.Tables.Count == 1 && top.Find("root_table") != null,
+                  "실제 " + top.Tables.Count);
+
+            // 파일 수 상한
+            var few = new DbFolderReader.Options();
+            few.MaxFiles = 2;
+            var notes2 = new List<string>();
+            List<string> some = DbFolderReader.Files(root, few, notes2);
+            Check("파일 수 상한이 걸림", some.Count == 2, "실제 " + some.Count);
+            Check("그렇다고 적음", string.Join(" ", notes2.ToArray()).Contains("상한"),
+                  string.Join(" ", notes2.ToArray()));
+
+            // 폴더 이름 붙이기 자체
+            Check("뿌리 파일에는 안 붙음",
+                  DbFolderReader.Prefix(root, Path.Combine(root, "x.csv")) == "", 
+                  DbFolderReader.Prefix(root, Path.Combine(root, "x.csv")));
+            Check("한 겹은 한 번",
+                  DbFolderReader.Prefix(root, Path.Combine(root, "db1", "x.csv")) == "db1.",
+                  DbFolderReader.Prefix(root, Path.Combine(root, "db1", "x.csv")));
+            Check("두 겹은 점으로 이음",
+                  DbFolderReader.Prefix(root, Path.Combine(root, "db2", "깊은곳", "x.csv")) == "db2.깊은곳.",
+                  DbFolderReader.Prefix(root, Path.Combine(root, "db2", "깊은곳", "x.csv")));
+            Check("바깥 경로면 안 붙음",
+                  DbFolderReader.Prefix(root, Path.Combine(_dir, "x.csv")) == "",
+                  DbFolderReader.Prefix(root, Path.Combine(_dir, "x.csv")));
+
+            // 폴더 구조가 같으면 그대로 견줘집니다 (이름이 같으니까).
+            string rootB = Path.Combine(_dir, "nested_b");
+            Directory.CreateDirectory(Path.Combine(rootB, "db1"));
+            File.WriteAllText(Path.Combine(rootB, "db1", "users.csv"), "id,name\n1,다\n",
+                              new UTF8Encoding(false));
+            DbDiffResult d = DbDiff.Compare(DbFolderReader.Read(root, null),
+                                            DbFolderReader.Read(rootB, null));
+            TableDiff td = null;
+            for (int i = 0; i < d.Tables.Count; i++) if (d.Tables[i].Name == "db1.users") td = d.Tables[i];
+            Check("폴더가 같으면 같은 표로 짝지음", td != null && td.Change == DbChange.Changed,
+                  td == null ? "못 찾음" : td.Change.ToString());
         }
 
         private static void DbCompare()

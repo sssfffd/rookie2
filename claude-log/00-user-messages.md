@@ -711,3 +711,12 @@
 > 근데 지금 메인화면이랑 로그 분석 화면 이상한대?
 
 → 답변: [44-dbview-covered-the-screen.md](44-dbview-covered-the-screen.md)
+
+---
+
+## 요청 57 — DB 경로의 하위 폴더까지
+
+> 할때 경로안에있는 파일들 다 읽어줘(db)
+> 이게 폴더 안에 또 폴더들이 나뉘어있어서
+
+→ 답변: [43-db-analysis.md](43-db-analysis.md) 의 뒷이야기
