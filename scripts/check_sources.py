@@ -54,12 +54,57 @@ for x in xamls:
 #    그래서 HEAD 와 견줘 "이번에 새로 어긋난 것" 만 잡습니다.
 import subprocess
 def counts(t):
-    t = re.sub(r'@"(?:[^"]|"")*"', '""', t)
-    t = re.sub(r'"(?:\\.|[^"\\])*"', '""', t)
-    t = re.sub(r"'(?:\\.|[^'\\])'", "'x'", t)
-    t = re.sub(r'//[^\n]*', '', t)
-    t = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
-    return tuple(t.count(o) - t.count(c) for o, c in (('{','}'), ('(',')'), ('[',']')))
+    """괄호 수. 문자열·문자 상수·주석은 센 것에서 뺍니다.
+
+    전에는 정규식으로 하나씩 지웠는데, 그 순서가 틀리면 조용히 엉뚱한 답이
+    나왔습니다. '"' 처럼 따옴표 한 글자를 담은 상수나 // 주석 안의 \" 가
+    문자열 시작으로 읽혀 뒤의 코드를 통째로 삼켰습니다. 그러면 괄호가
+    안 맞는다고 하거나, 반대로 안 맞는 것을 놓칩니다.
+
+    그래서 한 번 훑으면서 상태로 가립니다 — 컴파일러가 하는 방식입니다.
+    """
+    out = []
+    i, n = 0, len(t)
+    while i < n:
+        c = t[i]
+
+        if c == '/' and i + 1 < n and t[i + 1] == '/':
+            while i < n and t[i] != '\n': i += 1
+            continue
+        if c == '/' and i + 1 < n and t[i + 1] == '*':
+            i += 2
+            while i + 1 < n and not (t[i] == '*' and t[i + 1] == '/'): i += 1
+            i += 2
+            continue
+        if c == '@' and i + 1 < n and t[i + 1] == '"':
+            i += 2
+            while i < n:
+                if t[i] == '"':
+                    if i + 1 < n and t[i + 1] == '"': i += 2; continue
+                    i += 1; break
+                i += 1
+            continue
+        if c == '"':
+            i += 1
+            while i < n:
+                if t[i] == '\\': i += 2; continue
+                if t[i] == '"': i += 1; break
+                i += 1
+            continue
+        if c == "'":
+            i += 1
+            while i < n:
+                if t[i] == '\\': i += 2; continue
+                if t[i] == "'": i += 1; break
+                i += 1
+            continue
+
+        out.append(c)
+        i += 1
+
+    code = ''.join(out)
+    return tuple(code.count(o) - code.count(cl) for o, cl in (('{','}'), ('(',')'), ('[',']')))
+
 for c in css:
     rel = os.path.relpath(c, ROOT)
     now = counts(read(c))

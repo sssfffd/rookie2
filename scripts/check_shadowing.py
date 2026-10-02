@@ -34,12 +34,58 @@ NOT_TYPE = {
 }
 
 def strip(t):
-    t = re.sub(r'@"(?:[^"]|"")*"', '""', t)
-    t = re.sub(r'"(?:\\.|[^"\\])*"', '""', t)
-    t = re.sub(r"'(?:\\.|[^'\\])'", "'x'", t)
-    t = re.sub(r'//[^\n]*', '', t)
-    t = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
-    return t
+    """문자열·문자 상수·주석을 지웁니다. 줄 수는 그대로 둡니다.
+
+    정규식을 차례로 돌리면 순서 때문에 조용히 틀립니다 — '"' 처럼 따옴표
+    한 글자를 담은 상수가 문자열 시작으로 읽혀 뒤의 코드를 통째로 삼키고,
+    그러면 메서드 경계가 밀려 엉뚱한 곳을 지적합니다 (check_sources.py 의
+    괄호 세기에서 실제로 겪었습니다). 그래서 한 번 훑으면서 상태로 가립니다.
+    """
+    out = []
+    i, n = 0, len(t)
+    while i < n:
+        c = t[i]
+
+        if c == '/' and i + 1 < n and t[i + 1] == '/':
+            while i < n and t[i] != '\n': i += 1
+            continue
+        if c == '/' and i + 1 < n and t[i + 1] == '*':
+            i += 2
+            while i + 1 < n and not (t[i] == '*' and t[i + 1] == '/'):
+                if t[i] == '\n': out.append('\n')      # 줄 수를 지킵니다
+                i += 1
+            i += 2
+            continue
+        if c == '@' and i + 1 < n and t[i + 1] == '"':
+            i += 2
+            while i < n:
+                if t[i] == '"':
+                    if i + 1 < n and t[i + 1] == '"': i += 2; continue
+                    i += 1; break
+                if t[i] == '\n': out.append('\n')
+                i += 1
+            out.append('""')
+            continue
+        if c == '"':
+            i += 1
+            while i < n:
+                if t[i] == '\\': i += 2; continue
+                if t[i] == '"': i += 1; break
+                i += 1
+            out.append('""')
+            continue
+        if c == "'":
+            i += 1
+            while i < n:
+                if t[i] == '\\': i += 2; continue
+                if t[i] == "'": i += 1; break
+                i += 1
+            out.append("'x'")
+            continue
+
+        out.append(c)
+        i += 1
+    return ''.join(out)
 
 TYPE = r'(?:var|[A-Za-z_][\w\.]*(?:<[^<>;{}()]*>)?(?:\?)?(?:\[\s*[,\s]*\])?)'
 DECL = re.compile(r'(?:^|[;{}(]|\bout\s+)\s*(' + TYPE + r')\s+([a-z_]\w*)\s*(?==[^=>]|;|\bin\s)', re.M)

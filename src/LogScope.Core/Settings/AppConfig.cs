@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -49,17 +49,22 @@ namespace LogScope.Core.Settings
 
         private static readonly string[] DefaultTitles =
         {
-            "로그 비교", "분석 2", "분석 3",
+            "로그 비교", "DB 분석", "분석 3",
         };
 
         private static readonly string[] DefaultSummaries =
         {
             "이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.",
-            "아직 정해지지 않았습니다.",
+            "두 DB 의 표·열·값 차이를 보고 맞추는 SQL 을 만듭니다.",
             "아직 정해지지 않았습니다.",
         };
 
         private string _name = DefaultName;
+        private string _dbBefore = string.Empty;
+        private string _dbAfter = string.Empty;
+        private string _dbDumpBefore = string.Empty;
+        private string _dbDumpAfter = string.Empty;
+        private string _ibd2sdi = string.Empty;
         private readonly string[] _titles = (string[])DefaultTitles.Clone();
         private readonly string[] _summaries = (string[])DefaultSummaries.Clone();
 
@@ -74,6 +79,38 @@ namespace LogScope.Core.Settings
 
         /// <summary>창 제목과 왼쪽 위에 적히는 프로그램 이름.</summary>
         public string Name { get { return _name; } }
+
+        // ---------------- 분석 2 (DB) ----------------
+        //
+        // 견줄 DB 두 벌이 있는 자리입니다. 폴더면 그 안의 .sql / .csv 를 읽고,
+        // 파일 하나면 그 파일을 읽습니다.
+
+        public string DbBefore { get { return _dbBefore; } }
+        public string DbAfter { get { return _dbAfter; } }
+
+        /// <summary>
+        /// <b>선택</b>: .sql 을 뽑아 오는 명령 줄. 적어 두면 읽기 전에 이걸 돌려
+        /// 덤프를 만들고 그 글을 읽습니다.
+        ///
+        /// 명령 줄을 <b>그대로</b> 적게 둔 이유가 있습니다. 사용자 이름과 암호를
+        /// 우리가 받아 들고 있으면 그걸 어디에 어떻게 저장할지가 새 문제가 되고,
+        /// 명령 줄에 암호를 박으면 작업 관리자에 그대로 보입니다. 접속 방법은
+        /// MySQL 쪽 방식(--login-path, --defaults-extra-file)에 맡기는 편이
+        /// 안전합니다.
+        ///
+        /// <b>알아 둘 것</b>: 적어 둔 프로그램을 자식 프로세스로 띄웁니다.
+        /// 남이 바꿔 쓸 수 있는 폴더의 실행 파일을 가리키지 마세요.
+        /// 그리고 mysqldump 는 <b>돌고 있는 서버</b>에 접속해서 뽑습니다 —
+        /// 멈춘 데이터 폴더(.frm/.ibd)만으로는 뽑을 수 없습니다.
+        /// </summary>
+        public string DbDumpBefore { get { return _dbDumpBefore; } }
+        public string DbDumpAfter { get { return _dbDumpAfter; } }
+
+        /// <summary>
+        /// <b>선택</b>: ibd2sdi 경로. MySQL 8 의 .ibd 에서 <b>표와 열 이름만</b>
+        /// 꺼냅니다 (값은 못 꺼냅니다). 서버가 멈춰 있어도 됩니다.
+        /// </summary>
+        public string Ibd2SdiPath { get { return _ibd2sdi; } }
 
         /// <summary>1 부터 셉니다 (분석 1 · 2 · 3). 범위를 벗어나면 빈 글자.</summary>
         public string Title(int number)
@@ -254,6 +291,11 @@ namespace LogScope.Core.Settings
                 if (value.Length == 0) continue;   // 비워 둔 줄은 기본값입니다.
 
                 if (key == "name") { it._name = value; continue; }
+                if (key == "db.before") { it._dbBefore = value; continue; }
+                if (key == "db.after") { it._dbAfter = value; continue; }
+                if (key == "db.dump.before") { it._dbDumpBefore = value; continue; }
+                if (key == "db.dump.after") { it._dbDumpAfter = value; continue; }
+                if (key == "db.ibd2sdi") { it._ibd2sdi = value; continue; }
 
                 for (int n = 0; n < Count; n++)
                 {
@@ -294,6 +336,7 @@ namespace LogScope.Core.Settings
             sb.AppendLine("# name      : 창 제목과 왼쪽 위에 적히는 이름. 실행 파일 이름도 이걸 따릅니다");
             sb.AppendLine("#             (실행 파일 이름은 build.bat 이 붙이므로 다시 빌드해야 바뀝니다).");
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
+            sb.AppendLine("# db.before : 분석 2 에서 견줄 DB 두 벌의 자리 (폴더 또는 .sql 파일).");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine();
@@ -301,6 +344,9 @@ namespace LogScope.Core.Settings
             {
                 sb.AppendLine("analysis" + (i + 1) + " = " + DefaultTitles[i] + " | " + DefaultSummaries[i]);
             }
+            sb.AppendLine();
+            sb.AppendLine("# db.before = D:\\db\\이전");
+            sb.AppendLine("# db.after  = D:\\db\\이후");
             return sb.ToString();
         }
     }

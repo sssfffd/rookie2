@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using LogScope.Core.Align;
 using LogScope.Core.Compare;
+using LogScope.Core.Db;
 using LogScope.Core.History;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
@@ -101,6 +102,10 @@ namespace LogScope.Tests
                 SettingsRoundTrip();
                 AppConfigParse();
                 AppConfigFile();
+                DbSqlDump();
+                DbCsvTable();
+                DbCompare();
+                DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
             }
@@ -1800,6 +1805,278 @@ namespace LogScope.Tests
                   !rec.SameBasis(0.5, 0, "", "", string.Empty), null);
         }
 
+        // ======================= 분석 2 : DB =======================
+
+        private static string WriteText(string name, string body)
+        {
+            string path = Path.Combine(_dir, name);
+            File.WriteAllText(path, body, new UTF8Encoding(false));
+            return path;
+        }
+
+        /// <summary>.sql 덤프 읽기. mysqldump 가 뽑는 모양을 그대로 흉내 냈습니다.</summary>
+        private static void DbSqlDump()
+        {
+            Console.WriteLine("DB — .sql 덤프 읽기");
+
+            string dump =
+                "-- MySQL dump 10.13  Distrib 8.0.36\n" +
+                "/*!40101 SET NAMES utf8 */;\n" +
+                "DROP TABLE IF EXISTS `recipe`;\n" +
+                "CREATE TABLE `recipe` (\n" +
+                "  `id` int(11) NOT NULL AUTO_INCREMENT,\n" +
+                "  `name` varchar(64) NOT NULL DEFAULT 'none',\n" +
+                "  `temp_max` decimal(6,2) DEFAULT NULL,\n" +
+                "  `note` text,\n" +
+                "  PRIMARY KEY (`id`),\n" +
+                "  KEY `by_name` (`name`)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n" +
+                "INSERT INTO `recipe` VALUES " +
+                "(1,'가열 A',182.50,NULL)," +
+                "(2,'가열; B',NULL,'쉼표, 그리고 세미콜론;')," +
+                "(3,'따옴표 \\' 포함',0.00,'줄\\n바꿈');\n" +
+                "CREATE TABLE `empty_one` (`k` int NOT NULL, PRIMARY KEY (`k`));\n";
+
+            var snap = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("dump_a.sql", dump), snap, 0);
+
+            Check("표 둘", snap.Tables.Count == 2, "실제 " + snap.Tables.Count);
+
+            DbTable t = snap.Find("recipe");
+            Check("표를 찾음", t != null, null);
+            Check("열 넷", t.Columns.Count == 4, "실제 " + t.Columns.Count);
+            Check("열 이름", t.Columns[1].Name == "name", t.Columns[1].Name);
+            Check("타입 그대로", t.Columns[2].Type == "decimal(6,2)", t.Columns[2].Type);
+            Check("NOT NULL 읽음", !t.Columns[0].Nullable, null);
+            Check("NULL 허용 읽음", t.Columns[2].Nullable, null);
+            Check("기본값 읽음", t.Columns[1].Default == "'none'", t.Columns[1].Default);
+            Check("기본 키", t.Columns[0].IsKey && !t.Columns[1].IsKey, null);
+            Check("KEY 는 열이 아님", t.Find("by_name") == null, null);
+
+            Check("행 셋", t.Rows.Count == 3, "실제 " + t.Rows.Count);
+            Check("값 읽음", t.Rows[0].Get(1) == "가열 A", t.Rows[0].Get(1));
+            Check("NULL 은 null 로", t.Rows[0].Get(3) == null, "실제 " + t.Rows[0].Get(3));
+
+            // 값 안의 세미콜론과 쉼표 때문에 문장이나 값이 잘리면 안 됩니다.
+            Check("값 안의 세미콜론", t.Rows[1].Get(1) == "가열; B", t.Rows[1].Get(1));
+            Check("값 안의 쉼표", t.Rows[1].Get(3) == "쉼표, 그리고 세미콜론;", t.Rows[1].Get(3));
+
+            // 이스케이프는 원래 글자로 되돌립니다. 그래야 같은 값을 다르게 적어
+            // 둔 두 덤프를 "차이" 로 세지 않습니다.
+            Check("이스케이프한 따옴표는 글자 하나", t.Rows[2].Get(1) == "따옴표 ' 포함", t.Rows[2].Get(1));
+            Check("줄바꿈 이스케이프", t.Rows[2].Get(3) == "줄\n바꿈", t.Rows[2].Get(3));
+
+            DbTable e = snap.Find("empty_one");
+            Check("행 없는 표도 읽음", e != null && e.Columns.Count == 1, null);
+            Check("행이 없으면 HasRows 거짓", e != null && !e.HasRows, null);
+
+            // 열 목록이 붙은 INSERT, CREATE 없는 INSERT
+            string dump2 =
+                "CREATE TABLE `t1` (`a` int NOT NULL, `b` int, PRIMARY KEY (`a`));\n" +
+                "INSERT INTO `t1` (`b`,`a`) VALUES (20,1);\n" +
+                "INSERT INTO `orphan` VALUES (1,'x');\n";
+            var s2 = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("dump_b.sql", dump2), s2, 0);
+
+            DbTable t1 = s2.Find("t1");
+            Check("열 목록 순서를 따름", t1.Rows[0].Get(0) == "1" && t1.Rows[0].Get(1) == "20",
+                  t1.Rows[0].Get(0) + "/" + t1.Rows[0].Get(1));
+
+            DbTable orphan = s2.Find("orphan");
+            Check("CREATE 없는 INSERT 도 읽음", orphan != null && orphan.Rows.Count == 1, null);
+            Check("그때는 모른다고 적음", orphan != null && orphan.Note.Contains("CREATE TABLE 이 없어"),
+                  orphan == null ? null : orphan.Note);
+
+            // 행 상한
+            var big = new StringBuilder(
+                "CREATE TABLE `b` (`k` int NOT NULL, PRIMARY KEY (`k`));\nINSERT INTO `b` VALUES ");
+            for (int i = 0; i < 50; i++) { if (i > 0) big.Append(','); big.Append('(').Append(i).Append(')'); }
+            big.Append(";\n");
+            var s3 = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("dump_c.sql", big.ToString()), s3, 10);
+            DbTable b = s3.Find("b");
+            Check("행 상한이 걸림", b.Rows.Count == 10, "실제 " + b.Rows.Count);
+            Check("상한을 밝힘", b.Note.Contains("상한"), b.Note);
+        }
+
+        private static void DbCsvTable()
+        {
+            Console.WriteLine("DB — .csv 표 읽기");
+
+            string path = WriteText("설비목록.csv", "id,name,temp\n1,가열 A,182.5\n2,\"쉼표, 포함\",0\n");
+            DbTable t = CsvTableReader.Read(path, 0);
+
+            Check("파일 이름이 표 이름", t.Name == "설비목록", t.Name);
+            Check("첫 줄이 열 이름", t.Columns.Count == 3 && t.Columns[1].Name == "name", t.Columns[1].Name);
+            Check("행 둘", t.Rows.Count == 2, "실제 " + t.Rows.Count);
+            Check("따옴표 안의 쉼표", t.Rows[1].Get(1) == "쉼표, 포함", t.Rows[1].Get(1));
+            Check("CSV 에는 키가 없음", !t.HasKey, null);
+
+            // 폴더로 읽기 + 못 읽는 파일을 밝히는지
+            string dir = Path.Combine(_dir, "dbfolder");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "t.csv"), "a,b\n1,2\n", new UTF8Encoding(false));
+            File.WriteAllBytes(Path.Combine(dir, "big_table.ibd"), new byte[] { 1, 2, 3 });
+            File.WriteAllBytes(Path.Combine(dir, "big_table.frm"), new byte[] { 1, 2, 3 });
+
+            DbSnapshot snap = DbFolderReader.Read(dir, null);
+            Check("폴더에서 csv 를 읽음", snap.Find("t") != null, null);
+            Check("못 읽는 파일을 밝힘", snap.Notes.Count > 0, null);
+            Check("ibd 를 적음", snap.Notes[0].Contains(".ibd"), snap.Notes[0]);
+            Check("frm 도 적음", snap.Notes[0].Contains(".frm"), snap.Notes[0]);
+
+            DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는폴더"), null);
+            Check("없는 폴더는 그렇다고만", none.Tables.Count == 0 && none.Notes.Count == 1, null);
+        }
+
+        private static void DbCompare()
+        {
+            Console.WriteLine("DB — 두 벌 견주기");
+
+            string before =
+                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
+                " `temp_max` decimal(6,2) DEFAULT NULL, `old_only` int, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1,'가열 A',182.50,7),(2,'가열 B',150.00,8),(3,'사라질 행',1.00,9);\n" +
+                "CREATE TABLE `gone` (`k` int NOT NULL, PRIMARY KEY (`k`));\n" +
+                "INSERT INTO `gone` VALUES (1);\n";
+
+            string after =
+                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(128) NOT NULL," +
+                " `temp_max` decimal(6,2) DEFAULT NULL, `renamed_only` int, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1,'가열 A',999.90,7),(2,'가열 B',150.00,8),(4,'새 행',2.00,10);\n" +
+                "CREATE TABLE `born` (`k` int NOT NULL, PRIMARY KEY (`k`));\n" +
+                "INSERT INTO `born` VALUES (1);\n";
+
+            var b = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("cmp_before.sql", before), b, 0);
+            var a = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("cmp_after.sql", after), a, 0);
+
+            DbDiffResult d = DbDiff.Compare(b, a);
+
+            Check("이전에만 있는 표", d.TablesOnlyBefore == 1, "실제 " + d.TablesOnlyBefore);
+            Check("이후에만 있는 표", d.TablesOnlyAfter == 1, "실제 " + d.TablesOnlyAfter);
+            Check("달라진 표", d.TablesChanged == 1, "실제 " + d.TablesChanged);
+            Check("달라진 표가 위로", d.Tables[0].Change == DbChange.Changed, d.Tables[0].Change.ToString());
+
+            TableDiff td = null;
+            for (int i = 0; i < d.Tables.Count; i++) if (d.Tables[i].Name == "recipe") td = d.Tables[i];
+            Check("recipe 를 찾음", td != null, null);
+
+            ColumnDiff name = null, oldOnly = null, newOnly = null;
+            for (int i = 0; i < td.Columns.Count; i++)
+            {
+                if (td.Columns[i].Name == "name") name = td.Columns[i];
+                if (td.Columns[i].Name == "old_only") oldOnly = td.Columns[i];
+                if (td.Columns[i].Name == "renamed_only") newOnly = td.Columns[i];
+            }
+
+            Check("타입 변경을 잡음", name != null && name.TypeChanged, null);
+            Check("타입 변경을 적음",
+                  name.What().Contains("varchar(64)") && name.What().Contains("varchar(128)"), name.What());
+
+            // 모양과 자리가 같은 짝 하나뿐이면 "이름이 바뀐 듯" 으로 짐작합니다.
+            Check("없어진 열", oldOnly != null && oldOnly.Change == DbChange.OnlyBefore, null);
+            Check("이름 변경을 짐작", oldOnly.RenameGuess == "renamed_only", oldOnly.RenameGuess);
+            Check("짝의 반대쪽도 짐작", newOnly != null && newOnly.RenameGuess == "old_only", null);
+            // 짐작은 "~ 듯" 으로만 적습니다. 단정하면 그걸 믿고 ALTER 를 돌립니다.
+            Check("단정하지 않음", oldOnly.What().Contains("듯"), oldOnly.What());
+
+            Check("값 바뀐 행", td.RowsChanged == 1, "실제 " + td.RowsChanged);
+            Check("없어진 행", td.RowsRemoved == 1, "실제 " + td.RowsRemoved);
+            Check("생긴 행", td.RowsAdded == 1, "실제 " + td.RowsAdded);
+
+            RowDiff changed = null;
+            for (int i = 0; i < td.Rows.Count; i++)
+                if (td.Rows[i].Change == DbChange.Changed) changed = td.Rows[i];
+            Check("바뀐 열만 집어냄", changed != null && changed.ChangedColumns.Count == 1, null);
+            Check("그 열이 temp_max", td.Before.Columns[changed.ChangedColumns[0]].Name == "temp_max",
+                  td.Before.Columns[changed.ChangedColumns[0]].Name);
+
+            // 키가 없으면 짝지을 수 없다고 밝힙니다.
+            var kb = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("nokey_b.sql",
+                "CREATE TABLE `t` (`a` int, `b` int);\nINSERT INTO `t` VALUES (1,2);\n"), kb, 0);
+            var ka = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("nokey_a.sql",
+                "CREATE TABLE `t` (`a` int, `b` int);\nINSERT INTO `t` VALUES (1,3);\n"), ka, 0);
+
+            TableDiff kt = DbDiff.Compare(kb, ka).Tables[0];
+            Check("키가 없으면 지우고 생긴 것으로",
+                  kt.RowsRemoved == 1 && kt.RowsAdded == 1 && kt.RowsChanged == 0, kt.Summary());
+            Check("그렇다고 밝힘", kt.RowNote.Contains("기본 키가 없어"), kt.RowNote);
+
+            // 행을 못 읽은 표(모양만)는 "행 차이 없음" 이 아니라 "못 읽음" 입니다.
+            var sb2 = new DbSnapshot();
+            var shape = new DbTable(); shape.Name = "x"; shape.HasRows = false;
+            shape.Columns.Add(new DbColumn { Name = "k", Type = "int" });
+            sb2.Tables.Add(shape);
+            var sa2 = new DbSnapshot();
+            var shape2 = new DbTable(); shape2.Name = "x"; shape2.HasRows = false;
+            shape2.Columns.Add(new DbColumn { Name = "k", Type = "int" });
+            sa2.Tables.Add(shape2);
+            TableDiff st = DbDiff.Compare(sb2, sa2).Tables[0];
+            Check("행을 못 읽었다고 밝힘", st.RowNote.Contains("행을 읽지 못했"), st.RowNote);
+        }
+
+        private static void DbScript()
+        {
+            Console.WriteLine("DB — SQL 글 만들기");
+
+            var b = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("sc_before.sql",
+                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
+                " `temp_max` decimal(6,2) DEFAULT NULL, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1,'가열 A',182.50),(3,'지울 행',1.00);\n"), b, 0);
+
+            var a = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("sc_after.sql",
+                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
+                " `temp_max` decimal(6,2) DEFAULT NULL, `added` int DEFAULT '0', PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1,'가열 A2',999.90,5),(4,'새 행',2.00,6);\n"), a, 0);
+
+            DbDiffResult d = DbDiff.Compare(b, a);
+            string sql = SqlScript.Build(d, null);
+
+            Check("UPDATE 를 만듦", sql.Contains("UPDATE `recipe` SET"), null);
+            Check("바뀐 값이 들어감", sql.Contains("999.90"), null);
+            Check("WHERE 가 키로", sql.Contains("WHERE `id` = 1"), null);
+            Check("새 열은 ADD COLUMN", sql.Contains("ADD COLUMN `added`"), null);
+            Check("INSERT 를 만듦", sql.Contains("INSERT INTO `recipe`"), null);
+
+            // 지우는 문장은 늘 주석입니다. 글만 보고 돌렸을 때 값이 사라지면 안 됩니다.
+            int at = sql.IndexOf("DELETE FROM");
+            Check("DELETE 가 들어감", at > 0, null);
+            int lineStart = sql.LastIndexOf('\n', at) + 1;
+            Check("DELETE 는 주석으로", sql.Substring(lineStart, at - lineStart).Trim().StartsWith("--"),
+                  sql.Substring(lineStart, Math.Min(40, sql.Length - lineStart)));
+
+            // 따옴표가 든 값은 반드시 막아야 합니다. 안 막으면 글이 깨지고,
+            // 깨진 글을 사람이 돌리면 엉뚱한 문장이 됩니다.
+            Check("따옴표를 막음", SqlScript.Literal("가열 A'") == "'가열 A\\''", SqlScript.Literal("가열 A'"));
+            Check("역슬래시도 막음", SqlScript.Literal("a\\b") == "'a\\\\b'", SqlScript.Literal("a\\b"));
+            Check("NULL 은 따옴표 없이", SqlScript.Literal(null) == "NULL", SqlScript.Literal(null));
+            Check("숫자는 따옴표 없이", SqlScript.Literal("182.50") == "182.50", SqlScript.Literal("182.50"));
+            Check("이름의 역따옴표를 막음", SqlScript.Quote("a`b") == "`a``b`", SqlScript.Quote("a`b"));
+
+            // 되돌리는 방향
+            var opt = new SqlScript.Options();
+            opt.Way = SqlScript.Direction.ToBefore;
+            string back = SqlScript.Build(d, opt);
+            Check("되돌리는 글은 반대 값", back.Contains("182.50"), null);
+            Check("되돌릴 때 새 열은 지우기(주석)",
+                  back.Contains("-- ALTER TABLE `recipe` DROP COLUMN `added`"), null);
+
+            // 명령 줄 나누기
+            string exe, args;
+            Check("따옴표 경로를 나눔",
+                  DbTools.SplitCommand("\"C:\\My Tools\\mysqldump.exe\" -u root db", out exe, out args)
+                  && exe == "C:\\My Tools\\mysqldump.exe" && args == "-u root db", exe + " | " + args);
+            Check("따옴표 없는 것도", DbTools.SplitCommand("mysqldump db", out exe, out args)
+                  && exe == "mysqldump" && args == "db", exe + " | " + args);
+            Check("빈 줄은 거짓", !DbTools.SplitCommand("   ", out exe, out args), null);
+        }
+
         /// <summary>
         /// 설정 파일(config.txt) 읽기. 손으로 고치는 파일이라 <b>엉망으로
         /// 적힌 경우</b>가 실제로 생깁니다 — 그때 기본값으로 버텨야 합니다.
@@ -1811,7 +2088,7 @@ namespace LogScope.Tests
             AppConfig def = AppConfig.Default;
             Check("기본 프로그램 이름", def.Name == "LogScope", def.Name);
             Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
-            Check("기본 이름 2", def.Title(2) == "분석 2", def.Title(2));
+            Check("기본 이름 2", def.Title(2) == "DB 분석", def.Title(2));
             Check("기본 이름 3", def.Title(3) == "분석 3", def.Title(3));
 
             AppConfig c = AppConfig.Parse(new[]

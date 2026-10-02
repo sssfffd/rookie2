@@ -99,6 +99,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\DbView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\GraphView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -145,6 +149,7 @@
     <Compile Include="ViewModels\HeatmapVm.cs" />
     <Compile Include="ViewModels\SettingsVm.cs" />
     <Compile Include="ViewModels\ToleranceRowVm.cs" />
+    <Compile Include="ViewModels\DbVm.cs" />
     <Compile Include="ViewModels\ShellVm.cs" />
     <Compile Include="Controls\GraphCanvas.cs" />
     <Compile Include="Controls\HeatmapCanvas.cs" />
@@ -166,6 +171,10 @@
     </Compile>
     <Compile Include="Views\PlaceholderView.xaml.cs">
       <DependentUpon>PlaceholderView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\DbView.xaml.cs">
+      <DependentUpon>DbView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Views\GraphView.xaml.cs">

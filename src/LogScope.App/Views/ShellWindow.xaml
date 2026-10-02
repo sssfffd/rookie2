@@ -144,9 +144,11 @@
                                             Converter={StaticResource BoolToVisibility}}" />
             </Grid>
 
-            <!-- 분석 2 · 3 — 아직 빈 화면입니다. -->
-            <v:PlaceholderView Heading="{Binding Analysis2Name}"
-                               Visibility="{Binding ShowAnalysis2, Converter={StaticResource BoolToVisibility}}" />
+            <!-- 분석 2 — DB 분석. -->
+            <v:DbView x:Name="Db"
+                      Visibility="{Binding ShowAnalysis2, Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- 분석 3 — 아직 빈 화면입니다. -->
             <v:PlaceholderView Heading="{Binding Analysis3Name}"
                                Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
