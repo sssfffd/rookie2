@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -34,18 +34,49 @@ namespace LogScope.Core.Db
         }
 
         /// <summary>
-        /// 명령 줄 하나를 돌려 표준 출력을 파일로 받습니다 (덤프).
-        /// 끝나면 그 파일을 <see cref="SqlDumpReader"/> 로 읽으면 됩니다.
+        /// 실행 파일과 인수를 정합니다.
+        ///
+        ///   <paramref name="exePath"/> 가 적혀 있으면 → 그것이 실행 파일,
+        ///     <paramref name="dumpLine"/> 은 <b>인수</b>입니다.
+        ///   비어 있으면 → <paramref name="dumpLine"/> 이 <b>명령 줄 전체</b>입니다.
+        ///
+        /// 둘을 섞어 짐작하지 않습니다. "경로를 적어 두었는가" 하나로 갈립니다 —
+        /// 글만 보고 어느 쪽인지 알 수 있어야 합니다.
         /// </summary>
-        public static Run DumpTo(string commandLine, string outFile, int timeoutMs)
+        public static bool Resolve(string exePath, string dumpLine, out string exe, out string args)
+        {
+            exe = string.Empty; args = string.Empty;
+
+            string path = (exePath ?? string.Empty).Trim();
+            string line = (dumpLine ?? string.Empty).Trim();
+
+            // 적어 둔 경로에 따옴표가 붙어 있으면 떼어 줍니다.
+            if (path.Length >= 2 && path[0] == '"' && path[path.Length - 1] == '"')
+                path = path.Substring(1, path.Length - 2).Trim();
+
+            if (path.Length > 0)
+            {
+                exe = path;
+                args = line;
+                return exe.Length > 0;
+            }
+
+            if (line.Length == 0) return false;
+            return SplitCommand(line, out exe, out args);
+        }
+
+        /// <summary>
+        /// 덤프를 받아 파일로 저장합니다. 끝나면 그 파일을
+        /// <see cref="SqlDumpReader"/> 로 읽으면 됩니다.
+        /// </summary>
+        public static Run DumpTo(string exePath, string dumpLine, string outFile, int timeoutMs)
         {
             var r = new Run();
-            if (string.IsNullOrEmpty(commandLine)) { r.Error = "명령 줄이 비어 있습니다."; return r; }
 
             string exe, args;
-            if (!SplitCommand(commandLine, out exe, out args))
+            if (!Resolve(exePath, dumpLine, out exe, out args))
             {
-                r.Error = "명령 줄을 읽지 못했습니다: " + commandLine;
+                r.Error = "mysqldump 경로나 명령 줄이 비어 있습니다.";
                 return r;
             }
             if (!File.Exists(exe))

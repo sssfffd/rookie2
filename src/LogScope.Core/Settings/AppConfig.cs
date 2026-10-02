@@ -62,6 +62,7 @@ namespace LogScope.Core.Settings
         private string _name = DefaultName;
         private string _dbBefore = string.Empty;
         private string _dbAfter = string.Empty;
+        private string _mysqlDump = string.Empty;
         private string _dbDumpBefore = string.Empty;
         private string _dbDumpAfter = string.Empty;
         private string _ibd2sdi = string.Empty;
@@ -89,19 +90,26 @@ namespace LogScope.Core.Settings
         public string DbAfter { get { return _dbAfter; } }
 
         /// <summary>
-        /// <b>선택</b>: .sql 을 뽑아 오는 명령 줄. 적어 두면 읽기 전에 이걸 돌려
-        /// 덤프를 만들고 그 글을 읽습니다.
-        ///
-        /// 명령 줄을 <b>그대로</b> 적게 둔 이유가 있습니다. 사용자 이름과 암호를
-        /// 우리가 받아 들고 있으면 그걸 어디에 어떻게 저장할지가 새 문제가 되고,
-        /// 명령 줄에 암호를 박으면 작업 관리자에 그대로 보입니다. 접속 방법은
-        /// MySQL 쪽 방식(--login-path, --defaults-extra-file)에 맡기는 편이
-        /// 안전합니다.
+        /// <b>선택</b>: mysqldump 실행 파일의 자리. 적어 두면 아래 두 줄은
+        /// <b>인수만</b> 적으면 됩니다.
         ///
         /// <b>알아 둘 것</b>: 적어 둔 프로그램을 자식 프로세스로 띄웁니다.
         /// 남이 바꿔 쓸 수 있는 폴더의 실행 파일을 가리키지 마세요.
         /// 그리고 mysqldump 는 <b>돌고 있는 서버</b>에 접속해서 뽑습니다 —
         /// 멈춘 데이터 폴더(.frm/.ibd)만으로는 뽑을 수 없습니다.
+        /// </summary>
+        public string MysqlDumpPath { get { return _mysqlDump; } }
+
+        /// <summary>
+        /// <b>선택</b>: 덤프를 받을 때 쓸 인수(또는 명령 줄 전체).
+        ///
+        ///   db.mysqldump 를 적어 두었으면 → <b>인수만</b>
+        ///   안 적어 두었으면           → <b>명령 줄 전체</b> (실행 파일 포함)
+        ///
+        /// 접속 정보를 우리가 받아 들고 있지 않습니다. 사용자 이름과 암호를
+        /// 저장하기 시작하면 "그걸 어디에 어떻게 두느냐" 가 새 문제가 되고,
+        /// 명령 줄에 암호를 박으면 작업 관리자에 그대로 보입니다. 접속 방법은
+        /// MySQL 쪽 방식(--login-path, --defaults-extra-file)에 맡깁니다.
         /// </summary>
         public string DbDumpBefore { get { return _dbDumpBefore; } }
         public string DbDumpAfter { get { return _dbDumpAfter; } }
@@ -293,6 +301,7 @@ namespace LogScope.Core.Settings
                 if (key == "name") { it._name = value; continue; }
                 if (key == "db.before") { it._dbBefore = value; continue; }
                 if (key == "db.after") { it._dbAfter = value; continue; }
+                if (key == "db.mysqldump") { it._mysqlDump = value; continue; }
                 if (key == "db.dump.before") { it._dbDumpBefore = value; continue; }
                 if (key == "db.dump.after") { it._dbDumpAfter = value; continue; }
                 if (key == "db.ibd2sdi") { it._ibd2sdi = value; continue; }

@@ -2075,6 +2075,33 @@ namespace LogScope.Tests
             Check("따옴표 없는 것도", DbTools.SplitCommand("mysqldump db", out exe, out args)
                   && exe == "mysqldump" && args == "db", exe + " | " + args);
             Check("빈 줄은 거짓", !DbTools.SplitCommand("   ", out exe, out args), null);
+
+            // 실행 파일 경로를 따로 적어 두면 아래 줄은 인수만입니다.
+            Check("경로 + 인수",
+                  DbTools.Resolve("C:\\MySQL\\bin\\mysqldump.exe", "--login-path=old --databases mydb",
+                                  out exe, out args)
+                  && exe == "C:\\MySQL\\bin\\mysqldump.exe"
+                  && args == "--login-path=old --databases mydb", exe + " | " + args);
+
+            // 경로에 따옴표를 붙여 적어도 됩니다 — 공백이 든 경로를 그렇게 적는
+            // 습관이 있어서, 그걸 그대로 실행 파일 이름으로 넘기면 못 찾습니다.
+            Check("경로의 따옴표는 떼어 냄",
+                  DbTools.Resolve("\"C:\\My Tools\\mysqldump.exe\"", "--databases mydb",
+                                  out exe, out args)
+                  && exe == "C:\\My Tools\\mysqldump.exe", exe);
+
+            // 경로를 안 적었으면 아래 줄이 명령 줄 전체입니다 (예전 방식).
+            Check("경로가 없으면 명령 줄 전체로",
+                  DbTools.Resolve("", "\"C:\\My Tools\\mysqldump.exe\" --databases mydb",
+                                  out exe, out args)
+                  && exe == "C:\\My Tools\\mysqldump.exe" && args == "--databases mydb",
+                  exe + " | " + args);
+
+            Check("경로만 있고 인수가 없어도 됨",
+                  DbTools.Resolve("mysqldump.exe", "", out exe, out args)
+                  && exe == "mysqldump.exe" && args == "", exe + " | " + args);
+
+            Check("둘 다 비면 거짓", !DbTools.Resolve("", "", out exe, out args), null);
         }
 
         /// <summary>

@@ -695,3 +695,11 @@
 > 그리고 외부 라이브러리는 자제해야되는데 가능?
 
 → 답변: [43-db-analysis.md](43-db-analysis.md)
+
+---
+
+## 요청 55 — mysqldump 경로를 따로
+
+> 근데 mysqldump도 내가위치정해줄게
+
+→ 답변: [43-db-analysis.md](43-db-analysis.md) 의 뒷이야기

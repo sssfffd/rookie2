@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -81,7 +81,8 @@ namespace LogScope.App.Views
             {
                 string tmp = Path.Combine(Path.GetTempPath(),
                     "logscope_" + tag + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".sql");
-                DbTools.Run r = DbTools.DumpTo(dumpCommand, tmp, DbTools.DefaultTimeoutMs);
+                DbTools.Run r = DbTools.DumpTo(cfg.MysqlDumpPath, dumpCommand, tmp,
+                                               DbTools.DefaultTimeoutMs);
                 if (!r.Ok)
                 {
                     snap.Notes.Add("덤프를 받지 못했습니다: " + r.Error);
