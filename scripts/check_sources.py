@@ -50,6 +50,38 @@ for x in xamls:
         if not re.search(r'\b(void|private|public|internal|protected)[^\n]*\b%s\s*\(' % re.escape(h), code):
             bad('처리기 없음 %s.%s <- %s' % (os.path.basename(cb), h, os.path.relpath(x, ROOT)))
 
+# 4-1) 자기 DataContext 를 바꾸는 뷰에 "맨 경로" 바인딩을 걸지 않았는가
+#
+#    코드 비하인드에서 DataContext 를 자기 뷰모델로 바꾸는 뷰가 있습니다
+#    (DbView 가 DbVm 으로). 그런 뷰를 쓰는 자리에서 Visibility="{Binding X}" 처럼
+#    맨 경로로 적으면, 그 X 를 <b>창의 뷰모델이 아니라 그 뷰의 뷰모델</b>에서
+#    찾습니다. 없으면 바인딩이 조용히 실패하고, 실패한 Visibility 는 기본값
+#    Visible 로 남아 그 화면이 다른 화면 위에 계속 덮입니다.
+#
+#    실제로 그렇게 해서 DB 화면이 메인 화면을 가렸습니다. 컴파일도 되고 XAML
+#    파싱도 되므로, 이 검사가 없으면 윈도우에서 눈으로 봐야 압니다.
+SELFCTX = set()
+for cb in sorted(glob.glob(APP + '/**/*.xaml.cs', recursive=True)):
+    if re.search(r'\bDataContext\s*=\s*', read(cb)):
+        SELFCTX.add(os.path.basename(cb)[:-len('.xaml.cs')])
+
+for x in xamls:
+    t = read(x)
+    own = re.search(r'x:Class="[\w\.]*\.(\w+)"', t)
+    own = own.group(1) if own else None
+    for m in re.finditer(r'<(?:v|local|ctl|views):(\w+)\b([^>]*)>', t, re.S):
+        tag, attrs = m.group(1), m.group(2)
+        if tag not in SELFCTX or tag == own: continue
+        # 속성값 안에 Converter={StaticResource ...} 처럼 중괄호가 또 들어
+        # 있으므로, 닫는 중괄호까지가 아니라 <b>닫는 따옴표까지</b> 봅니다.
+        # (XAML 속성값에는 따옴표가 들어갈 수 없습니다.)
+        for b in re.finditer(r'(\w+)="(\{Binding[^"]*)"', attrs, re.S):
+            prop, expr = b.group(1), b.group(2)
+            if 'RelativeSource' in expr or 'ElementName' in expr or 'Source=' in expr: continue
+            if expr.lstrip().startswith('DataContext.'): continue
+            bad('%s 의 %s 는 맨 경로 바인딩 (%s 는 자기 DataContext 를 바꿉니다) <- %s'
+                % (tag, prop, tag, os.path.relpath(x, ROOT)))
+
 # 5) 괄호 균형 — 문서 주석 안의 문자 상수 때문에 절대 개수는 원래 어긋납니다.
 #    그래서 HEAD 와 견줘 "이번에 새로 어긋난 것" 만 잡습니다.
 import subprocess

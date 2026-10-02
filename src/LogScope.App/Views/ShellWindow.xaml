@@ -144,9 +144,19 @@
                                             Converter={StaticResource BoolToVisibility}}" />
             </Grid>
 
-            <!-- 분석 2 — DB 분석. -->
+            <!--
+              분석 2 — DB 분석.
+
+              DbView 는 생성자에서 자기 DataContext 를 DbVm 으로 바꿉니다. 그래서
+              보이기 여부는 <b>창의 뷰모델</b>에서 찾아야 합니다 — 맨 경로로
+              적으면 DbVm 에서 ShowAnalysis2 를 찾다가 실패하고, 실패한
+              Visibility 는 기본값 Visible 로 남아 이 화면이 메인 화면 위에
+              계속 덮입니다. (실제로 그랬습니다.)
+            -->
             <v:DbView x:Name="Db"
-                      Visibility="{Binding ShowAnalysis2, Converter={StaticResource BoolToVisibility}}" />
+                      Visibility="{Binding DataContext.ShowAnalysis2,
+                                   RelativeSource={RelativeSource AncestorType=Window},
+                                   Converter={StaticResource BoolToVisibility}}" />
 
             <!-- 분석 3 — 아직 빈 화면입니다. -->
             <v:PlaceholderView Heading="{Binding Analysis3Name}"

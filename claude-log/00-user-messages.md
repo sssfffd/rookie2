@@ -703,3 +703,11 @@
 > 근데 mysqldump도 내가위치정해줄게
 
 → 답변: [43-db-analysis.md](43-db-analysis.md) 의 뒷이야기
+
+---
+
+## 요청 56 — 메인/분석 1 화면이 이상함
+
+> 근데 지금 메인화면이랑 로그 분석 화면 이상한대?
+
+→ 답변: [44-dbview-covered-the-screen.md](44-dbview-covered-the-screen.md)
