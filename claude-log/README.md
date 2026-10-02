@@ -51,3 +51,4 @@
 | `42-two-row-toolbar.md` | 도구 줄 두 줄, [그릴 로그] 를 왼쪽 IO 칸으로 |
 | `43-db-analysis.md` | 분석 2 = DB 분석. .sql/.csv 읽기, 세 단계 비교, 맞추는 SQL 생성 |
 | `44-dbview-covered-the-screen.md` | DB 화면이 메인 위에 덮여 있던 것. 바인딩 실패 = Visible |
+| `45-diff-list.md` | DB 차이를 칸으로 쪼갠 목록. 한 줄에 값 하나, CSV 로 내보내기 |

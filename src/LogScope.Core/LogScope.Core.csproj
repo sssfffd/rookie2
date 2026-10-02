@@ -78,6 +78,7 @@
     <Compile Include="Db\CsvTableReader.cs" />
     <Compile Include="Db\DbFolderReader.cs" />
     <Compile Include="Db\DbDiff.cs" />
+    <Compile Include="Db\DbDiffList.cs" />
     <Compile Include="Db\SqlScript.cs" />
     <Compile Include="Db\DbTools.cs" />
     <Compile Include="Ai\AiBridge.cs" />

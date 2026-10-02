@@ -106,6 +106,7 @@ namespace LogScope.Tests
                 DbCsvTable();
                 DbNestedFolders();
                 DbCompare();
+                DbDiffLines();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -2106,6 +2107,169 @@ namespace LogScope.Tests
             sa2.Tables.Add(shape2);
             TableDiff st = DbDiff.Compare(sb2, sa2).Tables[0];
             Check("행을 못 읽었다고 밝힘", st.RowNote.Contains("행을 읽지 못했"), st.RowNote);
+        }
+
+        /// <summary>
+        /// 차이를 칸으로 쪼갠 목록. 글 한 덩이로 적던 것을 목록으로 바꿨습니다.
+        ///
+        /// 여기서 지키려는 것은 네 가지입니다.
+        ///   1. 값이 바뀐 행은 <b>바뀐 열마다</b> 한 줄 (한 줄에 값 하나)
+        ///   2. 생기거나 없어진 행도 열마다 한 줄, 없는 쪽 칸은 <b>빈 칸</b>
+        ///      (NULL 과 다릅니다 — NULL 은 값이 NULL 인 것입니다)
+        ///   3. 표 자체가 한쪽에만 있으면 <b>행은 펼치지 않음</b>
+        ///   4. 상한에 닿으면 그렇다고 적음
+        /// </summary>
+        private static void DbDiffLines()
+        {
+            Console.WriteLine("DB — 차이를 칸으로 쪼갠 목록");
+
+            var b = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("ln_before.sql",
+                "CREATE TABLE `t` (`id` int NOT NULL, `a` varchar(10), `b` int, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `t` VALUES (1,'x',10),(2,'y',20),(3,NULL,30);\n" +
+                "CREATE TABLE `only_b` (`k` int NOT NULL, PRIMARY KEY (`k`));\n" +
+                "INSERT INTO `only_b` VALUES (1),(2);\n"), b, 0);
+
+            var a = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("ln_after.sql",
+                "CREATE TABLE `t` (`id` int NOT NULL, `a` varchar(20), `b` int, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `t` VALUES (1,'X',11),(2,'y',20),(4,'new',40);\n"), a, 0);
+
+            DbDiffResult d = DbDiff.Compare(b, a);
+            List<DbDiffLine> lines = DbDiffList.Build(d, null);
+
+            // ---- 열 ----
+            DbDiffLine col = Line(lines, "t", "열", "a");
+            Check("열 차이가 한 줄", col != null, null);
+            Check("열의 이전 모양", col.Before.Contains("VARCHAR(10)"), col.Before);
+            Check("열의 이후 모양", col.After.Contains("VARCHAR(20)"), col.After);
+
+            // ---- 값이 바뀐 행 : 바뀐 열마다 한 줄 ----
+            int changed = 0;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Kind == "행" && lines[i].Change == "달라짐") changed++;
+            Check("바뀐 열마다 한 줄", changed == 2, "실제 " + changed);
+
+            DbDiffLine bb = null;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Kind == "행" && lines[i].Column == "b" && lines[i].Change == "달라짐")
+                    bb = lines[i];
+            Check("바뀐 값이 칸에 하나씩", bb != null && bb.Before == "10" && bb.After == "11",
+                  bb == null ? "없음" : bb.Before + " / " + bb.After);
+            Check("어느 행인지 적힘", bb.Where == "id=1", bb.Where);
+
+            // ---- 없어진 행 : 열마다 한 줄, 이후 칸은 빈 칸 ----
+            var gone = new List<DbDiffLine>();
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Kind == "행" && lines[i].Change == "없어짐") gone.Add(lines[i]);
+            Check("없어진 행을 열마다 펼침", gone.Count == 3, "실제 " + gone.Count);
+            Check("없어진 행의 이후 칸은 빔", gone[0].After.Length == 0, gone[0].After);
+
+            // NULL 은 NULL 로 적습니다. "없는 쪽" 의 빈 칸과 다른 것입니다.
+            DbDiffLine nul = null;
+            for (int i = 0; i < gone.Count; i++) if (gone[i].Column == "a") nul = gone[i];
+            Check("NULL 은 NULL 로", nul != null && nul.Before == "NULL",
+                  nul == null ? "없음" : nul.Before);
+
+            var born = new List<DbDiffLine>();
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Kind == "행" && lines[i].Change == "생김") born.Add(lines[i]);
+            Check("생긴 행도 열마다", born.Count == 3, "실제 " + born.Count);
+            Check("생긴 행의 이전 칸은 빔", born[0].Before.Length == 0, born[0].Before);
+
+            // ---- 한쪽에만 있는 표 : 행은 펼치지 않습니다 ----
+            int onlyRows = 0, onlyAll = 0;
+            DbDiffLine head = null;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (lines[i].Table != "only_b") continue;
+                onlyAll++;
+                if (lines[i].Kind == "행") onlyRows++;
+                if (lines[i].Kind == "표") head = lines[i];
+            }
+            Check("표가 한쪽에만 있으면 행은 안 펼침", onlyRows == 0, "실제 " + onlyRows);
+            Check("그래도 열 모양은 적음", onlyAll == 2, "실제 " + onlyAll);
+            Check("행 수는 알려 줌", head != null && head.Note.Contains("행 2"),
+                  head == null ? "없음" : head.Note);
+
+            // ---- 같은 표는 줄을 만들지 않습니다 ----
+            TableDiff same = null;
+            for (int i = 0; i < d.Tables.Count; i++)
+                if (d.Tables[i].Change == DbChange.Same) same = d.Tables[i];
+            if (same != null)
+                Check("같은 표는 줄이 없음", DbDiffList.Build(same, null).Count == 0, null);
+
+            // ---- 표 하나만 뽑기 ----
+            TableDiff t = null;
+            for (int i = 0; i < d.Tables.Count; i++) if (d.Tables[i].Name == "t") t = d.Tables[i];
+            List<DbDiffLine> one = DbDiffList.Build(t, null);
+            for (int i = 0; i < one.Count; i++)
+                if (one[i].Table != "t") { Check("한 표만 뽑기", false, one[i].Table); break; }
+            Check("한 표만 뽑기", one.Count > 0 && one.Count < lines.Count,
+                  one.Count + " / " + lines.Count);
+
+            // ---- 상한 : 끊었으면 끊었다고 적습니다 ----
+            var opt = new DbDiffList.Options();
+            opt.MaxLinesPerTable = 2;
+            List<DbDiffLine> cut = DbDiffList.Build(d, opt);
+            bool said = false;
+            for (int i = 0; i < cut.Count; i++)
+                if (cut[i].Kind == "알림" && cut[i].Note.Contains("상한")) said = true;
+            Check("표 상한을 밝힘", said, null);
+            // 한 표가 상한에 걸려도 다음 표는 그대로 나옵니다.
+            int after = 0;
+            for (int i = 0; i < cut.Count; i++) if (cut[i].Table == "only_b") after++;
+            Check("상한은 표마다 따로", after == 2, "실제 " + after);
+
+            var opt2 = new DbDiffList.Options();
+            opt2.MaxLines = 2;
+            List<DbDiffLine> cut2 = DbDiffList.Build(d, opt2);
+            Check("목록 상한을 지킴", cut2.Count == 3, "실제 " + cut2.Count);
+            Check("목록 상한을 밝힘", cut2[cut2.Count - 1].Note.Contains("상한"),
+                  cut2[cut2.Count - 1].Note);
+
+            // ---- 행을 묶어 보는 선택 ----
+            var opt3 = new DbDiffList.Options();
+            opt3.ExpandWholeRows = false;
+            List<DbDiffLine> flat = DbDiffList.Build(d, opt3);
+            int flatGone = 0;
+            for (int i = 0; i < flat.Count; i++)
+                if (flat[i].Kind == "행" && flat[i].Change == "없어짐") flatGone++;
+            Check("묶으면 행 하나에 한 줄", flatGone == 1, "실제 " + flatGone);
+
+            // ---- CSV ----
+            string csv = DbDiffList.ToCsv(lines);
+            Check("CSV 머리글", csv.StartsWith("표,갈래,구분,행,열,이전,이후,설명"), csv.Substring(0, 20));
+            Check("CSV 줄 수", CountLines(csv) == lines.Count + 1,
+                  CountLines(csv) + " / " + (lines.Count + 1));
+
+            var tricky = new List<DbDiffLine>();
+            tricky.Add(new DbDiffLine { Table = "t", Before = "a,b", After = "그가 \"말\"했다" });
+            string csv2 = DbDiffList.ToCsv(tricky);
+            Check("쉼표 든 값은 따옴표로", csv2.Contains("\"a,b\""), csv2);
+            Check("따옴표는 두 번으로", csv2.Contains("\"그가 \"\"말\"\"했다\""), csv2);
+
+            // 마우스 설명에는 잘린 값이 다 들어 있어야 합니다.
+            Check("설명 글에 값이 다 있음",
+                  bb.Tip.Contains("10") && bb.Tip.Contains("11") && bb.Tip.Contains("id=1"), bb.Tip);
+        }
+
+        /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>
+        private static DbDiffLine Line(List<DbDiffLine> lines, string table, string kind, string column)
+        {
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DbDiffLine ln = lines[i];
+                if (ln.Table == table && ln.Kind == kind && ln.Column == column) return ln;
+            }
+            return null;
+        }
+
+        private static int CountLines(string csv)
+        {
+            int n = 0;
+            for (int i = 0; i < csv.Length; i++) if (csv[i] == '\n') n++;
+            return n;
         }
 
         private static void DbScript()

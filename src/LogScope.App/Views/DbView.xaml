@@ -6,6 +6,18 @@
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
 
+    <UserControl.Resources>
+        <!--
+          목록 줄. 기본 모양(ListRow)을 그대로 쓰고 마우스 설명만 답니다.
+          BasedOn 을 빼면 테마의 줄 모양이 통째로 사라집니다.
+          칸이 좁아 잘린 값은 짚어 보지 않으면 읽을 수가 없습니다.
+        -->
+        <Style x:Key="DiffRow" TargetType="{x:Type ListViewItem}"
+               BasedOn="{StaticResource ListRow}">
+            <Setter Property="ToolTip" Value="{Binding Tip}" />
+        </Style>
+    </UserControl.Resources>
+
     <DockPanel>
 
         <!-- 위: 어디를 견주는지와 단추들 -->
@@ -74,15 +86,77 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Auto" Padding="12,8">
-                    <!--
-                      글로 적습니다. 표로 그리면 열 수가 표마다 달라 빈 칸이
-                      많아지고, 무엇이 바뀌었는지는 결국 글로 읽어야 합니다.
-                    -->
-                    <TextBlock Text="{Binding DetailText}" FontFamily="Consolas"
-                               TextWrapping="NoWrap" />
-                </ScrollViewer>
+                <!--
+                  차이 목록. 칸마다 값 하나입니다.
+
+                  글 한 덩이로 적던 것을 목록으로 바꿨습니다. 값이 바뀐 행은
+                  바뀐 열마다 한 줄이라, 같은 열이 몇 군데서 바뀌었는지가
+                  보입니다.
+                -->
+                <DockPanel Grid.Row="0">
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.PanelAlt}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
+                            Padding="10,5">
+                        <WrapPanel>
+                            <TextBlock Text="차이 목록" Style="{StaticResource FieldLabel}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <RadioButton GroupName="scope" Style="{StaticResource SegmentButton}"
+                                         Content="전체 표" IsChecked="{Binding ShowAll, Mode=TwoWay}"
+                                         ToolTip="달라진 모든 표의 차이를 한 목록으로 뽑습니다." />
+                            <RadioButton GroupName="scope" Style="{StaticResource SegmentButton}"
+                                         Content="고른 표만" IsChecked="{Binding ShowOne, Mode=TwoWay}"
+                                         ToolTip="왼쪽에서 고른 표의 차이만 봅니다." />
+                            <TextBlock Text="{Binding LineText}" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="12,0,12,0" />
+                            <Button Content="목록 CSV 저장" Click="OnSaveList"
+                                    ToolTip="지금 보이는 목록을 칸 그대로 저장합니다. 엑셀에서 거르고 정렬하는 쪽이 이 화면보다 낫습니다." />
+                        </WrapPanel>
+                    </Border>
+
+                    <Grid>
+                        <ListView x:Name="DiffList" ItemsSource="{Binding Lines}"
+                                  ItemContainerStyle="{StaticResource DiffRow}"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="표" Width="140"
+                                                    DisplayMemberBinding="{Binding Table}" />
+                                    <GridViewColumn Header="갈래" Width="50"
+                                                    DisplayMemberBinding="{Binding Kind}" />
+                                    <GridViewColumn Header="구분" Width="64"
+                                                    DisplayMemberBinding="{Binding Change}" />
+                                    <GridViewColumn Header="행" Width="150"
+                                                    DisplayMemberBinding="{Binding Where}" />
+                                    <GridViewColumn Header="열" Width="120"
+                                                    DisplayMemberBinding="{Binding Column}" />
+                                    <GridViewColumn Header="이전" Width="140"
+                                                    DisplayMemberBinding="{Binding Before}" />
+                                    <GridViewColumn Header="이후" Width="140"
+                                                    DisplayMemberBinding="{Binding After}" />
+                                    <GridViewColumn Header="설명" Width="300"
+                                                    DisplayMemberBinding="{Binding Note}" />
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+
+                        <!-- 비었을 때. 왜 비었는지는 그때마다 다릅니다. -->
+                        <TextBlock Text="{Binding EmptyText}" Margin="16,40,16,0"
+                                   HorizontalAlignment="Center" TextWrapping="Wrap"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="{x:Type TextBlock}" BasedOn="{StaticResource Muted}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LinesIsEmpty}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </DockPanel>
 
                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
                               VerticalAlignment="Center" Background="Transparent" />

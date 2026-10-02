@@ -90,13 +90,90 @@ namespace LogScope.App.ViewModels
                 // 잃지 않게 무시합니다 (IO 목록에서 겪은 것과 같은 자리입니다).
                 if (value == null) return;
                 if (!Set(ref _selected, value)) return;
-                Raise("DetailText");
+                if (!_showAll) Rebuild();
             }
         }
 
-        public string DetailText
+        // ---------------- 차이 목록 ----------------
+
+        private List<DbDiffLine> _lines = new List<DbDiffLine>();
+
+        /// <summary>
+        /// 칸으로 쪼갠 차이 목록.
+        ///
+        /// <b>ObservableCollection 이 아닙니다.</b> 줄이 몇 만 개까지 가는데,
+        /// 하나씩 Add 하면 그만큼 바뀜 알림이 날아가 목록이 한참 멎습니다.
+        /// 통째로 바꾸고 한 번만 알립니다.
+        /// </summary>
+        public IList<DbDiffLine> Lines { get { return _lines; } }
+
+        private bool _showAll = true;
+
+        /// <summary>참이면 모든 표를 한 목록에, 거짓이면 왼쪽에서 고른 표만.</summary>
+        public bool ShowAll
         {
-            get { return _selected == null ? "왼쪽에서 표를 골라 주세요." : Describe(_selected.Diff); }
+            get { return _showAll; }
+            set { if (Set(ref _showAll, value)) { Raise("ShowOne"); Rebuild(); } }
+        }
+
+        public bool ShowOne
+        {
+            get { return !_showAll; }
+            set { if (value) ShowAll = false; }
+        }
+
+        private string _lineText = string.Empty;
+        /// <summary>"1,234 줄" 처럼. 목록 위에 적힙니다.</summary>
+        public string LineText
+        {
+            get { return _lineText; }
+            private set { Set(ref _lineText, value); }
+        }
+
+        public bool LinesIsEmpty { get { return _lines.Count == 0; } }
+
+        private string _emptyText = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
+        /// <summary>목록이 비었을 때 가운데 적는 글. 왜 비었는지가 매번 다릅니다.</summary>
+        public string EmptyText
+        {
+            get { return _emptyText; }
+            private set { Set(ref _emptyText, value); }
+        }
+
+        /// <summary>목록을 CSV 글로. 저장은 창이 맡습니다.</summary>
+        public string LinesCsv()
+        {
+            return DbDiffList.ToCsv(_lines);
+        }
+
+        private void Rebuild()
+        {
+            if (_diff == null)
+            {
+                _lines = new List<DbDiffLine>();
+                EmptyText = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
+            }
+            else if (_showAll)
+            {
+                _lines = DbDiffList.Build(_diff, null);
+                EmptyText = _diff.Tables.Count == 0
+                    ? "읽은 표가 없습니다. 경로와 config.txt 를 봐 주세요."
+                    : "두 DB 가 같습니다 — 다른 데가 없습니다.";
+            }
+            else if (_selected == null)
+            {
+                _lines = new List<DbDiffLine>();
+                EmptyText = "왼쪽에서 표를 골라 주세요.";
+            }
+            else
+            {
+                _lines = DbDiffList.Build(_selected.Diff, null);
+                EmptyText = "\"" + _selected.Name + "\" 는 두 쪽이 같습니다.";
+            }
+
+            LineText = _lines.Count == 0 ? string.Empty : _lines.Count.ToString("N0") + " 줄";
+            Raise("Lines");
+            Raise("LinesIsEmpty");
         }
 
         private string _script = string.Empty;
@@ -144,7 +221,7 @@ namespace LogScope.App.ViewModels
 
             _selected = null;
             Raise("Tables");
-            Raise("DetailText");
+            Rebuild();
             BuildScript();
         }
 
@@ -169,98 +246,6 @@ namespace LogScope.App.ViewModels
             sb.Append(" · 같음 ").Append(d.TablesSame);
             sb.Append("      (읽은 행 ").Append(b.RowCount.ToString("N0"));
             sb.Append(" / ").Append(a.RowCount.ToString("N0")).Append(")");
-            return sb.ToString();
-        }
-
-        /// <summary>표 하나의 차이를 글로. 화면에 그대로 나갑니다.</summary>
-        private static string Describe(TableDiff td)
-        {
-            if (td == null) return string.Empty;
-
-            var sb = new StringBuilder();
-            sb.Append("표  ").AppendLine(td.Name);
-            sb.AppendLine(td.Summary());
-            if (td.RowNote.Length > 0) sb.AppendLine(td.RowNote);
-            sb.AppendLine();
-
-            if (td.Change == DbChange.OnlyBefore || td.Change == DbChange.OnlyAfter)
-            {
-                DbTable only = td.Before ?? td.After;
-                sb.AppendLine("열 " + (only == null ? 0 : only.Columns.Count) + " 개:");
-                if (only != null)
-                    for (int i = 0; i < only.Columns.Count; i++)
-                        sb.AppendLine("    " + only.Columns[i].Name + "  " + only.Columns[i].Type);
-                return sb.ToString();
-            }
-
-            sb.AppendLine("── 열 ──────────────────────────────");
-            int shown = 0;
-            for (int i = 0; i < td.Columns.Count; i++)
-            {
-                ColumnDiff cd = td.Columns[i];
-                if (cd.Change == DbChange.Same) continue;
-                sb.Append("  ").Append(cd.Name).Append("   ").AppendLine(cd.What());
-                shown++;
-            }
-            if (shown == 0) sb.AppendLine("  (같음)");
-
-            sb.AppendLine();
-            sb.AppendLine("── 행 ──────────────────────────────");
-            if (!td.RowsDiffer)
-            {
-                sb.AppendLine("  (같음)");
-                return sb.ToString();
-            }
-
-            int lines = 0;
-            for (int i = 0; i < td.Rows.Count && lines < 300; i++)
-            {
-                RowDiff rd = td.Rows[i];
-                switch (rd.Change)
-                {
-                    case DbChange.OnlyBefore:
-                        sb.Append("  − 없어진 행  ").AppendLine(Key(td, rd));
-                        break;
-                    case DbChange.OnlyAfter:
-                        sb.Append("  + 생긴 행    ").AppendLine(Key(td, rd));
-                        break;
-                    default:
-                        sb.Append("  ~ ").Append(Key(td, rd)).Append("   ");
-                        for (int k = 0; k < rd.ChangedColumns.Count; k++)
-                        {
-                            int ci = rd.ChangedColumns[k];
-                            string cname = ci < td.Before.Columns.Count ? td.Before.Columns[ci].Name : "?";
-                            int ai = td.After.IndexOf(cname);
-                            if (k > 0) sb.Append(", ");
-                            sb.Append(cname).Append(": ")
-                              .Append(DbRow.Show(rd.Before.Get(ci)))
-                              .Append(" → ")
-                              .Append(DbRow.Show(ai < 0 ? null : rd.After.Get(ai)));
-                        }
-                        sb.AppendLine();
-                        break;
-                }
-                lines++;
-            }
-            if (td.Rows.Count > lines)
-                sb.AppendLine("  … " + (td.Rows.Count - lines).ToString("N0") + " 줄 더 (화면에는 300 줄까지)");
-            return sb.ToString();
-        }
-
-        private static string Key(TableDiff td, RowDiff rd)
-        {
-            DbTable shape = td.Before ?? td.After;
-            if (shape == null || !shape.HasKey) return "(" + rd.Key.Replace('\u001f', ',') + ")";
-
-            int[] keys = shape.KeyIndexes();
-            DbRow row = rd.Before ?? rd.After;
-            var sb = new StringBuilder();
-            for (int i = 0; i < keys.Length; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(shape.Columns[keys[i]].Name).Append('=')
-                  .Append(DbRow.Show(row.Get(keys[i])));
-            }
             return sb.ToString();
         }
 

@@ -161,6 +161,40 @@ namespace LogScope.App.Views
                 snap.Notes.Add(".ibd " + failed + " 개는 ibd2sdi 가 읽지 못했습니다.");
         }
 
+        /// <summary>
+        /// 보이는 목록을 CSV 로 저장합니다.
+        ///
+        /// 칸 그대로 나갑니다. 거르고 정렬하는 일은 엑셀이 이 화면보다 훨씬
+        /// 잘합니다 — 목록을 그 쪽으로 넘기는 통로입니다.
+        /// </summary>
+        private void OnSaveList(object sender, RoutedEventArgs e)
+        {
+            if (_vm.Lines.Count == 0)
+            {
+                MessageBox.Show(Window.GetWindow(this), "저장할 목록이 없습니다.",
+                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dlg = new Microsoft.Win32.SaveFileDialog();
+            dlg.Title = "차이 목록 저장";
+            dlg.Filter = "CSV (*.csv)|*.csv|모든 파일 (*.*)|*.*";
+            dlg.FileName = "db_diff_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".csv";
+            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+
+            try
+            {
+                // BOM 을 붙입니다. 안 붙이면 한국어 윈도우의 엑셀이 CP949 로
+                // 읽어 한글이 깨집니다 — 그게 가장 흔한 사고입니다.
+                File.WriteAllText(dlg.FileName, _vm.LinesCsv(), new UTF8Encoding(true));
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                MessageBox.Show(Window.GetWindow(this), "저장하지 못했습니다.\n\n" + ex.Message,
+                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void OnSaveScript(object sender, RoutedEventArgs e)
         {
             if (_vm.ScriptText.Length == 0)
