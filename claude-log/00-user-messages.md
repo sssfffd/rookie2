@@ -729,3 +729,13 @@
 > 각 데이터마다 칸 안에 담아서
 
 → 답변: [45-diff-list.md](45-diff-list.md)
+
+---
+
+## 요청 59 — .frm / .ibd 를 BCL 로 읽을 수 없나 (질문)
+
+> 근데frm 이랑 ibd읽는 거 bcl로 안되나?
+
+> mysql이 현재 저장중인 data는 어디 담기는데?
+
+→ 답변: [46-where-mysql-keeps-data.md](46-where-mysql-keeps-data.md)
