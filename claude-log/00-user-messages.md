@@ -772,3 +772,11 @@
 > mysql 5.6.19
 
 → 답변: [47-frm-reader.md](47-frm-reader.md)
+
+---
+
+## 요청 64 — 그럼 값은 어떻게 읽나
+
+> 그럼 값은 어케 읽어?
+
+→ 답변: [48-reading-values.md](48-reading-values.md)

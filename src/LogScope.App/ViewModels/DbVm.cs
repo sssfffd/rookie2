@@ -65,6 +65,22 @@ namespace LogScope.App.ViewModels
         private DbDiffResult _diff;
         public DbDiffResult Diff { get { return _diff; } }
 
+        // 견준 뒤에도 두 벌을 들고 있습니다. 표 정의 글을 만들 때 씁니다 —
+        // 차이만 들고 있으면 "같은 표" 의 모양이 없어집니다.
+        private DbSnapshot _before, _after;
+
+        public bool HasSnapshots { get { return _before != null || _after != null; } }
+
+        /// <summary>
+        /// 읽은 표의 모양을 CREATE TABLE 글로. <b>그대로 돌릴 글이 아닙니다</b> —
+        /// 서버의 SHOW CREATE TABLE 과 견주거나, 값을 옮길 때 받는 쪽 표를
+        /// 만드는 출발점입니다. 빠진 것은 글 머리에 적혀 있습니다.
+        /// </summary>
+        public string CreateSqlText()
+        {
+            return DbCreateSql.Both(_before, _after);
+        }
+
         private string _summary = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
         public string Summary
         {
@@ -200,6 +216,8 @@ namespace LogScope.App.ViewModels
         /// <summary>읽은 결과를 받습니다. 읽는 일은 창(DbView)이 맡습니다 — 진행 창을 띄워야 합니다.</summary>
         public void Take(DbSnapshot before, DbSnapshot after)
         {
+            _before = before;
+            _after = after;
             _diff = DbDiff.Compare(before, after);
 
             Tables.Clear();

@@ -54,3 +54,4 @@
 | `45-diff-list.md` | DB 차이를 칸으로 쪼갠 목록. 한 줄에 값 하나, CSV 로 내보내기 |
 | `46-where-mysql-keeps-data.md` | MySQL 이 데이터를 담고 있는 곳. .frm/.ibd 를 BCL 로 읽는 이야기 |
 | `47-frm-reader.md` | 5.6 의 .frm 을 직접 읽기. "없음" 과 "모름" 을 가르는 이유 |
+| `48-reading-values.md` | 값은 서버를 한 번 거쳐야 하는 이유, 네 가지 길, 표 정의 저장 |

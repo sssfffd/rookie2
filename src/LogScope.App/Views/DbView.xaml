@@ -30,8 +30,10 @@
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
                             ToolTip="config.txt 의 db.before / db.after 를 읽어 견줍니다." />
-                    <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,14,0"
+                    <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,6,0"
                             ToolTip="아래 글을 .sql 파일로 저장합니다. 돌리는 것은 직접 하세요." />
+                    <Button Content="표 정의 저장" Click="OnSaveCreate" Margin="0,0,14,0"
+                            ToolTip="읽은 표의 CREATE TABLE 글을 저장합니다. 서버의 SHOW CREATE TABLE 과 견주거나, 값을 옮길 때 받는 쪽 표를 만드는 데 씁니다." />
 
                     <TextBlock Text="맞출 방향" Style="{StaticResource ToolGroupCaption}"
                                VerticalAlignment="Center" Margin="0,0,6,0" />

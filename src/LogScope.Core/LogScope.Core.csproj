@@ -80,6 +80,7 @@
     <Compile Include="Db\DbDiff.cs" />
     <Compile Include="Db\DbDiffList.cs" />
     <Compile Include="Db\FrmReader.cs" />
+    <Compile Include="Db\DbCreateSql.cs" />
     <Compile Include="Db\SqlScript.cs" />
     <Compile Include="Db\DbTools.cs" />
     <Compile Include="Ai\AiBridge.cs" />

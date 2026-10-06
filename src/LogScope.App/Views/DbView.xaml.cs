@@ -162,6 +162,38 @@ namespace LogScope.App.Views
         }
 
         /// <summary>
+        /// 읽은 표의 모양을 CREATE TABLE 글로 저장합니다.
+        ///
+        /// .frm 을 제대로 읽었는지 확인하는 가장 빠른 길입니다 — 서버에서
+        /// SHOW CREATE TABLE 을 찍어 나란히 놓고 보면 됩니다.
+        /// </summary>
+        private void OnSaveCreate(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.HasSnapshots)
+            {
+                MessageBox.Show(Window.GetWindow(this), "먼저 [DB 읽기] 를 눌러 주세요.",
+                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dlg = new Microsoft.Win32.SaveFileDialog();
+            dlg.Title = "표 정의 저장";
+            dlg.Filter = "SQL (*.sql)|*.sql|모든 파일 (*.*)|*.*";
+            dlg.FileName = "db_tables_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".sql";
+            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+
+            try
+            {
+                File.WriteAllText(dlg.FileName, _vm.CreateSqlText(), new UTF8Encoding(true));
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                MessageBox.Show(Window.GetWindow(this), "저장하지 못했습니다.\n\n" + ex.Message,
+                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
         /// 보이는 목록을 CSV 로 저장합니다.
         ///
         /// 칸 그대로 나갑니다. 거르고 정렬하는 일은 엑셀이 이 화면보다 훨씬
