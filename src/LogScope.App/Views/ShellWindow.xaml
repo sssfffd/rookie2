@@ -38,18 +38,19 @@
                 <WrapPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.TopBarText}"
-                               VerticalAlignment="Center" Margin="2,0,4,0" />
-                    <!-- 긴 이름이 앞, 판 번호가 뒤입니다. 이름 다음에 이름이
-                         이어지고 숫자가 끝에 붙는 쪽이 읽기 순서에 맞습니다.
-                         긴 이름은 config.txt 의 fullname 이고, 비워 두면 줄이
-                         사라집니다 (그러면 이름 바로 뒤에 판 번호가 옵니다). -->
-                    <TextBlock Text="{Binding FullNameText}" FontSize="11"
-                               Foreground="{DynamicResource Brush.TopBarMuted}"
-                               VerticalAlignment="Bottom" Margin="0,0,7,3"
-                               MaxWidth="220" TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding FullNameText}"
-                               Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
+                               VerticalAlignment="Center" Margin="2,0,4,0"
+                               ToolTip="{Binding NameTip}" />
+                    <!--
+                      긴 이름(config.txt 의 fullname)은 여기 적지 않습니다.
+                      이 줄은 화면 단추가 함께 쓰는 자리라, 길게 적으면 단추를
+                      밀고 들어옵니다. 폭을 가둬 "…" 로 잘라 봤지만 그래도
+                      자리를 먹었습니다.
 
+                      대신 <b>창 제목</b>이 맡습니다 (ShellVm.WindowTitle).
+                      운영 체제가 이미 그려 주는 자리라 화면을 더 쓰지 않고,
+                      작업 표시줄과 Alt+Tab 에도 그대로 나옵니다. 프로그램
+                      안에서는 이름에 마우스를 올리면 나옵니다.
+                    -->
                     <TextBlock Text="{Binding VersionText}" FontSize="11"
                                Foreground="{DynamicResource Brush.TopBarMuted}"
                                VerticalAlignment="Bottom" Margin="0,0,14,3" />

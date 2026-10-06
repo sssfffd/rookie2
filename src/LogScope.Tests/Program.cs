@@ -103,6 +103,7 @@ namespace LogScope.Tests
                 AppConfigParse();
                 AppConfigFile();
                 GroupFileParse();
+                WindowTitleText();
                 TraceColorRule();
                 DbSqlDump();
                 DbCsvTable();
@@ -1832,6 +1833,44 @@ namespace LogScope.Tests
         /// 것</b>입니다. "파일이 있으면 주인" 으로 했다면, 설명만 적힌 빈 틀이
         /// 들어 있는 것만으로 그때까지 묶어 둔 그룹이 전부 지워집니다.
         /// </summary>
+        /// <summary>
+        /// 긴 이름이 창 제목에 들어가는지. 위 줄에서 빼고 창 제목으로 옮긴
+        /// 자리입니다 (0.68).
+        ///
+        /// 창 제목 글을 만드는 규칙만 봅니다 — 화면은 여기서 못 띄웁니다.
+        /// </summary>
+        private static void WindowTitleText()
+        {
+            Console.WriteLine("창 제목 — 긴 이름");
+
+            // 규칙: "이름 — 긴 이름". 긴 이름이 없으면 전에 쓰던 글.
+            Check("긴 이름을 적으면 제목에",
+                  Title("LogScope", "설비 Log 비교 도구") == "LogScope — 설비 Log 비교 도구",
+                  Title("LogScope", "설비 Log 비교 도구"));
+            Check("안 적으면 전에 쓰던 글",
+                  Title("LogScope", "") == "LogScope — " + AppConfig.DefaultSubtitle,
+                  Title("LogScope", ""));
+            // 이름을 바꿨으면 제목도 그 이름입니다.
+            Check("바꾼 이름을 따라감",
+                  Title("로그보기", "사내용").StartsWith("로그보기 — "),
+                  Title("로그보기", "사내용"));
+            // 아무리 길어도 자르지 않습니다 — 창 제목은 폭을 안 먹습니다.
+            string longName = new string('가', 120);
+            Check("길어도 자르지 않음", Title("X", longName).Length == 4 + 120,
+                  "실제 " + Title("X", longName).Length);
+        }
+
+        /// <summary>
+        /// 화면이 쓰는 그 규칙을 그대로 부릅니다 (AppConfig.WindowTitle).
+        /// 여기서 규칙을 한 번 더 적으면, 한쪽만 고쳐지는 날이 옵니다.
+        /// </summary>
+        private static string Title(string name, string full)
+        {
+            string line = full.Length == 0 ? "name = " + name
+                                           : "name = " + name + "\nfullname = " + full;
+            return AppConfig.Parse(line.Split('\n')).WindowTitle;
+        }
+
         private static void GroupFileParse()
         {
             Console.WriteLine("그룹 파일 — groups.txt");

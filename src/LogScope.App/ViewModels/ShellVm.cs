@@ -51,7 +51,23 @@ namespace LogScope.App.ViewModels
         /// <summary>판 번호 옆에 작게 적는 긴 이름. config.txt 의 fullname.</summary>
         public string FullNameText { get { return AppConfig.Current.FullName; } }
 
-        public string WindowTitle { get { return AppConfig.Current.Name + " — IO 로그 그래프 뷰어"; } }
+        /// <summary>창 제목. 규칙은 Core 에 있습니다 (AppConfig.WindowTitle).</summary>
+        public string WindowTitle { get { return AppConfig.Current.WindowTitle; } }
+
+        /// <summary>
+        /// 위 줄의 프로그램 이름에 마우스를 올렸을 때. 긴 이름을 위 줄에서
+        /// 뺐으니, 창 제목 말고 프로그램 안에서도 한 번은 볼 수 있어야 합니다.
+        /// </summary>
+        public string NameTip
+        {
+            get
+            {
+                string full = AppConfig.Current.FullName;
+                string s = AppConfig.Current.Name;
+                if (full.Length > 0) s += "\n" + full;
+                return s + "\n" + VersionText + "\n\n이름은 config.txt 에서 바꿉니다 (name · fullname).";
+            }
+        }
 
         // ---------------- 큰 화면 (메인 / 분석 1·2·3) ----------------
         //

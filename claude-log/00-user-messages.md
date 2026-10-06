@@ -859,3 +859,11 @@
 > 그리고 파란선 빨간선 설명해주는걸 그래프 창에서 왼쪽 위에 두니까 왼쪽 창이 너무 작아진 느낌임 오른쪽 그래프 창에 띄워주셈
 
 → 답변: [50-blue-before-red-after.md](50-blue-before-red-after.md) 의 뒷이야기
+
+---
+
+## 요청 74 — fullname 이 아직 길다
+
+> 근데 fullname 넣으면 좀 많이 길어지는데 방법이 없나?
+
+→ 답변: [53-groups-txt.md](53-groups-txt.md) 의 뒷이야기
