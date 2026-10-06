@@ -53,3 +53,4 @@
 | `44-dbview-covered-the-screen.md` | DB 화면이 메인 위에 덮여 있던 것. 바인딩 실패 = Visible |
 | `45-diff-list.md` | DB 차이를 칸으로 쪼갠 목록. 한 줄에 값 하나, CSV 로 내보내기 |
 | `46-where-mysql-keeps-data.md` | MySQL 이 데이터를 담고 있는 곳. .frm/.ibd 를 BCL 로 읽는 이야기 |
+| `47-frm-reader.md` | 5.6 의 .frm 을 직접 읽기. "없음" 과 "모름" 을 가르는 이유 |

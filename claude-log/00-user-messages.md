@@ -764,3 +764,11 @@
 > datadir안에 frm이랑 ibd로 나뉘어있으면 어캄?
 
 → 답변: [46-where-mysql-keeps-data.md](46-where-mysql-keeps-data.md) 의 뒷이야기 2
+
+---
+
+## 요청 63 — MySQL 5.6.19
+
+> mysql 5.6.19
+
+→ 답변: [47-frm-reader.md](47-frm-reader.md)

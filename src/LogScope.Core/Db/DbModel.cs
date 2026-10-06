@@ -20,13 +20,25 @@ namespace LogScope.Core.Db
         public bool IsKey;              // 기본 키의 일부
         public int Ordinal;             // 0 부터. 열 순서가 바뀐 것도 차이입니다.
 
+        /// <summary>
+        /// 기본값을 <b>아는지</b>. 거짓이면 "기본값이 없다" 가 아니라
+        /// <b>"모른다"</b> 입니다 — .frm 에서 모양만 읽은 열이 그렇습니다.
+        ///
+        /// 이 둘을 섞으면 안 됩니다. 모르는 것을 "없음" 으로 적으면, 덤프에서
+        /// 읽은 쪽(기본값 '0')과 견줄 때 <b>없는 차이가 생깁니다</b> —
+        /// "기본값 없음 → '0'" 이라고 적고 그걸 맞추는 ALTER 까지 만들어 줍니다.
+        /// </summary>
+        public bool DefaultKnown = true;
+
         /// <summary>견주기 위한 모양. 대소문자와 군더더기 공백만 고릅니다.</summary>
         public string Shape()
         {
             var sb = new StringBuilder();
             sb.Append(Norm(Type));
             sb.Append(Nullable ? " NULL" : " NOT NULL");
-            if (Default != null) sb.Append(" DEFAULT ").Append(Default);
+            // 모르는 기본값은 아예 적지 않습니다. 적으면 "모름" 이 하나의
+            // 값처럼 되어, 아는 쪽과 견줄 때 차이로 보입니다.
+            if (DefaultKnown && Default != null) sb.Append(" DEFAULT ").Append(Default);
             return sb.ToString();
         }
 

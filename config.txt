@@ -46,5 +46,6 @@ analysis3 = 분석 3 | 아직 정해지지 않았습니다.
 #
 # 선택 — 멈춘 .ibd 에서 표와 열 "이름만" 꺼냅니다 (값은 못 꺼냅니다).
 # MySQL 8.0 의 .ibd 에만 통합니다. 폴더에 표.frm 과 표.ibd 가 짝으로 있으면
-# 5.x 라서 .ibd 안에 꺼낼 것이 없습니다 — 그때는 mysqldump 를 쓰세요.
+# 5.x 라서 .ibd 안에 꺼낼 것이 없습니다 — 그때는 아무것도 적지 않아도 됩니다.
+# .frm 은 이 프로그램이 직접 읽습니다 (모양만). 값은 mysqldump 로 받으세요.
 # db.ibd2sdi = C:\Program Files\MySQL\MySQL Server 8.0\bin\ibd2sdi.exe

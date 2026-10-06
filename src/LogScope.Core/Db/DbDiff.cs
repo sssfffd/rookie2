@@ -29,6 +29,12 @@ namespace LogScope.Core.Db
         public bool TypeChanged;
         public bool NullChanged;
         public bool DefaultChanged;
+
+        /// <summary>
+        /// 양쪽 기본값을 다 아는지. 거짓이면 기본값은 견주지 않았습니다 —
+        /// <b>"같다" 가 아니라 "모른다"</b> 입니다.
+        /// </summary>
+        public bool DefaultKnown = true;
         public bool MovedOnly;          // 모양은 같고 자리만 바뀜
 
         public string What()
@@ -241,7 +247,12 @@ namespace LogScope.Core.Db
                 same.Before = bc; same.After = ac;
                 same.TypeChanged = DbColumn.Norm(bc.Type) != DbColumn.Norm(ac.Type);
                 same.NullChanged = bc.Nullable != ac.Nullable;
-                same.DefaultChanged = (bc.Default ?? string.Empty) != (ac.Default ?? string.Empty);
+                // 한쪽이라도 기본값을 모르면 견주지 않습니다. 모르는 것을
+                // "없음" 으로 치면 없는 차이가 생깁니다 (.frm 에서 모양만 읽은
+                // 열이 그렇습니다).
+                same.DefaultKnown = bc.DefaultKnown && ac.DefaultKnown;
+                same.DefaultChanged = same.DefaultKnown
+                    && (bc.Default ?? string.Empty) != (ac.Default ?? string.Empty);
 
                 bool moved = bc.Ordinal != ac.Ordinal;
                 if (same.TypeChanged || same.NullChanged || same.DefaultChanged)

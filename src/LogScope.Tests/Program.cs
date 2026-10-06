@@ -106,6 +106,9 @@ namespace LogScope.Tests
                 DbCsvTable();
                 DbNestedFolders();
                 DbFrmIbdNote();
+                FrmShape();
+                FrmDefaultUnknown();
+                FrmInFolder();
                 DbCompare();
                 DbDiffLines();
                 DbScript();
@@ -1925,8 +1928,11 @@ namespace LogScope.Tests
             DbSnapshot snap = DbFolderReader.Read(dir, null);
             Check("폴더에서 csv 를 읽음", snap.Find("t") != null, null);
             Check("못 읽는 파일을 밝힘", snap.Notes.Count > 0, null);
-            Check("ibd 를 적음", snap.Notes[0].Contains(".ibd"), snap.Notes[0]);
-            Check("frm 도 적음", snap.Notes[0].Contains(".frm"), snap.Notes[0]);
+            // 어느 줄에 적히는지가 아니라 적히는지를 봅니다. 줄 차례는
+            // 안내가 늘면 바뀝니다.
+            string folderNotes = string.Join(" / ", snap.Notes.ToArray());
+            Check("ibd 를 적음", folderNotes.Contains(".ibd"), folderNotes);
+            Check("frm 도 적음", folderNotes.Contains(".frm"), folderNotes);
 
             DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는폴더"), null);
             Check("없는 폴더는 그렇다고만", none.Tables.Count == 0 && none.Notes.Count == 1, null);
@@ -2055,6 +2061,299 @@ namespace LogScope.Tests
             Check("8.0 쪽은 ibd2sdi 경로를 알려 줌", note8.Contains("db.ibd2sdi"), note8);
             Check("8.0 쪽은 5.x 라고 하지 않음", !note8.Contains("5.x"), note8);
             Check("값은 못 읽는다고 밝힘", note8.Contains("값은 못 읽"), note8);
+        }
+
+        /// <summary>
+        /// .frm 자리값대로 파일을 <b>만들어서</b> 읽혀 봅니다.
+        ///
+        /// <b>이 시험의 한계를 분명히 해 둡니다.</b> 만드는 쪽과 읽는 쪽이 같은
+        /// 자리값 표를 쓰므로, 이 시험이 지키는 것은 "자리값 표대로 읽는가" 와
+        /// "어긋난 파일에서 터지지 않고 이유를 적는가" 입니다. <b>진짜 MySQL 이
+        /// 쓴 파일과 맞는지는 증명하지 못합니다</b> — 그건 실제 .frm 하나를
+        /// 읽혀 봐야 합니다. 그래서 읽은 판 번호를 화면에 적게 해 뒀습니다
+        /// (5.6.19 로 찍히면 머리 부분은 제대로 읽은 것입니다).
+        /// </summary>
+        private static void FrmShape()
+        {
+            Console.WriteLine("DB — .frm 에서 표 모양 읽기");
+
+            byte[] frm = BuildFrm(50619);
+            FrmReader.Result r = FrmReader.Read(frm, "recipe");
+
+            Check("읽음", r.Ok, r.Why);
+            Check("판 번호", r.VersionId == 50619, "실제 " + r.VersionId);
+            Check("판 번호 글자", DbFolderReader.VersionText(r.VersionId) == "5.6.19",
+                  DbFolderReader.VersionText(r.VersionId));
+
+            DbTable t = r.Table;
+            Check("표 이름", t.Name == "recipe", t.Name);
+            Check("값은 없음", !t.HasRows, null);
+            Check("열 다섯", t.Columns.Count == 5, "실제 " + t.Columns.Count);
+
+            Check("열 이름 차례",
+                  t.Columns[0].Name == "id" && t.Columns[1].Name == "name"
+                  && t.Columns[2].Name == "temp_max" && t.Columns[3].Name == "made_at",
+                  string.Join(",", Names(t)));
+            // 이름은 UTF-8 입니다. 한글 열 이름이 깨지면 표가 달라 보입니다.
+            Check("한글 열 이름", t.Columns[4].Name == "상태", t.Columns[4].Name);
+
+            Check("int(11)", t.Columns[0].Type == "int(11)", t.Columns[0].Type);
+            // .frm 의 길이는 바이트입니다. 문자셋으로 안 나누면 varchar(192) 가 됩니다.
+            Check("varchar 는 글자 수로", t.Columns[1].Type == "varchar(64)", t.Columns[1].Type);
+            Check("decimal(6,2)", t.Columns[2].Type == "decimal(6,2)", t.Columns[2].Type);
+            Check("datetime(3)", t.Columns[3].Type == "datetime(3)", t.Columns[3].Type);
+            Check("enum 값까지", t.Columns[4].Type == "enum('on','off')", t.Columns[4].Type);
+
+            Check("NOT NULL 을 읽음", !t.Columns[0].Nullable, null);
+            Check("NULL 허용을 읽음", t.Columns[1].Nullable, null);
+
+            Check("기본 키를 찾음", t.Columns[0].IsKey && t.HasKey, null);
+            Check("키가 아닌 열엔 표시 없음", !t.Columns[1].IsKey, null);
+
+            // 기본값은 .frm 에서 읽지 않습니다. "없음" 이 아니라 "모름" 이어야
+            // 합니다 — 없음으로 치면 덤프 쪽(DEFAULT '0')과 견줄 때 없는 차이가
+            // 생기고, 그걸 맞추는 ALTER 까지 만들어 줍니다.
+            for (int i = 0; i < t.Columns.Count; i++)
+                if (t.Columns[i].DefaultKnown) { Check("기본값은 모른다고 둠", false, t.Columns[i].Name); break; }
+            Check("기본값은 모른다고 둠", !t.Columns[0].DefaultKnown, null);
+
+            // 타입 글자에 NOT NULL 을 섞지 않습니다 (Nullable 로 따로 들고 있습니다).
+            Check("타입에 NOT NULL 을 안 섞음", t.Columns[0].Type.IndexOf("NULL") < 0, t.Columns[0].Type);
+
+            // ---- 모양이 아닌 파일 ----
+            var res = FrmReader.Read(new byte[] { 1, 2, 3 }, "x");
+            Check("짧은 파일은 이유를 적음", !res.Ok && res.Why.Contains("짧"), res.Why);
+
+            byte[] bad = BuildFrm(50619);
+            bad[0] = 0x00;
+            res = FrmReader.Read(bad, "x");
+            Check("머리 표식이 다르면 이유를 적음", !res.Ok && res.Why.Contains("표식"), res.Why);
+
+            byte[] view = Encoding.ASCII.GetBytes("TYPE=VIEW\nquery=select 1\n" + new string(' ', 60));
+            res = FrmReader.Read(view, "v");
+            Check("뷰는 뷰라고 적음", !res.Ok && res.Why.Contains("뷰"), res.Why);
+
+            // 잘린 파일 — 터지지 않고 이유를 적어야 합니다.
+            byte[] cut = BuildFrm(50619);
+            var shorter = new byte[cut.Length - 40];
+            Array.Copy(cut, shorter, shorter.Length);
+            res = FrmReader.Read(shorter, "x");
+            Check("잘린 파일도 터지지 않음", !res.Ok && res.Why.Length > 0, res.Why);
+
+            // 열 수가 이름 수와 안 맞으면 조용히 넘기지 않습니다.
+            byte[] miscount = BuildFrm(50619);
+            Put16(miscount, FrmFormInfo + 258, 9);      // 열이 9 개라고 거짓으로 적음
+            res = FrmReader.Read(miscount, "x");
+            Check("열 수가 안 맞으면 이유를 적음", !res.Ok && res.Why.Length > 0, res.Why);
+
+            // ---- 파일 이름이 표 이름 (MySQL 은 못 쓰는 글자를 @00NN 로 바꿔 둡니다) ----
+            Check("한글 표 이름을 되돌림", FrmReader.Unescape("@c628@b3c4") == "온도",
+                  FrmReader.Unescape("@c628@b3c4"));
+            Check("@ 가 없으면 그대로", FrmReader.Unescape("recipe") == "recipe", null);
+            // 모르는 꼴은 그대로 둡니다. 억지로 바꾸면 표가 없어진 것처럼 보입니다.
+            Check("모르는 꼴은 그대로", FrmReader.Unescape("a@zz") == "a@zz", FrmReader.Unescape("a@zz"));
+
+            Check("5.0 미만", DbFolderReader.VersionText(0) == "5.0 미만", null);
+        }
+
+        private static string[] Names(DbTable t)
+        {
+            var s = new string[t.Columns.Count];
+            for (int i = 0; i < t.Columns.Count; i++) s[i] = t.Columns[i].Name;
+            return s;
+        }
+
+        /// <summary>
+        /// .frm 과 덤프를 섞어 읽을 때, <b>기본값을 모르는 쪽 때문에 없는 차이가
+        /// 생기지 않는지</b>. 이게 .frm 읽기에서 가장 조용히 틀릴 수 있는 자리입니다.
+        /// </summary>
+        private static void FrmDefaultUnknown()
+        {
+            Console.WriteLine("DB — 모르는 기본값을 차이로 세지 않기");
+
+            var shape = new DbColumn { Name = "a", Type = "int(11)", Nullable = true };
+            shape.Default = null; shape.DefaultKnown = false;        // .frm 에서 읽은 열
+            var dumped = new DbColumn { Name = "a", Type = "int(11)", Nullable = true };
+            dumped.Default = "0"; dumped.DefaultKnown = true;        // 덤프에서 읽은 열
+
+            var b = new DbTable { Name = "t" }; b.Columns.Add(shape);
+            var a = new DbTable { Name = "t" }; a.Columns.Add(dumped);
+
+            TableDiff td = DbDiff.CompareTable(b, a);
+            Check("기본값을 모르면 차이로 세지 않음", !td.Columns[0].DefaultChanged,
+                  td.Columns[0].What());
+            Check("모른다고 표시됨", !td.Columns[0].DefaultKnown, null);
+            Check("그래서 열이 같음으로 남음", td.Columns[0].Change == DbChange.Same,
+                  td.Columns[0].Change.ToString());
+
+            // 양쪽을 다 알면 그때는 견줍니다.
+            var k1 = new DbColumn { Name = "a", Type = "int(11)", Nullable = true, Default = "1" };
+            var k2 = new DbColumn { Name = "a", Type = "int(11)", Nullable = true, Default = "2" };
+            var b2 = new DbTable { Name = "t" }; b2.Columns.Add(k1);
+            var a2 = new DbTable { Name = "t" }; a2.Columns.Add(k2);
+            TableDiff td2 = DbDiff.CompareTable(b2, a2);
+            Check("양쪽을 알면 기본값을 견줌", td2.Columns[0].DefaultChanged, td2.Columns[0].What());
+
+            // 모양(Shape)에도 모르는 기본값은 적지 않습니다 — 적으면 이름 변경
+            // 짐작이 엉뚱해집니다.
+            Check("모양에 모르는 기본값을 안 적음", shape.Shape().IndexOf("DEFAULT") < 0, shape.Shape());
+            Check("아는 기본값은 모양에 적음", k1.Shape().IndexOf("DEFAULT") >= 0, k1.Shape());
+        }
+
+        /// <summary>폴더에서 .frm 을 읽고, 같은 이름의 덤프가 있으면 덤프가 이기는지.</summary>
+        private static void FrmInFolder()
+        {
+            Console.WriteLine("DB — 폴더의 .frm");
+
+            string dir = Path.Combine(_dir, "frmdir");
+            Directory.CreateDirectory(dir);
+            File.WriteAllBytes(Path.Combine(dir, "recipe.frm"), BuildFrm(50619));
+            File.WriteAllBytes(Path.Combine(dir, "recipe.ibd"), new byte[] { 1, 2, 3 });
+
+            DbSnapshot snap = DbFolderReader.Read(dir, null);
+            string notes = string.Join(" / ", snap.Notes.ToArray());
+
+            Check("frm 에서 표를 읽음", snap.Find("recipe") != null, notes);
+            Check("판 번호를 적음", notes.Contains("5.6.19"), notes);
+            Check("값은 없다고 적음", notes.Contains("값과 기본값"), notes);
+            Check("ibd 는 5.x 라고 적음", notes.Contains("5.x"), notes);
+
+            // 같은 이름의 덤프가 있으면 값까지 있는 쪽이 이깁니다. .frm 이
+            // 나중에 읽혀도 덮지 않아야 합니다 (아는 것이 줄어듭니다).
+            File.WriteAllText(Path.Combine(dir, "recipe.sql"),
+                "CREATE TABLE `recipe` (`id` int NOT NULL, PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1);\n", new UTF8Encoding(false));
+
+            DbSnapshot both = DbFolderReader.Read(dir, null);
+            DbTable t = both.Find("recipe");
+            Check("덤프가 이김", t != null && t.HasRows, t == null ? "없음" : "HasRows=" + t.HasRows);
+            Check("표는 하나만", both.Tables.Count == 1, "실제 " + both.Tables.Count);
+            string notes2 = string.Join(" / ", both.Notes.ToArray());
+            Check("안 쓴 frm 을 밝힘", notes2.Contains("쓰지 않았습니다"), notes2);
+        }
+
+        // ---- 시험용 .frm 만들기 ----
+        //
+        // 자리값은 FrmReader 의 주석과 같은 표입니다. 그래서 이 시험은
+        // "표대로 읽는가" 만 지킵니다 (FrmShape 의 설명 참고).
+
+        private const int FrmKeyAt = 68;
+        private const int FrmKeyLen = 32;
+        private const int FrmFormInfo = FrmKeyAt + FrmKeyLen;   // 100
+
+        private static void Put16(byte[] b, int at, int v)
+        {
+            b[at] = (byte)(v & 0xFF);
+            b[at + 1] = (byte)((v >> 8) & 0xFF);
+        }
+
+        private static void Put32(byte[] b, int at, int v)
+        {
+            b[at] = (byte)(v & 0xFF);
+            b[at + 1] = (byte)((v >> 8) & 0xFF);
+            b[at + 2] = (byte)((v >> 16) & 0xFF);
+            b[at + 3] = (byte)((v >> 24) & 0xFF);
+        }
+
+        private static int Put(byte[] b, int at, byte[] v)
+        {
+            Array.Copy(v, 0, b, at, v.Length);
+            return at + v.Length;
+        }
+
+        private static byte[] BuildFrm(int versionId)
+        {
+            var names = new List<byte>();
+            names.Add(0x03);                                  // 앞 한 바이트 (버립니다)
+            foreach (string n in new string[] { "id", "name", "temp_max", "made_at", "상태" })
+            {
+                names.AddRange(new UTF8Encoding(false).GetBytes(n));
+                names.Add(0xFF);
+            }
+            names.Add(0x00); names.Add(0x00);                 // 뒤 두 바이트 (버립니다)
+
+            // ENUM 값 묶음: 앞뒤 한 바이트를 버리고 0xFF 로 가릅니다.
+            var labels = new List<byte>();
+            labels.Add(0x02);
+            labels.AddRange(Encoding.ASCII.GetBytes("on"));
+            labels.Add(0xFF);
+            labels.AddRange(Encoding.ASCII.GetBytes("off"));
+            labels.Add(0xFF);
+            labels.Add(0x00);
+
+            int columns = 5;
+            int metaLen = 17 * columns;
+            int total = FrmFormInfo + 288 + metaLen + names.Count + labels.Count + 64;
+            var b = new byte[total];
+
+            // ---- 머리 ----
+            b[0] = 0xFE; b[1] = 0x01;
+            b[3] = 0x0C;                        // InnoDB
+            Put16(b, 0x04, 0);                  // 이 뒤(64)에 forminfo 자리가 적힙니다
+            Put16(b, 0x06, FrmKeyAt);
+            Put16(b, 0x0E, FrmKeyLen);
+            Put16(b, 0x10, 0);                  // 기본값 조각 길이
+            Put32(b, 0x33, versionId);
+            Put32(b, 0x37, 0);                  // extrainfo 길이
+            Put32(b, 64, FrmFormInfo);
+
+            // ---- 키: PRIMARY (id) ----
+            int k = FrmKeyAt;
+            b[k] = 1;                           // 키 1 개
+            b[k + 1] = 1;                       // 조각 1 개
+            Put16(b, k + 4, 9);                 // 이름 조각 길이
+            int kh = k + 6;
+            Put16(b, kh + 0, 1 ^ 1);            // flags: MySQL 은 HA_NOSAME 과 XOR 해서 적습니다
+            Put16(b, kh + 2, 4);                // 길이
+            b[kh + 4] = 1;                      // 조각 수
+            b[kh + 5] = 1;                      // BTREE
+            Put16(b, kh + 6, 0);                // key_block_size
+            int kp = kh + 8;
+            Put16(b, kp + 0, 1);                // 첫 열 (1 부터)
+            Put16(b, kp + 2, 1);                // 자리
+            b[kp + 4] = 0;                      // flags
+            Put16(b, kp + 5, 0);                // key_type
+            Put16(b, kp + 7, 4);                // 길이
+            Put(b, kp + 9, new byte[] { (byte)'P', (byte)'R', (byte)'I', (byte)'M',
+                                        (byte)'A', (byte)'R', (byte)'Y', 0xFF, 0x00 });
+
+            // ---- forminfo ----
+            Put16(b, FrmFormInfo + 258, columns);
+            Put16(b, FrmFormInfo + 260, 0);                 // screens 길이
+            Put16(b, FrmFormInfo + 268, names.Count);
+            Put16(b, FrmFormInfo + 274, labels.Count);
+            Put16(b, FrmFormInfo + 282, 3);                 // NULL 허용 열 수
+            Put16(b, FrmFormInfo + 284, 0);                 // 주석 길이
+
+            // ---- 열 정보 (17 바이트씩) ----
+            int m = FrmFormInfo + 288;
+            //            길이  flags                 타입  문자셋  label
+            PutColumn(b, m + 17 * 0, 11, 1, 3, 63, 0);                  // int(11) NOT NULL
+            PutColumn(b, m + 17 * 1, 192, 32768, 15, 33, 0);            // varchar(64) NULL (utf8)
+            PutColumn(b, m + 17 * 2, 8, 32768 | (2 << 8), 246, 63, 0);  // decimal(6,2) NULL
+            PutColumn(b, m + 17 * 3, 23, 1, 18, 63, 0);                 // datetime(3) NOT NULL
+            PutColumn(b, m + 17 * 4, 3, 32768, 247, 33, 1);             // enum('on','off') NULL
+
+            int at = m + metaLen;
+            at = Put(b, at, names.ToArray());
+            at = Put(b, at, labels.ToArray());
+
+            var cut = new byte[at];
+            Array.Copy(b, cut, at);
+            return cut;
+        }
+
+        private static void PutColumn(byte[] b, int at, int length, int flags,
+                                      int type, int charset, int labelId)
+        {
+            Put16(b, at + 3, length);
+            Put16(b, at + 8, flags);
+            b[at + 10] = 0;                             // unireg
+            b[at + 11] = (byte)((charset >> 8) & 0xFF);
+            b[at + 12] = (byte)labelId;
+            b[at + 13] = (byte)type;
+            b[at + 14] = (byte)(charset & 0xFF);
+            Put16(b, at + 15, 0);                       // 주석 길이
         }
 
         private static void DbCompare()
