@@ -8,18 +8,6 @@ using LogScope.Core.Settings;
 
 namespace LogScope.App.ViewModels
 {
-    /// <summary>차이 목록의 표 한 줄.</summary>
-    public sealed class DbTableRowVm
-    {
-        public string Name { get; set; }
-        public string Status { get; set; }
-        public string Detail { get; set; }
-        public TableDiff Diff { get; set; }
-
-        /// <summary>달라진 줄만 굵게. 색은 쓰지 않습니다 — 글자로 적힙니다.</summary>
-        public bool Changed { get; set; }
-    }
-
     /// <summary>
     /// 분석 2 — DB 분석.
     ///
@@ -34,13 +22,76 @@ namespace LogScope.App.ViewModels
     {
         public DbVm()
         {
-            Tables = new ObservableCollection<DbTableRowVm>();
         }
 
-        public ObservableCollection<DbTableRowVm> Tables { get; private set; }
+        /// <summary>
+        /// 화면 제목. config.txt 의 analysis2 이름을 그대로 씁니다 — 위 줄의
+        /// 단추와 메인 화면 칸과 <b>같은 이름</b>이어야 합니다. 여기만 "DB 분석"
+        /// 로 박아 두면, 이름을 바꾼 사람이 이 화면만 안 바뀐 것을 봅니다.
+        /// </summary>
+        public string ScreenTitle { get { return AppConfig.Current.Title(2); } }
 
-        public string BeforePath { get { return AppConfig.Current.DbBefore; } }
-        public string AfterPath { get { return AppConfig.Current.DbAfter; } }
+        // ---- 견줄 자리 ----
+        //
+        // config.txt 의 db.before / db.after 가 기본값이고, 화면에서 고르면
+        // 설정 파일에 적혀 그쪽이 이깁니다. 비우면 config.txt 로 돌아갑니다.
+
+        private AppSettings _settings;
+
+        /// <summary>
+        /// 설정을 받습니다. 창이 만들어진 뒤에 붙입니다 — 이 화면은 XAML 이
+        /// 직접 만들어서 생성자로 넘길 수가 없습니다 (그래프 화면의
+        /// <c>Attach</c> 와 같은 방식입니다).
+        /// </summary>
+        public void UseSettings(AppSettings settings)
+        {
+            _settings = settings;
+            Raise("BeforePath"); Raise("AfterPath");
+            Raise("BeforeChosen"); Raise("AfterChosen");
+            Raise("HasPaths"); Raise("PathText");
+        }
+
+        public string BeforePath
+        {
+            get { return Pick(_settings != null ? _settings.DbBeforePath : null, AppConfig.Current.DbBefore); }
+        }
+
+        public string AfterPath
+        {
+            get { return Pick(_settings != null ? _settings.DbAfterPath : null, AppConfig.Current.DbAfter); }
+        }
+
+        private static string Pick(string chosen, string fallback)
+        {
+            return string.IsNullOrEmpty(chosen) ? (fallback ?? string.Empty) : chosen;
+        }
+
+        /// <summary>어느 쪽 자리가 화면에서 고른 것인지 (지우기 단추를 보일지).</summary>
+        public bool BeforeChosen
+        {
+            get { return _settings != null && _settings.DbBeforePath.Length > 0; }
+        }
+
+        public bool AfterChosen
+        {
+            get { return _settings != null && _settings.DbAfterPath.Length > 0; }
+        }
+
+        /// <summary>
+        /// 화면에서 고른 자리를 적습니다. 빈 글자를 주면 config.txt 로
+        /// 돌아갑니다. 저장은 부르는 쪽(창)이 합니다.
+        /// </summary>
+        public void SetPath(bool before, string path)
+        {
+            if (_settings == null) return;
+            string v = path ?? string.Empty;
+            if (before) _settings.DbBeforePath = v;
+            else _settings.DbAfterPath = v;
+
+            Raise("BeforePath"); Raise("AfterPath");
+            Raise("BeforeChosen"); Raise("AfterChosen");
+            Raise("HasPaths"); Raise("PathText");
+        }
 
         public bool HasPaths
         {
@@ -53,12 +104,13 @@ namespace LogScope.App.ViewModels
             {
                 if (!HasPaths)
                 {
-                    return "config.txt 에 견줄 두 자리를 적어 주세요.\n\n"
-                         + "    db.before = D:\\db\\이전\n"
-                         + "    db.after  = D:\\db\\이후\n\n"
-                         + "폴더면 그 안의 .sql / .csv 를 읽고, 파일 하나면 그 파일을 읽습니다.";
+                    return "견줄 두 자리를 정해 주세요. [찾기] 로 고르거나, "
+                         + "칸에 폴더나 파일을 끌어다 놓으면 됩니다.\n"
+                         + "config.txt 에 db.before / db.after 로 적어 두면 켤 때마다 그 자리입니다.\n"
+                         + "폴더면 그 안의 .sql / .csv / .frm 을 (하위 폴더까지) 읽고, "
+                         + "파일 하나면 그 파일을 읽습니다.";
                 }
-                return "이전  " + BeforePath + "\n이후  " + AfterPath;
+                return string.Empty;
             }
         }
 
@@ -96,20 +148,6 @@ namespace LogScope.App.ViewModels
             private set { Set(ref _notes, value); }
         }
 
-        private DbTableRowVm _selected;
-        public DbTableRowVm Selected
-        {
-            get { return _selected; }
-            set
-            {
-                // 목록을 새로 만들 때 null 이 한 번 들어옵니다. 그때 고른 것을
-                // 잃지 않게 무시합니다 (IO 목록에서 겪은 것과 같은 자리입니다).
-                if (value == null) return;
-                if (!Set(ref _selected, value)) return;
-                if (!_showAll) Rebuild();
-            }
-        }
-
         // ---------------- 차이 목록 ----------------
 
         private List<DbDiffLine> _lines = new List<DbDiffLine>();
@@ -122,21 +160,6 @@ namespace LogScope.App.ViewModels
         /// 통째로 바꾸고 한 번만 알립니다.
         /// </summary>
         public IList<DbDiffLine> Lines { get { return _lines; } }
-
-        private bool _showAll = true;
-
-        /// <summary>참이면 모든 표를 한 목록에, 거짓이면 왼쪽에서 고른 표만.</summary>
-        public bool ShowAll
-        {
-            get { return _showAll; }
-            set { if (Set(ref _showAll, value)) { Raise("ShowOne"); Rebuild(); } }
-        }
-
-        public bool ShowOne
-        {
-            get { return !_showAll; }
-            set { if (value) ShowAll = false; }
-        }
 
         private string _lineText = string.Empty;
         /// <summary>"1,234 줄" 처럼. 목록 위에 적힙니다.</summary>
@@ -164,27 +187,18 @@ namespace LogScope.App.ViewModels
 
         private void Rebuild()
         {
+            // 늘 전체입니다. 표를 고르는 왼쪽 목록을 없앴으니 범위도 하나입니다.
             if (_diff == null)
             {
                 _lines = new List<DbDiffLine>();
                 EmptyText = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
             }
-            else if (_showAll)
+            else
             {
                 _lines = DbDiffList.Build(_diff, null);
                 EmptyText = _diff.Tables.Count == 0
                     ? "읽은 표가 없습니다. 경로와 config.txt 를 봐 주세요."
                     : "두 DB 가 같습니다 — 다른 데가 없습니다.";
-            }
-            else if (_selected == null)
-            {
-                _lines = new List<DbDiffLine>();
-                EmptyText = "왼쪽에서 표를 골라 주세요.";
-            }
-            else
-            {
-                _lines = DbDiffList.Build(_selected.Diff, null);
-                EmptyText = "\"" + _selected.Name + "\" 는 두 쪽이 같습니다.";
             }
 
             LineText = _lines.Count == 0 ? string.Empty : _lines.Count.ToString("N0") + " 줄";
@@ -220,38 +234,11 @@ namespace LogScope.App.ViewModels
             _after = after;
             _diff = DbDiff.Compare(before, after);
 
-            Tables.Clear();
-            for (int i = 0; i < _diff.Tables.Count; i++)
-            {
-                TableDiff td = _diff.Tables[i];
-                Tables.Add(new DbTableRowVm
-                {
-                    Name = td.Name,
-                    Status = Status(td),
-                    Detail = td.Summary(),
-                    Diff = td,
-                    Changed = td.Change != DbChange.Same,
-                });
-            }
-
             Summary = Overview(before, after, _diff);
             Notes = string.Join("\n", _diff.Notes.ToArray());
 
-            _selected = null;
-            Raise("Tables");
             Rebuild();
             BuildScript();
-        }
-
-        private static string Status(TableDiff td)
-        {
-            switch (td.Change)
-            {
-                case DbChange.OnlyBefore: return "이전에만";
-                case DbChange.OnlyAfter: return "이후에만";
-                case DbChange.Changed: return "달라짐";
-                default: return "같음";
-            }
         }
 
         private static string Overview(DbSnapshot b, DbSnapshot a, DbDiffResult d)

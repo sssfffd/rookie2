@@ -28,6 +28,28 @@ namespace LogScope.Core.Db
         /// <summary>행 줄에서 그 행을 가리키는 열쇠 ("id=7").</summary>
         public string Where { get; set; }
 
+        /// <summary>
+        /// 이 줄이 가리키는 <b>IO 이름</b>. 목록의 첫 칸입니다.
+        ///
+        /// 기본으로 채우는 값은 "그 줄을 가리키는 가장 좁은 이름" 입니다 —
+        /// 행이면 행 열쇠(<c>id=7</c>), 열이면 열 이름, 표 단위 줄이면 표
+        /// 이름입니다. DB 에 IO 이름이 담긴 열이 따로 있으면
+        /// <see cref="DbDiffList"/> 를 고쳐 그 값을 넣으면 됩니다.
+        /// </summary>
+        public string Io { get; set; }
+
+        /// <summary>
+        /// 쓰는 쪽에서 채우는 빈 칸 둘. 설비 DB 마다 함께 봐야 하는 열이
+        /// 달라서(설정값 · 단위 · 판본 같은 것) 여기 이름을 박지 않았습니다.
+        ///
+        /// <b>기본은 빈 글자입니다.</b> 비어 있으면 칸은 그냥 빕니다 —
+        /// 아무 값이나 채워 두면 그게 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
+        /// 채우는 자리는 <c>DbDiffList.OneRow</c> 입니다.
+        /// </summary>
+        public string V1 { get; set; }
+
+        public string V2 { get; set; }
+
         /// <summary>열 이름.</summary>
         public string Column { get; set; }
 
@@ -42,8 +64,9 @@ namespace LogScope.Core.Db
         public DbDiffLine()
         {
             Table = string.Empty; Kind = string.Empty; Change = string.Empty;
-            Where = string.Empty; Column = string.Empty;
+            Where = string.Empty; Column = string.Empty; Io = string.Empty;
             Before = string.Empty; After = string.Empty; Note = string.Empty;
+            V1 = string.Empty; V2 = string.Empty;
         }
 
         /// <summary>
@@ -58,10 +81,13 @@ namespace LogScope.Core.Db
                 sb.Append(Table);
                 if (Kind.Length > 0) sb.Append("  [").Append(Kind).Append(']');
                 if (Change.Length > 0) sb.Append(' ').Append(Change);
+                if (Io.Length > 0) sb.Append("\nIO   ").Append(Io);
                 if (Where.Length > 0) sb.Append("\n행   ").Append(Where);
                 if (Column.Length > 0) sb.Append("\n열   ").Append(Column);
                 if (Before.Length > 0 || After.Length > 0)
                     sb.Append("\n이전  ").Append(Before).Append("\n이후  ").Append(After);
+                if (V1.Length > 0 || V2.Length > 0)
+                    sb.Append("\nv1   ").Append(V1).Append("\nv2   ").Append(V2);
                 if (Note.Length > 0) sb.Append('\n').Append(Note);
                 return sb.ToString();
             }
@@ -220,7 +246,7 @@ namespace LogScope.Core.Db
             int cols = only == null ? 0 : only.Columns.Count;
             int rows = only == null ? 0 : only.Rows.Count;
 
-            var head = new DbDiffLine { Table = td.Name, Kind = "표", Change = ch };
+            var head = new DbDiffLine { Table = td.Name, Kind = "표", Change = ch, Io = td.Name };
             head.Note = "표 자체가 " + (before ? "이전에만" : "이후에만") + " 있습니다"
                       + " — 열 " + cols + " 개 · 읽은 행 " + rows.ToString("N0") + " 개."
                       + " 행은 칸마다 적지 않습니다 (전부 한쪽에만 있는 것이라 적어도 같은 말입니다).";
@@ -232,7 +258,7 @@ namespace LogScope.Core.Db
                 DbColumn c = only.Columns[i];
                 var ln = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "열", Change = ch, Column = c.Name,
+                    Table = td.Name, Kind = "열", Change = ch, Column = c.Name, Io = c.Name,
                     Note = c.IsKey ? "기본 키" : string.Empty,
                 };
                 if (before) ln.Before = c.Shape(); else ln.After = c.Shape();
@@ -242,7 +268,7 @@ namespace LogScope.Core.Db
 
         private static DbDiffLine ColumnLine(string table, ColumnDiff cd)
         {
-            var ln = new DbDiffLine { Table = table, Kind = "열", Column = cd.Name };
+            var ln = new DbDiffLine { Table = table, Kind = "열", Column = cd.Name, Io = cd.Name };
             ln.Change = cd.Change == DbChange.OnlyBefore ? "없어짐"
                       : cd.Change == DbChange.OnlyAfter ? "생김"
                       : cd.MovedOnly ? "자리" : "달라짐";
@@ -254,6 +280,19 @@ namespace LogScope.Core.Db
 
         // ---------------- 행 하나 ----------------
 
+        /// <summary>
+        /// 행 하나를 줄로 펼칩니다.
+        ///
+        /// <b>v1 · v2 를 채우는 자리가 여기입니다.</b> 설비 DB 마다 함께 봐야
+        /// 하는 열이 달라서 이름을 박아 두지 않았습니다. 그 표에서 값을 꺼내
+        /// <c>ln.V1</c> · <c>ln.V2</c> 에 넣으면 목록의 v1 · v2 칸에 그대로
+        /// 나옵니다. 꺼낼 때는 <c>td.Before</c> / <c>td.After</c> 의
+        /// <c>IndexOf("열이름")</c> 으로 자리를 찾고 <c>rd.Before.Get(i)</c> 로
+        /// 읽습니다 — 위의 "달라진 열" 을 꺼내는 것과 같은 방법입니다.
+        ///
+        /// IO 이름도 같습니다. 지금은 행 열쇠를 넣는데, 이름이 담긴 열이
+        /// 따로 있으면 <c>ln.Io</c> 에 그 값을 넣으면 됩니다.
+        /// </summary>
         private static bool OneRow(TableDiff td, RowDiff rd, Sink s)
         {
             string key = KeyText(td, rd);
@@ -270,7 +309,7 @@ namespace LogScope.Core.Db
                     var ln = new DbDiffLine
                     {
                         Table = td.Name, Kind = "행", Change = "달라짐",
-                        Where = key, Column = name,
+                        Where = key, Column = name, Io = key,
                         Before = DbRow.Show(rd.Before.Get(ci)),
                         After = DbRow.Show(ai < 0 || rd.After == null ? null : rd.After.Get(ai)),
                     };
@@ -288,7 +327,8 @@ namespace LogScope.Core.Db
             {
                 var one = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "행", Change = ch, Where = key, Column = "(행 전체)",
+                    Table = td.Name, Kind = "행", Change = ch, Where = key, Io = key,
+                    Column = "(행 전체)",
                 };
                 string all = RowText(shape, row);
                 if (before) one.Before = all; else one.After = all;
@@ -299,7 +339,7 @@ namespace LogScope.Core.Db
             {
                 var ln = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "행", Change = ch, Where = key,
+                    Table = td.Name, Kind = "행", Change = ch, Where = key, Io = key,
                     Column = shape.Columns[c].Name,
                 };
                 // 한쪽 칸은 비워 둡니다. "없음" 과 NULL 은 다른 것입니다 —
@@ -359,19 +399,22 @@ namespace LogScope.Core.Db
         public static string ToCsv(List<DbDiffLine> lines)
         {
             var sb = new StringBuilder();
-            sb.Append("표,갈래,구분,행,열,이전,이후,설명\r\n");
+            sb.Append("표,IO명,갈래,구분,행,열,이전 value,이후 value,v1,v2,설명\r\n");
             if (lines == null) return sb.ToString();
 
             for (int i = 0; i < lines.Count; i++)
             {
                 DbDiffLine ln = lines[i];
                 Cell(sb, ln.Table); sb.Append(',');
+                Cell(sb, ln.Io); sb.Append(',');
                 Cell(sb, ln.Kind); sb.Append(',');
                 Cell(sb, ln.Change); sb.Append(',');
                 Cell(sb, ln.Where); sb.Append(',');
                 Cell(sb, ln.Column); sb.Append(',');
                 Cell(sb, ln.Before); sb.Append(',');
                 Cell(sb, ln.After); sb.Append(',');
+                Cell(sb, ln.V1); sb.Append(',');
+                Cell(sb, ln.V2); sb.Append(',');
                 Cell(sb, ln.Note);
                 sb.Append("\r\n");
             }

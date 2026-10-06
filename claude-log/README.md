@@ -58,3 +58,4 @@
 | `49-overall-result-panel.md` | 메인 맨 위를 종합 분석 결과로. 로그 칸은 분석 1 안으로 |
 | `50-blue-before-red-after.md` | 이전 파랑 · 이후 빨강, 늘 같은 자리의 범례, config 의 긴 이름 |
 | `51-groups-were-not-saved.md` | 그룹이 바로 저장되지 않던 것. 아무도 듣지 않는 이벤트 검사 |
+| `52-db-paths-and-list.md` | DB 자리를 화면에서 고르기, 목록 칸 바꾸기, 파싱 파일 위치 |

@@ -28,6 +28,138 @@ namespace LogScope.App.Views
             DataContext = _vm;
         }
 
+        /// <summary>설정을 붙입니다. 창이 만든 뒤에 불러 줍니다.</summary>
+        public void Attach(AppState state)
+        {
+            if (state != null) _vm.UseSettings(state.Settings);
+        }
+
+        /// <summary>
+        /// 고른 자리를 저장해야 할 때. 창이 듣습니다 — 설정 파일을 쓰는 일은
+        /// 창이 맡고 있어서, 여기서 직접 쓰면 저장하는 곳이 둘이 됩니다.
+        /// </summary>
+        public event EventHandler PathsChanged;
+
+        private void RaisePaths()
+        {
+            EventHandler h = PathsChanged;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
+        // ---------------- 견줄 자리 고르기 ----------------
+
+        private static bool Before(object sender)
+        {
+            var fe = sender as FrameworkElement;
+            string tag = fe != null ? (fe.Tag as string) ?? string.Empty : string.Empty;
+            int bar = tag.IndexOf('|');
+            if (bar >= 0) tag = tag.Substring(0, bar);
+            return tag == "before";
+        }
+
+        /// <summary>폴더 고르기. 폴더 고르는 창이 따로 없어서 저장 창을 씁니다.</summary>
+        private void OnPickPath(object sender, RoutedEventArgs e)
+        {
+            bool before = Before(sender);
+
+            // .NET Framework 의 WPF 에는 폴더 고르는 창이 없습니다. 바깥
+            // 라이브러리를 더하지 않기로 했으니, 저장 창을 폴더 고르기로
+            // 씁니다 — 파일 이름 칸은 안 쓰고 열린 폴더만 가져옵니다.
+            var dlg = new Microsoft.Win32.SaveFileDialog();
+            dlg.Title = (before ? "이전" : "이후") + " DB 폴더 — 그 폴더로 들어가서 [저장]";
+            dlg.FileName = "이 폴더를 고릅니다";
+            dlg.Filter = "폴더 고르기|*.이폴더";
+            dlg.CheckPathExists = true;
+            dlg.OverwritePrompt = false;
+
+            string start = before ? _vm.BeforePath : _vm.AfterPath;
+            try { if (start.Length > 0 && Directory.Exists(start)) dlg.InitialDirectory = start; }
+            catch (ArgumentException) { }
+
+            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+
+            string dir;
+            try { dir = Path.GetDirectoryName(dlg.FileName); }
+            catch (ArgumentException) { return; }
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+
+            _vm.SetPath(before, dir);
+            RaisePaths();
+        }
+
+        private void OnPickFile(object sender, RoutedEventArgs e)
+        {
+            bool before = Before(sender);
+
+            var dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.Title = (before ? "이전" : "이후") + " DB 파일";
+            dlg.Filter = "DB 파일 (*.sql;*.csv;*.frm)|*.sql;*.csv;*.frm|모든 파일 (*.*)|*.*";
+            dlg.CheckFileExists = true;
+
+            string start = before ? _vm.BeforePath : _vm.AfterPath;
+            try
+            {
+                if (start.Length > 0)
+                {
+                    string dir = Directory.Exists(start) ? start : Path.GetDirectoryName(start);
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) dlg.InitialDirectory = dir;
+                }
+            }
+            catch (ArgumentException) { }
+
+            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+            _vm.SetPath(before, dlg.FileName);
+            RaisePaths();
+        }
+
+        // ---------------- 끌어다 놓기 ----------------
+
+        private void OnPathDragOver(object sender, DragEventArgs e)
+        {
+            bool ok = e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop);
+            e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
+            if (ok) Lit(sender as Border, true);
+            e.Handled = true;
+        }
+
+        private void OnPathDragLeave(object sender, DragEventArgs e)
+        {
+            Lit(sender as Border, false);
+        }
+
+        private void OnPathDrop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+            Lit(sender as Border, false);
+
+            if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null || paths.Length == 0) return;
+
+            _vm.SetPath(Before(sender), paths[0]);
+            RaisePaths();
+        }
+
+        /// <summary>
+        /// 칸을 밝히고 되돌립니다. 되돌릴 배경은 <b>XAML 의 Tag</b> 에 적혀
+        /// 있습니다 — 코드에 박아 두면 XAML 배경을 바꾼 날부터 한 번 끌어다
+        /// 놓은 칸만 색이 달라진 채 남습니다 (0.59 에서 겪었습니다).
+        /// </summary>
+        private static void Lit(Border card, bool on)
+        {
+            if (card == null) return;
+
+            string tag = (card.Tag as string) ?? string.Empty;
+            int bar = tag.IndexOf('|');
+            string off = bar >= 0 && bar + 1 < tag.Length ? tag.Substring(bar + 1) : "Brush.Panel";
+            bool before = Before(card);
+
+            card.SetResourceReference(Border.BackgroundProperty, on ? "Brush.DropTarget" : off);
+            card.SetResourceReference(Border.BorderBrushProperty,
+                on ? (before ? "Brush.Before" : "Brush.After") : "Brush.Border");
+            card.BorderThickness = new Thickness(on ? 2 : 1);
+        }
+
         private void OnRead(object sender, RoutedEventArgs e)
         {
             AppConfig cfg = AppConfig.Current;

@@ -187,7 +187,7 @@ namespace Microsoft.Win32
     {
         public string FileName, InitialDirectory, Filter, Title, DefaultExt;
         public string[] FileNames { get { return new string[0]; } }
-        public bool Multiselect, CheckFileExists, AddExtension;
+        public bool Multiselect, CheckFileExists, CheckPathExists, AddExtension;
         public int FilterIndex;
         public bool? ShowDialog() { return true; }
         public bool? ShowDialog(System.Windows.Window owner) { return true; }

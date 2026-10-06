@@ -69,6 +69,11 @@ namespace LogScope.App.Views
             // 그게 제일 아까운 자리입니다.
             _vm.Graph.List.GroupsChanged += OnGroupsChanged;
 
+            // DB 화면은 XAML 이 직접 만들어 제 뷰모델을 들고 있습니다.
+            // 설정은 여기서 붙여 주고, 거기서 고른 자리는 여기서 저장합니다.
+            Db.Attach(_state);
+            Db.PathsChanged += OnDbPathsChanged;
+
             Loaded += OnLoaded;
         }
 
@@ -343,6 +348,12 @@ namespace LogScope.App.Views
         /// 바꿔치는 방식이라 중간에 죽어도 반쪽짜리가 남지 않습니다.
         /// </summary>
         private void OnGroupsChanged(object sender, EventArgs e)
+        {
+            SaveSettings();
+        }
+
+        /// <summary>DB 화면에서 견줄 자리를 고쳤을 때. 그 자리에서 저장합니다.</summary>
+        private void OnDbPathsChanged(object sender, EventArgs e)
         {
             SaveSettings();
         }

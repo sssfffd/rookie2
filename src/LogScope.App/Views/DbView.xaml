@@ -26,7 +26,7 @@
                 Padding="12,8">
             <StackPanel>
                 <WrapPanel>
-                    <TextBlock Text="DB 분석" Style="{StaticResource H2}"
+                    <TextBlock Text="{Binding ScreenTitle}" Style="{StaticResource H2}"
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
                             ToolTip="config.txt 의 db.before / db.after 를 읽어 견줍니다." />
@@ -45,8 +45,63 @@
                                  ToolTip="이후 DB 를 이전과 같게 되돌리는 글을 만듭니다." />
                 </WrapPanel>
 
+                <!--
+                  견줄 두 자리. 칸에 폴더나 파일을 끌어다 놓아도 됩니다.
+                  config.txt 의 db.before / db.after 가 기본값이고, 여기서
+                  고른 것이 이깁니다 (설정 파일에 적힙니다).
+                -->
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="이전" FontWeight="Bold"
+                               Foreground="{DynamicResource Brush.Before}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Border Grid.Row="0" Grid.Column="1" Tag="before|Brush.Window"
+                            Background="{DynamicResource Brush.Window}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="3" Padding="8,4" Margin="0,0,6,0"
+                            AllowDrop="True" DragOver="OnPathDragOver"
+                            DragLeave="OnPathDragLeave" Drop="OnPathDrop">
+                        <TextBlock Text="{Binding BeforePath}" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding BeforePath}" />
+                    </Border>
+                    <Button Grid.Row="0" Grid.Column="2" Content="찾기" Tag="before"
+                            Click="OnPickPath" Margin="0,0,4,0"
+                            ToolTip="폴더를 고릅니다. 파일 하나를 고르려면 [파일] 을 누르세요." />
+                    <Button Grid.Row="0" Grid.Column="3" Content="파일" Tag="before"
+                            Click="OnPickFile"
+                            ToolTip="덤프 파일(.sql) 하나를 고릅니다." />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="이후" FontWeight="Bold"
+                               Foreground="{DynamicResource Brush.After}"
+                               VerticalAlignment="Center" Margin="0,6,8,0" />
+                    <Border Grid.Row="1" Grid.Column="1" Tag="after|Brush.Window"
+                            Background="{DynamicResource Brush.Window}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="3" Padding="8,4" Margin="0,6,6,0"
+                            AllowDrop="True" DragOver="OnPathDragOver"
+                            DragLeave="OnPathDragLeave" Drop="OnPathDrop">
+                        <TextBlock Text="{Binding AfterPath}" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding AfterPath}" />
+                    </Border>
+                    <Button Grid.Row="1" Grid.Column="2" Content="찾기" Tag="after"
+                            Click="OnPickPath" Margin="0,6,4,0" />
+                    <Button Grid.Row="1" Grid.Column="3" Content="파일" Tag="after"
+                            Click="OnPickFile" Margin="0,6,0,0" />
+                </Grid>
+
                 <TextBlock Text="{Binding PathText}" Style="{StaticResource Muted}"
-                           FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+                           FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Visibility="{Binding PathText, Converter={StaticResource TextToVisibility}}" />
                 <TextBlock Text="{Binding Summary}" Margin="0,6,0,0" TextWrapping="Wrap" />
 
                 <!-- 못 읽은 파일 같은 것. 없으면 줄 자체가 사라집니다. -->
@@ -56,32 +111,13 @@
             </StackPanel>
         </Border>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="300" MinWidth="200" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <!-- 왼쪽: 표 목록 -->
-            <ListView Grid.Column="0" ItemsSource="{Binding Tables}"
-                      SelectedItem="{Binding Selected, Mode=TwoWay}"
-                      BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,1,0">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="표" Width="150"
-                                        DisplayMemberBinding="{Binding Name}" />
-                        <GridViewColumn Header="상태" Width="70"
-                                        DisplayMemberBinding="{Binding Status}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
-
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-                          Background="Transparent" />
-
-            <!-- 오른쪽: 고른 표의 차이와 SQL 글 -->
-            <Grid Grid.Column="2">
+        <!--
+          왼쪽에 있던 표 목록(표 · 상태)을 없앴습니다. 차이 목록이 표
+          이름을 칸으로 들고 있어서 같은 것을 두 군데서 보고 있었고,
+          목록이 폭을 다 쓰는 쪽이 값을 읽기에 낫습니다.
+        -->
+            <!-- 차이 목록과 맞추는 SQL 글 -->
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="5" />
@@ -102,12 +138,6 @@
                         <WrapPanel>
                             <TextBlock Text="차이 목록" Style="{StaticResource FieldLabel}"
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <RadioButton GroupName="scope" Style="{StaticResource SegmentButton}"
-                                         Content="전체 표" IsChecked="{Binding ShowAll, Mode=TwoWay}"
-                                         ToolTip="달라진 모든 표의 차이를 한 목록으로 뽑습니다." />
-                            <RadioButton GroupName="scope" Style="{StaticResource SegmentButton}"
-                                         Content="고른 표만" IsChecked="{Binding ShowOne, Mode=TwoWay}"
-                                         ToolTip="왼쪽에서 고른 표의 차이만 봅니다." />
                             <TextBlock Text="{Binding LineText}" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="12,0,12,0" />
                             <Button Content="목록 CSV 저장" Click="OnSaveList"
@@ -122,21 +152,30 @@
                                   ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListView.View>
                                 <GridView>
-                                    <GridViewColumn Header="표" Width="140"
+                                    <!--
+                                      표 이름은 남겨 뒀습니다. 폴더에 DB 가 여럿
+                                      있으면 같은 IO 이름이 표마다 나와서, 이
+                                      칸이 없으면 어느 DB 의 값인지 알 수가
+                                      없습니다. 한 DB 만 보신다면 이 한 줄만
+                                      지우면 됩니다.
+                                    -->
+                                    <GridViewColumn Header="표" Width="130"
                                                     DisplayMemberBinding="{Binding Table}" />
-                                    <GridViewColumn Header="갈래" Width="50"
-                                                    DisplayMemberBinding="{Binding Kind}" />
-                                    <GridViewColumn Header="구분" Width="64"
-                                                    DisplayMemberBinding="{Binding Change}" />
-                                    <GridViewColumn Header="행" Width="150"
-                                                    DisplayMemberBinding="{Binding Where}" />
-                                    <GridViewColumn Header="열" Width="120"
-                                                    DisplayMemberBinding="{Binding Column}" />
-                                    <GridViewColumn Header="이전" Width="140"
+                                    <GridViewColumn Header="IO명" Width="150"
+                                                    DisplayMemberBinding="{Binding Io}" />
+                                    <GridViewColumn Header="이전 value" Width="130"
                                                     DisplayMemberBinding="{Binding Before}" />
-                                    <GridViewColumn Header="이후" Width="140"
+                                    <GridViewColumn Header="이후 value" Width="130"
                                                     DisplayMemberBinding="{Binding After}" />
-                                    <GridViewColumn Header="설명" Width="300"
+                                    <GridViewColumn Header="v1" Width="90"
+                                                    DisplayMemberBinding="{Binding V1}" />
+                                    <GridViewColumn Header="v2" Width="90"
+                                                    DisplayMemberBinding="{Binding V2}" />
+                                    <GridViewColumn Header="열" Width="110"
+                                                    DisplayMemberBinding="{Binding Column}" />
+                                    <GridViewColumn Header="구분" Width="60"
+                                                    DisplayMemberBinding="{Binding Change}" />
+                                    <GridViewColumn Header="설명" Width="280"
                                                     DisplayMemberBinding="{Binding Note}" />
                                 </GridView>
                             </ListView.View>
@@ -181,6 +220,5 @@
                     </DockPanel>
                 </Border>
             </Grid>
-        </Grid>
     </DockPanel>
 </UserControl>

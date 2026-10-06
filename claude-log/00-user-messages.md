@@ -809,3 +809,12 @@
 > 내가 그룹변경한거 어디에 저장됨?
 
 → 답변: [51-groups-were-not-saved.md](51-groups-were-not-saved.md)
+
+---
+
+## 요청 68 — DB 분석 자리 고르기 · 이름 · 목록 칸
+
+> 그리고 db 분석쪽에서 이전 이후 파일 내가 넣을 수 있게하고 화면에서 db분석이라고 적혀있는거 내가 config.txt에서 변경한 이름으로 바뀌게해주고
+> 지금 list뜨는거 항목에 IO명, 이전 value, 이후 value랑 v1, v2 넣어줘 왼쪽에 표랑 상태는 빼도 될 것같아 그리고 안에 데이터 파싱하는 파일은 위치만 알려줘 내가 직접 코딩할게
+
+→ 답변: [52-db-paths-and-list.md](52-db-paths-and-list.md)

@@ -2680,7 +2680,9 @@ namespace LogScope.Tests
 
             // ---- CSV ----
             string csv = DbDiffList.ToCsv(lines);
-            Check("CSV 머리글", csv.StartsWith("표,갈래,구분,행,열,이전,이후,설명"), csv.Substring(0, 20));
+            Check("CSV 머리글",
+                  csv.StartsWith("표,IO명,갈래,구분,행,열,이전 value,이후 value,v1,v2,설명"),
+                  csv.Substring(0, 40));
             Check("CSV 줄 수", CountLines(csv) == lines.Count + 1,
                   CountLines(csv) + " / " + (lines.Count + 1));
 
@@ -2689,6 +2691,24 @@ namespace LogScope.Tests
             string csv2 = DbDiffList.ToCsv(tricky);
             Check("쉼표 든 값은 따옴표로", csv2.Contains("\"a,b\""), csv2);
             Check("따옴표는 두 번으로", csv2.Contains("\"그가 \"\"말\"\"했다\""), csv2);
+
+            // IO 이름은 "그 줄을 가리키는 가장 좁은 이름" 입니다.
+            Check("행 줄의 IO 는 행 열쇠", bb.Io == "id=1", bb.Io);
+            Check("열 줄의 IO 는 열 이름", col.Io == "a", col.Io);
+            Check("한쪽에만 있는 표의 머리는 표 이름", head.Io == "only_b", head.Io);
+
+            // v1 · v2 는 쓰는 쪽이 채우는 빈 칸입니다. 비어 있어야 합니다 —
+            // 아무 값이나 채워 두면 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
+            Check("v1 은 비어 있음", bb.V1.Length == 0, bb.V1);
+            Check("v2 도 비어 있음", bb.V2.Length == 0, bb.V2);
+
+            // 채우면 CSV 와 마우스 설명에 그대로 나갑니다.
+            bb.V1 = "180"; bb.V2 = "°C";
+            string filled = DbDiffList.ToCsv(new List<DbDiffLine> { bb });
+            Check("채운 v1 이 CSV 에 나감", filled.Contains("180"), filled);
+            Check("채운 v2 도 나감", filled.Contains("°C"), filled);
+            Check("채운 v1·v2 가 설명 글에도", bb.Tip.Contains("180") && bb.Tip.Contains("°C"), bb.Tip);
+            bb.V1 = string.Empty; bb.V2 = string.Empty;
 
             // 마우스 설명에는 잘린 값이 다 들어 있어야 합니다.
             Check("설명 글에 값이 다 있음",
