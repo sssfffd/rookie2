@@ -801,3 +801,11 @@
 > 그래프 색깔은 이전 파랑 이후 빨강으로하고 구분잘되게 나타내고 그래프 화면 한쪽에 빨간석은 이후 파란선은 이전 표시되게 해줘
 
 → 답변: [50-blue-before-red-after.md](50-blue-before-red-after.md)
+
+---
+
+## 요청 67 — 그룹 변경은 어디에 저장되나 (질문)
+
+> 내가 그룹변경한거 어디에 저장됨?
+
+→ 답변: [51-groups-were-not-saved.md](51-groups-were-not-saved.md)

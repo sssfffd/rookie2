@@ -59,6 +59,16 @@ namespace LogScope.App.Views
             // 그래서 어느 화면을 거치지 않고 여기서 바로 받습니다.
             _vm.Align.Changed += OnAlignmentChanged;
 
+            // 그룹을 고치면 <b>그 자리에서</b> 저장합니다.
+            //
+            // 전에는 이 이벤트를 아무도 듣지 않았습니다. 그래서 그룹을 만들고
+            // IO 를 넣어 둔 것이, 로그를 다시 열거나 시간 맞추기를 바꾸거나
+            // 창을 닫을 때까지 파일에 안 적혀 있었습니다. 그 전에 프로그램이
+            // 죽으면(작업 관리자로 끄거나 전원이 나가면) 묶어 둔 것이 전부
+            // 사라집니다. 그룹 나누기는 한 번에 몇십 개를 손으로 넣는 일이라
+            // 그게 제일 아까운 자리입니다.
+            _vm.Graph.List.GroupsChanged += OnGroupsChanged;
+
             Loaded += OnLoaded;
         }
 
@@ -327,6 +337,16 @@ namespace LogScope.App.Views
         }
 
         /// <summary>도구 줄에서 가로축이나 맞추기 기준을 바꿨을 때.</summary>
+        /// <summary>
+        /// 그룹이 바뀌었을 때. 설정만 저장하고 화면은 건드리지 않습니다 —
+        /// 목록은 이미 제 손으로 바꿔 놓았고, 저장은 임시 파일에 쓰고
+        /// 바꿔치는 방식이라 중간에 죽어도 반쪽짜리가 남지 않습니다.
+        /// </summary>
+        private void OnGroupsChanged(object sender, EventArgs e)
+        {
+            SaveSettings();
+        }
+
         private void OnAlignmentChanged(object sender, EventArgs e)
         {
             ReapplyAxisAndAlign();

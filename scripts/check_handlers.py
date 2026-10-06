@@ -66,8 +66,56 @@ for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope.App/**/*.xaml'), recu
             hits.append((x, ev, handler,
                          '두 번째 인자가 %s 여야 하는데 (%s)' % (want, ' | '.join(sigs[handler]))))
 
+# ---- 아무도 듣지 않는 이벤트 ----
+#
+# 뷰모델이 "바뀌었다" 고 알려도 듣는 쪽이 없으면 조용히 아무 일도 안 납니다.
+# 컴파일도 되고 검사도 통과합니다. 실제로 그렇게 해서, 그룹을 고쳐도
+# GroupsChanged 를 아무도 듣지 않아 <b>저장되지 않고 있었습니다</b> (0.61).
+#
+# 선언한 이벤트마다 어딘가에서 "+=" 로 붙는지만 봅니다.
+import glob as _glob
+APPDIR = os.path.join(ROOT, 'src', 'LogScope.App')
+srcs = {}
+for f in _glob.glob(APPDIR + '/**/*.cs', recursive=True):
+    srcs[f] = io.open(f, encoding='utf-8-sig').read()
+
+# XAML 에서 속성으로 붙는 것도 "듣는 것" 입니다 (CloseRequested="OnX").
+xamltext = '\n'.join(io.open(f, encoding='utf-8-sig').read()
+                     for f in _glob.glob(APPDIR + '/**/*.xaml', recursive=True))
+def nocomment(t):
+    """줄 주석을 떼어 냅니다. 주석에 적힌 "+=" 가 듣는 것으로 세면,
+    구독을 주석으로 막아 놓고도 검사가 통과합니다 (실제로 겪었습니다)."""
+    out = []
+    for line in t.split('\n'):
+        i = line.find('//')
+        while i >= 0:
+            if line.count('"', 0, i) % 2 == 0:       # 글자열 안이 아니면 주석
+                line = line[:i]
+                break
+            i = line.find('//', i + 2)
+        out.append(line)
+    return '\n'.join(out)
+
+alltext = '\n'.join(nocomment(v) for v in srcs.values())
+
+# 런타임이 대신 듣는 것들. WPF 가 바인딩에서 PropertyChanged 를 붙입니다.
+BUILTIN = set(['PropertyChanged', 'CollectionChanged', 'ErrorsChanged'])
+
+deaf = []
+for f, t in sorted(srcs.items()):
+    for m in re.finditer(r'public\s+event\s+[\w\.<>,\s\[\]]+?\s+(\w+)\s*;', t):
+        name = m.group(1)
+        if name in BUILTIN: continue
+        if re.search(r'\b' + re.escape(name) + r'\s*\+=', alltext): continue
+        if re.search(r'\b' + re.escape(name) + r'\s*=\s*"', xamltext): continue
+        deaf.append((f, name))
+
+for f, name in deaf:
+    print('아무도 듣지 않는 이벤트  %s: %s' % (os.path.relpath(f, ROOT), name))
+
 for x, ev, h, why in hits:
     print('서명 불일치  %s: %s="%s" — %s' % (os.path.relpath(x, ROOT), ev, h, why))
 print('---')
-print('지적 %d 건' % len(hits) if hits else '이벤트 처리기 서명 모두 맞음')
-sys.exit(1 if hits else 0)
+n = len(hits) + len(deaf)
+print('지적 %d 건' % n if n else '이벤트 처리기 서명 모두 맞음 · 듣지 않는 이벤트 없음')
+sys.exit(1 if n else 0)
