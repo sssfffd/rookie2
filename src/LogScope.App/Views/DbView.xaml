@@ -30,10 +30,8 @@
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
                             ToolTip="config.txt 의 db.before / db.after 를 읽어 견줍니다." />
-                    <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,6,0"
+                    <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,14,0"
                             ToolTip="아래 글을 .sql 파일로 저장합니다. 돌리는 것은 직접 하세요." />
-                    <Button Content="표 정의 저장" Click="OnSaveCreate" Margin="0,0,14,0"
-                            ToolTip="읽은 표의 CREATE TABLE 글을 저장합니다. 서버의 SHOW CREATE TABLE 과 견주거나, 값을 옮길 때 받는 쪽 표를 만드는 데 씁니다." />
 
                     <TextBlock Text="맞출 방향" Style="{StaticResource ToolGroupCaption}"
                                VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -65,35 +63,47 @@
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="이전" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.Before}"
                                VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <!--
+                      칸에 직접 타 넣거나 붙여넣어도 됩니다. 탐색기 주소 칸에서
+                      복사해 오는 것이 창을 띄워 찾는 것보다 빠를 때가 많습니다.
+                      폴더든 파일이든 됩니다.
+                    -->
                     <Border Grid.Row="0" Grid.Column="1" Tag="before|Brush.Window"
                             Background="{DynamicResource Brush.Window}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="3" Padding="8,4" Margin="0,0,6,0"
+                            CornerRadius="3" Padding="2" Margin="0,0,6,0"
                             AllowDrop="True" DragOver="OnPathDragOver"
                             DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <TextBlock Text="{Binding BeforePath}" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding BeforePath}" />
+                        <TextBox Text="{Binding BeforePath, Mode=TwoWay}"
+                                 BorderThickness="0" Background="Transparent"
+                                 Padding="6,3" ToolTip="{Binding BeforePath}" />
                     </Border>
-                    <Button Grid.Row="0" Grid.Column="2" Content="찾기" Tag="before"
+                    <Button Grid.Row="0" Grid.Column="2" Content="폴더" Tag="before"
                             Click="OnPickPath" Margin="0,0,4,0"
-                            ToolTip="폴더를 고릅니다. 파일 하나를 고르려면 [파일] 을 누르세요." />
+                            ToolTip="폴더를 고릅니다 (그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽습니다)." />
                     <Button Grid.Row="0" Grid.Column="3" Content="파일" Tag="before"
                             Click="OnPickFile"
-                            ToolTip="덤프 파일(.sql) 하나를 고릅니다." />
+                            ToolTip="파일 하나를 고릅니다 (.sql 덤프 · .csv · .frm)." />
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="이후" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.After}"
                                VerticalAlignment="Center" Margin="0,6,8,0" />
+                    <!--
+                      칸에 직접 타 넣거나 붙여넣어도 됩니다. 탐색기 주소 칸에서
+                      복사해 오는 것이 창을 띄워 찾는 것보다 빠를 때가 많습니다.
+                      폴더든 파일이든 됩니다.
+                    -->
                     <Border Grid.Row="1" Grid.Column="1" Tag="after|Brush.Window"
                             Background="{DynamicResource Brush.Window}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="3" Padding="8,4" Margin="0,6,6,0"
+                            CornerRadius="3" Padding="2" Margin="0,6,6,0"
                             AllowDrop="True" DragOver="OnPathDragOver"
                             DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <TextBlock Text="{Binding AfterPath}" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding AfterPath}" />
+                        <TextBox Text="{Binding AfterPath, Mode=TwoWay}"
+                                 BorderThickness="0" Background="Transparent"
+                                 Padding="6,3" ToolTip="{Binding AfterPath}" />
                     </Border>
-                    <Button Grid.Row="1" Grid.Column="2" Content="찾기" Tag="after"
+                    <Button Grid.Row="1" Grid.Column="2" Content="폴더" Tag="after"
                             Click="OnPickPath" Margin="0,6,4,0" />
                     <Button Grid.Row="1" Grid.Column="3" Content="파일" Tag="after"
                             Click="OnPickFile" Margin="0,6,0,0" />
@@ -173,10 +183,6 @@
                                                     DisplayMemberBinding="{Binding V2}" />
                                     <GridViewColumn Header="열" Width="110"
                                                     DisplayMemberBinding="{Binding Column}" />
-                                    <GridViewColumn Header="구분" Width="60"
-                                                    DisplayMemberBinding="{Binding Change}" />
-                                    <GridViewColumn Header="설명" Width="280"
-                                                    DisplayMemberBinding="{Binding Note}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>

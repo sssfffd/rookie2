@@ -32,6 +32,16 @@ namespace LogScope.App.Views
         public void Attach(AppState state)
         {
             if (state != null) _vm.UseSettings(state.Settings);
+
+            // 칸에 직접 타 넣어 고친 것도 저장되어야 합니다. 단추와
+            // 끌어다 놓기만 챙기면, 타 넣은 사람은 저장이 안 되는 것을
+            // 다시 켤 때 압니다.
+            _vm.PathsChanged += OnVmPathsChanged;
+        }
+
+        private void OnVmPathsChanged(object sender, EventArgs e)
+        {
+            RaisePaths();
         }
 
         /// <summary>
@@ -83,8 +93,7 @@ namespace LogScope.App.Views
             catch (ArgumentException) { return; }
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
 
-            _vm.SetPath(before, dir);
-            RaisePaths();
+            _vm.SetPath(before, dir);   // SetPath 가 PathsChanged 를 알립니다
         }
 
         private void OnPickFile(object sender, RoutedEventArgs e)
@@ -108,8 +117,7 @@ namespace LogScope.App.Views
             catch (ArgumentException) { }
 
             if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
-            _vm.SetPath(before, dlg.FileName);
-            RaisePaths();
+            _vm.SetPath(before, dlg.FileName);   // SetPath 가 PathsChanged 를 알립니다
         }
 
         // ---------------- 끌어다 놓기 ----------------
@@ -136,8 +144,7 @@ namespace LogScope.App.Views
             var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (paths == null || paths.Length == 0) return;
 
-            _vm.SetPath(Before(sender), paths[0]);
-            RaisePaths();
+            _vm.SetPath(Before(sender), paths[0]);   // SetPath 가 PathsChanged 를 알립니다
         }
 
         /// <summary>
@@ -291,38 +298,6 @@ namespace LogScope.App.Views
                 snap.Notes.Add("ibd2sdi 로 표 " + added + " 개의 모양을 더 읽었습니다 (값은 못 읽습니다).");
             if (failed > 0)
                 snap.Notes.Add(".ibd " + failed + " 개는 ibd2sdi 가 읽지 못했습니다.");
-        }
-
-        /// <summary>
-        /// 읽은 표의 모양을 CREATE TABLE 글로 저장합니다.
-        ///
-        /// .frm 을 제대로 읽었는지 확인하는 가장 빠른 길입니다 — 서버에서
-        /// SHOW CREATE TABLE 을 찍어 나란히 놓고 보면 됩니다.
-        /// </summary>
-        private void OnSaveCreate(object sender, RoutedEventArgs e)
-        {
-            if (!_vm.HasSnapshots)
-            {
-                MessageBox.Show(Window.GetWindow(this), "먼저 [DB 읽기] 를 눌러 주세요.",
-                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var dlg = new Microsoft.Win32.SaveFileDialog();
-            dlg.Title = "표 정의 저장";
-            dlg.Filter = "SQL (*.sql)|*.sql|모든 파일 (*.*)|*.*";
-            dlg.FileName = "db_tables_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".sql";
-            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
-
-            try
-            {
-                File.WriteAllText(dlg.FileName, _vm.CreateSqlText(), new UTF8Encoding(true));
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-            {
-                MessageBox.Show(Window.GetWindow(this), "저장하지 못했습니다.\n\n" + ex.Message,
-                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
         }
 
         /// <summary>

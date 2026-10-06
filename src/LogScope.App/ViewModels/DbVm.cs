@@ -51,15 +51,24 @@ namespace LogScope.App.ViewModels
             Raise("HasPaths"); Raise("PathText");
         }
 
+        /// <summary>
+        /// 견줄 자리. <b>화면에서 고칠 수 있습니다</b> — 타 넣거나 붙여넣어도
+        /// 되고, 비우면 config.txt 값으로 돌아갑니다. 폴더든 파일이든 됩니다.
+        /// </summary>
         public string BeforePath
         {
             get { return Pick(_settings != null ? _settings.DbBeforePath : null, AppConfig.Current.DbBefore); }
+            set { SetPath(true, value); }
         }
 
         public string AfterPath
         {
             get { return Pick(_settings != null ? _settings.DbAfterPath : null, AppConfig.Current.DbAfter); }
+            set { SetPath(false, value); }
         }
+
+        /// <summary>자리가 바뀌었을 때. 저장은 창이 맡습니다.</summary>
+        public event EventHandler PathsChanged;
 
         private static string Pick(string chosen, string fallback)
         {
@@ -91,6 +100,9 @@ namespace LogScope.App.ViewModels
             Raise("BeforePath"); Raise("AfterPath");
             Raise("BeforeChosen"); Raise("AfterChosen");
             Raise("HasPaths"); Raise("PathText");
+
+            EventHandler h = PathsChanged;
+            if (h != null) h(this, EventArgs.Empty);
         }
 
         public bool HasPaths
@@ -104,7 +116,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!HasPaths)
                 {
-                    return "견줄 두 자리를 정해 주세요. [찾기] 로 고르거나, "
+                    return "견줄 두 자리를 정해 주세요. [폴더] · [파일] 로 고르거나, 칸에 직접 타 넣거나, "
                          + "칸에 폴더나 파일을 끌어다 놓으면 됩니다.\n"
                          + "config.txt 에 db.before / db.after 로 적어 두면 켤 때마다 그 자리입니다.\n"
                          + "폴더면 그 안의 .sql / .csv / .frm 을 (하위 폴더까지) 읽고, "
@@ -117,22 +129,6 @@ namespace LogScope.App.ViewModels
         private DbDiffResult _diff;
         public DbDiffResult Diff { get { return _diff; } }
 
-        // 견준 뒤에도 두 벌을 들고 있습니다. 표 정의 글을 만들 때 씁니다 —
-        // 차이만 들고 있으면 "같은 표" 의 모양이 없어집니다.
-        private DbSnapshot _before, _after;
-
-        public bool HasSnapshots { get { return _before != null || _after != null; } }
-
-        /// <summary>
-        /// 읽은 표의 모양을 CREATE TABLE 글로. <b>그대로 돌릴 글이 아닙니다</b> —
-        /// 서버의 SHOW CREATE TABLE 과 견주거나, 값을 옮길 때 받는 쪽 표를
-        /// 만드는 출발점입니다. 빠진 것은 글 머리에 적혀 있습니다.
-        /// </summary>
-        public string CreateSqlText()
-        {
-            return DbCreateSql.Both(_before, _after);
-        }
-
         private string _summary = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
         public string Summary
         {
@@ -140,12 +136,26 @@ namespace LogScope.App.ViewModels
             private set { Set(ref _summary, value); }
         }
 
-        private string _notes = string.Empty;
-        /// <summary>못 읽은 파일 같은 것. 비어 있으면 줄 자체가 사라집니다.</summary>
+        private string _fileNotes = string.Empty;   // 읽으면서 생긴 일 (못 읽은 파일 등)
+        private string _listNotes = string.Empty;   // 목록에서 올라온 알림
+
+        /// <summary>
+        /// 읽으면서 생긴 일과 <b>목록의 알림</b>을 함께 적습니다.
+        ///
+        /// 알림을 여기 올리는 이유가 있습니다. 목록에서 "설명" 칸을 뺐는데,
+        /// "기본 키가 없어 모든 열로 짝지었다" 나 "상한에 걸려 그 뒤는 세기만
+        /// 했다" 같은 글이 그 칸에만 있었습니다. 그대로 두면 <b>목록이 전부인
+        /// 줄 알고 읽게 됩니다</b> — 조용히 덜 보여 주는 것이 이 프로그램에서
+        /// 가장 나쁜 고장입니다.
+        /// </summary>
         public string Notes
         {
-            get { return _notes; }
-            private set { Set(ref _notes, value); }
+            get
+            {
+                if (_fileNotes.Length == 0) return _listNotes;
+                if (_listNotes.Length == 0) return _fileNotes;
+                return _fileNotes + "\n" + _listNotes;
+            }
         }
 
         // ---------------- 차이 목록 ----------------
@@ -179,10 +189,36 @@ namespace LogScope.App.ViewModels
             private set { Set(ref _emptyText, value); }
         }
 
+        /// <summary>
+        /// 알림 줄(갈래가 "알림")을 목록에서 빼내 위의 안내로 올립니다.
+        /// 같은 글이 겹치면 한 번만 적고, 스무 줄까지만 적습니다.
+        /// </summary>
+        private List<DbDiffLine> TakeNotes(List<DbDiffLine> lines)
+        {
+            var kept = new List<DbDiffLine>(lines.Count);
+            var notes = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DbDiffLine ln = lines[i];
+                if (ln.Kind != "알림") { kept.Add(ln); continue; }
+
+                string text = ln.Table.Length > 0 ? ln.Table + " — " + ln.Note : ln.Note;
+                if (text.Length > 0 && seen.Add(text) && notes.Count < 20) notes.Add(text);
+            }
+
+            _listNotes = string.Join("\n", notes.ToArray());
+            return kept;
+        }
+
         /// <summary>목록을 CSV 글로. 저장은 창이 맡습니다.</summary>
         public string LinesCsv()
         {
-            return DbDiffList.ToCsv(_lines);
+            // 화면에서 걸러 낸 알림 줄까지 다시 넣습니다. 내보낸 파일에서
+            // "이 표는 상한에 걸렸다" 가 빠지면, 그 파일을 나중에 보는 사람은
+            // 그게 차이의 전부인 줄 압니다.
+            return DbDiffList.ToCsv(_diff == null ? _lines : DbDiffList.Build(_diff, null));
         }
 
         private void Rebuild()
@@ -195,7 +231,7 @@ namespace LogScope.App.ViewModels
             }
             else
             {
-                _lines = DbDiffList.Build(_diff, null);
+                _lines = TakeNotes(DbDiffList.Build(_diff, null));
                 EmptyText = _diff.Tables.Count == 0
                     ? "읽은 표가 없습니다. 경로와 config.txt 를 봐 주세요."
                     : "두 DB 가 같습니다 — 다른 데가 없습니다.";
@@ -204,6 +240,7 @@ namespace LogScope.App.ViewModels
             LineText = _lines.Count == 0 ? string.Empty : _lines.Count.ToString("N0") + " 줄";
             Raise("Lines");
             Raise("LinesIsEmpty");
+            Raise("Notes");
         }
 
         private string _script = string.Empty;
@@ -230,12 +267,10 @@ namespace LogScope.App.ViewModels
         /// <summary>읽은 결과를 받습니다. 읽는 일은 창(DbView)이 맡습니다 — 진행 창을 띄워야 합니다.</summary>
         public void Take(DbSnapshot before, DbSnapshot after)
         {
-            _before = before;
-            _after = after;
             _diff = DbDiff.Compare(before, after);
 
             Summary = Overview(before, after, _diff);
-            Notes = string.Join("\n", _diff.Notes.ToArray());
+            _fileNotes = string.Join("\n", _diff.Notes.ToArray());
 
             Rebuild();
             BuildScript();

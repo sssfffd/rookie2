@@ -110,6 +110,7 @@ namespace LogScope.Tests
                 FrmShape();
                 FrmDefaultUnknown();
                 FrmInFolder();
+                DbSingleFile();
                 DbCreateSqlText();
                 DbCompare();
                 DbDiffLines();
@@ -2458,6 +2459,53 @@ namespace LogScope.Tests
                 }
             }
             Check("범례는 IO 색일 때 숨음", true, null);
+        }
+
+        /// <summary>
+        /// 폴더가 아니라 <b>파일 하나</b>를 줘도 읽히는지. 세 가지 다 봅니다.
+        ///
+        /// 화면에서 [파일] 로 고르거나 칸에 파일을 끌어다 놓으면 이 길로
+        /// 들어옵니다. 폴더만 되는 줄 알고 쓰면 "읽을 게 없다" 는 말만 보게
+        /// 됩니다.
+        /// </summary>
+        private static void DbSingleFile()
+        {
+            Console.WriteLine("DB — 파일 하나만 줘도 읽기");
+
+            string sql = WriteText("one.sql",
+                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64), PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `recipe` VALUES (1,'가열 A');\n");
+            DbSnapshot a = DbFolderReader.Read(sql, null);
+            Check(".sql 하나", a.Find("recipe") != null, Join(a.Notes));
+            Check(".sql 하나는 값까지", a.Find("recipe").Rows.Count == 1, null);
+            // 파일 하나를 줬으면 표 이름 앞에 폴더 이름을 붙이지 않습니다.
+            Check(".sql 하나는 이름 그대로", a.Tables[0].Name == "recipe", a.Tables[0].Name);
+
+            string csv = WriteText("설비.csv", "id,name\n1,가열\n2,냉각\n");
+            DbSnapshot b = DbFolderReader.Read(csv, null);
+            Check(".csv 하나", b.Find("설비") != null, Join(b.Notes));
+            Check(".csv 하나는 행 둘", b.Find("설비").Rows.Count == 2, null);
+
+            string frm = Path.Combine(_dir, "온도.frm");
+            File.WriteAllBytes(frm, BuildFrm(50619));
+            DbSnapshot c = DbFolderReader.Read(frm, null);
+            Check(".frm 하나", c.Tables.Count == 1, Join(c.Notes));
+            Check(".frm 하나는 모양만", !c.Tables[0].HasRows, null);
+            Check(".frm 하나도 판 번호를 적음", Join(c.Notes).Contains("5.6.19"), Join(c.Notes));
+
+            // 없는 파일과 읽을 수 없는 파일은 조용히 넘기지 않습니다.
+            DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는파일.sql"), null);
+            Check("없는 자리는 그렇다고", none.Tables.Count == 0 && none.Notes.Count > 0, null);
+
+            string junk = WriteText("쓰레기.frm", "이건 frm 이 아닙니다");
+            DbSnapshot bad = DbFolderReader.Read(junk, null);
+            Check("못 읽은 파일은 이유를 적음",
+                  bad.Tables.Count == 0 && Join(bad.Notes).Contains("읽지 못"), Join(bad.Notes));
+        }
+
+        private static string Join(List<string> notes)
+        {
+            return string.Join(" / ", notes.ToArray());
         }
 
         private static void DbCompare()

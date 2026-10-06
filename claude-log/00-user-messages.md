@@ -826,3 +826,11 @@
 > 종합 분석결과에 io개수 뜨는거 지워줘
 
 → 답변: [49-overall-result-panel.md](49-overall-result-panel.md) 의 뒷이야기
+
+---
+
+## 요청 70 — DB 목록 칸 줄이기, 파일로 넣기
+
+> 지금 db분석쪽에 구분이랑 설명 빼주고 표 정의 저장도 빼주셈 가리고 폴더말고 파일 넣어도 가능하게 만들어줘
+
+→ 답변: [52-db-paths-and-list.md](52-db-paths-and-list.md) 의 뒷이야기
