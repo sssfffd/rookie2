@@ -105,6 +105,7 @@ namespace LogScope.Tests
                 DbSqlDump();
                 DbCsvTable();
                 DbNestedFolders();
+                DbFrmIbdNote();
                 DbCompare();
                 DbDiffLines();
                 DbScript();
@@ -2017,6 +2018,43 @@ namespace LogScope.Tests
             for (int i = 0; i < d.Tables.Count; i++) if (d.Tables[i].Name == "db1.users") td = d.Tables[i];
             Check("폴더가 같으면 같은 표로 짝지음", td != null && td.Change == DbChange.Changed,
                   td == null ? "못 찾음" : td.Change.ToString());
+        }
+
+        /// <summary>
+        /// .frm / .ibd 를 못 읽을 때 적는 안내가 <b>두 갈래</b>인지.
+        ///
+        /// .frm 이 함께 있으면 MySQL 5.x 이고, 그 .ibd 안에는 ibd2sdi 가 꺼낼
+        /// SDI 가 없습니다 (8.0 부터 들어갑니다). 그런 폴더에 "ibd2sdi 경로를
+        /// 적으세요" 라고 안내하면 적어 보고 또 안 되는 길로 보내는 셈입니다.
+        /// </summary>
+        private static void DbFrmIbdNote()
+        {
+            Console.WriteLine("DB — .frm / .ibd 안내가 갈라지는지");
+
+            // 5.x : 표마다 .frm + .ibd 짝
+            string five = Path.Combine(_dir, "five");
+            Directory.CreateDirectory(five);
+            File.WriteAllBytes(Path.Combine(five, "recipe.frm"), new byte[] { 0xFE, 0x01, 0x0A });
+            File.WriteAllBytes(Path.Combine(five, "recipe.ibd"), new byte[] { 1, 2, 3 });
+
+            string note5 = string.Join(" / ", DbFolderReader.Read(five, null).Notes.ToArray());
+            Check("5.x 임을 알려 줌", note5.Contains("5.x"), note5);
+            Check("ibd2sdi 로는 안 된다고 알려 줌",
+                  note5.Contains("SDI") && note5.Contains("8.0"), note5);
+            Check("5.x 에 ibd2sdi 경로를 적으라고 하지 않음",
+                  !note5.Contains("db.ibd2sdi"), note5);
+            Check("대신 덤프 길을 알려 줌",
+                  note5.Contains("mysqldump") && note5.Contains("ibdata1"), note5);
+
+            // 8.0 : .ibd 만 (.frm 없음)
+            string eight = Path.Combine(_dir, "eight");
+            Directory.CreateDirectory(eight);
+            File.WriteAllBytes(Path.Combine(eight, "recipe.ibd"), new byte[] { 1, 2, 3 });
+
+            string note8 = string.Join(" / ", DbFolderReader.Read(eight, null).Notes.ToArray());
+            Check("8.0 쪽은 ibd2sdi 경로를 알려 줌", note8.Contains("db.ibd2sdi"), note8);
+            Check("8.0 쪽은 5.x 라고 하지 않음", !note8.Contains("5.x"), note8);
+            Check("값은 못 읽는다고 밝힘", note8.Contains("값은 못 읽"), note8);
         }
 
         private static void DbCompare()

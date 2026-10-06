@@ -211,17 +211,35 @@ namespace LogScope.Core.Db
         /// <summary>
         /// .frm / .ibd 를 그냥 넘기지 않고 왜 못 읽는지 적습니다.
         /// 이 글이 화면에 그대로 나갑니다.
+        ///
+        /// <b>안내가 두 갈래입니다.</b> <c>.frm</c> 이 함께 있으면 MySQL 5.x
+        /// (또는 MariaDB) 이고, 그 <c>.ibd</c> 안에는 ibd2sdi 가 꺼낼 표
+        /// 정의(SDI)가 <b>없습니다</b> — SDI 는 8.0 부터 들어간 것입니다.
+        /// 그런 폴더에 "ibd2sdi 경로를 적으세요" 라고 안내하면, 적어 보고
+        /// 또 안 되는 길로 보내는 셈입니다.
         /// </summary>
         private static string Untouched(int frm, int ibd)
         {
             var parts = new List<string>();
             if (ibd > 0) parts.Add(".ibd " + ibd + " 개");
             if (frm > 0) parts.Add(".frm " + frm + " 개");
+            string what = string.Join(", ", parts.ToArray());
 
-            return string.Join(", ", parts.ToArray())
-                 + " 는 이 프로그램이 직접 읽지 않습니다 (공개 규격이 없는 InnoDB 내부 파일). "
-                 + "[설정] → [DB] 에서 MySQL 도구 경로를 넣으면 거기서 뽑아 읽습니다. "
-                 + "또는 mysqldump 로 .sql 을 만들어 그 폴더에 두세요.";
+            if (frm > 0)
+            {
+                return what + " 는 직접 읽지 않습니다. "
+                     + ".frm 이 함께 있으니 MySQL 5.x (또는 MariaDB) 입니다 — "
+                     + "이 .ibd 안에는 ibd2sdi 가 꺼낼 표 정의(SDI)가 없습니다 "
+                     + "(SDI 는 8.0 부터 들어갑니다). "
+                     + "mysqldump 로 .sql 을 만들어 이 폴더에 두거나, config.txt 의 "
+                     + "db.dump.* 에 덤프 명령을 적어 주세요. 이 폴더를 다른 MySQL 에 "
+                     + "붙여 뽑으려면 ibdata1 과 ib_logfile* 도 함께 있어야 합니다.";
+            }
+
+            return what + " 는 직접 읽지 않습니다 (공개 규격이 없는 InnoDB 내부 파일). "
+                 + "config.txt 의 db.ibd2sdi 에 ibd2sdi 경로를 적으면 표와 열의 "
+                 + "이름·타입은 읽습니다 (MySQL 8.0 의 .ibd 만, 값은 못 읽습니다). "
+                 + "값까지 보려면 mysqldump 로 .sql 을 만들어 이 폴더에 두세요.";
         }
 
         /// <param name="prefix">

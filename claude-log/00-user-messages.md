@@ -756,3 +756,11 @@
 > 어디에 저장되어있는지
 
 → 답변: [46-where-mysql-keeps-data.md](46-where-mysql-keeps-data.md) 의 뒷이야기
+
+---
+
+## 요청 62 — datadir 에 frm 과 ibd 로 나뉘어 있으면
+
+> datadir안에 frm이랑 ibd로 나뉘어있으면 어캄?
+
+→ 답변: [46-where-mysql-keeps-data.md](46-where-mysql-keeps-data.md) 의 뒷이야기 2
