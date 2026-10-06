@@ -102,6 +102,7 @@ namespace LogScope.Tests
                 SettingsRoundTrip();
                 AppConfigParse();
                 AppConfigFile();
+                GroupFileParse();
                 TraceColorRule();
                 DbSqlDump();
                 DbCsvTable();
@@ -1824,6 +1825,100 @@ namespace LogScope.Tests
         }
 
         /// <summary>.sql 덤프 읽기. mysqldump 가 뽑는 모양을 그대로 흉내 냈습니다.</summary>
+        /// <summary>
+        /// 손으로 고치는 그룹 파일 (groups.txt).
+        ///
+        /// 여기서 제일 중요한 것은 <b>전부 주석인 파일이 아무것도 하지 않는
+        /// 것</b>입니다. "파일이 있으면 주인" 으로 했다면, 설명만 적힌 빈 틀이
+        /// 들어 있는 것만으로 그때까지 묶어 둔 그룹이 전부 지워집니다.
+        /// </summary>
+        private static void GroupFileParse()
+        {
+            Console.WriteLine("그룹 파일 — groups.txt");
+
+            List<GroupDef> g = GroupFile.Parse(new[]
+            {
+                "# 설명 줄",
+                "",
+                "  가열부 = TEMP_1, TEMP_2 , HEATER_ON  ",
+                "압력\t=\tPRS_MAIN; PRS_SUB",
+                "예비 =",
+                "가열부 = TEMP_3",          // 같은 이름은 앞의 그룹에 더합니다
+                "등호없는줄",
+                " = 이름이 빈 줄",
+                "#가열부 = 주석이라 안 읽힘",
+            });
+
+            Check("그룹 셋", g.Count == 3, "실제 " + g.Count);
+            Check("차례대로", g[0].Name == "가열부" && g[1].Name == "압력" && g[2].Name == "예비",
+                  g[0].Name + "/" + g[1].Name + "/" + g[2].Name);
+
+            // 앞뒤 공백은 떼고, 쉼표·세미콜론·탭을 다 가릅니다.
+            Check("IO 를 가름", g[0].Members.Count == 4, "실제 " + g[0].Members.Count);
+            Check("공백을 뗌", g[0].Members[0] == "TEMP_1" && g[0].Members[2] == "HEATER_ON",
+                  string.Join("|", g[0].Members.ToArray()));
+            Check("같은 이름은 더함", g[0].Members[3] == "TEMP_3", g[0].Members[3]);
+            Check("세미콜론도 가름", g[1].Members.Count == 2, string.Join("|", g[1].Members.ToArray()));
+            Check("탭도 가름", g[1].Members[0] == "PRS_MAIN", g[1].Members[0]);
+
+            // 이름만 적은 줄은 빈 그룹입니다. 화면에서 IO 를 끌어다 넣을
+            // 자리로 쓰므로 빼지 않습니다.
+            Check("빈 그룹도 만듦", g[2].Members.Count == 0, "실제 " + g[2].Members.Count);
+
+            // 같은 IO 를 두 번 적어도 한 번만 들어갑니다.
+            List<GroupDef> dup = GroupFile.Parse(new[] { "a = X, X, Y" });
+            Check("같은 IO 는 한 번만", dup[0].Members.Count == 2,
+                  string.Join("|", dup[0].Members.ToArray()));
+
+            // ---- 전부 주석이면 아무것도 ----
+            List<GroupDef> none = GroupFile.Parse(new[]
+            {
+                "# 그룹 설정",
+                "#   가열부 = TEMP_1, TEMP_2",
+                "",
+            });
+            Check("전부 주석이면 빈 목록", none.Count == 0, "실제 " + none.Count);
+
+            Check("null 도 견딤", GroupFile.Parse(null).Count == 0, null);
+            Check("없는 파일은 빈 목록",
+                  GroupFile.Load(Path.Combine(_dir, "없는그룹.txt")).Count == 0, null);
+
+            // ---- 파일에서 읽기 (인코딩은 config.txt 와 같은 길) ----
+            string path = Path.Combine(_dir, "groups.txt");
+            File.WriteAllText(path, "온도그룹 = 가열_온도, 냉각_온도\n", new UTF8Encoding(true));
+            List<GroupDef> fromFile = GroupFile.Load(path);
+            Check("파일에서 읽음", fromFile.Count == 1 && fromFile[0].Name == "온도그룹",
+                  fromFile.Count == 0 ? "없음" : fromFile[0].Name);
+            Check("한글 IO 이름", fromFile[0].Members[0] == "가열_온도", fromFile[0].Members[0]);
+
+            // CP949(ANSI)로 저장된 파일도 읽혀야 합니다 — 예전 메모장이 그렇게 씁니다.
+            try
+            {
+                Encoding cp949 = Encoding.GetEncoding(949);
+                string p2 = Path.Combine(_dir, "groups_ansi.txt");
+                File.WriteAllBytes(p2, cp949.GetBytes("압력그룹 = 주_압력\n"));
+                List<GroupDef> ansi = GroupFile.Load(p2);
+                Check("CP949 파일도 읽음", ansi.Count == 1 && ansi[0].Name == "압력그룹",
+                      ansi.Count == 0 ? "없음" : ansi[0].Name);
+            }
+            catch (Exception e) when (e is ArgumentException || e is NotSupportedException)
+            {
+                // 리눅스 모노에는 CP949 가 없습니다 (윈도우에는 늘 있습니다).
+                // 던지는 예외가 둘이라 둘 다 받습니다 — AppConfig.Legacy() 가
+                // 같은 두 가지를 받습니다.
+                Console.WriteLine("  --    CP949 가 없어 건너뜀");
+            }
+
+            // ---- 다시 적기 : 적어 낸 글을 다시 읽으면 같아야 합니다 ----
+            string text = GroupFile.Write(g);
+            List<GroupDef> back = GroupFile.Parse(text.Split('\n'));
+            Check("적고 다시 읽어도 같음", back.Count == g.Count, back.Count + " / " + g.Count);
+            Check("적은 IO 도 같음",
+                  back[0].Members.Count == g[0].Members.Count && back[0].Name == g[0].Name, null);
+            // 적어 낸 글의 머리에는 "누가 이기나" 가 적혀 있어야 합니다.
+            Check("적어 낸 글이 규칙을 밝힘", text.Contains("주인") && text.Contains("주석"), null);
+        }
+
         private static void DbSqlDump()
         {
             Console.WriteLine("DB — .sql 덤프 읽기");

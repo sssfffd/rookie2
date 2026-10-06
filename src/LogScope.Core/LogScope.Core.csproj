@@ -74,6 +74,7 @@
     <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Settings\SettingsStore.cs" />
     <Compile Include="Settings\AppConfig.cs" />
+    <Compile Include="Settings\GroupFile.cs" />
     <Compile Include="Db\DbModel.cs" />
     <Compile Include="Db\SqlDumpReader.cs" />
     <Compile Include="Db\CsvTableReader.cs" />

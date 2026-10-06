@@ -293,6 +293,37 @@ namespace LogScope.App.Views
             return false;
         }
 
+        /// <summary>
+        /// 지금 그룹을 groups.txt 꼴로 클립보드에 담습니다.
+        ///
+        /// 파일로 바로 저장하지 않는 이유: 저장할 자리는 <b>저장소의</b>
+        /// groups.txt 이고, 그건 이 프로그램이 돌고 있는 폴더가 아닙니다.
+        /// 어디에 쓸지 우리가 짐작하면 엉뚱한 자리에 씁니다.
+        /// </summary>
+        private void OnCopyGroupFile(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+            string text = _vm.GroupFileText();
+
+            try
+            {
+                Clipboard.SetText(text);
+                MessageBox.Show(Window.GetWindow(this),
+                    "groups.txt 글을 클립보드에 담았습니다.\n\n"
+                    + "저장소의 groups.txt 에 붙여넣고 빌드하면 그 그룹으로 켜집니다.\n"
+                    + "(out\\groups.txt 를 바로 고쳐도 됩니다 — 그때는 빌드할 필요가 없습니다.)",
+                    "그룹", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException
+                                    || ex is InvalidOperationException)
+            {
+                // 클립보드는 다른 프로그램이 잡고 있으면 실패합니다.
+                MessageBox.Show(Window.GetWindow(this),
+                    "클립보드에 담지 못했습니다.\n\n" + ex.Message,
+                    "그룹", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void OnAddGroup(object sender, RoutedEventArgs e)
         {
             if (_vm == null) return;

@@ -150,7 +150,15 @@
                             <Button Content="아래로 옮기기" Click="OnMoveGroupDown" />
                             <Button Content="고른 IO를 이 그룹에 담기" Click="OnPutSelected" />
                             <Button Content="그룹 삭제" Click="OnDeleteGroup" />
+                            <Button Content="groups.txt 글 복사" Click="OnCopyGroupFile"
+                                    ToolTip="지금 묶어 둔 그룹을 groups.txt 꼴로 클립보드에 담습니다.&#x0a;저장소의 groups.txt 에 붙여넣고 빌드하면 그 그룹으로 켜집니다." />
                         </WrapPanel>
+
+                        <!-- 그룹이 groups.txt 로 정해져 있을 때만 나옵니다. -->
+                        <TextBlock Text="{Binding GroupSourceNote}" Style="{StaticResource Muted}"
+                                   FontSize="10" TextWrapping="Wrap" Margin="2,5,2,0"
+                                   Visibility="{Binding GroupSourceNote,
+                                                Converter={StaticResource TextToVisibility}}" />
                     </StackPanel>
                 </Border>
 

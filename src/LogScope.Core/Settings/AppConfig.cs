@@ -248,8 +248,12 @@ namespace LogScope.Core.Settings
         /// 메모장으로 고칠 파일입니다. 요즘 메모장은 UTF-8 로 저장하지만
         /// 예전 것은 <b>CP949(ANSI)</b> 로 저장합니다. UTF-8 로만 읽으면 그 경우
         /// 한글이 깨집니다. 그래서 BOM → UTF-8 → CP949 순으로 봅니다.
+        ///
+        /// <b>손으로 고치는 다른 설정 파일도 이 함수를 씁니다</b>
+        /// (<see cref="GroupFile"/>). 인코딩 읽기를 두 번 짜면 한쪽만 고쳐져
+        /// "config.txt 는 한글이 되는데 groups.txt 는 깨지는" 일이 생깁니다.
         /// </summary>
-        private static string[] ReadLines(string path)
+        public static string[] ReadLines(string path)
         {
             byte[] raw = File.ReadAllBytes(path);
             string text;

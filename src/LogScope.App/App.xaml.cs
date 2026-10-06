@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
@@ -12,6 +13,13 @@ namespace LogScope.App
 {
     public partial class App : Application
     {
+        /// <summary>
+        /// 그룹이 groups.txt 로 정해졌는지. 화면이 "여기서 고친 것은 다시 켜면
+        /// 되돌아갑니다" 를 적는 데 씁니다 — 말없이 되돌아가면 고친 사람은
+        /// 저장이 고장 난 줄 압니다.
+        /// </summary>
+        public static bool GroupsFromFile { get; private set; }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -28,6 +36,19 @@ namespace LogScope.App
             AppConfig.Current = AppConfig.Load(AppConfig.ResolvePath());
 
             AppSettings settings = SettingsStore.Load();
+
+            // 손으로 고치는 그룹 파일 (실행 파일 옆의 groups.txt).
+            //
+            // 그룹을 하나라도 정해 두면 그 파일이 주인입니다 — 설정 파일에
+            // 저장된 그룹을 덮습니다. 전부 주석이면 아무것도 하지 않습니다
+            // (설명만 적힌 빈 틀이 그룹을 지워 버리면 안 됩니다).
+            List<GroupDef> fromFile = GroupFile.Load(GroupFile.ResolvePath());
+            if (fromFile.Count > 0)
+            {
+                settings.Groups = fromFile;
+                GroupsFromFile = true;
+            }
+
             ThemeManager.Apply(settings.Theme);
 
             var state = new AppState();

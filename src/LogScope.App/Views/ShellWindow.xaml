@@ -46,7 +46,8 @@
                     <TextBlock Text="{Binding FullNameText}" FontSize="11"
                                Foreground="{DynamicResource Brush.TopBarMuted}"
                                VerticalAlignment="Bottom" Margin="0,0,7,3"
-                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="220" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding FullNameText}"
                                Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
 
                     <TextBlock Text="{Binding VersionText}" FontSize="11"

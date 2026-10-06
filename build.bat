@@ -213,6 +213,14 @@ if not exist "%OUT%\config.txt" (
   if exist "%ROOT%config.txt" copy /y "%ROOT%config.txt" "%OUT%\" >nul
 )
 
+rem  groups.txt: hand-edited IO groups. Same rule as config.txt -- the exe
+rem  reads it from its own folder, and we never overwrite one that is
+rem  already there. If it defines at least one group it wins over the
+rem  groups saved in LogScope.settings.json.
+if not exist "%OUT%\groups.txt" (
+  if exist "%ROOT%groups.txt" copy /y "%ROOT%groups.txt" "%OUT%\" >nul
+)
+
 echo.
 echo   ============================================================
 call :msg " ¿Ï·á." " Done."

@@ -346,6 +346,33 @@ namespace LogScope.App.ViewModels
             Raise("ColorByIo"); Raise("ShowSideLegend"); Raise("ColorNote");
         }
 
+        /// <summary>
+        /// 그룹이 groups.txt 로 정해져 있으면 그렇다고 적습니다. 아니면 빈 글자.
+        ///
+        /// <b>말없이 되돌아가면 안 됩니다.</b> 여기서 그룹을 고치면 그 자리에서는
+        /// 바뀌지만 다시 켤 때 파일 쪽으로 돌아갑니다. 그걸 적어 두지 않으면
+        /// 고친 사람은 저장이 고장 난 줄 압니다.
+        /// </summary>
+        public string GroupSourceNote
+        {
+            get
+            {
+                if (!GroupsFromFile) return string.Empty;
+                return "그룹은 groups.txt 가 정합니다. 여기서 고친 것은 다시 켜면 "
+                     + "그 파일 쪽으로 돌아갑니다 — 그대로 두려면 파일을 고치세요. "
+                     + "[groups.txt 글 복사] 로 지금 묶은 것을 그 꼴로 뽑을 수 있습니다.";
+            }
+        }
+
+        /// <summary>창이 켤 때 알려 줍니다 (Core 는 어느 파일이 이겼는지 모릅니다).</summary>
+        public bool GroupsFromFile { get; set; }
+
+        /// <summary>지금 그룹을 groups.txt 꼴로. 저장소의 파일에 붙여넣는 데 씁니다.</summary>
+        public string GroupFileText()
+        {
+            return GroupFile.Write(_state.Settings.Groups);
+        }
+
         /// <summary>로그가 바뀌었을 때 목록을 다시 만듭니다.</summary>
         public void Reload()
         {

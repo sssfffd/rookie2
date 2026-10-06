@@ -221,6 +221,12 @@ namespace System.Windows
     public class StartupEventArgs : EventArgs { public string[] Args; }
     public class ExitEventArgs : EventArgs { public int ApplicationExitCode; }
 
+    public static class Clipboard
+    {
+        public static void SetText(string text) { }
+        public static string GetText() { return string.Empty; }
+    }
+
     public static class MessageBox
     {
         public static MessageBoxResult Show(string text) { return MessageBoxResult.OK; }

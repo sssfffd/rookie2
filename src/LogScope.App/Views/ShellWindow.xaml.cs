@@ -71,6 +71,10 @@ namespace LogScope.App.Views
 
             // DB 화면은 XAML 이 직접 만들어 제 뷰모델을 들고 있습니다.
             // 설정은 여기서 붙여 주고, 거기서 고른 자리는 여기서 저장합니다.
+            // 그룹이 groups.txt 로 정해졌는지 알려 줍니다. Core 는 어느 파일이
+            // 이겼는지 모르고, 그걸 아는 곳은 켜는 자리(App)뿐입니다.
+            _vm.Graph.GroupsFromFile = App.GroupsFromFile;
+
             Db.Attach(_state);
             Db.PathsChanged += OnDbPathsChanged;
 
