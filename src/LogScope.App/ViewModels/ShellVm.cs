@@ -48,6 +48,9 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public string ProductName { get { return AppConfig.Current.Name; } }
 
+        /// <summary>판 번호 옆에 작게 적는 긴 이름. config.txt 의 fullname.</summary>
+        public string FullNameText { get { return AppConfig.Current.FullName; } }
+
         public string WindowTitle { get { return AppConfig.Current.Name + " — IO 로그 그래프 뷰어"; } }
 
         // ---------------- 큰 화면 (메인 / 분석 1·2·3) ----------------

@@ -32,6 +32,48 @@
                             <TextBlock Text="{Binding CountText}" Style="{StaticResource Muted}" />
                         </WrapPanel>
 
+                        <!--
+                          어느 색이 어느 쪽인지. 그래프 안에도 범례를 그리지만,
+                          그림 위의 글은 선에 가려지고 확대하면 자리를 옮깁니다.
+                          이 칸은 늘 같은 자리에 있습니다.
+
+                          겹쳐 보기에서 IO 가 여럿이면 색이 IO 를 가리키므로
+                          "파랑 = 이전" 이 거짓말이 됩니다. 그때는 이 칸이
+                          사라지고 대신 왜 그런지가 적힙니다.
+                        -->
+                        <Border Margin="0,8,0,0" Padding="9,7" CornerRadius="4"
+                                Background="{DynamicResource Brush.PanelAlt}"
+                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5"
+                                            Visibility="{Binding DataContext.ShowSideLegend,
+                                                         RelativeSource={RelativeSource AncestorType=UserControl},
+                                                         Converter={StaticResource BoolToVisibility}}">
+                                    <Border Width="22" Height="3" VerticalAlignment="Center" Margin="0,0,8,0"
+                                            Background="{DynamicResource Brush.Before}" />
+                                    <TextBlock Text="파란 선 = 이전" FontSize="11"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal"
+                                            Visibility="{Binding DataContext.ShowSideLegend,
+                                                         RelativeSource={RelativeSource AncestorType=UserControl},
+                                                         Converter={StaticResource BoolToVisibility}}">
+                                    <Border Width="22" Height="3" VerticalAlignment="Center" Margin="0,0,8,0"
+                                            Background="{DynamicResource Brush.After}" />
+                                    <TextBlock Text="빨간 선 = 이후" FontSize="11"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding DataContext.ColorNote,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           Style="{StaticResource Muted}" FontSize="10"
+                                           TextWrapping="Wrap"
+                                           Visibility="{Binding DataContext.ColorNote,
+                                                        RelativeSource={RelativeSource AncestorType=UserControl},
+                                                        Converter={StaticResource TextToVisibility}}" />
+                            </StackPanel>
+                        </Border>
+
                         <DockPanel Margin="0,6,0,0">
                             <Button DockPanel.Dock="Right" Content="검색 지우기" Margin="4,3,0,3"
                                     Click="OnClearSearch" />

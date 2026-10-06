@@ -102,6 +102,7 @@ namespace LogScope.Tests
                 SettingsRoundTrip();
                 AppConfigParse();
                 AppConfigFile();
+                TraceColorRule();
                 DbSqlDump();
                 DbCsvTable();
                 DbNestedFolders();
@@ -2417,6 +2418,48 @@ namespace LogScope.Tests
             Check("null 도 견딤", DbCreateSql.Both(null, null).Length > 0, null);
         }
 
+        /// <summary>
+        /// 선 색이 무엇을 가리키는지 정하는 규칙.
+        ///
+        /// 이 규칙을 선 그리는 쪽과 범례 적는 쪽이 <b>각자</b> 판단하고
+        /// 있었습니다. 한쪽만 고친 날부터 범례가 "파란 선은 이전" 이라고
+        /// 하면서 선은 다른 색인 일이 생깁니다. 그래서 한 줄로 모았고,
+        /// 여기서 그 한 줄을 지킵니다.
+        /// </summary>
+        private static void TraceColorRule()
+        {
+            Console.WriteLine("그래프 — 선 색이 무엇을 가리키나");
+
+            // 레인으로 나눠 보면 IO 마다 칸이 따로라 색으로 IO 를 가릴 일이
+            // 없습니다. 그때 색은 이전(파랑)/이후(빨강)입니다.
+            Check("레인 · IO 하나면 이전/이후 색", !TraceColors.ByIo(true, 1), null);
+            Check("레인 · IO 여럿이어도 이전/이후 색", !TraceColors.ByIo(true, 9), null);
+
+            // 겹쳐 보기에서 IO 가 하나면 가릴 IO 가 없습니다.
+            Check("겹쳐 · IO 하나면 이전/이후 색", !TraceColors.ByIo(false, 1), null);
+            Check("겹쳐 · IO 없어도 이전/이후 색", !TraceColors.ByIo(false, 0), null);
+
+            // 겹쳐 보기에서 IO 가 여럿이면 색이 IO 를 가립니다. 모두
+            // 파랑·빨강으로 그리면 어느 선이 어느 IO 인지 알 수 없습니다.
+            Check("겹쳐 · IO 둘이면 IO 색", TraceColors.ByIo(false, 2), null);
+            Check("겹쳐 · IO 여럿이면 IO 색", TraceColors.ByIo(false, 30), null);
+
+            // 범례는 색이 이전/이후를 가리킬 때만 나옵니다. 거꾸로 나오면
+            // 거짓말이 됩니다 — 없는 것보다 나쁩니다.
+            for (int n = 0; n <= 4; n++)
+            {
+                foreach (bool lane in new bool[] { true, false })
+                {
+                    if (TraceColors.ShowSideLegend(lane, n) == TraceColors.ByIo(lane, n))
+                    {
+                        Check("범례는 IO 색일 때 숨음", false, "lane=" + lane + " n=" + n);
+                        return;
+                    }
+                }
+            }
+            Check("범례는 IO 색일 때 숨음", true, null);
+        }
+
         private static void DbCompare()
         {
             Console.WriteLine("DB — 두 벌 견주기");
@@ -2774,6 +2817,7 @@ namespace LogScope.Tests
                 "# 주석",
                 "",
                 "  Name  =  로그보기  ",
+                "FullName = 설비 Log 비교 · 분석 도구 (사내용)",
                 "analysis1 = 타이밍 점검 | 켜고 끄는 시각이 밀렸는지 봅니다.",
                 "ANALYSIS2=압력 비교",
                 "analysis3 = 세 번째 | 설명만 있음",
@@ -2783,6 +2827,8 @@ namespace LogScope.Tests
                 "모르는열쇠 = 아무거나",
             });
             Check("이름 읽기 (앞뒤 공백 떼기)", c.Name == "로그보기", c.Name);
+            // 긴 이름은 보여 주기만 하는 값이라 괄호·가운뎃점이 들어가도 됩니다.
+            Check("긴 이름 읽기", c.FullName == "설비 Log 비교 · 분석 도구 (사내용)", c.FullName);
             Check("열쇠는 대소문자 안 가림", c.Title(2) == "압력 비교", c.Title(2));
             Check("분석 이름 읽기", c.Title(1) == "타이밍 점검", c.Title(1));
             Check("분석 설명 읽기", c.Summary(1) == "켜고 끄는 시각이 밀렸는지 봅니다.", c.Summary(1));
@@ -2793,6 +2839,11 @@ namespace LogScope.Tests
             // 생긴 열쇠가 적힌 파일로 옛 프로그램을 켜도 터지면 안 됩니다.
             AppConfig junk = AppConfig.Parse(new[] { "모르는 열쇠 = 1", "그냥 글자", "name =" });
             Check("모르는 줄은 기본값 그대로", junk.Name == "LogScope", junk.Name);
+            // 긴 이름은 안 적으면 빈 글자입니다. 그러면 화면에서 그 줄이
+            // 사라집니다 — 짧은 이름으로 대신 채우면, 같은 이름이 두 번
+            // 적혀 지저분합니다.
+            Check("긴 이름은 안 적으면 빔", junk.FullName.Length == 0, junk.FullName);
+            Check("기본값도 빔", AppConfig.Default.FullName.Length == 0, AppConfig.Default.FullName);
 
             // 이름 자리를 비워 둔 분석 줄은 그 자리의 기본값입니다.
             AppConfig blank = AppConfig.Parse(new[] { "analysis1 = | 설명만" });

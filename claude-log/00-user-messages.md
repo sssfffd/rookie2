@@ -791,3 +791,13 @@
 > 지금 열어둔 로그 ui들은 분석 1에 작게 포함되면 될 것 같아
 
 → 답변: [49-overall-result-panel.md](49-overall-result-panel.md)
+
+---
+
+## 요청 66 — 긴 이름과 그래프 색
+
+> 그리고 지금 버전 있는 위치에 작은 글씨로 프로그램의 full name을 넣을 꺼야 해당 이름 config.txt에서 설정할 수 있게하고
+>
+> 그래프 색깔은 이전 파랑 이후 빨강으로하고 구분잘되게 나타내고 그래프 화면 한쪽에 빨간석은 이후 파란선은 이전 표시되게 해줘
+
+→ 답변: [50-blue-before-red-after.md](50-blue-before-red-after.md)

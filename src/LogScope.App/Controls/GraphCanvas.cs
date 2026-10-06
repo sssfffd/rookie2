@@ -545,9 +545,9 @@ namespace LogScope.App.Controls
             }
             else
             {
-                Pen bPen = _laneMode ? p.BeforePen : p.SeriesPen(0);
-                Pen aPen = _laneMode ? p.AfterPen : PairPen(p, 0);
-                note = (!_laneMode && _channels.Count > 1) ? "IO 마다 색이 짝을 이룹니다" : null;
+                Pen bPen = ColorByIo ? p.SeriesPen(0) : p.BeforePen;
+                Pen aPen = ColorByIo ? PairPen(p, 0) : p.AfterPen;
+                note = ColorByIo ? "IO 마다 색이 짝을 이룹니다" : null;
 
                 // 꺼 둔 쪽은 적지 않습니다. 없는 선을 설명하면 그게 어디
                 // 있는지 찾게 됩니다.
@@ -745,8 +745,8 @@ namespace LogScope.App.Controls
 
             for (int k = 0; k < ios.Length; k++)
             {
-                Pen before = _laneMode ? p.BeforePen : p.SeriesPen(k);
-                Pen after = _laneMode ? p.AfterPen : PairPen(p, k);
+                Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
+                Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
                 DrawChannel(dc, p, inner, ios[k], vlo, vhi, before, after, columns);
             }
 
@@ -782,6 +782,28 @@ namespace LogScope.App.Controls
         private readonly Dictionary<int, Pen> _pairPens = new Dictionary<int, Pen>();
 
         /// <summary>겹쳐보기에서 "이후" 쪽 선. 같은 계열의 다른 밝기로 구분합니다.</summary>
+        /// <summary>
+        /// 색이 <b>IO 를 가리키는지</b> (참) 아니면 <b>이전/이후를 가리키는지</b>
+        /// (거짓).
+        ///
+        /// 레인으로 나눠 보면 IO 마다 칸이 따로 있으니 색으로 IO 를 가릴
+        /// 필요가 없습니다 — 그때 색은 이전(파랑) / 이후(빨강)입니다.
+        /// 겹쳐 보기에서 IO 가 여럿이면 거꾸로입니다. 모두 파랑·빨강으로
+        /// 그리면 어느 선이 어느 IO 인지 알 수 없어서, 색이 IO 를 가리키고
+        /// 이전/이후는 같은 색의 짙고 옅음으로 나뉩니다.
+        ///
+        /// <b>겹쳐 보기라도 IO 가 하나면 거짓입니다.</b> 가릴 IO 가 없으니
+        /// 파랑·빨강이 더 잘 보입니다.
+        ///
+        /// 범례와 선 그리기가 <b>같은 답</b>을 봐야 합니다. 두 곳에 따로
+        /// 적어 두면 범례가 "파랑은 이전" 이라고 하면서 선은 다른 색인 일이
+        /// 생깁니다.
+        /// </summary>
+        private bool ColorByIo
+        {
+            get { return TraceColors.ByIo(_laneMode, _channels.Count); }
+        }
+
         private Pen PairPen(Palette p, int index)
         {
             Pen pen;

@@ -56,3 +56,4 @@
 | `47-frm-reader.md` | 5.6 의 .frm 을 직접 읽기. "없음" 과 "모름" 을 가르는 이유 |
 | `48-reading-values.md` | 값은 서버를 한 번 거쳐야 하는 이유, 네 가지 길, 표 정의 저장 |
 | `49-overall-result-panel.md` | 메인 맨 위를 종합 분석 결과로. 로그 칸은 분석 1 안으로 |
+| `50-blue-before-red-after.md` | 이전 파랑 · 이후 빨강, 늘 같은 자리의 범례, config 의 긴 이름 |

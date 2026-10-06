@@ -24,7 +24,7 @@
     <SolidColorBrush x:Key="Brush.Bad"          Color="#FFF06A5B" />
 
     <SolidColorBrush x:Key="Brush.Before"       Color="#FF5AA6FF" />
-    <SolidColorBrush x:Key="Brush.After"        Color="#FFFFA044" />
+    <SolidColorBrush x:Key="Brush.After"        Color="#FFFF6E6E" />
 
     <SolidColorBrush x:Key="Brush.RowHover"     Color="#FF232830" />
 

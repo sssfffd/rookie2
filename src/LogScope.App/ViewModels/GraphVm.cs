@@ -4,6 +4,7 @@ using System.Globalization;
 using LogScope.App.Infrastructure;
 using LogScope.App.Services;
 using LogScope.Core.Model;
+using LogScope.Core.Render;
 using LogScope.Core.Settings;
 
 namespace LogScope.App.ViewModels
@@ -51,7 +52,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || S.LaneMode == value) return;   // 라디오는 켤 때만 반응
                 S.LaneMode = true;
-                Raise("LaneMode"); Raise("OverlayMode");
+                Raise("LaneMode"); Raise("OverlayMode"); RaiseLegend();
                 Changed();
             }
         }
@@ -63,7 +64,7 @@ namespace LogScope.App.ViewModels
             {
                 if (!value || !S.LaneMode) return;
                 S.LaneMode = false;
-                Raise("LaneMode"); Raise("OverlayMode");
+                Raise("LaneMode"); Raise("OverlayMode"); RaiseLegend();
                 Changed();
             }
         }
@@ -293,6 +294,10 @@ namespace LogScope.App.ViewModels
             ReadoutText = "커서 A: " + a + "     커서 B: " + b + "     B − A: " + delta
                         + "     보이는 구간: " + range
                         + "     고른 IO: " + List.SelectedCount + "개";
+
+            // 고른 IO 수가 범례를 바꿉니다 (하나면 파랑·빨강, 여럿이면 IO 색).
+            // 이 함수는 IO 선택이 바뀔 때도 불립니다.
+            RaiseLegend();
         }
 
         private static string Format(LogDataset ds, double t)
@@ -300,11 +305,52 @@ namespace LogScope.App.ViewModels
             return ds != null ? ds.FormatTime(t) : t.ToString("0.###");
         }
 
+        // ---------------- 색 범례 ----------------
+        //
+        // 그래프 안에도 범례를 그립니다. 그런데 그림 위의 글은 선에 가려지고,
+        // 확대하면 자리를 옮깁니다. 늘 같은 자리에 있는 칸이 하나 더 필요합니다.
+
+        /// <summary>
+        /// 색이 <b>IO 를 가리키는지</b>. <c>GraphCanvas.ColorByIo</c> 와
+        /// <b>같은 조건</b>이어야 합니다 — 겹쳐 보기에서 IO 가 둘 이상일 때.
+        ///
+        /// 두 곳에 따로 적어 두면 범례가 "파랑은 이전" 이라고 하면서 선은
+        /// 다른 색인 일이 생깁니다. 조건을 바꿀 때는 <b>둘 다</b> 바꿔야
+        /// 합니다 (테스트가 이 규칙을 지킵니다).
+        /// </summary>
+        public bool ColorByIo
+        {
+            get { return TraceColors.ByIo(S.LaneMode, List.SelectedCount); }
+        }
+
+        /// <summary>파랑/빨강 범례를 보여 줄지. 색이 IO 를 가리킬 때는 거짓말이 됩니다.</summary>
+        public bool ShowSideLegend
+        {
+            get { return TraceColors.ShowSideLegend(S.LaneMode, List.SelectedCount); }
+        }
+
+        /// <summary>색이 IO 를 가리킬 때 그렇다고 적는 글. 아니면 빈 글자.</summary>
+        public string ColorNote
+        {
+            get
+            {
+                if (!ColorByIo) return string.Empty;
+                return "겹쳐 보기에서 IO 가 여럿이라 색이 IO 를 가리킵니다. "
+                     + "같은 IO 의 이전/이후는 같은 색의 옅고 짙음입니다. "
+                     + "파랑·빨강으로 보려면 [레인] 으로 보거나 IO 를 하나만 고르세요.";
+            }
+        }
+
+        private void RaiseLegend()
+        {
+            Raise("ColorByIo"); Raise("ShowSideLegend"); Raise("ColorNote");
+        }
+
         /// <summary>로그가 바뀌었을 때 목록을 다시 만듭니다.</summary>
         public void Reload()
         {
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
-            Raise("LaneMode"); Raise("OverlayMode");
+            Raise("LaneMode"); Raise("OverlayMode"); RaiseLegend();
             Raise("ScaleRaw"); Raise("ScaleDelta"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
             Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");
         }

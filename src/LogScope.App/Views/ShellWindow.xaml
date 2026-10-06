@@ -41,7 +41,14 @@
                                VerticalAlignment="Center" Margin="2,0,4,0" />
                     <TextBlock Text="{Binding VersionText}" FontSize="11"
                                Foreground="{DynamicResource Brush.TopBarMuted}"
-                               VerticalAlignment="Bottom" Margin="0,0,14,3" />
+                               VerticalAlignment="Bottom" Margin="0,0,7,3" />
+
+                    <!-- 긴 이름. config.txt 의 fullname 이고, 비워 두면 줄이 사라집니다. -->
+                    <TextBlock Text="{Binding FullNameText}" FontSize="11"
+                               Foreground="{DynamicResource Brush.TopBarMuted}"
+                               VerticalAlignment="Bottom" Margin="0,0,14,3"
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
 
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabMain}"
