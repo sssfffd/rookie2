@@ -83,8 +83,8 @@ namespace LogScope.Core.Settings
         public string Name { get { return _name; } }
 
         /// <summary>
-        /// 판 번호 옆에 작게 적히는 <b>긴 이름</b>. 비워 두면 줄 자체가
-        /// 사라집니다.
+        /// 이름과 판 번호 사이에 작게 적히는 <b>긴 이름</b>. 비워 두면 줄
+        /// 자체가 사라지고, 이름 바로 뒤에 판 번호가 옵니다.
         ///
         /// <see cref="Name"/> 과 따로 둔 이유가 있습니다. Name 은 창 제목과
         /// 실행 파일 이름까지 따라가므로 짧아야 합니다. 긴 이름은 보여 주기만
@@ -356,7 +356,7 @@ namespace LogScope.Core.Settings
             sb.AppendLine("#");
             sb.AppendLine("# name      : 창 제목과 왼쪽 위에 적히는 이름. 실행 파일 이름도 이걸 따릅니다");
             sb.AppendLine("#             (실행 파일 이름은 build.bat 이 붙이므로 다시 빌드해야 바뀝니다).");
-            sb.AppendLine("# fullname  : 판 번호 옆에 작게 적히는 긴 이름. 비워 두면 안 적힙니다.");
+            sb.AppendLine("# fullname  : 이름과 판 번호 사이에 작게 적히는 긴 이름. 비워 두면 안 적힙니다.");
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
             sb.AppendLine("# db.before : 분석 2 에서 견줄 DB 두 벌의 자리 (폴더 또는 .sql 파일).");
             sb.AppendLine();

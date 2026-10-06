@@ -39,16 +39,19 @@
                     <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.TopBarText}"
                                VerticalAlignment="Center" Margin="2,0,4,0" />
-                    <TextBlock Text="{Binding VersionText}" FontSize="11"
-                               Foreground="{DynamicResource Brush.TopBarMuted}"
-                               VerticalAlignment="Bottom" Margin="0,0,7,3" />
-
-                    <!-- 긴 이름. config.txt 의 fullname 이고, 비워 두면 줄이 사라집니다. -->
+                    <!-- 긴 이름이 앞, 판 번호가 뒤입니다. 이름 다음에 이름이
+                         이어지고 숫자가 끝에 붙는 쪽이 읽기 순서에 맞습니다.
+                         긴 이름은 config.txt 의 fullname 이고, 비워 두면 줄이
+                         사라집니다 (그러면 이름 바로 뒤에 판 번호가 옵니다). -->
                     <TextBlock Text="{Binding FullNameText}" FontSize="11"
                                Foreground="{DynamicResource Brush.TopBarMuted}"
-                               VerticalAlignment="Bottom" Margin="0,0,14,3"
+                               VerticalAlignment="Bottom" Margin="0,0,7,3"
                                TextTrimming="CharacterEllipsis"
                                Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
+
+                    <TextBlock Text="{Binding VersionText}" FontSize="11"
+                               Foreground="{DynamicResource Brush.TopBarMuted}"
+                               VerticalAlignment="Bottom" Margin="0,0,14,3" />
 
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabMain}"
