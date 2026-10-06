@@ -522,6 +522,62 @@ D:\db\2026-03-14\              →  표 이름
 읽지 못한 파일은 **화면에 그렇게 적힙니다.** 폴더에 `.ibd` 가 40 개인데 표가
 하나도 없으면 "차이 없음" 으로 읽히니까요.
 
+### MySQL 을 쓰는 프로그램의 데이터는 어느 폴더인가
+
+**`datadir` 안의 "DB 이름 폴더" 하나**입니다. 그 안에 **표마다 파일 하나**.
+
+```
+C:\ProgramData\MySQL\MySQL Server 8.0\Data\   ← datadir
+    mydb\                                       ← DB(스키마) 하나 = 폴더 하나
+        recipe.ibd                               ← 표 하나 = 파일 하나
+        alarm.ibd
+        log#p#p202603.ibd                        ← 파티션은 조각마다 한 파일
+```
+
+그 프로그램이 `mydb` 를 쓴다면 `db.before` / `db.after` 에 적을 자리가
+`...\Data\mydb` 입니다. (`Data` 를 가리켜도 됩니다 — 하위 폴더까지 읽고 표
+이름 앞에 폴더 이름이 붙습니다.)
+
+**예외가 셋 있습니다. 먼저 확인하세요.**
+
+| 경우 | 폴더에 보이는 것 | 어떻게 |
+|---|---|---|
+| `innodb_file_per_table` 가 **꺼짐** | `.ibd` 가 **없음**. 전부 `ibdata1` 한 덩이 | 파일로는 못 견줍니다 → `mysqldump` |
+| 표가 **MyISAM** | `표.MYD`(값) + `표.MYI`(색인) | 아직 안 읽습니다 → `mysqldump` 나 `.csv` |
+| 표에 `DATA DIRECTORY` 를 줬음 | 그 표만 **다른 디스크에** | 아래 쿼리로 실제 경로 확인 |
+
+5.6 부터 `innodb_file_per_table` 기본은 켬이지만, 오래된 설비는 꺼 둔 경우가
+있습니다.
+
+**추측하지 말고 서버에 물어보세요.**
+
+```sql
+-- 1. 그 프로그램이 어느 DB 를 쓰나 (프로그램이 돌고 있을 때)
+SELECT id, user, host, db, command FROM information_schema.processlist;
+
+-- 2. datadir 위치
+SHOW VARIABLES LIKE 'datadir';
+
+-- 3. 표마다 엔진이 무엇이고 행이 몇인가
+SELECT table_name, engine, row_format, table_rows
+FROM information_schema.tables WHERE table_schema = 'mydb';
+
+-- 4. 표마다 실제 파일 경로 (8.0)
+SELECT s.name AS tbl, d.path AS file
+FROM information_schema.innodb_tablespaces s
+JOIN information_schema.innodb_datafiles d ON s.space = d.space
+WHERE s.name LIKE 'mydb/%';
+```
+
+4 번은 `./mydb/recipe.ibd` 처럼 나옵니다 — `datadir` 기준 상대 경로이고,
+`datadir` 밖이면 전체 경로로 나옵니다. 5.7 이면 이름이
+`innodb_sys_tablespaces` / `innodb_sys_datafiles` 입니다.
+
+**그리고 하나 더: 그 프로그램의 값이 전부 DB 에 있다고 가정하지 마세요.**
+설비 프로그램은 접속 정보와 장비 설정은 자기 폴더의 `.ini` · `.xml` 이나
+레지스트리에 두고, 레시피 · 알람 · 이력만 DB 에 두는 경우가 많습니다. DB 만
+견주면 **그 파일들에 있는 차이를 통째로 놓칩니다.**
+
 ### 어느 폴더를 가리켜야 하나 — 돌고 있는 서버의 폴더는 안 됩니다
 
 MySQL 이 **지금 담고 있는 데이터는 한 곳에 없습니다.** `.ibd` 는 가라앉은

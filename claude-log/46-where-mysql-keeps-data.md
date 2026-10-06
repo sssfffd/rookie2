@@ -78,3 +78,42 @@ C:\ProgramData\MySQL\MySQL Server 8.0\my.ini    ← 설정
 [Serialized Dictionary Information](https://dev.mysql.com/doc/refman/8.0/en/serialized-dictionary-information.html) ·
 [InnoDB physical files on MySQL 8.0 (mydbops)](https://www.mydbops.com/blog/innodb-physical-files-on-mysql-80) ·
 [innodump 의 한계 목록](https://github.com/PrzemekMalkowski/innodump)
+
+---
+
+## 뒷이야기 — "MySQL 을 쓰는 프로그램" 의 데이터
+
+> 아니 내 프로그램 말고 mysql을 활용해서 동작하는 프로그램은 데이터가
+> 어디에 저장되어있는지
+
+위의 표가 "어느 파일에 무엇이" 였다면, 이건 "**어느 폴더를 가리켜야 하나**"
+입니다. 답은 간단합니다 — **`datadir` 안의 DB 이름 폴더 하나**, 그 안에
+**표마다 파일 하나**(`mydb\recipe.ibd`). 파티션을 쓰면 조각마다 한 파일
+(`log#p#p202603.ibd`).
+
+그래서 `db.before` / `db.after` 에 적을 것은 그 폴더입니다. `Data` 를 그대로
+가리켜도 됩니다 — 0.54 부터 하위 폴더까지 읽고 표 이름 앞에 폴더 이름을
+붙이니 DB 가 여럿이어도 섞이지 않습니다.
+
+**단정하기 전에 봐야 할 셋**
+
+1. **`innodb_file_per_table` 가 꺼져 있으면 `.ibd` 가 아예 없습니다.** 표가 전부
+   `ibdata1` 한 덩이 안에 들어갑니다. 5.6 부터 기본이 켬이지만 오래된 설비는
+   꺼 둔 것이 있습니다. 이 경우 파일로 견주는 길은 막히고 `mysqldump` 뿐입니다.
+2. **MyISAM 이면 `표.MYD` + `표.MYI`** 입니다. 우리는 아직 이 둘을 읽지
+   않습니다. 설비 쪽 오래된 프로그램에 흔합니다.
+3. 표를 만들 때 `DATA DIRECTORY` 를 줬으면 그 표만 다른 디스크에 있습니다.
+
+**그래서 추측하지 말고 물어보는 쿼리를 README 에 넣었습니다.**
+`information_schema.processlist` 로 그 프로그램이 어느 DB 를 쓰는지,
+`innodb_tablespaces` + `innodb_datafiles` 로 표마다 실제 파일 경로를 봅니다
+(5.7 은 `innodb_sys_*`).
+
+**가장 쉽게 놓칠 자리**: 설비 프로그램은 접속 정보와 장비 설정을 자기 폴더의
+`.ini`/`.xml` 이나 레지스트리에 두고 DB 에는 레시피·알람·이력만 두는 경우가
+많습니다. **DB 만 견주면 그 파일들의 차이는 통째로 안 보입니다.** 거기까지
+견주려면 따로 말씀해 주셔야 합니다 — 로그 쪽은 이미 파일을 읽으니 어렵지
+않습니다.
+
+출처 추가: [INFORMATION_SCHEMA.INNODB_DATAFILES](https://dev.mysql.com/doc/refman/8.0/en/information-schema-innodb-datafiles-table.html) ·
+[File-Per-Table Tablespaces](https://docs.oracle.com/cd/E17952_01/mysql-8.4-en/innodb-file-per-table-tablespaces.html)
