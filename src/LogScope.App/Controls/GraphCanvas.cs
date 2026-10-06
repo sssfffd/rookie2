@@ -522,9 +522,14 @@ namespace LogScope.App.Controls
         /// 달라 설명이 성립하지 않습니다.
         ///
         /// 그래서 <b>그 화면에서 실제로 쓰는 선을 그대로</b> 보여 줍니다.
-        ///   레인   : 이전 = 파랑 선, 이후 = 주황 선 (어느 IO 든 같습니다)
+        ///   레인   : 파란 선 = 이전, 빨간 선 = 이후 (어느 IO 든 같습니다)
         ///   겹쳐보기 : 첫 IO 의 두 선. IO 마다 색이 짝을 이룹니다
         ///   차이 눈금 : 선이 하나뿐이라 그 하나만
+        ///
+        /// 자리는 <b>그림 오른쪽 위</b>, 레인 머리글 아래입니다. 0.60 에 왼쪽
+        /// IO 칸에도 같은 설명을 뒀다가 0.67 에 뺐습니다 — 같은 말이 두
+        /// 군데에 적혀 있었고, 왼쪽 칸이 그만큼 좁아졌습니다. 그림 위의 글은
+        /// 선에 가려질 수 있어서 판을 살짝 투명하게 깔아 둡니다.
         /// </summary>
         private void DrawLegend(DrawingContext dc, Palette p, Rect plot)
         {
@@ -549,21 +554,30 @@ namespace LogScope.App.Controls
                 Pen aPen = ColorByIo ? PairPen(p, 0) : p.AfterPen;
                 note = ColorByIo ? "IO 마다 색이 짝을 이룹니다" : null;
 
+                // 색이 이전/이후를 가리킬 때만 색 이름을 적습니다.
+                //
+                // 겹쳐 보기에서 IO 가 여럿이면 색이 IO 를 가리키므로
+                // "파란 선 = 이전" 이 거짓이 됩니다. 그때는 색 이름을 떼고
+                // 옆의 선 조각으로만 보여 줍니다 — 그 조각은 그 화면에서
+                // 실제로 쓰는 펜이라 틀릴 수가 없습니다.
+                string before = ColorByIo ? "이전" : "파란 선 = 이전";
+                string after = ColorByIo ? "이후" : "빨간 선 = 이후";
+
                 // 꺼 둔 쪽은 적지 않습니다. 없는 선을 설명하면 그게 어디
                 // 있는지 찾게 됩니다.
                 if (_showBefore && _showAfter)
                 {
-                    firstPen = bPen; firstText = "이전";
-                    secondPen = aPen; secondText = "이후";
+                    firstPen = bPen; firstText = before;
+                    secondPen = aPen; secondText = after;
                 }
                 else if (_showBefore)
                 {
-                    firstPen = bPen; firstText = "이전만 보기";
+                    firstPen = bPen; firstText = before + " (이것만 보기)";
                     secondPen = null; secondText = null;
                 }
                 else
                 {
-                    firstPen = aPen; firstText = "이후만 보기";
+                    firstPen = aPen; firstText = after + " (이것만 보기)";
                     secondPen = null; secondText = null;
                 }
             }
