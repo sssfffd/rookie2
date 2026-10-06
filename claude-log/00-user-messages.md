@@ -818,3 +818,11 @@
 > 지금 list뜨는거 항목에 IO명, 이전 value, 이후 value랑 v1, v2 넣어줘 왼쪽에 표랑 상태는 빼도 될 것같아 그리고 안에 데이터 파싱하는 파일은 위치만 알려줘 내가 직접 코딩할게
 
 → 답변: [52-db-paths-and-list.md](52-db-paths-and-list.md)
+
+---
+
+## 요청 69 — 종합 칸의 IO 개수 빼기
+
+> 종합 분석결과에 io개수 뜨는거 지워줘
+
+→ 답변: [49-overall-result-panel.md](49-overall-result-panel.md) 의 뒷이야기

@@ -87,7 +87,7 @@ namespace LogScope.App.ViewModels
             Raise("BeforePath"); Raise("AfterPath");
             Raise("ComparedText");
             Raise("OverallHeadline"); Raise("OverallGrade");
-            Raise("OverallStats"); Raise("HasOverallStats"); Raise("OverallBasis");
+            Raise("OverallBasis");
         }
 
         private static string Count(int n)
@@ -269,27 +269,6 @@ namespace LogScope.App.ViewModels
                 return "good";
             }
         }
-
-        /// <summary>
-        /// 종합 칸의 숫자들. 칸에서 뺀 IO 개수가 여기로 왔습니다.
-        /// 여기는 가로로 넓어서 셋이 들어갑니다.
-        /// </summary>
-        public List<StatVm> OverallStats
-        {
-            get
-            {
-                var list = new List<StatVm>();
-                CompareResult r = _state.Comparison;
-                if (r == null) return list;
-
-                list.Add(new StatVm("비교한 IO", Count(r.CommonCount)));
-                list.Add(new StatVm("달라진 IO", Count(r.ChangedCount)));
-                list.Add(new StatVm("한쪽에만", Count(r.OnlyBefore.Count + r.OnlyAfter.Count)));
-                return list;
-            }
-        }
-
-        public bool HasOverallStats { get { return _state.Comparison != null; } }
 
         /// <summary>
         /// 어느 기준으로 본 결과인지. 허용 오차를 바꾸고 다시 견주는 일이
