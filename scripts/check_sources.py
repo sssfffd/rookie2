@@ -82,6 +82,39 @@ for x in xamls:
             bad('%s 의 %s 는 맨 경로 바인딩 (%s 는 자기 DataContext 를 바꿉니다) <- %s'
                 % (tag, prop, tag, os.path.relpath(x, ROOT)))
 
+# 4-2) 끌어다 놓는 칸: 되돌릴 배경이 XAML 과 코드에서 같은지
+#
+#    칸을 밝혔다가 되돌릴 때, 코드는 배경을 <b>다시 걸어 줘야</b> 합니다
+#    (ClearValue 로 지우면 XAML 값까지 지워져 칸이 사라집니다 — 0.42).
+#    그런데 "무엇으로 되돌릴지" 를 코드에 박아 두면, XAML 의 배경을 바꾼
+#    날부터 한 번 끌어다 놓은 칸만 색이 달라진 채 남습니다 (0.59 에서 로그
+#    칸이 분석 1 안으로 들어가며 Brush.Panel → Brush.Window 가 됐습니다).
+#
+#    그래서 되돌릴 열쇠를 Tag 에 함께 적습니다 ("before|Brush.Window").
+#    여기서는 그 열쇠가 <b>그 칸의 Background 와 같은지</b>만 봅니다.
+#    컴파일도 되고 XAML 파싱도 되는 어긋남이라, 이 검사가 없으면 윈도우에서
+#    파일을 한 번 끌어다 놓아 봐야 압니다.
+#    코드가 배경을 되걸지 않는 화면은 보지 않습니다. 그래프 화면의 그룹 줄은
+#    뷰모델 깃발(IsDropTarget)과 XAML 트리거로 색을 바꾸므로 XAML 혼자
+#    주인이고, 어긋날 데가 없습니다.
+for x in xamls:
+    t = read(x)
+    cb = x + '.cs'
+    if not os.path.exists(cb): continue
+    if 'SetResourceReference(Border.BackgroundProperty' not in read(cb): continue
+    for m in re.finditer(r'<(\w[\w\.:]*)\b([^>]*?AllowDrop="True"[^>]*?)/?>', t, re.S):
+        el, attrs = m.group(1), m.group(2)
+        tag = re.search(r'\bTag="([^"]*)"', attrs)
+        back = re.search(r'\bBackground="\{DynamicResource\s+([\w\.]+)\}"', attrs)
+        if back is None: continue        # 배경을 XAML 에서 안 정하면 되돌릴 것도 없습니다
+        want = back.group(1)
+        got = 'Brush.Panel'             # Tag 에 안 적으면 코드가 쓰는 기본값
+        if tag and '|' in tag.group(1):
+            got = tag.group(1).split('|', 1)[1]
+        if got != want:
+            bad('%s 의 놓는 칸: 배경은 %s 인데 되돌릴 열쇠는 %s <- %s'
+                % (el, want, got, os.path.relpath(x, ROOT)))
+
 # 5) 괄호 균형 — 문서 주석 안의 문자 상수 때문에 절대 개수는 원래 어긋납니다.
 #    그래서 HEAD 와 견줘 "이번에 새로 어긋난 것" 만 잡습니다.
 import subprocess

@@ -81,13 +81,40 @@ namespace LogScope.App.Views
         {
             if (card == null) return;
 
-            bool before = (card.Tag as string) == "before";
+            bool before = Side(card);
 
             card.SetResourceReference(Border.BackgroundProperty,
-                on ? "Brush.DropTarget" : "Brush.Panel");
+                on ? "Brush.DropTarget" : OffBrush(card));
             card.SetResourceReference(Border.BorderBrushProperty,
                 on ? (before ? "Brush.Before" : "Brush.After") : "Brush.Border");
             card.BorderThickness = new Thickness(on ? 2 : 1);
+        }
+
+        /// <summary>
+        /// 칸의 Tag 는 <c>"before"</c> 또는 <c>"before|Brush.Window"</c> 입니다.
+        /// 앞은 어느 쪽 칸인지, 뒤는 <b>밝히기를 끝낸 뒤 되돌릴 배경</b>입니다.
+        ///
+        /// 되돌릴 배경을 코드에 박아 두면 안 됩니다. 0.59 에서 로그 칸이 분석 1
+        /// 안으로 들어가면서 배경이 Brush.Panel 에서 Brush.Window 로 바뀌었는데,
+        /// 코드가 Brush.Panel 로 되돌리고 있었습니다. 그러면 파일을 한 번
+        /// 끌어다 놓은 칸만 <b>색이 달라진 채</b> 남습니다. 칸이 사라지던
+        /// 0.42 와 같은 종류의 고장입니다 — 칸이 어떤 모습이어야 하는지는
+        /// XAML 이 알고 코드는 모릅니다.
+        /// </summary>
+        private static bool Side(FrameworkElement card)
+        {
+            string tag = (card.Tag as string) ?? string.Empty;
+            int bar = tag.IndexOf('|');
+            string side = bar < 0 ? tag : tag.Substring(0, bar);
+            return side == "before";
+        }
+
+        private static string OffBrush(FrameworkElement card)
+        {
+            string tag = (card.Tag as string) ?? string.Empty;
+            int bar = tag.IndexOf('|');
+            if (bar < 0 || bar + 1 >= tag.Length) return "Brush.Panel";
+            return tag.Substring(bar + 1);
         }
 
         /// <summary>
@@ -108,7 +135,7 @@ namespace LogScope.App.Views
             var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (paths == null || paths.Length == 0) return;
 
-            bool before = (g.Tag as string) == "before";
+            bool before = Side(g);
 
             EventHandler<LogDropEventArgs> h = LogDropped;
             if (h != null) h(this, new LogDropEventArgs(new List<string>(paths), before));

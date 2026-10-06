@@ -57,13 +57,15 @@ namespace LogScope.App.ViewModels
             else
             {
                 Cards[0].SetScore(AnalysisCardVm.MaxScore);   // ← 진짜 점수가 들어갈 자리
-                // 칸이 좁아서 셋은 빽빽했습니다. "한쪽에만" 은 여기서 뺐습니다 —
-                // 대시보드에 그 목록이 따로 있습니다.
-                Cards[0].SetStats(new List<StatVm>
-                {
-                    new StatVm("비교한 IO", Count(r.CommonCount)),
-                    new StatVm("달라진 IO", Count(r.ChangedCount)),
-                });
+
+                // IO 개수는 칸에서 뺐습니다. 세 군데에 같은 수가 적혀 있었습니다
+                // (칸 · 종합 · 대시보드). 칸은 "요약" 을 보는 자리로 비워 두고,
+                // 수는 위의 종합 칸 한 곳에서 셉니다.
+                //
+                // 채우는 길(SetStats)은 남겨 둡니다 — 분석 2(DB)가 "표 12개 중
+                // 3 개 달라짐" 을 적을 자리입니다. 비어 있으면 칸 자체가
+                // 사라지므로 빈 자리가 보이지는 않습니다.
+                Cards[0].SetStats(new List<StatVm>());
             }
 
             Cards[0].SetGroups(BuildGroups(r));
@@ -84,6 +86,8 @@ namespace LogScope.App.ViewModels
             Raise("BeforeText"); Raise("AfterText");
             Raise("BeforePath"); Raise("AfterPath");
             Raise("ComparedText");
+            Raise("OverallHeadline"); Raise("OverallGrade");
+            Raise("OverallStats"); Raise("HasOverallStats"); Raise("OverallBasis");
         }
 
         private static string Count(int n)
@@ -226,6 +230,85 @@ namespace LogScope.App.ViewModels
                 if (_state.Comparison == null) return string.Empty;
                 if (_state.ComparedAt == DateTime.MinValue) return string.Empty;
                 return "비교 실행  " + _state.ComparedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+        }
+
+        // ---------------- 종합 분석 결과 ----------------
+        //
+        // 메인 화면 맨 위, 전에 "열어 둔 로그" 가 있던 자리입니다. 로그 칸은
+        // 분석 1 안으로 들어갔습니다 — 로그를 여는 일은 분석 1 의 준비이고,
+        // 메인 화면이 먼저 답해야 하는 것은 "그래서 결과가 어떤가" 입니다.
+
+        /// <summary>한 줄 판정. 메인 화면에서 제일 먼저 읽는 글입니다.</summary>
+        public string OverallHeadline
+        {
+            get
+            {
+                if (!_state.HasBoth) return "아직 비교하지 않았습니다";
+                CompareResult r = _state.Comparison;
+                if (r == null) return "아직 비교하지 않았습니다";
+                if (r.ChangedCount > 0) return "달라진 데가 있습니다";
+                if (r.OnlyBefore.Count + r.OnlyAfter.Count > 0) return "값은 같고, 한쪽에만 있는 IO 가 있습니다";
+                return "다른 데가 없습니다";
+            }
+        }
+
+        /// <summary>
+        /// 판정 옆의 점 색. 점수 색과 <b>같은 뜻</b>으로 씁니다.
+        /// 안 견준 상태는 빈 글자 — 회색으로 둡니다. 안 재 본 것에 색을 칠하면
+        /// 재 본 것으로 읽힙니다.
+        /// </summary>
+        public string OverallGrade
+        {
+            get
+            {
+                CompareResult r = _state.Comparison;
+                if (!_state.HasBoth || r == null) return string.Empty;
+                if (r.ChangedCount > 0) return "bad";
+                if (r.OnlyBefore.Count + r.OnlyAfter.Count > 0) return "warn";
+                return "good";
+            }
+        }
+
+        /// <summary>
+        /// 종합 칸의 숫자들. 칸에서 뺀 IO 개수가 여기로 왔습니다.
+        /// 여기는 가로로 넓어서 셋이 들어갑니다.
+        /// </summary>
+        public List<StatVm> OverallStats
+        {
+            get
+            {
+                var list = new List<StatVm>();
+                CompareResult r = _state.Comparison;
+                if (r == null) return list;
+
+                list.Add(new StatVm("비교한 IO", Count(r.CommonCount)));
+                list.Add(new StatVm("달라진 IO", Count(r.ChangedCount)));
+                list.Add(new StatVm("한쪽에만", Count(r.OnlyBefore.Count + r.OnlyAfter.Count)));
+                return list;
+            }
+        }
+
+        public bool HasOverallStats { get { return _state.Comparison != null; } }
+
+        /// <summary>
+        /// 어느 기준으로 본 결과인지. 허용 오차를 바꾸고 다시 견주는 일이
+        /// 잦아서, 숫자만 있고 기준이 없으면 무엇과 견준 수인지 알 수 없습니다.
+        /// 저장된 분석에 적는 글과 <b>같은 틀</b>입니다.
+        /// </summary>
+        public string OverallBasis
+        {
+            get
+            {
+                if (_state.Comparison == null) return string.Empty;
+                AppSettings st = _state.Settings;
+                var rec = new AnalysisRecord();
+                rec.TolerancePercent = st.RelativeTolerancePercent;
+                rec.AbsoluteTolerance = st.AbsoluteTolerance;
+                rec.ToleranceRuleCount = st.Tolerances != null ? st.Tolerances.Count : 0;
+                rec.AlignIo = st.AlignIo ?? string.Empty;
+                rec.AxisIo = st.AxisIo ?? string.Empty;
+                return rec.BasisText;
             }
         }
 

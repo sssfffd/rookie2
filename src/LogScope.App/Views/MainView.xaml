@@ -10,133 +10,85 @@
         <!-- 아주 넓은 화면에서 칸이 끝없이 늘어나지 않게 가둡니다. -->
         <StackPanel Margin="20,16,20,22" MaxWidth="1180" HorizontalAlignment="Stretch">
 
-            <!-- ===== 지금 열어 둔 로그 =====
-                 이 정보가 아래 알림 줄 한 줄에만 있었습니다. 메인 화면이라면
-                 "지금 무엇을 보고 있는가" 가 제일 먼저 보여야 합니다.
+            <!-- ===== 종합 분석 결과 =====
+                 전에 "열어 둔 로그" 가 있던 자리입니다. 로그 칸은 분석 1 안으로
+                 들어갔습니다 : 로그를 여는 일은 분석 1 의 준비이고, 메인 화면이
+                 먼저 답해야 하는 것은 "그래서 결과가 어떤가" 입니다.
 
-                 칸을 <b>좌우로 둘</b> 나눈 이유가 있습니다. 한 칸에 두 줄로
-                 넣었을 때는 끌어다 놓을 자리가 높이 20 픽셀짜리 글자 줄이라
-                 겨냥할 수가 없었습니다. 이제 칸 자체가 놓을 자리입니다 —
-                 왼쪽이 이전, 오른쪽이 이후. 커서를 올리면 그 칸이 밝아집니다.
+                 IO 개수도 여기로 왔습니다. 전에는 같은 수가 분석 1 칸과
+                 대시보드에도 있어 세 군데에 적혀 있었습니다. 세는 자리는
+                 한 곳이면 됩니다.
             -->
-            <StackPanel Margin="0,0,0,14">
-                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
-                           Text="열어 둔 로그    (칸에 Log 파일을 끌어다 놓으면 열립니다)" />
+            <Border Background="{DynamicResource Brush.Panel}"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                    CornerRadius="5" Padding="18,14" Margin="6,0,6,16">
+                <StackPanel>
+                    <TextBlock Text="종합 분석 결과" Style="{StaticResource FieldLabel}"
+                               Margin="0,0,0,8" />
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                    <!-- 판정 한 줄. 점 색은 점수 색과 같은 뜻입니다. -->
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="12" Height="12" CornerRadius="6"
+                                VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Border.Style>
+                                <Style TargetType="{x:Type Border}">
+                                    <!-- 안 견준 상태는 회색 그대로. 안 재 본 것에
+                                         색을 칠하면 재 본 것으로 읽힙니다. -->
+                                    <Setter Property="Background" Value="{DynamicResource Brush.Muted}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="good">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Good}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="warn">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Warn}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="bad">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Bad}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                        <TextBlock Text="{Binding OverallHeadline}" FontSize="22" FontWeight="Bold"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
 
-                    <Border x:Name="BeforeCard" Grid.Column="0" Tag="before"
-                            Background="{DynamicResource Brush.Panel}"
-                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="5" Padding="14,11" ToolTip="{Binding BeforePath}"
-                            AllowDrop="True" DragOver="OnLogRowDragOver"
-                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" MinWidth="60" />
-                            </Grid.ColumnDefinitions>
+                    <!-- 숫자들. 가로로 넓은 칸이라 셋이 들어갑니다. -->
+                    <ItemsControl ItemsSource="{Binding OverallStats}" Margin="0,14,0,0"
+                                  Visibility="{Binding HasOverallStats, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:StatVm}">
+                                <StackPanel Margin="0,0,14,0">
+                                    <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}"
+                                               FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Value}" FontSize="20"
+                                               FontWeight="SemiBold" Margin="0,2,0,0"
+                                               Foreground="{DynamicResource Brush.Text}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                            <!-- 첫 줄: 어느 쪽 칸인지. 색은 그래프의 이전 곡선과 같은 색입니다. -->
-                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
-                                <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
-                                        Background="{DynamicResource Brush.Before}" Margin="0,0,8,0" />
-                                <TextBlock Text="이전" FontWeight="Bold" FontSize="14"
-                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                <TextBlock Text="(기준)" Style="{StaticResource Muted}" FontSize="11"
-                                           Margin="8,3,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
+                    <!-- 어느 기준으로 본 수인지. 기준 없이 수만 있으면 무엇과
+                         견준 것인지 알 수 없습니다. -->
+                    <TextBlock Text="{Binding OverallBasis}" Style="{StaticResource Muted}"
+                               FontSize="11" Margin="0,12,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding OverallBasis, Converter={StaticResource TextToVisibility}}" />
 
-                            <!-- 발생시간 = 파일 이름 앞 10 글자. 로그 안에는 언제 것인지가 없습니다. -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="발생시간" Margin="0,8,6,0"
-                                       Foreground="{DynamicResource Brush.Muted}" FontSize="11"
-                                       VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BeforeTime}"
-                                       FontWeight="SemiBold" Margin="0,8,0,0"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
+                               FontSize="11" Margin="0,3,0,0"
+                               Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
 
-                            <!--
-                              파일 이름은 길이가 제각각입니다. 칸 폭을 넘으면 "…" 로
-                              자릅니다. 전체 경로는 칸에 마우스를 올리면 나옵니다.
-                            -->
-                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding BeforeFileName}"
-                                       Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
-                                       Visibility="{Binding BeforeFileName, Converter={StaticResource TextToVisibility}}" />
-                            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding BeforeText}"
-                                       Style="{StaticResource Muted}" Margin="0,4,0,0"
-                                       TextTrimming="CharacterEllipsis" />
-                        </Grid>
-                    </Border>
+                    <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}"
+                               Margin="0,6,0,0" TextWrapping="Wrap" />
+                </StackPanel>
 
-                    <Border x:Name="AfterCard" Grid.Column="2" Tag="after"
-                            Background="{DynamicResource Brush.Panel}"
-                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="5" Padding="14,11" ToolTip="{Binding AfterPath}"
-                            AllowDrop="True" DragOver="OnLogRowDragOver"
-                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" MinWidth="60" />
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 첫 줄: 어느 쪽 칸인지. 색은 그래프의 이후 곡선과 같은 색입니다. -->
-                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
-                                <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
-                                        Background="{DynamicResource Brush.After}" Margin="0,0,8,0" />
-                                <TextBlock Text="이후" FontWeight="Bold" FontSize="14"
-                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                <TextBlock Text="(견줄 것)" Style="{StaticResource Muted}" FontSize="11"
-                                           Margin="8,3,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <!-- 발생시간 = 파일 이름 앞 10 글자. 로그 안에는 언제 것인지가 없습니다. -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="발생시간" Margin="0,8,6,0"
-                                       Foreground="{DynamicResource Brush.Muted}" FontSize="11"
-                                       VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AfterTime}"
-                                       FontWeight="SemiBold" Margin="0,8,0,0"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-
-                            <!--
-                              파일 이름은 길이가 제각각입니다. 칸 폭을 넘으면 "…" 로
-                              자릅니다. 전체 경로는 칸에 마우스를 올리면 나옵니다.
-                            -->
-                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding AfterFileName}"
-                                       Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
-                                       Visibility="{Binding AfterFileName, Converter={StaticResource TextToVisibility}}" />
-                            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding AfterText}"
-                                       Style="{StaticResource Muted}" Margin="0,4,0,0"
-                                       TextTrimming="CharacterEllipsis" />
-                        </Grid>
-                    </Border>
-                </Grid>
-
-                <!-- 지금 보고 있는 결과가 언제 나온 것인지. -->
-                <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
-                           FontSize="11" Margin="2,7,0,0"
-                           Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
-
-                <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}"
-                           Margin="2,4,0,0" TextWrapping="Wrap" />
-            </StackPanel>
+            </Border>
 
             <TextBlock Text="분석 결과" Style="{StaticResource H1}" Margin="2,4,0,8" />
 
@@ -167,9 +119,15 @@
                           손이 칸도 같이 누릅니다. 이동은 오른쪽 위 화살표만
                           맡습니다.
                         -->
+                        <!--
+                          MinHeight 로 칸을 세로로 늘립니다. UniformGrid 는 셋의
+                          높이를 맞추므로 한 칸만 커져도 셋이 같이 커집니다 —
+                          요약 목록을 길게 보려고 둔 값입니다. 가로로는 안
+                          늘립니다 (가로는 화면 폭이 정합니다).
+                        -->
                         <Border Background="{DynamicResource Brush.Panel}"
                                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                CornerRadius="5" Padding="18,14" Margin="6">
+                                CornerRadius="5" Padding="18,14" Margin="6" MinHeight="480">
                             <StackPanel>
 
                                 <!-- 번호표 · 이름 · 이동 화살표 -->
@@ -232,6 +190,91 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
+                                <!-- ===== 이 분석이 쓰는 로그 (분석 1 만) =====
+                                     전에는 메인 화면 맨 위에 크게 있었습니다. 로그를
+                                     여는 일은 이 분석의 준비라서 여기로 들였습니다.
+
+                                     칸 자체가 놓을 자리입니다 (왼쪽 이전 / 오른쪽 이후).
+                                     작아졌지만 과녁은 글자 줄이 아니라 여전히 칸
+                                     전체입니다 — 그게 31~32 에서 고친 자리입니다.
+
+                                     칸 안이라 DataContext 가 이 칸(AnalysisCardVm)
+                                     입니다. 로그 정보는 화면(MainVm)에 있으므로
+                                     DataContext 를 거슬러 올라가 읽습니다.
+                                -->
+                                <Grid Margin="0,12,0,0"
+                                      Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                                               Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
+                                               Text="로그    (칸에 끌어다 놓으면 열립니다)" />
+
+                                    <Border Grid.Row="1" Grid.Column="0" Tag="before|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="9,7"
+                                            ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnLogRowDragOver"
+                                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이전" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.Before}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding DataContext.BeforeTime, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           Style="{StaticResource Muted}" FontSize="10"
+                                                           Margin="6,1,0,0" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding DataContext.BeforeFileName, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       FontSize="11" Margin="0,4,0,0"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding DataContext.BeforeText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       Style="{StaticResource Muted}" FontSize="10"
+                                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="1" Grid.Column="2" Tag="after|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="9,7"
+                                            ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnLogRowDragOver"
+                                            DragLeave="OnLogRowDragLeave" Drop="OnLogRowDrop">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이후" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.After}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding DataContext.AfterTime, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           Style="{StaticResource Muted}" FontSize="10"
+                                                           Margin="6,1,0,0" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding DataContext.AfterFileName, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       FontSize="11" Margin="0,4,0,0"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding DataContext.AfterText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       Style="{StaticResource Muted}" FontSize="10"
+                                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
                                 <!-- ===== 이 분석의 요약 (그룹별) =====
                                      줄을 누르면 그 그룹의 IO 만 히트맵에 남깁니다. -->
                                 <Border Background="{DynamicResource Brush.Window}"
@@ -251,7 +294,7 @@
                                           + 위아래 여백 5 = 38). 셋이면 114, 네 번째가 살짝
                                           보이게 130 으로 둡니다.
                                         -->
-                                        <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto"
+                                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto"
                                                       HorizontalScrollBarVisibility="Disabled"
                                                       Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
                                             <ItemsControl ItemsSource="{Binding Groups}">

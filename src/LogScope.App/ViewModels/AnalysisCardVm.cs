@@ -162,12 +162,21 @@ namespace LogScope.App.ViewModels
         /// <summary>아직 만들지 않은 분석이면 거짓.</summary>
         public bool Ready { get; private set; }
 
+        /// <summary>
+        /// 이 칸 안에 <b>이전/이후 로그 칸</b>을 넣을지. 로그를 여는 일은
+        /// 로그 비교(분석 1)의 준비라서 그 칸 안에 둡니다. 번호로 보지 않고
+        /// 따로 둔 이유는, 분석 1 의 이름과 차례는 config.txt 로 바뀔 수
+        /// 있어도 "로그를 쓰는 분석" 은 하나라는 뜻을 담으려는 것입니다.
+        /// </summary>
+        public bool HasLogBox { get; private set; }
+
         public AnalysisCardVm(int number, string title, string summary, bool ready)
         {
             Number = number;
             Title = title;
             Summary = summary;
             Ready = ready;
+            HasLogBox = number == 1;
             _stats = new List<StatVm>();
         }
 
