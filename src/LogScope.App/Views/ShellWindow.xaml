@@ -27,39 +27,61 @@
              이후 칸이 있어 거기에 끌어다 놓으면 되고, 분석 2 · 3 에는 아직
              아무것도 없습니다.
         -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,5">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,6">
             <!--
-              위 줄이 두 줄입니다.
+              위 줄은 <b>한 줄</b>입니다. 왼쪽의 이름 칸만 두 줄짜리입니다.
 
-                윗줄   프로그램 이름 · 화면 단추 · 그 화면의 메뉴
-                아랫줄 긴 이름 · 판 번호
+                이름 칸   이름 (위) · 긴 이름과 판 번호 (아래)
+                가운데   화면 단추 넷
+                오른쪽   그 화면의 메뉴
 
-              긴 이름을 이름 <b>옆</b>에 두면 화면 단추를 밀고 들어옵니다.
-              폭을 가둬 잘라 봐도 가둔 만큼은 먹습니다 (0.66 에서 그렇게 했다가
-              그래도 길다고 하셨습니다).
+              <b>바 높이가 늘지 않습니다.</b> 화면 단추가 28 픽셀에 여백 3 이라
+              줄 높이는 원래 34 픽셀이었습니다. 이름 칸 두 줄을 31 픽셀
+              (18 + 13) 로 묶어 그 안에 넣었으니, 긴 이름이 생겨도 바는
+              전과 같습니다.
 
-              <b>아랫줄로 내리면 미는 것이 없습니다.</b> 그 줄에는 단추가
-              없어서, 창 폭까지 길게 적어도 윗줄은 그대로입니다. 대신 작은
-              글자 한 줄(약 15 픽셀)만큼 아래 화면이 줄어듭니다.
+              줄 높이를 글꼴에 맡기지 않고 LineHeight 로 못박습니다.
+              글꼴마다 위아래 여백이 달라서, 맡겨 두면 어떤 PC 에서는 두 줄이
+              34 픽셀을 넘어 바가 늘어납니다.
+
+              단추는 이름 칸과 <b>같은 줄</b>에 있고 가운데 맞춤이라, 두 줄
+              이름 옆에서도 가운데에 옵니다 (0.69 에서는 윗줄에만 있어서
+              위로 치우쳐 보였습니다).
             -->
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 왼쪽 : 프로그램 이름과 화면 전환 -->
-                <WrapPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
+                <!--
+                  이름 칸. 긴 이름이 길면 300 픽셀에서 "…" 로 자릅니다 —
+                  이 칸이 넓어지면 단추를 밀기 때문입니다. 전체는 마우스를
+                  올리면 나오고, 창 제목에도 같은 글이 있습니다.
+                -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center"
+                            Margin="2,0,12,0" MaxWidth="300">
+                    <TextBlock Text="{Binding ProductName}" FontSize="15" FontWeight="Bold"
+                               LineHeight="18" LineStackingStrategy="BlockLineHeight"
                                Foreground="{DynamicResource Brush.TopBarText}"
-                               VerticalAlignment="Center" Margin="2,0,4,0"
+                               TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding NameTip}" />
-                    <!-- 긴 이름과 판 번호는 아랫줄입니다 (이 Grid 의 Row 1). -->
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding FullNameText}" FontSize="10"
+                                   LineHeight="13" LineStackingStrategy="BlockLineHeight"
+                                   Foreground="{DynamicResource Brush.TopBarMuted}"
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,7,0"
+                                   ToolTip="{Binding FullNameText}"
+                                   Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
+                        <TextBlock Text="{Binding VersionText}" FontSize="10"
+                                   LineHeight="13" LineStackingStrategy="BlockLineHeight"
+                                   Foreground="{DynamicResource Brush.TopBarMuted}" />
+                    </StackPanel>
+                </StackPanel>
 
+                <!-- 가운데 : 화면 전환 -->
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabMain}"
                                  IsChecked="{Binding ShowMain, Mode=TwoWay}"
@@ -81,7 +103,7 @@
                 </WrapPanel>
 
                 <!-- 오른쪽 : 그 화면에서 할 일 -->
-                <WrapPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
+                <WrapPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <!--
                       대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
                       있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
@@ -121,25 +143,6 @@
                             Click="OnSettings" Margin="10,3,3,3" />
                 </WrapPanel>
 
-                <!--
-                  아랫줄 : 긴 이름과 판 번호. 이름 왼쪽 끝에 맞춰 시작합니다.
-
-                  두 칸에 걸칩니다. 미는 것이 없으니 길이를 가두지 않고, 창
-                  폭을 넘을 때만 "…" 로 자릅니다 (전체는 마우스를 올리면
-                  나오고, 창 제목에도 같은 글이 있습니다).
-
-                  긴 이름을 안 적었으면 판 번호만 남습니다.
-                -->
-                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal"
-                            Margin="2,1,0,0">
-                    <TextBlock Text="{Binding FullNameText}" FontSize="11"
-                               Foreground="{DynamicResource Brush.TopBarMuted}"
-                               TextTrimming="CharacterEllipsis" Margin="0,0,8,0"
-                               ToolTip="{Binding FullNameText}"
-                               Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
-                    <TextBlock Text="{Binding VersionText}" FontSize="11"
-                               Foreground="{DynamicResource Brush.TopBarMuted}" />
-                </StackPanel>
             </Grid>
         </Border>
 

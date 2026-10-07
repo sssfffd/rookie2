@@ -65,7 +65,24 @@ namespace LogScope.App.ViewModels
                 string full = AppConfig.Current.FullName;
                 string s = AppConfig.Current.Name;
                 if (full.Length > 0) s += "\n" + full;
-                return s + "\n" + VersionText + "\n\n이름은 config.txt 에서 바꿉니다 (name · fullname).";
+                s += "\n" + VersionText + "\n\n이름은 config.txt 에서 바꿉니다 (name · fullname).";
+
+                // 긴 이름이 비어 있으면 <b>왜 안 보이는지</b> 적어 둡니다.
+                //
+                // 이게 실제로 헷갈린 자리입니다. build.bat 은 out\config.txt 가
+                // 이미 있으면 덮지 않으므로(고쳐 놓았을 수 있어서), 예전에
+                // 만든 out 폴더에는 fullname 줄이 아예 없습니다. 그러면
+                // 긴 이름은 빈 글자이고 화면에서는 그냥 안 보입니다 —
+                // 설정이 안 먹는 것처럼 보입니다.
+                if (full.Length == 0)
+                {
+                    s += "\n\n긴 이름(fullname)이 config.txt 에 없습니다.\n"
+                       + "실행 파일 옆의 config.txt 에 다음 한 줄을 더하세요:\n"
+                       + "    fullname = 적고 싶은 긴 이름\n"
+                       + "(예전에 만든 out 폴더에는 이 줄이 없습니다. "
+                       + "build.bat 은 이미 있는 config.txt 를 덮지 않습니다.)";
+                }
+                return s;
             }
         }
 
