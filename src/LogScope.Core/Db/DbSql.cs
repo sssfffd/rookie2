@@ -123,7 +123,7 @@ namespace LogScope.Core.Db
 
             if (onlyHere)
             {
-                // 지우는 문장은 <b>늘 주석</b>으로 둡니다. 표를 지우는 일을
+                // 지우는 문장은 늘 주석으로 둡니다. 표를 지우는 일을
                 // 글만 보고 돌리게 하면 안 됩니다.
                 sb.AppendLine("-- 이 표는 한쪽에만 있습니다. 지우려면 아래 주석을 풀어 주세요.");
                 sb.AppendLine("-- DROP TABLE " + Quote(td.Name) + ";");
@@ -158,7 +158,7 @@ namespace LogScope.Core.Db
         {
             string table = Quote(td.Name);
 
-            // 이름이 바뀐 것으로 보이는 짝은 <b>주석으로만</b> 내놓습니다.
+            // 이름이 바뀐 것으로 보이는 짝은 주석으로만 내놓습니다.
             // CHANGE 로 돌려 버리면, 짐작이 틀렸을 때 다른 열의 값이 사라집니다.
             if (cd.RenameGuess != null)
             {

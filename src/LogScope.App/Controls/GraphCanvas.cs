@@ -179,7 +179,7 @@ namespace LogScope.App.Controls
             set { if (_separate != value) { _separate = value; InvalidateVisual(); } }
         }
 
-        // 선 하나씩 끄고 보기. 꺼진 쪽은 <b>세로 눈금 계산에서도</b> 빠집니다
+        // 선 하나씩 끄고 보기. 꺼진 쪽은 세로 눈금 계산에서도 빠집니다
         // (ChannelRange) — 안 보이는 선 때문에 눈금이 넓어지면 보이는 쪽이
         // 납작해져서, 끈 보람이 없습니다.
         private bool _showBefore = true;
@@ -596,7 +596,7 @@ namespace LogScope.App.Controls
             int rows = 1 + (t2 != null ? 1 : 0);
             double h = rows * lineH + (t3 != null ? lineH : 0) + padY * 2;
 
-            // 오른쪽 위, <b>레인 머리글 아래</b>. 머리글 오른쪽에는 커서 값이
+            // 오른쪽 위, 레인 머리글 아래. 머리글 오른쪽에는 커서 값이
             // 적히므로 그 줄을 비켜야 합니다.
             double right = plot.Right - 6, top = plot.Top + HeaderH + 6;
             var box = new Rect(right - w, top, w, h);
@@ -986,7 +986,7 @@ namespace LogScope.App.Controls
             // 차이 눈금은 두 로그를 함께 읽어야 나오는 값이라, 채널에 적어 둔
             // 최소/최대를 쓸 수가 없습니다. 대신 겹치는 구간을 훑습니다.
             //
-            // "계속 맞춤" 이 꺼져 있으면 <b>겹치는 구간 전체</b>를 봅니다.
+            // "계속 맞춤" 이 꺼져 있으면 겹치는 구간 전체를 봅니다.
             // 그래야 시간축을 밀어도 세로 배율이 흔들리지 않는데, 그 계산은
             // 로그를 통째로 훑는 일이라 프레임마다 하면 못 씁니다. 그래서
             // 갈무리해 두고 로그나 밀기 값이 바뀔 때만 버립니다.
@@ -1855,7 +1855,7 @@ namespace LogScope.App.Controls
         // 를 하려면 휠과 끌기를 번갈아 여러 번 해야 했습니다. 네모를 그리면
         // 그만큼 한 번에 맞춰 줍니다.
         //
-        // <b>가로만 끌면 시간만</b> 확대합니다. 세로로도 끌었으면 그 레인의
+        // 가로만 끌면 시간만 확대합니다. 세로로도 끌었으면 그 레인의
         // 값 범위까지 같이 맞춥니다 — 네모를 그렸는데 위아래가 그대로면
         // "영역만큼" 이라는 말과 어긋납니다.
 

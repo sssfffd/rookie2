@@ -167,6 +167,14 @@ namespace LogScope.Core.Db
             }
         }
 
+        /// <summary>
+        /// 폴더(또는 파일 하나)를 DB 한 벌로 읽습니다. 네 걸음입니다.
+        ///
+        ///   1. Files       훑어서 파일 목록을 만듭니다 (하위 폴더까지)
+        ///   2. ReadTables  .sql / .csv 를 읽습니다. .frm 과 .ibd 는 세어만 둡니다
+        ///   3. ReadFrm     .frm 을 읽습니다 (2 보다 나중인 이유는 그 함수에)
+        ///   4. Notes       무엇을 읽고 무엇을 못 읽었는지 적습니다
+        /// </summary>
         public static DbSnapshot Read(string path, Options opt)
         {
             if (opt == null) opt = new Options();
@@ -180,7 +188,7 @@ namespace LogScope.Core.Db
                 return snap;
             }
 
-            // 파일 하나를 바로 줄 수도 있습니다 (.sql 덤프 하나).
+            // 파일 하나를 바로 줄 수도 있습니다 (.sql 덤프 하나, .csv 하나).
             if (File.Exists(path))
             {
                 TakeFile(path, string.Empty, snap, opt);
@@ -196,86 +204,133 @@ namespace LogScope.Core.Db
 
             List<string> files = Files(path, opt, snap.Notes);
 
-            int ibd = 0;
-            var frmFiles = new List<string>();
-            var seenFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var seen = new Seen();
+            ReadTables(path, files, snap, opt, seen);
+            ReadFrm(path, snap, opt, seen);
+            Notes(snap, seen);
 
+            snap.Sort();
+            return snap;
+        }
+
+        /// <summary>
+        /// 읽는 동안 세어 두는 것들. 걸음마다 조금씩 채우고 마지막에
+        /// <see cref="Notes"/> 가 글로 풉니다.
+        /// </summary>
+        private sealed class Seen
+        {
+            public readonly List<string> Frm = new List<string>();        // 나중에 읽을 .frm
+            public int Ibd;                                              // 읽지 않는 .ibd 수
+            public readonly HashSet<string> Folders =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // 폴더 이름이 붙은 표
+
+            public int FrmOk, FrmFail, FrmSkip;
+            public readonly List<string> FrmWhy = new List<string>();     // 못 읽은 이유 (앞 세 개)
+            public readonly List<string> FrmNotes = new List<string>();   // 읽으면서 생긴 말
+            public readonly List<string> Versions = new List<string>();   // .frm 을 만든 MySQL 판
+        }
+
+        /// <summary>
+        /// 2 걸음 — .sql / .csv / .tsv 를 읽습니다. .frm 과 .ibd 는 세어만 둡니다.
+        ///
+        /// <b>새 확장자를 더하는 자리가 여기입니다</b> (그리고 읽는 일은
+        /// <see cref="TakeFile"/>).
+        /// </summary>
+        private static void ReadTables(string root, List<string> files, DbSnapshot snap,
+                                       Options opt, Seen seen)
+        {
             foreach (string f in files)
             {
                 string ext = (Path.GetExtension(f) ?? string.Empty).ToLowerInvariant();
-                if (ext == ".frm") { frmFiles.Add(f); continue; }
-                if (ext == ".ibd") { ibd++; continue; }
+                if (ext == ".frm") { seen.Frm.Add(f); continue; }
+                if (ext == ".ibd") { seen.Ibd++; continue; }
                 if (ext != ".sql" && ext != ".csv" && ext != ".tsv") continue;
 
-                if (snap.Tables.Count >= opt.MaxTables)
-                {
-                    snap.Notes.Add("표가 " + opt.MaxTables + " 개를 넘어 거기까지만 읽었습니다.");
-                    break;
-                }
+                if (Full(snap, opt)) break;
 
-                string prefix = Prefix(path, f);
-                if (prefix.Length > 0) seenFolders.Add(prefix);
+                string prefix = Prefix(root, f);
+                if (prefix.Length > 0) seen.Folders.Add(prefix);
                 TakeFile(f, prefix, snap, opt);
             }
+        }
 
-            // .frm 은 <b>나중에</b> 읽습니다. 값까지 있는 .sql 쪽이 더 많이 아는
-            // 것이라, 같은 이름이면 그쪽이 이겨야 합니다. 파일 차례에 맡기면
-            // 폴더를 훑는 순서에 따라 결과가 달라집니다.
-            int frmOk = 0, frmFail = 0, frmSkip = 0;
-            var frmWhy = new List<string>();
-            var frmNotes = new List<string>();
-            var versions = new List<string>();
-
-            foreach (string f in frmFiles)
+        /// <summary>
+        /// 3 걸음 — .frm 을 읽습니다.
+        ///
+        /// <b>.sql 을 다 읽은 뒤입니다.</b> 값까지 있는 .sql 쪽이 더 많이 아는
+        /// 것이라, 같은 이름이면 그쪽이 이겨야 합니다. 파일 차례에 맡기면
+        /// 폴더를 훑는 순서에 따라 결과가 달라집니다.
+        /// </summary>
+        private static void ReadFrm(string root, DbSnapshot snap, Options opt, Seen seen)
+        {
+            foreach (string f in seen.Frm)
             {
-                if (snap.Tables.Count >= opt.MaxTables)
-                {
-                    snap.Notes.Add("표가 " + opt.MaxTables + " 개를 넘어 거기까지만 읽었습니다.");
-                    break;
-                }
+                if (Full(snap, opt)) break;
 
-                string prefix = Prefix(path, f);
+                string prefix = Prefix(root, f);
                 FrmReader.Result res;
                 switch (TakeFrm(f, prefix, snap, out res))
                 {
                     case FrmTake.Added:
-                        frmOk++;
-                        if (prefix.Length > 0) seenFolders.Add(prefix);
+                        seen.FrmOk++;
+                        if (prefix.Length > 0) seen.Folders.Add(prefix);
                         string v = VersionText(res.VersionId);
-                        if (!versions.Contains(v)) versions.Add(v);
-                        if (res.Note.Length > 0 && frmNotes.Count < 3)
-                            frmNotes.Add(Path.GetFileName(f) + " — " + res.Note);
+                        if (!seen.Versions.Contains(v)) seen.Versions.Add(v);
+                        if (res.Note.Length > 0 && seen.FrmNotes.Count < 3)
+                            seen.FrmNotes.Add(Path.GetFileName(f) + " — " + res.Note);
                         break;
+
                     case FrmTake.Skipped:
-                        frmSkip++;
+                        seen.FrmSkip++;
                         break;
+
                     default:
-                        frmFail++;
-                        if (frmWhy.Count < 3) frmWhy.Add(Path.GetFileName(f) + " — " + res.Why);
+                        seen.FrmFail++;
+                        if (seen.FrmWhy.Count < 3)
+                            seen.FrmWhy.Add(Path.GetFileName(f) + " — " + res.Why);
                         break;
                 }
             }
+        }
 
-            int folders = seenFolders.Count;
-            if (folders > 0)
-                snap.Notes.Add("하위 폴더 " + folders + " 개까지 읽었습니다. "
+        /// <summary>표 수 상한에 닿았는지. 닿으면 한 번만 적습니다.</summary>
+        private static bool Full(DbSnapshot snap, Options opt)
+        {
+            if (snap.Tables.Count < opt.MaxTables) return false;
+
+            string note = "표가 " + opt.MaxTables + " 개를 넘어 거기까지만 읽었습니다.";
+            if (!snap.Notes.Contains(note)) snap.Notes.Add(note);
+            return true;
+        }
+
+        /// <summary>
+        /// 4 걸음 — 무엇을 읽고 무엇을 못 읽었는지 글로.
+        ///
+        /// 읽지 못한 것을 <b>조용히 넘기지 않습니다.</b> 폴더에 .ibd 가 40 개인데
+        /// 표가 하나도 없으면 "차이 없음" 으로 읽힙니다.
+        /// </summary>
+        private static void Notes(DbSnapshot snap, Seen seen)
+        {
+            if (seen.Folders.Count > 0)
+                snap.Notes.Add("하위 폴더 " + seen.Folders.Count + " 개까지 읽었습니다. "
                              + "표 이름 앞에 폴더 이름을 붙입니다 (db1.recipe 꼴).");
 
-            if (frmOk > 0) snap.Notes.Add(FrmNote(frmOk, versions));
-            if (frmSkip > 0)
-                snap.Notes.Add(".frm " + frmSkip + " 개는 같은 이름의 덤프가 이미 있어 쓰지 "
+            if (seen.FrmOk > 0) snap.Notes.Add(FrmNote(seen.FrmOk, seen.Versions));
+
+            if (seen.FrmSkip > 0)
+                snap.Notes.Add(".frm " + seen.FrmSkip + " 개는 같은 이름의 덤프가 이미 있어 쓰지 "
                              + "않았습니다 (값까지 있는 쪽이 더 많이 압니다).");
-            if (frmFail > 0)
-                snap.Notes.Add(".frm " + frmFail + " 개는 읽지 못했습니다. "
-                             + string.Join(" / ", frmWhy.ToArray()));
-            for (int i = 0; i < frmNotes.Count; i++) snap.Notes.Add(frmNotes[i]);
 
-            if (ibd > 0) snap.Notes.Add(IbdNote(ibd, frmFiles.Count > 0));
-            if (snap.Tables.Count == 0 && frmFiles.Count == 0 && ibd == 0)
+            if (seen.FrmFail > 0)
+                snap.Notes.Add(".frm " + seen.FrmFail + " 개는 읽지 못했습니다. "
+                             + string.Join(" / ", seen.FrmWhy.ToArray()));
+
+            for (int i = 0; i < seen.FrmNotes.Count; i++) snap.Notes.Add(seen.FrmNotes[i]);
+
+            if (seen.Ibd > 0) snap.Notes.Add(IbdNote(seen.Ibd, seen.Frm.Count > 0));
+
+            if (snap.Tables.Count == 0 && seen.Frm.Count == 0 && seen.Ibd == 0)
                 snap.Notes.Add("읽을 수 있는 파일(.sql / .csv / .frm)이 없습니다.");
-
-            snap.Sort();
-            return snap;
         }
 
         /// <summary>

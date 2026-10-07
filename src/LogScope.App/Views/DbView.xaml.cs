@@ -265,7 +265,7 @@ namespace LogScope.App.Views
             if (cfg.Ibd2SdiPath.Length == 0) return;
             if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
 
-            // 파일 모으기는 폴더 읽기와 <b>같은 걸음</b>을 씁니다 — 하위 폴더까지,
+            // 파일 모으기는 폴더 읽기와 같은 걸음을 씁니다 — 하위 폴더까지,
             // 바로 가기 고리는 건너뛰고, 겹 수 상한도 같습니다. 따로 훑으면
             // 한쪽만 하위 폴더를 보게 되어 엇갈립니다.
             var notes = new List<string>();

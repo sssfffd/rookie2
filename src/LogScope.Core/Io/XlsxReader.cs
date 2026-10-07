@@ -338,7 +338,7 @@ namespace LogScope.Core.Io
                 int width = 0;
                 if (!empty)
                 {
-                    // <row> 안의 <c> 들을 읽습니다.
+                    // <row> 안의  들을 읽습니다.
                     int depth = _xml.Depth;
                     while (_xml.Read())
                     {

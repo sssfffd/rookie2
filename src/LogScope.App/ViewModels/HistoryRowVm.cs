@@ -74,7 +74,7 @@ namespace LogScope.App.ViewModels
             _live = live;
             _same = sameBasis;
             _dChanged = changedCount - Record.ChangedCount;
-            // 점수 차이는 <b>분석 1</b> 것만 봅니다. 목록 한 줄에 셋을 다
+            // 점수 차이는 분석 1 것만 봅니다. 목록 한 줄에 셋을 다
             // 빼서 적으면 읽히지 않고, 지금 점수가 있는 것도 분석 1 뿐입니다.
             _dScoreOk = hasScore && Record.HasScores[0];
             _dScore = _dScoreOk ? score - Record.Scores[0] : 0;

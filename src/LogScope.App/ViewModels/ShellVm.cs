@@ -67,7 +67,7 @@ namespace LogScope.App.ViewModels
                 if (full.Length > 0) s += "\n" + full;
                 s += "\n" + VersionText + "\n\n이름은 config.txt 에서 바꿉니다 (name · fullname).";
 
-                // 긴 이름이 비어 있으면 <b>왜 안 보이는지</b> 적어 둡니다.
+                // 긴 이름이 비어 있으면 왜 안 보이는지 적어 둡니다.
                 //
                 // 이게 실제로 헷갈린 자리입니다. build.bat 은 out\config.txt 가
                 // 이미 있으면 덮지 않으므로(고쳐 놓았을 수 있어서), 예전에
@@ -91,7 +91,7 @@ namespace LogScope.App.ViewModels
         // 화면 전환이 두 겹입니다.
         //
         //   Screen : 메인 · 분석 1 · 분석 2 · 분석 3
-        //   Page   : 분석 1 <b>안에서</b> 대시보드 · 그래프 · 히트맵
+        //   Page   : 분석 1 안에서 대시보드 · 그래프 · 히트맵
         //
         // 한 겹으로 합치지 않은 이유가 있습니다. 대시보드/그래프/히트맵은
         // 같은 로그 한 쌍을 세 가지로 보는 것이라 서로 상태를 나눠 씁니다

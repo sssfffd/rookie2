@@ -291,7 +291,7 @@ namespace LogScope.Core.Compare
 
             // 많이 벌어진 IO 가 위로 오게.
             //
-            // 기준은 <b>칸 폭과 무관한 값</b>만 씁니다. 예전에는 PeakMean(칸들
+            // 기준은 칸 폭과 무관한 값만 씁니다. 예전에는 PeakMean(칸들
             // 중 가장 큰 값)과 OverBuckets(차이 난 칸 수)로 줄을 세웠는데,
             // 둘 다 칸을 어떻게 잘랐는지에 딸린 값입니다. 그래서 같은 로그인데
             // 1 분으로 보다가 5 분으로 바꾸면 IO 차례가 뒤바뀌었습니다.
@@ -472,7 +472,7 @@ namespace LogScope.Core.Compare
                 {
                     cell.OverSamples++;
                     // 가장 크게 벌어진 순간을 붙잡습니다. 값과 퍼센트를
-                    // <b>같은 표본에서</b> 가져와야 둘이 가리키는 순간이
+                    // 같은 표본에서 가져와야 둘이 가리키는 순간이
                     // 어긋나지 않습니다.
                     if (!double.IsNaN(pct) && pct > cell.PeakPercent)
                     {

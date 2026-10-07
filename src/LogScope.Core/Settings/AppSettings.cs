@@ -116,15 +116,15 @@ namespace LogScope.Core.Settings
 
         // ---- 분석 2 (DB) 에서 견줄 자리 ----
         //
-        // config.txt 의 db.before / db.after 가 <b>기본값</b>이고, 화면에서
+        // config.txt 의 db.before / db.after 가 기본값이고, 화면에서
         // 고르면 여기에 적힙니다. 화면에서 고른 것이 이깁니다 — 바꾼 사람이
         // 지금 그걸 보려고 바꾼 것입니다. 비우면 config.txt 로 돌아갑니다.
         //
-        // config.txt 에 되쓰지 않는 이유: 그 파일은 <b>사람만</b> 고치는
+        // config.txt 에 되쓰지 않는 이유: 그 파일은 사람만 고치는
         // 파일입니다. 프로그램이 거기 쓰면 적어 둔 주석과 줄 차례가 날아갑니다.
         public string DbBeforePath = string.Empty;
         public string DbAfterPath = string.Empty;
-        // 이 둘은 <b>같이 켜지지 않습니다.</b> 벌려 놓고 그 사이를 칠하면
+        // 이 둘은 같이 켜지지 않습니다. 벌려 놓고 그 사이를 칠하면
         // 칠해진 넓이가 "값 차이" 가 아니라 "값 차이 + 벌린 간격" 이 되어,
         // 눈으로 재는 넓이가 눈금과 안 맞습니다. 막는 곳은 화면 쪽(GraphVm)
         // 이고, 여기서는 옛 설정 파일이 둘 다 켜 둔 경우만 손봅니다.

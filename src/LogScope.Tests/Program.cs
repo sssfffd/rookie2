@@ -634,7 +634,7 @@ namespace LogScope.Tests
             Check("5% > 1% 이므로 차이", v.Changed, null);
             Check("한 표본만 넘음", v.DiffSamples == 1, "실제 " + v.DiffSamples);
 
-            // 기준을 올리면 판정이 뒤집히지만 <b>적히는 숫자는 그대로</b>여야
+            // 기준을 올리면 판정이 뒤집히지만 적히는 숫자는 그대로여야
             // 합니다. 재는 값이 재는 잣대에 딸려 있으면 안 됩니다.
             opt.RelativePercent = 10.0;
             CompareResult r2 = DiffEngine.Compare(dsA, dsB, opt, null);
@@ -775,7 +775,7 @@ namespace LogScope.Tests
             Check("1% 에서는 1 표본만 넘음", a2.Cells[2].OverSamples == 1,
                   "실제 " + a2.Cells[2].OverSamples);
 
-            // 그런데 칸에 적히는 숫자는 <b>양쪽이 같아야</b> 합니다.
+            // 그런데 칸에 적히는 숫자는 양쪽이 같아야 합니다.
             Near("0.1% 에서 칸의 오차", a1.PercentOf(a1.Cells[2]), 5, 1e-3);
             Near("1% 에서 칸의 오차", a2.PercentOf(a2.Cells[2]), 5, 1e-3);
             Check("기준을 바꿔도 칸의 숫자가 그대로",
