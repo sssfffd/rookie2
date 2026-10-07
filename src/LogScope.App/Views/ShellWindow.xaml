@@ -103,7 +103,17 @@
                 </WrapPanel>
 
                 <!-- 오른쪽 : 그 화면에서 할 일 -->
-                <WrapPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!--
+                  이 묶음은 <b>왼쪽에 붙입니다</b> (칸은 남는 폭을 다 받지만
+                  내용은 구분 선 바로 뒤에서 시작합니다).
+
+                  0.70 에 HorizontalAlignment="Right" 를 넣었다가 0.72 에
+                  뺐습니다. 창 오른쪽 끝에 붙이면 화면 단추와 이 메뉴 사이가
+                  통째로 비어, [대시보드] 를 누르려고 창 끝까지 손을 옮기게
+                  됩니다. 구분 선은 "여기부터 다른 갈래" 라는 표시이고,
+                  그 뒤에 바로 붙어 있어야 그 뜻이 살아납니다.
+                -->
+                <WrapPanel Grid.Column="2" VerticalAlignment="Center">
                     <!--
                       대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
                       있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나

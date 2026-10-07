@@ -891,3 +891,11 @@
 > 그리고 db분석쪽에 이전 이후 맞춤 방향들 지워줘
 
 → 답변: [52-db-paths-and-list.md](52-db-paths-and-list.md) 의 뒷이야기 2
+
+---
+
+## 요청 78 — 그 화면 메뉴가 너무 오른쪽에 있음
+
+> 이거 센서값 변화량 분석 페이지 넘어갔을때 대시보드 같은 버튼 뜨는거 왤케 오른쪽으로 가있음?
+
+→ 답변: [54-topbar-right-align.md](54-topbar-right-align.md)
