@@ -250,20 +250,6 @@ namespace LogScope.App.ViewModels
             private set { Set(ref _script, value); }
         }
 
-        private bool _toAfter = true;
-        /// <summary>참이면 "이전 → 이후", 거짓이면 되돌리는 글.</summary>
-        public bool ToAfter
-        {
-            get { return _toAfter; }
-            set { if (Set(ref _toAfter, value)) { Raise("ToBefore"); BuildScript(); } }
-        }
-
-        public bool ToBefore
-        {
-            get { return !_toAfter; }
-            set { if (value) ToAfter = false; }
-        }
-
         /// <summary>읽은 결과를 받습니다. 읽는 일은 창(DbView)이 맡습니다 — 진행 창을 띄워야 합니다.</summary>
         public void Take(DbSnapshot before, DbSnapshot after)
         {
@@ -293,8 +279,13 @@ namespace LogScope.App.ViewModels
         {
             if (_diff == null) { ScriptText = string.Empty; return; }
 
+            // 늘 "이전 → 이후" 입니다. 화면에서 방향을 고르던 것을 뺐습니다.
+            //
+            // 되돌리는 글(이후 → 이전)을 만드는 길은 Core 에 그대로
+            // 남아 있습니다 (SqlScript.Direction.ToBefore). 다시 필요하면
+            // 여기 한 줄과 단추 하나입니다.
             var opt = new SqlScript.Options();
-            opt.Way = _toAfter ? SqlScript.Direction.ToAfter : SqlScript.Direction.ToBefore;
+            opt.Way = SqlScript.Direction.ToAfter;
             ScriptText = SqlScript.Build(_diff, opt);
         }
     }

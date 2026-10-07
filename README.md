@@ -890,7 +890,10 @@ db.dump.after  = --login-path=new --databases mydb
 ### 맞추는 SQL — 만들어 주고, 돌리지는 않습니다
 
 **[DB 읽기]** 로 견주고, 아래 칸에 나온 글을 **[SQL 글 저장]** 으로 저장합니다.
-방향도 고릅니다 (`이전 → 이후` / `이후 → 이전`).
+방향은 늘 **`이전 → 이후`** 입니다 — 이전 DB 를 이후와 같게 만드는 글입니다
+(0.71 에서 고르는 것을 뺐습니다). 만든 글 머리에 어느 방향인지 적혀 있습니다.
+되돌리는 글을 만드는 길은 `Core/Db/SqlScript.cs` 에 그대로 있습니다
+(`Direction.ToBefore`) — 다시 필요하면 단추 하나입니다.
 
 ```sql
 ALTER TABLE `recipe` ADD COLUMN `added` int NULL DEFAULT '0';

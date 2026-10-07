@@ -33,14 +33,11 @@
                     <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,14,0"
                             ToolTip="아래 글을 .sql 파일로 저장합니다. 돌리는 것은 직접 하세요." />
 
-                    <TextBlock Text="맞출 방향" Style="{StaticResource ToolGroupCaption}"
-                               VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <RadioButton GroupName="way" Style="{StaticResource SegmentButton}"
-                                 Content="이전 → 이후" IsChecked="{Binding ToAfter, Mode=TwoWay}"
-                                 ToolTip="이전 DB 를 이후와 같게 만드는 글을 만듭니다." />
-                    <RadioButton GroupName="way" Style="{StaticResource SegmentButton}"
-                                 Content="이후 → 이전" IsChecked="{Binding ToBefore, Mode=TwoWay}"
-                                 ToolTip="이후 DB 를 이전과 같게 되돌리는 글을 만듭니다." />
+                    <!--
+                      맞출 방향(이전 → 이후 / 이후 → 이전) 고르기를 뺐습니다.
+                      늘 "이전 → 이후" 입니다 — 이전 DB 를 이후와 같게 만드는
+                      글입니다. 만든 글의 머리에 어느 방향인지 적혀 있습니다.
+                    -->
                 </WrapPanel>
 
                 <!--
