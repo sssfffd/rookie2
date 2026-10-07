@@ -54,3 +54,20 @@ analysis3 = 분석 3 | 아직 정해지지 않았습니다.
 # 5.x 라서 .ibd 안에 꺼낼 것이 없습니다 — 그때는 아무것도 적지 않아도 됩니다.
 # .frm 은 이 프로그램이 직접 읽습니다 (모양만). 값은 mysqldump 로 받으세요.
 # db.ibd2sdi = C:\Program Files\MySQL\MySQL Server 8.0\bin\ibd2sdi.exe
+
+# ---- 분석 2 의 목록 칸 이름 ----
+#
+# 차이 목록의 칸 머리글입니다. 아래 줄을 적으면 화면 머리글 · CSV 머리글 ·
+# 마우스 설명 글이 한꺼번에 바뀝니다. 프로그램만 다시 켜면 되고 다시
+# 빌드할 필요는 없습니다. 안 적은 칸은 기본 이름 그대로입니다.
+#
+# db.col.v1     = 설정값
+# db.col.v2     = 단위
+#
+# 나머지 칸도 같은 식으로 바꿀 수 있습니다 (괄호 안이 기본 이름):
+#
+#   db.col.table  (표)        db.col.io      (IO명)
+#   db.col.before (이전 value) db.col.after  (이후 value)
+#   db.col.column (열)        db.col.note    (설명, CSV 에만)
+#   db.col.kind   (갈래)      db.col.change  (구분)
+#   db.col.where  (행)        ...  갈래·구분·행·설명은 CSV 에만 나옵니다.

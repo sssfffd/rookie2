@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:LogScope.App.ViewModels"
+             xmlns:db="clr-namespace:LogScope.Core.Db;assembly=LogScope.Core"
              Background="{DynamicResource Brush.Window}"
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
@@ -160,25 +161,35 @@
                             <ListView.View>
                                 <GridView>
                                     <!--
+                                      칸 이름(머리글)은 여기 적지 않았습니다.
+                                      LogScope.Core/Db/DbNames.cs 한 곳에 있고,
+                                      out\config.txt 에 "db.col.v1 = 설정값" 을
+                                      적으면 빌드 없이 바뀝니다. 아래 줄은
+                                      "어떤 칸을 어떤 폭으로 보일지" 만 정합니다.
+
+                                      Binding 이 아니라 x:Static 인 이유: 목록
+                                      칸은 화면 나무에 없어서 Binding 이 조용히
+                                      실패하고 머리글이 빈 채로 나옵니다.
+
                                       표 이름은 남겨 뒀습니다. 폴더에 DB 가 여럿
                                       있으면 같은 IO 이름이 표마다 나와서, 이
                                       칸이 없으면 어느 DB 의 값인지 알 수가
                                       없습니다. 한 DB 만 보신다면 이 한 줄만
                                       지우면 됩니다.
                                     -->
-                                    <GridViewColumn Header="표" Width="130"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Table}" Width="130"
                                                     DisplayMemberBinding="{Binding Table}" />
-                                    <GridViewColumn Header="IO명" Width="150"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="150"
                                                     DisplayMemberBinding="{Binding Io}" />
-                                    <GridViewColumn Header="이전 value" Width="130"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="130"
                                                     DisplayMemberBinding="{Binding Before}" />
-                                    <GridViewColumn Header="이후 value" Width="130"
+                                    <GridViewColumn Header="{x:Static db:DbNames.After}" Width="130"
                                                     DisplayMemberBinding="{Binding After}" />
-                                    <GridViewColumn Header="v1" Width="90"
+                                    <GridViewColumn Header="{x:Static db:DbNames.V1}" Width="90"
                                                     DisplayMemberBinding="{Binding V1}" />
-                                    <GridViewColumn Header="v2" Width="90"
+                                    <GridViewColumn Header="{x:Static db:DbNames.V2}" Width="90"
                                                     DisplayMemberBinding="{Binding V2}" />
-                                    <GridViewColumn Header="열" Width="110"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Column}" Width="110"
                                                     DisplayMemberBinding="{Binding Column}" />
                                 </GridView>
                             </ListView.View>

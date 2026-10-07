@@ -116,6 +116,7 @@ namespace LogScope.Tests
                 DbCreateSqlText();
                 DbCompare();
                 DbDiffLines();
+                DbColumnNames();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -2862,9 +2863,13 @@ namespace LogScope.Tests
 
             // ---- CSV ----
             string csv = DbDiffList.ToCsv(lines);
-            Check("CSV 머리글",
-                  csv.StartsWith("표,IO명,갈래,구분,행,열,이전 value,이후 value,v1,v2,설명"),
+            // 머리글 글자를 여기 또 적지 않습니다 — 이름을 바꿀 때 고칠 곳이
+            // 하나(DbNames)여야 합니다. 여기서는 "머리글이 그 이름들과 같은
+            // 순서로 나오는지" 만 봅니다.
+            Check("CSV 머리글", csv.StartsWith(string.Join(",", DbNames.CsvNames())),
                   csv.Substring(0, 40));
+            Check("CSV 칸 수", DbNames.CsvNames().Length == 11,
+                  DbNames.CsvNames().Length.ToString(CultureInfo.InvariantCulture));
             Check("CSV 줄 수", CountLines(csv) == lines.Count + 1,
                   CountLines(csv) + " / " + (lines.Count + 1));
 
@@ -2881,6 +2886,7 @@ namespace LogScope.Tests
 
             // v1 · v2 는 쓰는 쪽이 채우는 빈 칸입니다. 비어 있어야 합니다 —
             // 아무 값이나 채워 두면 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
+            Check("v1 칸의 기본 이름", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
             Check("v1 은 비어 있음", bb.V1.Length == 0, bb.V1);
             Check("v2 도 비어 있음", bb.V2.Length == 0, bb.V2);
 
@@ -2895,6 +2901,67 @@ namespace LogScope.Tests
             // 마우스 설명에는 잘린 값이 다 들어 있어야 합니다.
             Check("설명 글에 값이 다 있음",
                   bb.Tip.Contains("10") && bb.Tip.Contains("11") && bb.Tip.Contains("id=1"), bb.Tip);
+        }
+
+        /// <summary>
+        /// 목록 칸 이름은 <b>한 곳</b>(DbNames)에만 있어야 합니다.
+        ///
+        /// 전에는 같은 이름이 화면·CSV·설명 글·시험에 흩어져 있어서, 이름
+        /// 하나 바꾸려면 네 파일을 고쳐야 했습니다. 한 군데를 빠뜨리면 화면과
+        /// CSV 가 서로 다른 이름을 쓰게 되고, 그건 눈으로 봐야 알게 됩니다.
+        /// 그래서 "config.txt 한 줄로 셋이 같이 바뀌는지" 를 시험합니다.
+        /// </summary>
+        private static void DbColumnNames()
+        {
+            Console.WriteLine("DB — 목록 칸 이름은 한 곳");
+
+            AppConfig keep = AppConfig.Current;
+            try
+            {
+                AppConfig.Current = AppConfig.Default;
+                Check("안 적으면 기본 이름", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
+
+                AppConfig.Current = AppConfig.Parse(new[]
+                {
+                    "db.col.v1 = 설정값",
+                    "db.col.v2 = 단위",
+                });
+                Check("config.txt 가 v1 이름을 바꿈", DbNames.V1 == "설정값", DbNames.V1);
+                Check("v2 도 바뀜", DbNames.V2 == "단위", DbNames.V2);
+                Check("안 적은 칸은 그대로", DbNames.Table == DbNames.DefaultTable, DbNames.Table);
+
+                // 바꾼 이름은 CSV 머리글과 마우스 설명 글에 같이 나가야 합니다.
+                var one = new DbDiffLine { Table = "t", V1 = "180", V2 = "°C" };
+                string csv = DbDiffList.ToCsv(new List<DbDiffLine> { one });
+                Check("바꾼 이름이 CSV 머리글에", csv.Contains("설정값,단위"), csv.Substring(0, 44));
+                Check("바꾼 이름이 설명 글에",
+                      one.Tip.Contains("설정값") && one.Tip.Contains("단위"), one.Tip);
+
+                // 이름에 쉼표가 들어가도 CSV 가 깨지면 안 됩니다. 값과 같은
+                // 함수로 찍으니 따옴표가 붙습니다.
+                AppConfig.Current = AppConfig.Parse(new[] { "db.col.v1 = 설정값, 단위" });
+                string csv2 = DbDiffList.ToCsv(new List<DbDiffLine>());
+                Check("쉼표 든 이름은 따옴표로", csv2.Contains("\"설정값, 단위\""), csv2);
+
+                // 비워 둔 줄과 모르는 열쇠. 설정 파일 한 줄 때문에 칸 이름이
+                // 사라지면 안 됩니다.
+                AppConfig.Current = AppConfig.Parse(new[]
+                {
+                    "db.col.v1 =",
+                    "db.col.없는칸 = 아무거나",
+                });
+                Check("비워 둔 줄은 기본값", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
+                Check("모르는 칸 열쇠는 그냥 무시",
+                      DbNames.CsvNames().Length == 11, "칸 수가 바뀌었습니다");
+
+                Check("열쇠는 대소문자를 안 가림",
+                      AppConfig.Parse(new[] { "DB.COL.V1 = 설정값" }).ColumnName("v1", "x") == "설정값",
+                      AppConfig.Parse(new[] { "DB.COL.V1 = 설정값" }).ColumnName("v1", "x"));
+            }
+            finally
+            {
+                AppConfig.Current = keep;
+            }
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>

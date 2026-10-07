@@ -67,6 +67,8 @@ namespace LogScope.Core.Settings
         private string _dbDumpBefore = string.Empty;
         private string _dbDumpAfter = string.Empty;
         private string _ibd2sdi = string.Empty;
+        private readonly Dictionary<string, string> _columnNames =
+            new Dictionary<string, string>();
         private readonly string[] _titles = (string[])DefaultTitles.Clone();
         private readonly string[] _summaries = (string[])DefaultSummaries.Clone();
 
@@ -153,6 +155,30 @@ namespace LogScope.Core.Settings
         /// 꺼냅니다 (값은 못 꺼냅니다). 서버가 멈춰 있어도 됩니다.
         /// </summary>
         public string Ibd2SdiPath { get { return _ibd2sdi; } }
+
+        /// <summary>
+        /// 목록 칸 이름 줄의 앞글자. <c>db.col.v1 = 설정값</c> 처럼 적습니다.
+        /// 뒤에 오는 열쇠는 <see cref="LogScope.Core.Db.DbNames"/> 가 정합니다.
+        /// </summary>
+        public const string ColumnPrefix = "db.col.";
+
+        /// <summary>
+        /// <c>db.col.*</c> 로 적어 둔 칸 이름. 안 적었으면 <paramref name="fallback"/>.
+        ///
+        /// 이름의 기본값을 여기 두지 않은 이유: 칸이 어떤 것들인지 아는 쪽은
+        /// DB 분석입니다. 설정 파일 읽는 쪽이 칸 목록까지 들고 있으면, 칸을
+        /// 더할 때 고칠 곳이 다시 둘이 됩니다.
+        /// </summary>
+        public string ColumnName(string key, string fallback)
+        {
+            if (string.IsNullOrEmpty(key)) return fallback;
+
+            string value;
+            if (_columnNames.TryGetValue(key.ToLowerInvariant(), out value)
+                && value.Length > 0) return value;
+
+            return fallback;
+        }
 
         /// <summary>1 부터 셉니다 (분석 1 · 2 · 3). 범위를 벗어나면 빈 글자.</summary>
         public string Title(int number)
@@ -345,6 +371,12 @@ namespace LogScope.Core.Settings
                 if (key == "db.dump.after") { it._dbDumpAfter = value; continue; }
                 if (key == "db.ibd2sdi") { it._ibd2sdi = value; continue; }
 
+                if (key.StartsWith(ColumnPrefix, StringComparison.Ordinal))
+                {
+                    it._columnNames[key.Substring(ColumnPrefix.Length)] = value;
+                    continue;
+                }
+
                 for (int n = 0; n < Count; n++)
                 {
                     if (key != "analysis" + (n + 1)) continue;
@@ -394,6 +426,10 @@ namespace LogScope.Core.Settings
             {
                 sb.AppendLine("analysis" + (i + 1) + " = " + DefaultTitles[i] + " | " + DefaultSummaries[i]);
             }
+            sb.AppendLine();
+            sb.AppendLine("# 목록 칸 이름을 바꾸고 싶으면 (프로그램만 다시 켜면 됩니다):");
+            sb.AppendLine("# db.col.v1 = 설정값");
+            sb.AppendLine("# db.col.v2 = 단위");
             sb.AppendLine();
             sb.AppendLine("# db.before = D:\\db\\이전");
             sb.AppendLine("# db.after  = D:\\db\\이후");

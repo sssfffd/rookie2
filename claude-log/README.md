@@ -62,3 +62,4 @@
 | `53-groups-txt.md` | 그룹을 빌드 전에 정해 두는 groups.txt. 긴 이름 폭 가두기 |
 | `54-topbar-right-align.md` | 그 화면 메뉴가 창 끝으로 밀려 있던 것 (0.70 에서 제가 낸 것) |
 | `55-hard-to-read.md` | "사람이 보기 힘들다" — 재 본 숫자와 고친 것, 남은 선택 |
+| `56-one-place-for-names.md` | 표시명 하나에 네 파일 — 이름을 한 곳(DbNames)으로, config.txt 로 바뀜 |

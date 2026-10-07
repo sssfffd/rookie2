@@ -13,6 +13,10 @@ using System.Text;
 //   DbDiffList  그 차이를 화면 목록의 줄로 펼칩니다.
 //               Io · V1 · V2 를 채우는 자리가 DbDiffList.OneRow 입니다.
 //
+//  칸에 "적히는 이름" 은 이 파일에 없습니다 — DbNames.cs 한 곳입니다
+//  (config.txt 의 db.col.* 로도 바뀝니다). 여기 있는 것은 칸에 담기는
+//  값입니다.
+//
 //  한 파일로 모았습니다 (0.73). 전에는 DbDiff · DbDiffList
 //  로 나뉘어 있었습니다 — DB 화면을 고치려면 열 파일을 뒤져야 했습니다.
 // ==========================================================
@@ -537,16 +541,31 @@ namespace LogScope.Core.Db
                 sb.Append(Table);
                 if (Kind.Length > 0) sb.Append("  [").Append(Kind).Append(']');
                 if (Change.Length > 0) sb.Append(' ').Append(Change);
-                if (Io.Length > 0) sb.Append("\nIO   ").Append(Io);
-                if (Where.Length > 0) sb.Append("\n행   ").Append(Where);
-                if (Column.Length > 0) sb.Append("\n열   ").Append(Column);
+                // 앞에 붙는 이름은 목록 칸 이름을 그대로 씁니다 — 칸 이름을
+                // 바꿨는데 설명 글만 옛 이름으로 남으면 안 됩니다.
+                Label(sb, DbNames.Io, Io);
+                Label(sb, DbNames.Where, Where);
+                Label(sb, DbNames.Column, Column);
                 if (Before.Length > 0 || After.Length > 0)
-                    sb.Append("\n이전  ").Append(Before).Append("\n이후  ").Append(After);
+                {
+                    Label(sb, DbNames.Before, Before);
+                    Label(sb, DbNames.After, After);
+                }
                 if (V1.Length > 0 || V2.Length > 0)
-                    sb.Append("\nv1   ").Append(V1).Append("\nv2   ").Append(V2);
+                {
+                    Label(sb, DbNames.V1, V1);
+                    Label(sb, DbNames.V2, V2);
+                }
                 if (Note.Length > 0) sb.Append('\n').Append(Note);
                 return sb.ToString();
             }
+        }
+
+        /// <summary>"이름  값" 한 줄. 값이 비면 줄을 안 만듭니다.</summary>
+        private static void Label(StringBuilder sb, string name, string value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            sb.Append('\n').Append(name).Append("  ").Append(value);
         }
     }
 
@@ -855,7 +874,15 @@ namespace LogScope.Core.Db
         public static string ToCsv(List<DbDiffLine> lines)
         {
             var sb = new StringBuilder();
-            sb.Append("표,IO명,갈래,구분,행,열,이전 value,이후 value,v1,v2,설명\r\n");
+            // 머리글 이름은 DbNames 한 곳에 있습니다 (config.txt 로도 바뀝니다).
+            // 값과 같은 Cell 로 찍으므로 이름에 쉼표가 들어가도 깨지지 않습니다.
+            string[] head = DbNames.CsvNames();
+            for (int h = 0; h < head.Length; h++)
+            {
+                if (h > 0) sb.Append(',');
+                Cell(sb, head[h]);
+            }
+            sb.Append("\r\n");
             if (lines == null) return sb.ToString();
 
             for (int i = 0; i < lines.Count; i++)

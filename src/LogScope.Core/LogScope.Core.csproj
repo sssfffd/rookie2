@@ -76,6 +76,7 @@
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\GroupFile.cs" />
     <Compile Include="Db\DbModel.cs" />
+    <Compile Include="Db\DbNames.cs" />
     <Compile Include="Db\DbRead.cs" />
     <Compile Include="Db\DbReadMysql.cs" />
     <Compile Include="Db\DbCompare.cs" />
