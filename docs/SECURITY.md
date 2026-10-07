@@ -66,7 +66,7 @@ zip 을 폴더에 푸는 코드가 이 저장소에 없습니다.
 ## 3. 설정 파일
 
 `LogScope.settings.json` 은 사람이 읽을 수 있는 JSON 이고, 읽는 코드는
-`src/LogScope.Core/Settings/Json.cs` 한 파일(약 200줄)입니다. 직접 읽어보고
+`src/LogScope.Core/Text/Json.cs` 한 파일(약 200줄)입니다. 직접 읽어보고
 확인할 수 있는 크기로 일부러 작게 유지했습니다.
 
 - 중첩 깊이를 64 로 제한합니다 (스택 넘침 방지).
@@ -80,7 +80,7 @@ zip 을 폴더에 푸는 코드가 이 저장소에 없습니다.
 
 WPF 에는 폴더를 고르는 창이 없습니다. 설정 창의 "폴더 고르기" 버튼 두 개에서만
 `System.Windows.Forms.FolderBrowserDialog` 를 씁니다
-(`src/LogScope.App/Views/SettingsWindow.xaml.cs`).
+(`src/LogScope.App/Settings/SettingsWindow.xaml.cs`).
 
 - **바깥에서 받아 온 라이브러리가 아닙니다.** .NET Framework 에 원래 들어 있는
   어셈블리이고, 윈도우 7 / 10 / 11 어디에나 이미 있습니다.
@@ -91,7 +91,7 @@ WPF 에는 폴더를 고르는 창이 없습니다. 설정 창의 "폴더 고르
 
 ## 5. 선택 기능: 파이썬 AI 모듈
 
-`src/LogScope.Core/Ai/AiBridge.cs` + `ai/analyze.py`.
+`src/LogScope.Logs/Ai/AiBridge.cs` + `ai/analyze.py`.
 
 **기본은 꺼져 있습니다.** 설정 창에서 켜고, `python.exe` 경로와 스크립트
 경로를 사람이 직접 지정해야만 동작합니다.

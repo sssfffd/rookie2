@@ -6,7 +6,7 @@
 모양입니다.
 
 ```
-LogScope.exe  ──참조──▶  LogScope.Core.dll
+LogScope.exe  ──참조──▶  LogScope.Logs.dll · LogScope.Db.dll  ──참조──▶  LogScope.Core.dll
    (WPF)                   (파싱 / 데이터 / 비교 / 히트맵 / 설정)
 ```
 

@@ -64,3 +64,4 @@
 | `55-hard-to-read.md` | "사람이 보기 힘들다" — 재 본 숫자와 고친 것, 남은 선택 |
 | `56-one-place-for-names.md` | 표시명 하나에 네 파일 — 이름을 한 곳(DbNames)으로, config.txt 로 바뀜 |
 | `57-glue-strings.md` | 같은 눈으로 나머지를 훑음 — 글자 열쇠 다섯, 트리거 18, 검사기 규칙 둘 |
+| `58-modules.md` | DB 설정을 config.txt 에서 빼냄 · 다섯 프로젝트로 모듈화 · v1·v2 자리 |

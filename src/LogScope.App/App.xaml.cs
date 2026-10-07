@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
-using LogScope.App.Services;
 using LogScope.App.Themes;
-using LogScope.App.Views;
 using LogScope.Core;
 using LogScope.Core.Settings;
 
+using LogScope.App.Common;
+using LogScope.App.Shell;
+using LogScope.App.Themes;
 namespace LogScope.App
 {
     public partial class App : Application

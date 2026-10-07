@@ -9,7 +9,7 @@
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:inf="clr-namespace:LogScope.App.Infrastructure">
+                    xmlns:inf="clr-namespace:LogScope.App.Common">
 
     <!-- ===================== 값 바꾸미 ===================== -->
 

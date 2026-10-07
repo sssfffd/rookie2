@@ -13,19 +13,25 @@ import io, os, re, sys, glob
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 우리가 만든 타입은 진짜 타입으로 붙입니다. 그래야 그 위의 메서드 호출까지 검사됩니다.
-OURS = {
-    'GraphCanvas': 'LogScope.App.Controls.GraphCanvas',
-    'HeatmapCanvas': 'LogScope.App.Controls.HeatmapCanvas',
-    'DashboardView': 'LogScope.App.Views.DashboardView',
-    'GraphView': 'LogScope.App.Views.GraphView',
-    'HeatmapView': 'LogScope.App.Views.HeatmapView',
-    'AlignPanel': 'LogScope.App.Views.AlignPanel',
-    'MainView': 'LogScope.App.Views.MainView',
-    'PlaceholderView': 'LogScope.App.Views.PlaceholderView',
-    'DbView': 'LogScope.App.Views.DbView',
-    'SavedResultWindow': 'LogScope.App.Views.SavedResultWindow',
-}
+# 우리가 만든 타입은 진짜 타입으로 붙입니다. 그래야 그 위의 메서드 호출까지
+# 검사됩니다. 어느 이름 공간에 있는지는 <b>소스에서 찾습니다</b> — 전에는
+# 여기 표로 적어 두었는데, 파일을 다른 폴더로 옮기는 날 조용히 어긋났습니다
+# (0.77 에서 실제로 그랬습니다).
+def our_types():
+    found = {}
+    for c in glob.glob(ROOT + '/src/LogScope.App/**/*.cs', recursive=True):
+        if '/obj/' in c or c.endswith('.g.cs'): continue
+        t = io.open(c, encoding='utf-8-sig').read()
+        m = re.search(r'^namespace\s+([\w\.]+)', t, re.M)
+        if not m: continue
+        ns = m.group(1)
+        for typ in re.findall(r'^\s*(?:public |internal |sealed |partial |abstract |static )*'
+                              r'(?:class|enum|struct)\s+(\w+)', t, re.M):
+            found[typ] = ns + '.' + typ
+    return found
+
+OURS = our_types()
+
 WPF = {
     'ListView': 'System.Windows.Controls.ListView',
     'ListBox': 'System.Windows.Controls.ListBox',

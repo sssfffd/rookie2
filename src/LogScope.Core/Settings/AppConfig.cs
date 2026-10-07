@@ -30,6 +30,11 @@ namespace LogScope.Core.Settings
     /// 프로그램 안에서 바꾸는 화면은 없습니다 — 자주 바뀌는 값이 아니고,
     /// 설정 창을 뒤지는 것보다 파일 한 줄을 고치는 편이 빠릅니다.
     ///
+    /// <b>여기에 안 두는 것</b>: 분석 2(DB)의 자리와 도구 경로입니다.
+    /// 그건 프로그램이 들고 있는 설정(<see cref="AppSettings"/>)이고,
+    /// DB 화면과 설정 창에서 바꿉니다. 손으로 고치는 파일에 "띄울 실행
+    /// 파일의 자리" 를 적어 두는 것은 좋은 생각이 아니었습니다.
+    ///
     /// <b>실행 파일 이름</b>도 이 <c>name</c> 을 따라갑니다. 그건 build.bat 이
     /// 복사할 때 붙여 줍니다 — 빌드 산출물 이름이라 프로그램이 스스로 바꿀 수
     /// 없습니다.
@@ -61,14 +66,6 @@ namespace LogScope.Core.Settings
 
         private string _name = DefaultName;
         private string _fullName = string.Empty;
-        private string _dbBefore = string.Empty;
-        private string _dbAfter = string.Empty;
-        private string _mysqlDump = string.Empty;
-        private string _dbDumpBefore = string.Empty;
-        private string _dbDumpAfter = string.Empty;
-        private string _ibd2sdi = string.Empty;
-        private readonly Dictionary<string, string> _columnNames =
-            new Dictionary<string, string>();
         private readonly string[] _titles = (string[])DefaultTitles.Clone();
         private readonly string[] _summaries = (string[])DefaultSummaries.Clone();
 
@@ -115,69 +112,6 @@ namespace LogScope.Core.Settings
                 string full = _fullName.Length == 0 ? DefaultSubtitle : _fullName;
                 return _name + " — " + full;
             }
-        }
-
-        // ---------------- 분석 2 (DB) ----------------
-        //
-        // 견줄 DB 두 벌이 있는 자리입니다. 폴더면 그 안의 .sql / .csv 를 읽고,
-        // 파일 하나면 그 파일을 읽습니다.
-
-        public string DbBefore { get { return _dbBefore; } }
-        public string DbAfter { get { return _dbAfter; } }
-
-        /// <summary>
-        /// <b>선택</b>: mysqldump 실행 파일의 자리. 적어 두면 아래 두 줄은
-        /// <b>인수만</b> 적으면 됩니다.
-        ///
-        /// <b>알아 둘 것</b>: 적어 둔 프로그램을 자식 프로세스로 띄웁니다.
-        /// 남이 바꿔 쓸 수 있는 폴더의 실행 파일을 가리키지 마세요.
-        /// 그리고 mysqldump 는 <b>돌고 있는 서버</b>에 접속해서 뽑습니다 —
-        /// 멈춘 데이터 폴더(.frm/.ibd)만으로는 뽑을 수 없습니다.
-        /// </summary>
-        public string MysqlDumpPath { get { return _mysqlDump; } }
-
-        /// <summary>
-        /// <b>선택</b>: 덤프를 받을 때 쓸 인수(또는 명령 줄 전체).
-        ///
-        ///   db.mysqldump 를 적어 두었으면 → <b>인수만</b>
-        ///   안 적어 두었으면           → <b>명령 줄 전체</b> (실행 파일 포함)
-        ///
-        /// 접속 정보를 우리가 받아 들고 있지 않습니다. 사용자 이름과 암호를
-        /// 저장하기 시작하면 "그걸 어디에 어떻게 두느냐" 가 새 문제가 되고,
-        /// 명령 줄에 암호를 박으면 작업 관리자에 그대로 보입니다. 접속 방법은
-        /// MySQL 쪽 방식(--login-path, --defaults-extra-file)에 맡깁니다.
-        /// </summary>
-        public string DbDumpBefore { get { return _dbDumpBefore; } }
-        public string DbDumpAfter { get { return _dbDumpAfter; } }
-
-        /// <summary>
-        /// <b>선택</b>: ibd2sdi 경로. MySQL 8 의 .ibd 에서 <b>표와 열 이름만</b>
-        /// 꺼냅니다 (값은 못 꺼냅니다). 서버가 멈춰 있어도 됩니다.
-        /// </summary>
-        public string Ibd2SdiPath { get { return _ibd2sdi; } }
-
-        /// <summary>
-        /// 목록 칸 이름 줄의 앞글자. <c>db.col.v1 = 설정값</c> 처럼 적습니다.
-        /// 뒤에 오는 열쇠는 <see cref="LogScope.Core.Db.DbNames"/> 가 정합니다.
-        /// </summary>
-        public const string ColumnPrefix = "db.col.";
-
-        /// <summary>
-        /// <c>db.col.*</c> 로 적어 둔 칸 이름. 안 적었으면 <paramref name="fallback"/>.
-        ///
-        /// 이름의 기본값을 여기 두지 않은 이유: 칸이 어떤 것들인지 아는 쪽은
-        /// DB 분석입니다. 설정 파일 읽는 쪽이 칸 목록까지 들고 있으면, 칸을
-        /// 더할 때 고칠 곳이 다시 둘이 됩니다.
-        /// </summary>
-        public string ColumnName(string key, string fallback)
-        {
-            if (string.IsNullOrEmpty(key)) return fallback;
-
-            string value;
-            if (_columnNames.TryGetValue(key.ToLowerInvariant(), out value)
-                && value.Length > 0) return value;
-
-            return fallback;
         }
 
         /// <summary>1 부터 셉니다 (분석 1 · 2 · 3). 범위를 벗어나면 빈 글자.</summary>
@@ -364,18 +298,7 @@ namespace LogScope.Core.Settings
 
                 if (key == "name") { it._name = value; continue; }
                 if (key == "fullname") { it._fullName = value; continue; }
-                if (key == "db.before") { it._dbBefore = value; continue; }
-                if (key == "db.after") { it._dbAfter = value; continue; }
-                if (key == "db.mysqldump") { it._mysqlDump = value; continue; }
-                if (key == "db.dump.before") { it._dbDumpBefore = value; continue; }
-                if (key == "db.dump.after") { it._dbDumpAfter = value; continue; }
-                if (key == "db.ibd2sdi") { it._ibd2sdi = value; continue; }
 
-                if (key.StartsWith(ColumnPrefix, StringComparison.Ordinal))
-                {
-                    it._columnNames[key.Substring(ColumnPrefix.Length)] = value;
-                    continue;
-                }
 
                 for (int n = 0; n < Count; n++)
                 {
@@ -417,7 +340,6 @@ namespace LogScope.Core.Settings
             sb.AppendLine("#             (실행 파일 이름은 build.bat 이 붙이므로 다시 빌드해야 바뀝니다).");
             sb.AppendLine("# fullname  : 창 제목에 들어가는 긴 이름. 길이는 마음대로 (화면을 안 먹습니다).");
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
-            sb.AppendLine("# db.before : 분석 2 에서 견줄 DB 두 벌의 자리 (폴더 또는 .sql 파일).");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine("fullname = Log 비교 · 분석 도구");
@@ -427,12 +349,6 @@ namespace LogScope.Core.Settings
                 sb.AppendLine("analysis" + (i + 1) + " = " + DefaultTitles[i] + " | " + DefaultSummaries[i]);
             }
             sb.AppendLine();
-            sb.AppendLine("# 목록 칸 이름을 바꾸고 싶으면 (프로그램만 다시 켜면 됩니다):");
-            sb.AppendLine("# db.col.v1 = 설정값");
-            sb.AppendLine("# db.col.v2 = 단위");
-            sb.AppendLine();
-            sb.AppendLine("# db.before = D:\\db\\이전");
-            sb.AppendLine("# db.after  = D:\\db\\이후");
             return sb.ToString();
         }
     }

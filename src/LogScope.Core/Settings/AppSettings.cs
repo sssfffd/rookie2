@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using LogScope.Core.Compare;
+using LogScope.Core.Text;
 
 namespace LogScope.Core.Settings
 {
@@ -116,7 +116,7 @@ namespace LogScope.Core.Settings
 
         // ---- 분석 2 (DB) 에서 견줄 자리 ----
         //
-        // config.txt 의 db.before / db.after 가 기본값이고, 화면에서
+        // 자리는 DB 화면에서 정하고 여기 저장됩니다 (config.txt 에는 없습니다).
         // 고르면 여기에 적힙니다. 화면에서 고른 것이 이깁니다 — 바꾼 사람이
         // 지금 그걸 보려고 바꾼 것입니다. 비우면 config.txt 로 돌아갑니다.
         //
@@ -124,6 +124,23 @@ namespace LogScope.Core.Settings
         // 파일입니다. 프로그램이 거기 쓰면 적어 둔 주석과 줄 차례가 날아갑니다.
         public string DbBeforePath = string.Empty;
         public string DbAfterPath = string.Empty;
+
+        /// <summary>
+        /// <b>선택</b> — DB 쪽 바깥 도구. 설정 창의 "DB 도구" 칸입니다.
+        ///
+        /// 전에는 config.txt 에 적었습니다. 손으로 고치는 파일에 <b>띄울
+        /// 실행 파일의 자리</b>를 적어 두는 것이 좋지 않았습니다 — 그 파일은
+        /// 아무나 고칠 수 있고, 프로그램은 거기 적힌 것을 자식 프로세스로
+        /// 띄웁니다. 지금은 프로그램이 들고 있는 설정(settings.json)이고,
+        /// 설정 창에서만 바꿉니다.
+        ///
+        /// 접속 정보는 여전히 받아 들고 있지 않습니다. 사용자 이름과 암호는
+        /// MySQL 쪽 방식(--login-path, --defaults-extra-file)에 맡깁니다.
+        /// </summary>
+        public string MysqlDumpPath = string.Empty;
+        public string DbDumpBefore = string.Empty;
+        public string DbDumpAfter = string.Empty;
+        public string Ibd2SdiPath = string.Empty;
         // 이 둘은 같이 켜지지 않습니다. 벌려 놓고 그 사이를 칠하면
         // 칠해진 넓이가 "값 차이" 가 아니라 "값 차이 + 벌린 간격" 이 되어,
         // 눈으로 재는 넓이가 눈금과 안 맞습니다. 막는 곳은 화면 쪽(GraphVm)
@@ -243,6 +260,10 @@ namespace LogScope.Core.Settings
             root["axisIo"] = AxisIo;
             root["dbBefore"] = DbBeforePath;
             root["dbAfter"] = DbAfterPath;
+            root["dbMysqlDump"] = MysqlDumpPath ?? string.Empty;
+            root["dbDumpBefore"] = DbDumpBefore ?? string.Empty;
+            root["dbDumpAfter"] = DbDumpAfter ?? string.Empty;
+            root["dbIbd2Sdi"] = Ibd2SdiPath ?? string.Empty;
             root["manualShift"] = ManualShift;
             root["shadeDifference"] = ShadeDifference;
             root["separateTraces"] = SeparateTraces;
@@ -358,6 +379,10 @@ namespace LogScope.Core.Settings
             s.AxisIo = Json.GetString(root, "axisIo", string.Empty);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);
             s.DbAfterPath = Json.GetString(root, "dbAfter", string.Empty);
+            s.MysqlDumpPath = Json.GetString(root, "dbMysqlDump", string.Empty);
+            s.DbDumpBefore = Json.GetString(root, "dbDumpBefore", string.Empty);
+            s.DbDumpAfter = Json.GetString(root, "dbDumpAfter", string.Empty);
+            s.Ibd2SdiPath = Json.GetString(root, "dbIbd2Sdi", string.Empty);
             s.ManualShift = Json.GetDouble(root, "manualShift", 0);
             s.ShadeDifference = Json.GetBool(root, "shadeDifference", true);
             s.SeparateTraces = Json.GetBool(root, "separateTraces", false);

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- 콘솔로 도는 자체 테스트. NUnit / xUnit 같은 바깥 테스트 프레임워크를
      쓰지 않습니다. 실패하면 0 이 아닌 값으로 끝나므로 build.bat 에서
      그대로 확인할 수 있습니다. -->
@@ -45,6 +45,16 @@
     <ProjectReference Include="..\LogScope.Core\LogScope.Core.csproj">
       <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}</Project>
       <Name>LogScope.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LogScope.Logs\LogScope.Logs.csproj">
+      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}</Project>
+      <Name>LogScope.Logs</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LogScope.Db\LogScope.Db.csproj">
+      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}</Project>
+      <Name>LogScope.Db</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LogScope.Db — 분석 2(DB 분석)의 알맹이.
+     폴더/덤프 읽기 · 두 벌 견주기 · 맞추는 SQL · 목록 칸 이름.
+     LogScope.Core(파일 읽기 · JSON)만 봅니다. 화면은 모릅니다. -->
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LogScope.Db</RootNamespace>
+    <AssemblyName>LogScope.Db</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DbCompare.cs" />
+    <Compile Include="DbModel.cs" />
+    <Compile Include="DbNames.cs" />
+    <Compile Include="DbRead.cs" />
+    <Compile Include="DbReadMysql.cs" />
+    <Compile Include="DbSql.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LogScope.Core\LogScope.Core.csproj">
+      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}</Project>
+      <Name>LogScope.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

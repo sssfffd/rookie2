@@ -10,6 +10,9 @@
 #   analysis2 세로줄(|) 뒤는 메인 화면 칸에 적히는 설명입니다 (없어도 됩니다).
 #   analysis3
 #
+# 분석 2(DB)의 자리와 도구 경로는 여기 없습니다 — DB 화면과 설정 창에서
+# 정하고, 프로그램이 settings.json 에 저장합니다.
+#
 # 이 파일은 build.bat 이 out 폴더에 같이 넣어 줍니다. out\config.txt 를
 # 바로 고쳐도 됩니다 (그때는 다시 빌드할 필요가 없습니다).
 #
@@ -23,51 +26,3 @@ fullname = Log 비교 · 분석 도구
 analysis1 = 로그 비교 | 이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.
 analysis2 = DB 분석 | 두 DB 의 표·열·값 차이를 보고 맞추는 SQL 을 만듭니다.
 analysis3 = 분석 3 | 아직 정해지지 않았습니다.
-
-# ---- 분석 2 (DB) ----
-#
-# 견줄 DB 두 벌의 자리. 폴더면 그 안의 .sql / .csv 를 읽고, 파일 하나면
-# 그 파일을 읽습니다.
-#
-# db.before = D:\db\2026-03-14
-# db.after  = D:\db\2026-03-21
-#
-# 선택 — 돌고 있는 서버에서 덤프를 받아 읽습니다.
-#
-#   db.mysqldump    mysqldump 실행 파일의 자리. 이걸 적어 두면 아래 두 줄은
-#                   인수만 적으면 됩니다.
-#   db.dump.before  덤프 인수. (db.mysqldump 를 비워 두면 이 줄이 명령 줄
-#                   전체가 됩니다 — 실행 파일까지 포함해서.)
-#
-#   * mysqldump 는 서버에 접속해서 뽑습니다. 멈춘 .frm/.ibd 만으로는 못 뽑습니다.
-#   * 암호를 인수에 적으면 작업 관리자에 보입니다. --login-path 나
-#     --defaults-extra-file 을 쓰세요.
-#   * 적어 둔 실행 파일을 자식 프로세스로 띄웁니다. 남이 바꿔 쓸 수 있는
-#     폴더를 가리키지 마세요.
-#
-# db.mysqldump   = C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe
-# db.dump.before = --login-path=old --databases mydb
-# db.dump.after  = --login-path=new --databases mydb
-#
-# 선택 — 멈춘 .ibd 에서 표와 열 "이름만" 꺼냅니다 (값은 못 꺼냅니다).
-# MySQL 8.0 의 .ibd 에만 통합니다. 폴더에 표.frm 과 표.ibd 가 짝으로 있으면
-# 5.x 라서 .ibd 안에 꺼낼 것이 없습니다 — 그때는 아무것도 적지 않아도 됩니다.
-# .frm 은 이 프로그램이 직접 읽습니다 (모양만). 값은 mysqldump 로 받으세요.
-# db.ibd2sdi = C:\Program Files\MySQL\MySQL Server 8.0\bin\ibd2sdi.exe
-
-# ---- 분석 2 의 목록 칸 이름 ----
-#
-# 차이 목록의 칸 머리글입니다. 아래 줄을 적으면 화면 머리글 · CSV 머리글 ·
-# 마우스 설명 글이 한꺼번에 바뀝니다. 프로그램만 다시 켜면 되고 다시
-# 빌드할 필요는 없습니다. 안 적은 칸은 기본 이름 그대로입니다.
-#
-# db.col.v1     = 설정값
-# db.col.v2     = 단위
-#
-# 나머지 칸도 같은 식으로 바꿀 수 있습니다 (괄호 안이 기본 이름):
-#
-#   db.col.table  (표)        db.col.io      (IO명)
-#   db.col.before (이전 value) db.col.after  (이후 value)
-#   db.col.column (열)        db.col.note    (설명, CSV 에만)
-#   db.col.kind   (갈래)      db.col.change  (구분)
-#   db.col.where  (행)        ...  갈래·구분·행·설명은 CSV 에만 나옵니다.

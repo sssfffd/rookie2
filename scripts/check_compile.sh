@@ -7,9 +7,10 @@
 #  합니다. 이게 없던 동안 컴파일 오류를 세 번 올렸습니다.
 #
 #  하는 일
-#    1. LogScope.Core 컴파일
-#    2. LogScope.Tests 컴파일 + <b>실제 실행</b>
-#    3. LogScope.App 컴파일 (WPF 가 없으므로 scripts/wpfstub 으로 대신)
+#    1. LogScope.Core 컴파일 (자료 · 파일 · 설정)
+#    2. LogScope.Logs · LogScope.Db 컴파일 (분석 1 · 2 의 알맹이)
+#    3. LogScope.Tests 컴파일 + <b>실제 실행</b>
+#    4. LogScope.App 컴파일 (WPF 가 없으므로 scripts/wpfstub 으로 대신)
 #
 #  필요한 것: mono-mcs (apt-get install -y mono-mcs mono-runtime
 #             libmono-system-io-compression4.0-cil
@@ -47,29 +48,40 @@ namespace LogScope.Core
 }
 CS
 
-echo "[1/4] LogScope.Core"
+echo "[1/5] LogScope.Core"
 mcs -langversion:latest -target:library -out:"$OUT/LogScope.Core.dll" $REFS \
     $(find "$ROOT/src/LogScope.Core" -name '*.cs' ! -name '*.g.cs') "$OUT/BuildInfo.g.cs"
 
-echo "[2/4] LogScope.Tests"
-mcs -langversion:latest -target:exe -out:"$OUT/LogScope.Tests.exe" $REFS \
-    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Tests" -name '*.cs')
+# Logs 와 Db 는 서로를 모릅니다. 따로 컴파일하므로, 한쪽이 다른 쪽을
+# 쓰기 시작하면 여기서 바로 "그런 타입 없다" 가 납니다 — 모듈 경계를
+# 사람이 지키는 게 아니라 컴파일러가 지킵니다.
+echo "[2/5] LogScope.Logs · LogScope.Db"
+mcs -langversion:latest -target:library -out:"$OUT/LogScope.Logs.dll" $REFS \
+    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Logs" -name '*.cs')
+mcs -langversion:latest -target:library -out:"$OUT/LogScope.Db.dll" $REFS \
+    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Db" -name '*.cs')
 
-echo "[3/4] 테스트 실행"
+echo "[3/5] LogScope.Tests"
+mcs -langversion:latest -target:exe -out:"$OUT/LogScope.Tests.exe" $REFS \
+    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Logs.dll" -r:"$OUT/LogScope.Db.dll" \
+    $(find "$ROOT/src/LogScope.Tests" -name '*.cs')
+
+echo "[4/5] 테스트 실행"
 if command -v mono >/dev/null 2>&1; then
   mono "$OUT/LogScope.Tests.exe"
 else
   echo "  mono 런타임이 없어 실행은 건너뜁니다."
 fi
 
-echo "[4/4] LogScope.App (WPF 스텁으로)"
+echo "[5/5] LogScope.App (WPF 스텁으로)"
 python3 "$ROOT/scripts/make_xaml_stubs.py" "$OUT/app/XamlStubs.cs"
 mcs -langversion:latest -target:library -out:"$OUT/app/WpfStub.dll" \
     -r:System.dll -r:System.Core.dll -r:System.Xml.dll -nowarn:0067 \
     "$ROOT"/scripts/wpfstub/*.cs
 mcs -langversion:latest -target:library -out:"$OUT/app/LogScope.App.dll" \
     -r:System.dll -r:System.Core.dll -r:System.Xml.dll \
-    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/app/WpfStub.dll" \
+    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Logs.dll" -r:"$OUT/LogScope.Db.dll" \
+    -r:"$OUT/app/WpfStub.dll" \
     -nowarn:0067,0414,0169,0649 \
     $(find "$ROOT/src/LogScope.App" -name '*.cs') "$OUT/app/XamlStubs.cs"
 

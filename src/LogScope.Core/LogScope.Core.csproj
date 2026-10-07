@@ -59,29 +59,16 @@
     <Compile Include="Io\TimeAxis.cs" />
     <Compile Include="Io\TableBuilder.cs" />
     <Compile Include="Io\LogReader.cs" />
-    <Compile Include="History\AnalysisRecord.cs" />
-    <Compile Include="History\HistoryStore.cs" />
-    <Compile Include="Render\Decimator.cs" />
-    <Compile Include="Render\DifferenceSeries.cs" />
-    <Compile Include="Render\TraceColors.cs" />
-    <Compile Include="Compare\DiffTypes.cs" />
-    <Compile Include="Compare\ToleranceRule.cs" />
-    <Compile Include="Compare\ToleranceTable.cs" />
-    <Compile Include="Align\TriggerAlign.cs" />
-    <Compile Include="Compare\DiffEngine.cs" />
-    <Compile Include="Compare\Heatmap.cs" />
-    <Compile Include="Settings\Json.cs" />
+
+
+    <Compile Include="Text\Json.cs" />
     <Compile Include="Settings\AppSettings.cs" />
+    <Compile Include="Settings\DiffMetric.cs" />
+    <Compile Include="Settings\ToleranceRule.cs" />
+    <Compile Include="Settings\ToleranceTable.cs" />
     <Compile Include="Settings\SettingsStore.cs" />
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\GroupFile.cs" />
-    <Compile Include="Db\DbModel.cs" />
-    <Compile Include="Db\DbNames.cs" />
-    <Compile Include="Db\DbRead.cs" />
-    <Compile Include="Db\DbReadMysql.cs" />
-    <Compile Include="Db\DbCompare.cs" />
-    <Compile Include="Db\DbSql.cs" />
-    <Compile Include="Ai\AiBridge.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\..\tools\BuildInfo.targets" />

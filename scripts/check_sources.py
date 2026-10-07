@@ -211,6 +211,34 @@ for x in xamls:
         if not re.search(r'(?:const|static|readonly)[^;=\n]*\b' + member + r'\b\s*(?:=|\{|;)', src):
             bad('x:Static 대상 없음 %s.%s <- %s' % (typ, member, rel))
 
+# 7b) XAML 이 <접두어:타입> 으로 쓰는 우리 타입이 그 이름 공간에 있는가
+#
+#     파일을 다른 폴더로 옮기면 clr-namespace 가 어긋납니다. XAML 은 여기서
+#     컴파일되지 않고, 어긋나도 <b>창을 띄울 때</b>서야 터집니다. 0.77 에서
+#     기능별로 폴더를 다시 묶을 때 실제로 셋이 어긋났습니다 —
+#     변환기(inf:)가 Themes 를 가리키고, 창 세 개가 Shell 을 가리켰습니다.
+#
+#     어느 이름 공간에 무엇이 있는지는 소스에서 찾습니다 (표로 적어 두면
+#     그 표가 또 어긋납니다).
+ns_types = {}
+for c in css:
+    body = read(c)
+    m = re.search(r'^namespace\s+([\w\.]+)', body, re.M)
+    if not m: continue
+    for typ in re.findall(r'^\s*(?:public |internal |sealed |partial |abstract |static )*'
+                          r'(?:class|enum|struct|interface)\s+(\w+)', body, re.M):
+        ns_types.setdefault(m.group(1), set()).add(typ)
+
+for x in xamls:
+    rel = os.path.relpath(x, ROOT)
+    t = read(x)
+    pfx = dict(re.findall(r'xmlns:(\w+)="clr-namespace:([\w\.]+?)(?:;assembly=[\w\.]+)?"', t))
+    for p_, typ in re.findall(r'<(\w+):(\w+)[\s/>]', t):
+        ns = pfx.get(p_)
+        if ns is None: continue              # x: 같은 XAML 쪽 접두어
+        if typ not in ns_types.get(ns, set()):
+            bad('XAML 이 쓰는 %s:%s 가 %s 에 없음 <- %s' % (p_, typ, ns, rel))
+
 # 8) XAML 의 Tag 글자를 코드 비하인드가 아는가
 #
 #    Tag="before" 처럼 적어 둔 글자를 code-behind 가 == 로 견줍니다. 한쪽만

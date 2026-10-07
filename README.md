@@ -182,21 +182,28 @@ build.bat                확장 없이 빌드하는 진입점
 CMakeLists.txt           CMake 로 VS 솔루션을 만들고 싶을 때
 LogScope.sln             VS2017 로 바로 열 때
 
-src/LogScope.Core/       파일 파싱 + 데이터 모델 (화면 참조 없음)
-  Io/                    CSV / XLSX 읽기, 표 배치 판별, 시간축 만들기
+src/LogScope.Core/       바탕 — 자료 · 파일 읽기 · 설정. 화면도 분석도 모릅니다.
   Model/                 채널, 데이터셋
+  Io/                    CSV / XLSX 읽기, 표 배치 판별, 시간축 만들기
+  Settings/              설정 저장, 허용 오차 표, 차이량 잣대
+  Text/                  작은 JSON
+
+src/LogScope.Logs/       분석 1 알맹이 — 로그 비교
   Compare/               두 로그 견주기, 차이량 계산, 히트맵 집계
+  Align/                 시간 맞추기 (기준 변화 찾기)
   Render/                픽셀 열 접기 (그리기 전 단계 계산)
-  Settings/              설정 저장, 작은 JSON
+  History/               지난 분석 기록
   Ai/                    선택 기능: 파이썬 모듈 호출
 
-src/LogScope.App/        화면 (WPF)
-  Themes/                색 사전(Light/Dark) + 컨트롤 모양 + 직접 그릴 때 쓰는 색
-  Views/                 셸 창, 대시보드, 그래프, 히트맵, 설정 창, 진행 창
-  ViewModels/            화면이 바인딩하는 값들
-  Controls/              그래프 판, 히트맵 판 (직접 그리기)
-  Infrastructure/        INotifyPropertyChanged, 명령, 값 바꾸미
-  Services/              상태, 배경 작업
+src/LogScope.Db/         분석 2 알맹이 — DB 분석 (여섯 파일, 아래 9 장)
+
+src/LogScope.App/        화면 (WPF). 레이어가 아니라 기능으로 묶었습니다.
+  Shell/                 창 틀 + 메인 화면 (셸 창 · 종합 분석 결과 · 저장 결과)
+  Logs/                  분석 1 화면 (대시보드 · 그래프 · 히트맵 · IO 목록 · 시간 맞추기)
+  Db/                    분석 2 화면 (DbView + DbVm, 셋뿐입니다)
+  Settings/              설정 창
+  Common/                바꾸미 · 명령 · 상태 · 배경 작업 · 작은 창
+  Themes/                색 사전(Light/Dark) + 컨트롤 모양
 
 src/LogScope.Tests/      콘솔 자체 테스트
 ai/                      선택 기능인 파이썬 분석 모듈 (없어도 됩니다)
@@ -208,14 +215,42 @@ docs/                    보안 메모, 구조 설명
 
 ## 4. 어느 것을 빌드하고, 실행 파일은 어디에 생기나
 
-솔루션에 프로젝트가 셋 있습니다. **직접 고를 필요는 없습니다** — `LogScope.App`
+솔루션에 프로젝트가 다섯 있습니다. **직접 고를 필요는 없습니다** — `LogScope.App`
 하나만 빌드하면 나머지는 따라옵니다.
 
 | 프로젝트 | 무엇 | 결과물 |
 |---|---|---|
 | **LogScope.App** | **실행 파일. 이게 시작 프로젝트입니다** | `LogScope.exe` (out 폴더에서는 `config.txt` 의 `name`) |
-| LogScope.Core | App 이 참조하는 라이브러리 (자동으로 같이 빌드됨) | `LogScope.Core.dll` |
+| LogScope.Core | 바탕 — 자료 · 파일 읽기 · 설정 | `LogScope.Core.dll` |
+| LogScope.Logs | 분석 1 알맹이 — 로그 비교 | `LogScope.Logs.dll` |
+| LogScope.Db | 분석 2 알맹이 — DB 분석 | `LogScope.Db.dll` |
 | LogScope.Tests | 콘솔 자체 테스트 (실행 파일과 무관) | `LogScope.Tests.exe` |
+
+**Logs 와 Db 는 서로를 모릅니다.** 둘 다 Core 만 봅니다. 한쪽이 다른 쪽을
+쓰기 시작하면 컴파일이 안 됩니다 — 모듈 경계를 사람이 지키는 게 아니라
+컴파일러가 지킵니다.
+
+```
+      LogScope.App  (화면)
+        /     |     \
+   Logs     Db      |      Logs ↔ Db 사이에는 선이 없습니다
+       \    /       |
+       LogScope.Core  (자료 · 파일 · 설정)
+```
+
+### 하나 고치려면 어디를 여나
+
+| 고치려는 것 | 여는 폴더 | 파일 수 |
+|---|---|---|
+| DB 화면 | `src/LogScope.App/Db/` | 3 |
+| DB 읽기 · 견주기 · SQL | `src/LogScope.Db/` | 6 |
+| 그래프 · 히트맵 화면 | `src/LogScope.App/Logs/` | 17 |
+| 견주기 · 히트맵 셈 | `src/LogScope.Logs/` | 폴더별 2~3 |
+| 설정 창 | `src/LogScope.App/Settings/` | 4 |
+| 색 · 컨트롤 모양 | `src/LogScope.App/Themes/` | 5 |
+
+0.76 까지는 `Views/` 와 `ViewModels/` 로 나뉘어 있어서, 화면 하나를 고치려면
+두 폴더를 왕복하며 파일을 찾아야 했습니다. 지금은 **한 화면이 한 폴더**입니다.
 
 ### 실행 파일 위치
 
@@ -447,7 +482,7 @@ MSBuild 가 `config.txt` 를 읽게 하지 않은 이유가 있습니다. 어셈
 ### 무엇이 어디에
 
 **`config.txt`** — 프로그램 이름, 분석 1·2·3 의 이름과 설명,
-`db.before` / `db.after`, `db.mysqldump`, `db.dump.*`, `db.ibd2sdi`.
+없습니다 — DB 쪽 값은 전부 화면과 설정 창에서 정합니다.
 
 **`LogScope.settings.json`** — 테마(밝게/어둡게), 허용 오차 기본값(% 와 값),
 **IO 별 허용 오차 규칙**(최대 500 개), **그룹**(이름 · 담긴 IO · 펼침 여부),
@@ -550,48 +585,48 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
 
 두 DB 한 벌을 견주고, **차이를 맞추는 SQL 을 만들어 줍니다.**
 
-### 화면에 보이는 글자를 바꿀 때 (0.76)
+### 화면에 보이는 글자를 바꿀 때
 
 글자는 **쓰는 쪽과 견주는 쪽이 있는지**로 나뉩니다.
 
-| 글자 | 어디서 바꾸나 |
-|---|---|
-| 칸 머리글 (`v1`, `IO명` …) | `config.txt` 의 `db.col.*` 한 줄 — 빌드 없음 |
-| 분석 화면 이름 · 프로그램 이름 | `config.txt` 의 `analysis1` · `name` |
-| 갈래·구분 (`행` `알림` `달라짐` …) | `DbDiffLine` 의 `Kind...` · `Change...` 상수 |
-| 줄 색을 가르는 값 (`changed` `good` …) | `IoRowVm` · `ScoreBands` · `HistoryRowVm` 의 상수 |
+| 글자 | 어디서 바꾸나 | 다시 빌드 |
+|---|---|---|
+| **DB 목록 칸 머리글 (`v1` · `v2` · `IO명` …)** | **`src/LogScope.Db/DbNames.cs` 한 줄** | 예 |
+| 분석 화면 이름 · 프로그램 이름 · 긴 이름 | `config.txt` 의 `analysis1` · `name` · `fullname` | 아니오 |
+| 갈래·구분 (`행` `알림` `달라짐` …) | `DbDiffLine` 의 `Kind...` · `Change...` 상수 | 예 |
+| 줄 색을 가르는 값 (`changed` `good` …) | `IoRowVm` · `ScoreBands` · `HistoryRowVm` 의 상수 | 예 |
 
-아래 둘은 **설정으로 바꾸지 않습니다.** 화면에 보이기도 하지만
+아래 셋은 **설정 파일로 바꾸지 않습니다.** 화면에 보이기도 하지만
 **코드가 견주는 값**이라, 설정으로 바꾸게 하면 그 순간 견주기가 깨집니다.
-XAML 쪽도 `{x:Static ...}` 으로 그 상수를 읽으므로 글자가 한 곳에만
-있고, 이름을 잘못 적으면 `check_sources.py` 가 잡습니다.
+XAML 쪽도 `{x:Static ...}` 으로 그 상수를 읽으므로 글자가 한 곳에만 있고,
+이름을 잘못 적으면 `check_sources.py` 가 잡습니다.
 
-### 칸 이름만 바꿀 때 — 코드 안 고칩니다 (0.75)
-
-`v1` 같은 **칸 머리글만** 바꾸려면 `out\config.txt` 에 한 줄 적고 프로그램을
-다시 켜면 됩니다. 빌드도 필요 없습니다.
+### v1 · v2 이름을 바꾸려면 — 한 파일, 한 줄
 
 ```
-db.col.v1 = 설정값
-db.col.v2 = 단위
+src/LogScope.Db/DbNames.cs
 ```
 
-화면 머리글 · CSV 머리글 · 마우스 설명 글이 **같이** 바뀝니다. 바꿀 수 있는
-열쇠는 `config.txt` 안에 다 적어 두었습니다.
+```csharp
+public const string V1 = "설정값";   // ← 이 줄
+public const string V2 = "단위";     // ← 이 줄
+```
 
-기본 이름(아무것도 안 적었을 때 나오는 이름)을 바꾸려면
-`src/LogScope.Core/Db/DbNames.cs` 의 `Default...` 한 줄입니다. **이름이 적힌
-곳은 그 파일 하나뿐입니다** — 0.74 까지는 네 군데(화면 · CSV · 설명 글 ·
-시험)에 흩어져 있었습니다.
+고치고 **다시 빌드**하면 화면 머리글 · CSV 머리글 · 마우스 설명 글이
+**같이** 바뀝니다. 다른 파일은 손대지 않습니다 — 시험에도 이름 글자가
+하나도 없습니다.
 
-### 고칠 때 여는 파일 — 여섯 개 (0.75)
+> 0.75 에서는 `config.txt` 의 `db.col.*` 로도 바꿀 수 있었는데, 0.77 에서
+> 되돌렸습니다. DB 설정을 손으로 고치는 파일에 두지 않기로 했습니다.
 
-DB 쪽 코드는 `src/LogScope.Core/Db/` 에 **여섯 파일**입니다. 전에는 열
-파일이어서 "값 하나를 더 보여 주려면 어디를 고치나" 에 답하기가 어려웠습니다.
+### 고칠 때 여는 파일 — 여섯 개
+
+DB 쪽 알맹이는 **`src/LogScope.Db/` 한 프로젝트, 여섯 파일**입니다. 0.73
+전에는 열 파일이었고, 0.76 까지는 `LogScope.Core` 안에 섞여 있었습니다.
 
 | 파일 | 무엇이 | 언제 여나 |
 |---|---|---|
-| **`DbNames.cs`** | 목록 칸에 **적히는 이름** | **칸 이름의 기본값을 바꿀 때** (한 곳) |
+| **`DbNames.cs`** | 목록 칸에 **적히는 이름** | **v1 · v2 같은 칸 이름을 바꿀 때** (한 곳) |
 | **`DbRead.cs`** | 폴더 훑기 · `.sql` · `.csv` | **새 형식을 더하거나 읽는 법을 고칠 때** |
 | **`DbCompare.cs`** | 견주기 · 화면 목록 줄 | **목록에 칸을 더하거나 IO명 · v1 · v2 를 채울 때** |
 | `DbSql.cs` | 맞추는 SQL · `CREATE TABLE` 글 | 만들어 주는 SQL 을 고칠 때 |
@@ -603,15 +638,22 @@ DB 쪽 코드는 `src/LogScope.Core/Db/` 에 **여섯 파일**입니다. 전에�
                                    └→ DbSql → 맞추는 SQL
 ```
 
-화면 쪽은 `src/LogScope.App/` 의 `ViewModels/DbVm.cs` 와
-`Views/DbView.xaml(.cs)` 둘입니다.
+화면 쪽은 **`src/LogScope.App/Db/` 한 폴더, 세 파일**입니다
+(`DbView.xaml` · `DbView.xaml.cs` · `DbVm.cs`).
 
-### 어디를 읽나 — config.txt
+### 어디를 읽나 — 화면에서 정합니다
 
-```
-db.before = D:\db\2026-03-14
-db.after  = D:\db\2026-03-21
-```
+이전 · 이후 칸에 **타 넣거나**, `[폴더]` · `[파일]` 로 고르거나, 칸에
+**끌어다 놓으면** 됩니다. 폴더면 그 안의 `.sql` / `.csv` / `.frm` 을
+(하위 폴더까지) 읽고, 파일 하나면 그 파일을 읽습니다.
+
+한 번 정한 자리는 프로그램이 `settings.json` 에 저장하므로 다음에 켤 때도
+그대로입니다.
+
+> 0.77 까지는 `config.txt` 의 `db.before` / `db.after` 로도 적을 수
+> 있었습니다. 빼냈습니다 — 자리가 두 군데에 있으면 "지금 읽는 자리가 어느
+> 쪽인지" 를 매번 따져야 하고, 실제로 **화면에서 고른 자리를 무시하고
+> config.txt 를 읽는 버그**가 있었습니다 (0.77 에서 고쳤습니다).
 
 폴더면 그 안의 `.sql` / `.csv` 를 읽고, 파일 하나를 적으면 그 파일을 읽습니다.
 
@@ -643,12 +685,12 @@ D:\db\2026-03-14\              →  표 이름
 | **`.sql`** (mysqldump 등) | 모양 + 값 | 아니오 |
 | **`.csv`** (표 하나씩, 파일 이름 = 표 이름) | 모양 + 값 | 아니오 |
 | **`.frm`** (MySQL **5.x** · MariaDB) | **모양만** — 열 이름·타입·NULL·순서·기본 키 | 아니오 |
-| **`.ibd`** (MySQL **8.0**) + `db.ibd2sdi` | **이름·타입만** | 아니오 |
-| **돌고 있는 서버** + `db.mysqldump` | 모양 + 값 | **예** |
+| **`.ibd`** (MySQL **8.0**) + 설정 창의 `ibd2sdi` 경로 | **이름·타입만** | 아니오 |
+| **돌고 있는 서버** + 설정 창의 `mysqldump` 경로 | 모양 + 값 | **예** |
 | **`.ibd`** (MySQL **5.x**) | **못 읽습니다** | — |
 
 **폴더에 `표.frm` 과 `표.ibd` 가 짝으로 있으면 MySQL 5.x (또는 MariaDB)
-입니다.** 이때 `db.ibd2sdi` 는 소용없습니다 — `ibd2sdi` 가 꺼내는 SDI 는
+입니다.** 이때 `ibd2sdi` 는 소용없습니다 — `ibd2sdi` 가 꺼내는 SDI 는
 **8.0 부터** `.ibd` 안에 들어간 것이고, 5.x 의 `.ibd` 에는 아예 없습니다.
 5.x 에서 표 정의는 `.frm` 에 있습니다.
 
@@ -682,7 +724,7 @@ C:\ProgramData\MySQL\MySQL Server 8.0\Data\   ← datadir
         log#p#p202603.ibd                        ← 파티션은 조각마다 한 파일
 ```
 
-그 프로그램이 `mydb` 를 쓴다면 `db.before` / `db.after` 에 적을 자리가
+그 프로그램이 `mydb` 를 쓴다면 DB 화면의 이전 · 이후 칸에 넣을 자리가
 `...\Data\mydb` 입니다. (`Data` 를 가리켜도 됩니다 — 하위 폴더까지 읽고 표
 이름 앞에 폴더 이름이 붙습니다.)
 
@@ -749,7 +791,7 @@ MySQL 이 **지금 담고 있는 데이터는 한 곳에 없습니다.** `.ibd` 
 
 | 길 | 믿을 수 있나 |
 |---|---|
-| **`db.mysqldump`** (서버가 일관되게 뽑아 줌) | **네.** 권합니다 |
+| **`mysqldump`** (서버가 일관되게 뽑아 줌) | **네.** 권합니다 |
 | **서버를 끄고 복사** (정상 종료 때 다 반영됩니다) | **네** |
 | **`FLUSH TABLES ... FOR EXPORT`** 로 뽑은 복사본 | **네** |
 | 돌고 있는 폴더를 그냥 복사 | **아니오** |
@@ -814,7 +856,7 @@ SHOW VARIABLES LIKE 'datadir';
 | 길 | 손이 얼마나 가나 | 믿을 수 있나 |
 |---|---|---|
 | **1. 필요한 표만 CSV 로** — 서버에서 그 표들만 내보내 폴더에 둠 | 가장 적음 | **네** |
-| **2. `mysqldump`** — `db.dump.*` 에 명령을 적어 두면 읽을 때마다 받음 | 적음 | **네** |
+| **2. `mysqldump`** — 설정 창에 명령을 적어 두면 읽을 때마다 받음 | 적음 | **네** |
 | **3. 폴더를 MySQL **5.6** 에 붙여 한 번 뽑기** | 중간 | **네** |
 | **4. 표마다 `.ibd` 를 옮겨 붙이기** (`FLUSH TABLES ... FOR EXPORT` → `IMPORT TABLESPACE`) | 많음 | **네** |
 
@@ -873,14 +915,22 @@ SHOW VARIABLES LIKE 'datadir';
 
 ### 서버에서 받아 읽기 (선택)
 
+**설정 창 → [DB 도구 (선택)]** 에 적습니다. 네 칸 다 비워 두어도 됩니다
+(그러면 폴더·파일만 읽습니다).
+
 ```
-db.mysqldump   = C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe
-db.dump.before = --login-path=old --databases mydb
-db.dump.after  = --login-path=new --databases mydb
+mysqldump 경로   C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe
+이전 덤프 인수   --login-path=old --databases mydb
+이후 덤프 인수   --login-path=new --databases mydb
+ibd2sdi 경로     C:\Program Files\MySQL\MySQL Server 8.0\bin\ibd2sdi.exe
 ```
 
-- `db.mysqldump` 를 적어 두면 아래 두 줄은 **인수만**, 비워 두면 그 줄이
+- mysqldump 경로를 적어 두면 아래 두 줄은 **인수만**, 비워 두면 그 줄이
   **명령 줄 전체**입니다.
+- **config.txt 에는 두지 않았습니다.** 손으로 고치는 파일에 "띄울 실행
+  파일의 자리" 를 적어 두면, 그 파일을 고칠 수 있는 사람이 이 프로그램이
+  띄울 프로그램을 고를 수 있게 됩니다. 지금은 프로그램이 들고 있는
+  설정(`settings.json`)이고 설정 창에서만 바꿉니다.
 - **mysqldump 는 돌고 있는 서버에 접속해서 뽑습니다.** 멈춘 데이터
   폴더(`.frm`/`.ibd`)만으로는 못 뽑습니다.
 - **접속 정보를 이 프로그램이 들고 있지 않습니다.** 암호를 인수에 적으면

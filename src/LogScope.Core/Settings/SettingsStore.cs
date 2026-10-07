@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using LogScope.Core.Text;
 using System.Reflection;
 using System.Text;
 

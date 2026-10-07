@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using LogScope.Core.Align;
-using LogScope.Core.Compare;
-using LogScope.Core.Db;
-using LogScope.Core.History;
+using LogScope.Core.Text;
+using LogScope.Logs.Align;
+using LogScope.Logs.Compare;
+using LogScope.Db;
+using LogScope.Logs.History;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
-using LogScope.Core.Render;
+using LogScope.Logs.Render;
 using LogScope.Core.Settings;
 
 namespace LogScope.Tests
@@ -2186,7 +2187,7 @@ namespace LogScope.Tests
             Check("ibd2sdi 로는 안 된다고 알려 줌",
                   note5.Contains("SDI") && note5.Contains("8.0"), note5);
             Check("5.x 에 ibd2sdi 경로를 적으라고 하지 않음",
-                  !note5.Contains("db.ibd2sdi"), note5);
+                  !note5.Contains("ibd2sdi 경로를"), note5);
             Check("대신 덤프 길을 알려 줌",
                   note5.Contains("mysqldump") && note5.Contains("ibdata1"), note5);
 
@@ -2196,7 +2197,7 @@ namespace LogScope.Tests
             File.WriteAllBytes(Path.Combine(eight, "recipe.ibd"), new byte[] { 1, 2, 3 });
 
             string note8 = string.Join(" / ", DbFolderReader.Read(eight, null).Notes.ToArray());
-            Check("8.0 쪽은 ibd2sdi 경로를 알려 줌", note8.Contains("db.ibd2sdi"), note8);
+            Check("8.0 쪽은 ibd2sdi 경로를 알려 줌", note8.Contains("ibd2sdi 경로를"), note8);
             Check("8.0 쪽은 5.x 라고 하지 않음", !note8.Contains("5.x"), note8);
             Check("값은 못 읽는다고 밝힘", note8.Contains("값은 못 읽"), note8);
         }
@@ -2886,7 +2887,6 @@ namespace LogScope.Tests
 
             // v1 · v2 는 쓰는 쪽이 채우는 빈 칸입니다. 비어 있어야 합니다 —
             // 아무 값이나 채워 두면 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
-            Check("v1 칸의 기본 이름", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
             Check("v1 은 비어 있음", bb.V1.Length == 0, bb.V1);
             Check("v2 도 비어 있음", bb.V2.Length == 0, bb.V2);
 
@@ -2931,59 +2931,41 @@ namespace LogScope.Tests
         /// 전에는 같은 이름이 화면·CSV·설명 글·시험에 흩어져 있어서, 이름
         /// 하나 바꾸려면 네 파일을 고쳐야 했습니다. 한 군데를 빠뜨리면 화면과
         /// CSV 가 서로 다른 이름을 쓰게 되고, 그건 눈으로 봐야 알게 됩니다.
-        /// 그래서 "config.txt 한 줄로 셋이 같이 바뀌는지" 를 시험합니다.
+        ///
+        /// 그래서 <b>이 시험에는 이름 글자가 하나도 없습니다.</b> 글자를 여기
+        /// 적으면 이름을 바꿀 때 고칠 곳이 하나 더 생깁니다. 대신 "CSV 와
+        /// 설명 글이 DbNames 를 따라가는지" 만 봅니다.
         /// </summary>
         private static void DbColumnNames()
         {
             Console.WriteLine("DB — 목록 칸 이름은 한 곳");
 
-            AppConfig keep = AppConfig.Current;
-            try
-            {
-                AppConfig.Current = AppConfig.Default;
-                Check("안 적으면 기본 이름", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
+            Check("칸 수", DbNames.CsvNames().Length == 11,
+                  DbNames.CsvNames().Length.ToString(CultureInfo.InvariantCulture));
 
-                AppConfig.Current = AppConfig.Parse(new[]
-                {
-                    "db.col.v1 = 설정값",
-                    "db.col.v2 = 단위",
-                });
-                Check("config.txt 가 v1 이름을 바꿈", DbNames.V1 == "설정값", DbNames.V1);
-                Check("v2 도 바뀜", DbNames.V2 == "단위", DbNames.V2);
-                Check("안 적은 칸은 그대로", DbNames.Table == DbNames.DefaultTable, DbNames.Table);
+            string[] names = DbNames.CsvNames();
+            bool allFilled = true;
+            for (int i = 0; i < names.Length; i++)
+                if (string.IsNullOrEmpty(names[i])) allFilled = false;
+            Check("빈 이름이 없음", allFilled, string.Join(" · ", names));
 
-                // 바꾼 이름은 CSV 머리글과 마우스 설명 글에 같이 나가야 합니다.
-                var one = new DbDiffLine { Table = "t", V1 = "180", V2 = "°C" };
-                string csv = DbDiffList.ToCsv(new List<DbDiffLine> { one });
-                Check("바꾼 이름이 CSV 머리글에", csv.Contains("설정값,단위"), csv.Substring(0, 44));
-                Check("바꾼 이름이 설명 글에",
-                      one.Tip.Contains("설정값") && one.Tip.Contains("단위"), one.Tip);
+            // CSV 머리글은 DbNames 의 이름과 순서를 그대로 따라가야 합니다.
+            string csv = DbDiffList.ToCsv(new List<DbDiffLine>());
+            Check("CSV 머리글이 DbNames 를 따라감",
+                  csv.StartsWith(string.Join(",", names)), csv);
 
-                // 이름에 쉼표가 들어가도 CSV 가 깨지면 안 됩니다. 값과 같은
-                // 함수로 찍으니 따옴표가 붙습니다.
-                AppConfig.Current = AppConfig.Parse(new[] { "db.col.v1 = 설정값, 단위" });
-                string csv2 = DbDiffList.ToCsv(new List<DbDiffLine>());
-                Check("쉼표 든 이름은 따옴표로", csv2.Contains("\"설정값, 단위\""), csv2);
+            // 마우스 설명 글도 같은 이름을 앞에 붙입니다.
+            var one = new DbDiffLine { Table = "t", V1 = "180", V2 = "°C" };
+            Check("설명 글이 v1 이름을 씀", one.Tip.Contains(DbNames.V1), one.Tip);
+            Check("설명 글이 v2 이름을 씀", one.Tip.Contains(DbNames.V2), one.Tip);
 
-                // 비워 둔 줄과 모르는 열쇠. 설정 파일 한 줄 때문에 칸 이름이
-                // 사라지면 안 됩니다.
-                AppConfig.Current = AppConfig.Parse(new[]
-                {
-                    "db.col.v1 =",
-                    "db.col.없는칸 = 아무거나",
-                });
-                Check("비워 둔 줄은 기본값", DbNames.V1 == DbNames.DefaultV1, DbNames.V1);
-                Check("모르는 칸 열쇠는 그냥 무시",
-                      DbNames.CsvNames().Length == 11, "칸 수가 바뀌었습니다");
-
-                Check("열쇠는 대소문자를 안 가림",
-                      AppConfig.Parse(new[] { "DB.COL.V1 = 설정값" }).ColumnName("v1", "x") == "설정값",
-                      AppConfig.Parse(new[] { "DB.COL.V1 = 설정값" }).ColumnName("v1", "x"));
-            }
-            finally
-            {
-                AppConfig.Current = keep;
-            }
+            // 이름에 쉼표가 들어가도 CSV 가 깨지면 안 됩니다. 값과 같은
+            // 함수로 찍으므로 따옴표가 붙습니다 (이름을 "설정값, 단위" 처럼
+            // 바꿔 둘 수 있으니까요).
+            var lines = new List<DbDiffLine>();
+            lines.Add(new DbDiffLine { Table = "a,b" });
+            Check("쉼표 든 값은 따옴표로", DbDiffList.ToCsv(lines).Contains("\"a,b\""),
+                  DbDiffList.ToCsv(lines));
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>

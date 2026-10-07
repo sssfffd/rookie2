@@ -18,7 +18,7 @@ python scripts/check_handlers.py XAML 이벤트 처리기 서명
 
 눈으로 훑는 게 아니라 **C# 컴파일러에게 물어봅니다.**
 
-1. `LogScope.Core` 컴파일
+1. `LogScope.Core` · `LogScope.Logs` · `LogScope.Db` 컴파일 (따로따로 — 모듈 경계를 컴파일러가 지킵니다)
 2. `LogScope.Tests` 컴파일 **+ 실제로 실행** (통과/실패가 숫자로 나옵니다)
 3. `LogScope.App` 컴파일 — 리눅스에 WPF 가 없으므로 `wpfstub/` 의 껍데기로 대신
 
@@ -62,7 +62,7 @@ WPF 를 흉내 낸 껍데기 소스입니다. `System.Windows`, `.Media`, `.Inpu
 
 | 파일 | 보는 것 |
 |---|---|
-| `check_sources.py` | XAML 이 XML 로 읽히는지 · 밝은/어두운 테마 열쇠가 같은지 · 리소스 열쇠가 다 있는지 · 이벤트 처리기가 있는지 · 놓는 칸의 되돌릴 배경 · 괄호 균형 · `.csproj` 파일 목록 · **`x:Static` 이 가리키는 상수가 있는지** · **XAML `Tag` 글자를 코드가 아는지** |
+| `check_sources.py` | XAML 이 XML 로 읽히는지 · 밝은/어두운 테마 열쇠가 같은지 · 리소스 열쇠가 다 있는지 · 이벤트 처리기가 있는지 · 놓는 칸의 되돌릴 배경 · 괄호 균형 · `.csproj` 파일 목록 · **`x:Static` 이 가리키는 상수가 있는지** · **XAML 이 `<접두어:타입>` 으로 쓰는 타입이 그 이름 공간에 있는지** · **XAML `Tag` 글자를 코드가 아는지** |
 | `check_shadowing.py` | 한 메서드에서 바깥과 안쪽이 같은 이름을 선언했는지 (`CS0136`) |
 | `check_handlers.py` | XAML 이벤트 처리기의 **두 번째 인자 타입**이 맞는지. 이름만 맞고 타입이 틀리면 윈도우에서만 깨집니다 |
 

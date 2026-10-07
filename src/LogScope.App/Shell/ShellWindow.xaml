@@ -1,0 +1,218 @@
+﻿<Window x:Class="LogScope.App.Shell.ShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="clr-namespace:LogScope.App.Shell"
+        xmlns:logs="clr-namespace:LogScope.App.Logs"
+        xmlns:db="clr-namespace:LogScope.App.Db"
+        Width="1360" Height="860" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Brush.Window}"
+        Foreground="{DynamicResource Brush.Text}"
+        FontFamily="Segoe UI" FontSize="12"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
+        AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
+
+    <DockPanel>
+
+        <!-- ================= 위쪽 메뉴 줄 (진한 파랑) =================
+
+             두 칸으로 나눕니다.
+
+               왼쪽  화면 전환 (메인 · 분석 1 · 2 · 3) — 어느 화면에서든 다 보입니다
+               오른쪽 그 화면에서 할 일 — 분석 1 의 안쪽 화면과 로그 열기
+
+             전에는 왼쪽 위 프로그램 이름을 눌러 목록을 펼쳐야 화면을 옮길 수
+             있었습니다. 네 화면을 오가는 것이 이 프로그램의 기본 동작인데,
+             그걸 접어 두고 두 번 눌러야 했습니다. 이제 늘 보입니다.
+
+             <b>로그 열기 쪽은 분석 1 에서만 보입니다.</b> 메인 화면에는 이전 /
+             이후 칸이 있어 거기에 끌어다 놓으면 되고, 분석 2 · 3 에는 아직
+             아무것도 없습니다.
+        -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,6">
+            <!--
+              위 줄은 <b>한 줄</b>입니다. 왼쪽의 이름 칸만 두 줄짜리입니다.
+
+                이름 칸   이름 (위) · 긴 이름과 판 번호 (아래)
+                가운데   화면 단추 넷
+                오른쪽   그 화면의 메뉴
+
+              <b>바 높이가 늘지 않습니다.</b> 화면 단추가 28 픽셀에 여백 3 이라
+              줄 높이는 원래 34 픽셀이었습니다. 이름 칸 두 줄을 31 픽셀
+              (18 + 13) 로 묶어 그 안에 넣었으니, 긴 이름이 생겨도 바는
+              전과 같습니다.
+
+              줄 높이를 글꼴에 맡기지 않고 LineHeight 로 못박습니다.
+              글꼴마다 위아래 여백이 달라서, 맡겨 두면 어떤 PC 에서는 두 줄이
+              34 픽셀을 넘어 바가 늘어납니다.
+
+              단추는 이름 칸과 <b>같은 줄</b>에 있고 가운데 맞춤이라, 두 줄
+              이름 옆에서도 가운데에 옵니다 (0.69 에서는 윗줄에만 있어서
+              위로 치우쳐 보였습니다).
+            -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--
+                  이름 칸. 긴 이름이 길면 300 픽셀에서 "…" 로 자릅니다 —
+                  이 칸이 넓어지면 단추를 밀기 때문입니다. 전체는 마우스를
+                  올리면 나오고, 창 제목에도 같은 글이 있습니다.
+                -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center"
+                            Margin="2,0,12,0" MaxWidth="300">
+                    <TextBlock Text="{Binding ProductName}" FontSize="15" FontWeight="Bold"
+                               LineHeight="18" LineStackingStrategy="BlockLineHeight"
+                               Foreground="{DynamicResource Brush.TopBarText}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding NameTip}" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding FullNameText}" FontSize="10"
+                                   LineHeight="13" LineStackingStrategy="BlockLineHeight"
+                                   Foreground="{DynamicResource Brush.TopBarMuted}"
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,7,0"
+                                   ToolTip="{Binding FullNameText}"
+                                   Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
+                        <TextBlock Text="{Binding VersionText}" FontSize="10"
+                                   LineHeight="13" LineStackingStrategy="BlockLineHeight"
+                                   Foreground="{DynamicResource Brush.TopBarMuted}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 가운데 : 화면 전환 -->
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabMain}"
+                                 IsChecked="{Binding ShowMain, Mode=TwoWay}"
+                                 ToolTip="점수와 저장된 분석을 봅니다." />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis1}"
+                                 IsChecked="{Binding ShowAnalysis1, Mode=TwoWay}"
+                                 ToolTip="두 로그를 견주는 화면입니다." />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis2}"
+                                 IsChecked="{Binding ShowAnalysis2, Mode=TwoWay}" />
+                    <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
+                                 Content="{Binding TabAnalysis3}"
+                                 IsChecked="{Binding ShowAnalysis3, Mode=TwoWay}" />
+
+                    <!-- 칸 구분 선. 왼쪽은 "어디를 볼까", 오른쪽은 "무엇을 할까" 입니다. -->
+                    <Border Width="1" Margin="14,4,4,4"
+                            Background="{DynamicResource Brush.TopBarMuted}" Opacity="0.45" />
+                </WrapPanel>
+
+                <!-- 오른쪽 : 그 화면에서 할 일 -->
+                <!--
+                  이 묶음은 <b>왼쪽에 붙입니다</b> (칸은 남는 폭을 다 받지만
+                  내용은 구분 선 바로 뒤에서 시작합니다).
+
+                  0.70 에 HorizontalAlignment="Right" 를 넣었다가 0.72 에
+                  뺐습니다. 창 오른쪽 끝에 붙이면 화면 단추와 이 메뉴 사이가
+                  통째로 비어, [대시보드] 를 누르려고 창 끝까지 손을 옮기게
+                  됩니다. 구분 선은 "여기부터 다른 갈래" 라는 표시이고,
+                  그 뒤에 바로 붙어 있어야 그 뜻이 살아납니다.
+                -->
+                <WrapPanel Grid.Column="2" VerticalAlignment="Center">
+                    <!--
+                      대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
+                      있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
+                      하게 됩니다.
+                    -->
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="대시보드"
+                                 IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="요약 화면입니다 (F1)." />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="그래프"
+                                 IsChecked="{Binding ShowGraph, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="시간에 따른 파형을 봅니다 (F2)." />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="히트맵"
+                                 IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3)." />
+
+                    <Button Style="{StaticResource TopBarButton}" Content="이전 로그 열기"
+                            Click="OnOpenBefore" Margin="10,3,3,3"
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+                    <Button Style="{StaticResource TopBarButton}" Content="이후 로그 열기"
+                            Click="OnOpenAfter"
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+                    <!--
+                      [다시 읽기] 를 없애고 이것만 남겼습니다. 둘이 하는 일이
+                      겹치는데, 파일을 다시 읽는 쪽은 1000 만 칸을 또 읽어
+                      몇십 초가 걸립니다. 파일이 바뀌었으면 다시 열거나 끌어다
+                      놓으면 되고, 허용 오차를 고친 뒤에 눌러야 하는 것은
+                      이쪽입니다.
+                    -->
+                    <Button Style="{StaticResource TopBarButton}" Content="비교 다시 하기"
+                            Click="OnRecompare" ToolTip="허용 오차 등을 바꾼 뒤 누르세요 (F5)."
+                            Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
+
+                    <Button Style="{StaticResource TopBarButton}" Content="설정"
+                            Click="OnSettings" Margin="10,3,3,3" />
+                </WrapPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- ================= 아래쪽 알림 줄 ================= -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource Brush.Panel}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
+                Padding="12,4" MinHeight="26">
+            <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource Brush.Muted}" FontSize="11"
+                       VerticalAlignment="Center" />
+        </Border>
+
+        <!-- ================= 본문 =================
+             화면을 모두 만들어 두고 보이기만 바꿉니다. 그래야 화면을
+             오갈 때 고른 IO 나 확대 상태가 사라지지 않습니다. -->
+        <Grid>
+
+            <!-- 메인 -->
+            <v:MainView x:Name="Main" DataContext="{Binding Main}"
+                        Visibility="{Binding DataContext.ShowMain,
+                                     RelativeSource={RelativeSource AncestorType=Window},
+                                     Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- 분석 1 — 지금까지 만든 것. 안에서 다시 셋으로 갈립니다. -->
+            <Grid Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}">
+                <logs:DashboardView x:Name="Dashboard" DataContext="{Binding Dashboard}"
+                                 Visibility="{Binding DataContext.ShowDashboard,
+                                              RelativeSource={RelativeSource AncestorType=Window},
+                                              Converter={StaticResource BoolToVisibility}}" />
+
+                <logs:GraphView x:Name="Graph" DataContext="{Binding Graph}"
+                             Visibility="{Binding DataContext.ShowGraph,
+                                          RelativeSource={RelativeSource AncestorType=Window},
+                                          Converter={StaticResource BoolToVisibility}}" />
+
+                <logs:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
+                               Visibility="{Binding DataContext.ShowHeatmap,
+                                            RelativeSource={RelativeSource AncestorType=Window},
+                                            Converter={StaticResource BoolToVisibility}}" />
+            </Grid>
+
+            <!--
+              분석 2 — DB 분석.
+
+              DbView 는 생성자에서 자기 DataContext 를 DbVm 으로 바꿉니다. 그래서
+              보이기 여부는 <b>창의 뷰모델</b>에서 찾아야 합니다 — 맨 경로로
+              적으면 DbVm 에서 ShowAnalysis2 를 찾다가 실패하고, 실패한
+              Visibility 는 기본값 Visible 로 남아 이 화면이 메인 화면 위에
+              계속 덮입니다. (실제로 그랬습니다.)
+            -->
+            <db:DbView x:Name="Db"
+                      Visibility="{Binding DataContext.ShowAnalysis2,
+                                   RelativeSource={RelativeSource AncestorType=Window},
+                                   Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- 분석 3 — 아직 빈 화면입니다. -->
+            <v:PlaceholderView Heading="{Binding Analysis3Name}"
+                               Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
+        </Grid>
+    </DockPanel>
+</Window>

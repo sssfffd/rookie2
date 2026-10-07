@@ -38,19 +38,33 @@ include_external_msproject(LogScope.Core
   TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
   GUID 1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001)
 
+include_external_msproject(LogScope.Logs
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/LogScope.Logs/LogScope.Logs.csproj"
+  TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
+  GUID 1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004
+  PLATFORM "Any CPU"
+  LogScope.Core)
+
+include_external_msproject(LogScope.Db
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/LogScope.Db/LogScope.Db.csproj"
+  TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
+  GUID 1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005
+  PLATFORM "Any CPU"
+  LogScope.Core)
+
 include_external_msproject(LogScope.App
   "${CMAKE_CURRENT_SOURCE_DIR}/src/LogScope.App/LogScope.App.csproj"
   TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
   GUID 1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002
   PLATFORM "Any CPU"
-  LogScope.Core)
+  LogScope.Core LogScope.Logs LogScope.Db)
 
 include_external_msproject(LogScope.Tests
   "${CMAKE_CURRENT_SOURCE_DIR}/src/LogScope.Tests/LogScope.Tests.csproj"
   TYPE FAE04EC0-301F-11D3-BF4B-00C04F79EFBC
   GUID 1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003
   PLATFORM "Any CPU"
-  LogScope.Core)
+  LogScope.Core LogScope.Logs LogScope.Db)
 
 enable_testing()
 add_test(NAME logscope-self-test
