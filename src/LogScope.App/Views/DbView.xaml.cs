@@ -5,6 +5,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using LogScope.App.Services;
+using LogScope.App.Infrastructure;
 using LogScope.App.ViewModels;
 using LogScope.Core.Db;
 using LogScope.Core.Io;
@@ -60,11 +61,7 @@ namespace LogScope.App.Views
 
         private static bool Before(object sender)
         {
-            var fe = sender as FrameworkElement;
-            string tag = fe != null ? (fe.Tag as string) ?? string.Empty : string.Empty;
-            int bar = tag.IndexOf('|');
-            if (bar >= 0) tag = tag.Substring(0, bar);
-            return tag == "before";
+            return CardTag.IsBefore(sender);
         }
 
         /// <summary>폴더 고르기. 폴더 고르는 창이 따로 없어서 저장 창을 씁니다.</summary>
@@ -154,17 +151,7 @@ namespace LogScope.App.Views
         /// </summary>
         private static void Lit(Border card, bool on)
         {
-            if (card == null) return;
-
-            string tag = (card.Tag as string) ?? string.Empty;
-            int bar = tag.IndexOf('|');
-            string off = bar >= 0 && bar + 1 < tag.Length ? tag.Substring(bar + 1) : "Brush.Panel";
-            bool before = Before(card);
-
-            card.SetResourceReference(Border.BackgroundProperty, on ? "Brush.DropTarget" : off);
-            card.SetResourceReference(Border.BorderBrushProperty,
-                on ? (before ? "Brush.Before" : "Brush.After") : "Brush.Border");
-            card.BorderThickness = new Thickness(on ? 2 : 1);
+            CardTag.Lit(card, on);
         }
 
         private void OnRead(object sender, RoutedEventArgs e)

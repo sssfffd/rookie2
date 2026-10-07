@@ -145,7 +145,10 @@ namespace LogScope.Core.Settings
         /// 파일에서 그 값이 나오면 raw 로 되돌립니다 — 모르는 값을 그대로
         /// 들고 있으면 어느 단추도 안 켜진 채로 뜹니다.
         /// </summary>
-        public string ValueScaleMode = "raw";       // raw | delta
+        public const string ScaleRaw = "raw";       // 값 그대로
+        public const string ScaleDelta = "delta";   // 이웃 표본과의 차이
+
+        public string ValueScaleMode = ScaleRaw;    // ScaleRaw | ScaleDelta
         public bool FitVisible;                     // 보이는 구간에 세로 배율 맞춤
 
         // 선택 기능 (파이썬 AI 모듈)
@@ -247,7 +250,7 @@ namespace LogScope.Core.Settings
             root["showAfter"] = ShowAfter;
 
             root["laneMode"] = LaneMode;
-            root["valueScaleMode"] = ValueScaleMode ?? "raw";
+            root["valueScaleMode"] = ValueScaleMode ?? ScaleRaw;
             root["fitVisible"] = FitVisible;
 
             root["aiEnabled"] = AiEnabled;
@@ -369,8 +372,8 @@ namespace LogScope.Core.Settings
             if (!s.ShowBefore && !s.ShowAfter) { s.ShowBefore = true; s.ShowAfter = true; }
 
             s.LaneMode = Json.GetBool(root, "laneMode", true);
-            s.ValueScaleMode = Json.GetString(root, "valueScaleMode", "raw");
-            if (s.ValueScaleMode != "delta") s.ValueScaleMode = "raw";
+            s.ValueScaleMode = Json.GetString(root, "valueScaleMode", ScaleRaw);
+            if (s.ValueScaleMode != ScaleDelta) s.ValueScaleMode = ScaleRaw;
             s.FitVisible = Json.GetBool(root, "fitVisible", false);
 
             s.AiEnabled = Json.GetBool(root, "aiEnabled", false);

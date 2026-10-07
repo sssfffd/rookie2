@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using LogScope.App.Infrastructure;
 using LogScope.App.ViewModels;
 
 namespace LogScope.App.Views
@@ -77,17 +78,9 @@ namespace LogScope.App.Views
         /// SetResourceReference 는 DynamicResource 를 코드로 거는 것이라,
         /// 테마를 바꾸면 이 칸도 같이 따라갑니다.
         /// </summary>
-        private void Lit(Border card, bool on)
+        private static void Lit(Border card, bool on)
         {
-            if (card == null) return;
-
-            bool before = Side(card);
-
-            card.SetResourceReference(Border.BackgroundProperty,
-                on ? "Brush.DropTarget" : OffBrush(card));
-            card.SetResourceReference(Border.BorderBrushProperty,
-                on ? (before ? "Brush.Before" : "Brush.After") : "Brush.Border");
-            card.BorderThickness = new Thickness(on ? 2 : 1);
+            CardTag.Lit(card, on);
         }
 
         /// <summary>
@@ -101,22 +94,6 @@ namespace LogScope.App.Views
         /// 0.42 와 같은 종류의 고장입니다 — 칸이 어떤 모습이어야 하는지는
         /// XAML 이 알고 코드는 모릅니다.
         /// </summary>
-        private static bool Side(FrameworkElement card)
-        {
-            string tag = (card.Tag as string) ?? string.Empty;
-            int bar = tag.IndexOf('|');
-            string side = bar < 0 ? tag : tag.Substring(0, bar);
-            return side == "before";
-        }
-
-        private static string OffBrush(FrameworkElement card)
-        {
-            string tag = (card.Tag as string) ?? string.Empty;
-            int bar = tag.IndexOf('|');
-            if (bar < 0 || bar + 1 >= tag.Length) return "Brush.Panel";
-            return tag.Substring(bar + 1);
-        }
-
         /// <summary>
         /// 칸에 놓으면 <b>그 자리</b>에 넣습니다. 창 아무 데나 놓는 것과 다른
         /// 점이 이겁니다 — 어느 쪽인지 묻지 않고 바로 들어갑니다.
@@ -135,7 +112,7 @@ namespace LogScope.App.Views
             var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (paths == null || paths.Length == 0) return;
 
-            bool before = Side(g);
+            bool before = CardTag.IsBefore(g);
 
             EventHandler<LogDropEventArgs> h = LogDropped;
             if (h != null) h(this, new LogDropEventArgs(new List<string>(paths), before));

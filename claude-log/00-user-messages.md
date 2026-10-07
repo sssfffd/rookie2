@@ -926,3 +926,11 @@
 > 이렇게 많은 파일을 참고해야 하잖아
 
 → 답변: [56-one-place-for-names.md](56-one-place-for-names.md)
+
+---
+
+## 요청 82 — 다른 곳도 살펴봐
+
+> 응 다른 곳도 살펴봐
+
+→ 답변: [57-glue-strings.md](57-glue-strings.md)

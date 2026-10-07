@@ -479,7 +479,31 @@ namespace LogScope.Core.Db
         /// <summary>표 이름. 하위 폴더까지 읽으면 "mydb.users" 처럼 앞이 붙습니다.</summary>
         public string Table { get; set; }
 
-        /// <summary>표 · 열 · 행 · 알림.</summary>
+        /// <summary>
+        /// <see cref="Kind"/> 와 <see cref="Change"/> 에 들어갈 수 있는 글자.
+        /// <b>여기 적힌 것이 전부입니다.</b>
+        ///
+        /// 글자를 직접 적지 마세요. 이 값은 화면에 보이기도 하지만
+        /// <b>비교되기도 합니다</b> — DbVm 은 알림 줄을 목록에서 빼내려고
+        /// <c>Kind</c> 를 견줍니다. 쓰는 쪽과 견주는 쪽에 같은 글자가 따로
+        /// 적혀 있으면, 한 군데만 고쳤을 때 컴파일도 되고 시험도 통과하는데
+        /// <b>알림이 목록에 섞여 나옵니다.</b>
+        ///
+        /// 그래서 이 넷은 config.txt 로 바꾸지 않습니다 (칸 <b>이름</b>은
+        /// <see cref="DbNames"/> 로 바꿉니다). 견주는 값을 설정으로 바꾸게
+        /// 하면 그 순간 견주기가 깨집니다.
+        /// </summary>
+        public const string KindTable = "표";
+        public const string KindColumn = "열";
+        public const string KindRow = "행";
+        public const string KindNote = "알림";
+
+        public const string ChangeAdded = "생김";
+        public const string ChangeGone = "없어짐";
+        public const string ChangeDiff = "달라짐";
+        public const string ChangeMoved = "자리";   // 값은 같고 열 자리만 바뀜
+
+        /// <summary>표 · 열 · 행 · 알림. 위 Kind... 상수 중 하나입니다.</summary>
         public string Kind { get; set; }
 
         /// <summary>생김 · 없어짐 · 달라짐 · 자리. 알림 줄은 빕니다.</summary>
@@ -658,7 +682,7 @@ namespace LogScope.Core.Db
             /// <summary>상한을 넘겼다고 알리는 줄. 이 줄은 상한에 걸리지 않습니다.</summary>
             public void Say(string table, string note)
             {
-                Lines.Add(new DbDiffLine { Table = table, Kind = "알림", Note = note });
+                Lines.Add(new DbDiffLine { Table = table, Kind = DbDiffLine.KindNote, Note = note });
             }
 
             public bool TableCapped { get { return _inTable >= Opt.MaxLinesPerTable; } }
@@ -689,7 +713,7 @@ namespace LogScope.Core.Db
             // 거기 적혀 있습니다 (키가 없다, 모양만 읽었다, 상한에 걸렸다).
             if (td.RowNote.Length > 0) s.Add(new DbDiffLine
             {
-                Table = td.Name, Kind = "알림", Note = td.RowNote,
+                Table = td.Name, Kind = DbDiffLine.KindNote, Note = td.RowNote,
             });
 
             for (int i = 0; i < td.Columns.Count; i++)
@@ -716,12 +740,12 @@ namespace LogScope.Core.Db
         {
             bool before = td.Change == DbChange.OnlyBefore;
             DbTable only = before ? td.Before : td.After;
-            string ch = before ? "없어짐" : "생김";
+            string ch = before ? DbDiffLine.ChangeGone : DbDiffLine.ChangeAdded;
 
             int cols = only == null ? 0 : only.Columns.Count;
             int rows = only == null ? 0 : only.Rows.Count;
 
-            var head = new DbDiffLine { Table = td.Name, Kind = "표", Change = ch, Io = td.Name };
+            var head = new DbDiffLine { Table = td.Name, Kind = DbDiffLine.KindTable, Change = ch, Io = td.Name };
             head.Note = "표 자체가 " + (before ? "이전에만" : "이후에만") + " 있습니다"
                       + " — 열 " + cols + " 개 · 읽은 행 " + rows.ToString("N0") + " 개."
                       + " 행은 칸마다 적지 않습니다 (전부 한쪽에만 있는 것이라 적어도 같은 말입니다).";
@@ -733,7 +757,7 @@ namespace LogScope.Core.Db
                 DbColumn c = only.Columns[i];
                 var ln = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "열", Change = ch, Column = c.Name, Io = c.Name,
+                    Table = td.Name, Kind = DbDiffLine.KindColumn, Change = ch, Column = c.Name, Io = c.Name,
                     Note = c.IsKey ? "기본 키" : string.Empty,
                 };
                 if (before) ln.Before = c.Shape(); else ln.After = c.Shape();
@@ -743,10 +767,10 @@ namespace LogScope.Core.Db
 
         private static DbDiffLine ColumnLine(string table, ColumnDiff cd)
         {
-            var ln = new DbDiffLine { Table = table, Kind = "열", Column = cd.Name, Io = cd.Name };
-            ln.Change = cd.Change == DbChange.OnlyBefore ? "없어짐"
-                      : cd.Change == DbChange.OnlyAfter ? "생김"
-                      : cd.MovedOnly ? "자리" : "달라짐";
+            var ln = new DbDiffLine { Table = table, Kind = DbDiffLine.KindColumn, Column = cd.Name, Io = cd.Name };
+            ln.Change = cd.Change == DbChange.OnlyBefore ? DbDiffLine.ChangeGone
+                      : cd.Change == DbChange.OnlyAfter ? DbDiffLine.ChangeAdded
+                      : cd.MovedOnly ? DbDiffLine.ChangeMoved : DbDiffLine.ChangeDiff;
             if (cd.Before != null) ln.Before = cd.Before.Shape();
             if (cd.After != null) ln.After = cd.After.Shape();
             ln.Note = cd.What();
@@ -783,7 +807,7 @@ namespace LogScope.Core.Db
 
                     var ln = new DbDiffLine
                     {
-                        Table = td.Name, Kind = "행", Change = "달라짐",
+                        Table = td.Name, Kind = DbDiffLine.KindRow, Change = DbDiffLine.ChangeDiff,
                         Where = key, Column = name, Io = key,
                         Before = DbRow.Show(rd.Before.Get(ci)),
                         After = DbRow.Show(ai < 0 || rd.After == null ? null : rd.After.Get(ai)),
@@ -796,13 +820,13 @@ namespace LogScope.Core.Db
             bool before = rd.Change == DbChange.OnlyBefore;
             DbRow row = before ? rd.Before : rd.After;
             DbTable shape = before ? td.Before : td.After;
-            string ch = before ? "없어짐" : "생김";
+            string ch = before ? DbDiffLine.ChangeGone : DbDiffLine.ChangeAdded;
 
             if (row == null || shape == null || !s.Opt.ExpandWholeRows)
             {
                 var one = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "행", Change = ch, Where = key, Io = key,
+                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = key,
                     Column = "(행 전체)",
                 };
                 string all = RowText(shape, row);
@@ -814,7 +838,7 @@ namespace LogScope.Core.Db
             {
                 var ln = new DbDiffLine
                 {
-                    Table = td.Name, Kind = "행", Change = ch, Where = key, Io = key,
+                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = key,
                     Column = shape.Columns[c].Name,
                 };
                 // 한쪽 칸은 비워 둡니다. "없음" 과 NULL 은 다른 것입니다 —

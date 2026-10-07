@@ -108,6 +108,17 @@ namespace LogScope.App.ViewModels
         }
 
         /// <summary>
+        /// <see cref="DeltaKind"/> 에 들어갈 수 있는 글자. 넷이 전부입니다.
+        /// MainView.xaml 의 색 규칙이 x:Static 으로 이 상수를 읽습니다 —
+        /// 글자를 양쪽에 따로 적어 두면 한 군데만 고쳤을 때 색만 조용히
+        /// 안 나옵니다.
+        /// </summary>
+        public const string DeltaNone = "none";   // 견줄 지난 기록이 없음
+        public const string DeltaBad = "bad";     // 달라진 IO 가 늘었음
+        public const string DeltaGood = "good";   // 줄었음
+        public const string DeltaSame = "same";   // 그대로
+
+        /// <summary>
         /// 색을 가르는 값. <b>달라진 IO 가 늘면 나쁨</b>입니다 — 지난번보다
         /// 어긋난 곳이 많아졌다는 뜻이니까요.
         /// </summary>
@@ -115,10 +126,10 @@ namespace LogScope.App.ViewModels
         {
             get
             {
-                if (!_live || !_same) return "none";
-                if (_dChanged > 0) return "bad";
-                if (_dChanged < 0) return "good";
-                return "same";
+                if (!_live || !_same) return DeltaNone;
+                if (_dChanged > 0) return DeltaBad;
+                if (_dChanged < 0) return DeltaGood;
+                return DeltaSame;
             }
         }
 

@@ -223,15 +223,15 @@
                                     <Setter TargetName="Row" Property="Background"
                                             Value="{DynamicResource Brush.AccentSoft}" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Status}" Value="changed">
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:IoRowVm.StatusChanged}">
                                     <Setter TargetName="NameText" Property="Foreground"
                                             Value="{DynamicResource Brush.Warn}" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Status}" Value="onlyBefore">
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:IoRowVm.StatusOnlyBefore}">
                                     <Setter TargetName="NameText" Property="Foreground"
                                             Value="{DynamicResource Brush.Bad}" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Status}" Value="onlyAfter">
+                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:IoRowVm.StatusOnlyAfter}">
                                     <Setter TargetName="NameText" Property="Foreground"
                                             Value="{DynamicResource Brush.Good}" />
                                 </DataTrigger>

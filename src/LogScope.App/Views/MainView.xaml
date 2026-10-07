@@ -37,13 +37,13 @@
                                          색을 칠하면 재 본 것으로 읽힙니다. -->
                                     <Setter Property="Background" Value="{DynamicResource Brush.Muted}" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="good">
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static vm:ScoreBands.GradeGood}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.Good}" />
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="warn">
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static vm:ScoreBands.GradeWarn}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.Warn}" />
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="bad">
+                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static vm:ScoreBands.GradeBad}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.Bad}" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -330,15 +330,15 @@
                                                         </Button>
 
                                                         <DataTemplate.Triggers>
-                                                            <DataTrigger Binding="{Binding Grade}" Value="good">
+                                                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeGood}">
                                                                 <Setter TargetName="Dot" Property="Background"
                                                                         Value="{DynamicResource Brush.Good}" />
                                                             </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Grade}" Value="warn">
+                                                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeWarn}">
                                                                 <Setter TargetName="Dot" Property="Background"
                                                                         Value="{DynamicResource Brush.Warn}" />
                                                             </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Grade}" Value="bad">
+                                                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeBad}">
                                                                 <Setter TargetName="Dot" Property="Background"
                                                                         Value="{DynamicResource Brush.Bad}" />
                                                             </DataTrigger>
@@ -356,15 +356,15 @@
                             <!-- 점수 색은 화면 아래의 색 설명과 같은 값을 봅니다
                                  (ScoreBands). 아직 안 재 본 "??" 는 회색 그대로 —
                                  안 재 본 값에 색을 칠하면 재 본 값으로 읽힙니다. -->
-                            <DataTrigger Binding="{Binding Grade}" Value="good">
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeGood}">
                                 <Setter TargetName="ScoreText" Property="Foreground"
                                         Value="{DynamicResource Brush.Good}" />
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding Grade}" Value="warn">
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeWarn}">
                                 <Setter TargetName="ScoreText" Property="Foreground"
                                         Value="{DynamicResource Brush.Warn}" />
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding Grade}" Value="bad">
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeBad}">
                                 <Setter TargetName="ScoreText" Property="Foreground"
                                         Value="{DynamicResource Brush.Bad}" />
                             </DataTrigger>
@@ -488,15 +488,15 @@
                                 <DataTemplate.Triggers>
                                     <!-- 달라진 IO 가 늘면 나쁨입니다 — 지난번보다
                                          어긋난 곳이 많아졌다는 뜻이니까요. -->
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="bad">
+                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static vm:HistoryRowVm.DeltaBad}">
                                         <Setter TargetName="DeltaText" Property="Foreground"
                                                 Value="{DynamicResource Brush.Bad}" />
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="good">
+                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static vm:HistoryRowVm.DeltaGood}">
                                         <Setter TargetName="DeltaText" Property="Foreground"
                                                 Value="{DynamicResource Brush.Good}" />
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="same">
+                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static vm:HistoryRowVm.DeltaSame}">
                                         <Setter TargetName="DeltaText" Property="Foreground"
                                                 Value="{DynamicResource Brush.Text}" />
                                     </DataTrigger>
@@ -538,15 +538,15 @@
                                 </StackPanel>
 
                                 <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Grade}" Value="good">
+                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeGood}">
                                         <Setter TargetName="Dot" Property="Background"
                                                 Value="{DynamicResource Brush.Good}" />
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding Grade}" Value="warn">
+                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeWarn}">
                                         <Setter TargetName="Dot" Property="Background"
                                                 Value="{DynamicResource Brush.Warn}" />
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding Grade}" Value="bad">
+                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeBad}">
                                         <Setter TargetName="Dot" Property="Background"
                                                 Value="{DynamicResource Brush.Bad}" />
                                     </DataTrigger>

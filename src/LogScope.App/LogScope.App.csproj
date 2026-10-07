@@ -134,6 +134,7 @@
     <Compile Include="Themes\ThemeManager.cs" />
     <Compile Include="Infrastructure\ObservableObject.cs" />
     <Compile Include="Infrastructure\RelayCommand.cs" />
+    <Compile Include="Infrastructure\CardTag.cs" />
     <Compile Include="Infrastructure\Converters.cs" />
     <Compile Include="Services\AppState.cs" />
     <Compile Include="Services\BackgroundJob.cs" />

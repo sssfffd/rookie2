@@ -8,10 +8,18 @@ namespace LogScope.App.Infrastructure
     /// <summary>참이면 보이고 거짓이면 자리까지 없앱니다.</summary>
     public sealed class BoolToVisibility : IValueConverter
     {
+        /// <summary>
+        /// 뒤집어 쓸 때 XAML 이 넘기는 글자.
+        /// <c>ConverterParameter="{x:Static inf:BoolToVisibility.Invert}"</c>
+        /// 로 쓰세요 — 글자를 직접 적으면 대소문자가 하나 틀려도 아무 말 없이
+        /// 안 뒤집힙니다.
+        /// </summary>
+        public const string Invert = "invert";
+
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             bool on = value is bool && (bool)value;
-            if (parameter as string == "invert") on = !on;
+            if (parameter as string == Invert) on = !on;
             return on ? Visibility.Visible : Visibility.Collapsed;
         }
 

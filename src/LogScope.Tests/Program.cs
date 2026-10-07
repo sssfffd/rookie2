@@ -2771,12 +2771,12 @@ namespace LogScope.Tests
             // ---- 값이 바뀐 행 : 바뀐 열마다 한 줄 ----
             int changed = 0;
             for (int i = 0; i < lines.Count; i++)
-                if (lines[i].Kind == "행" && lines[i].Change == "달라짐") changed++;
+                if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Change == DbDiffLine.ChangeDiff) changed++;
             Check("바뀐 열마다 한 줄", changed == 2, "실제 " + changed);
 
             DbDiffLine bb = null;
             for (int i = 0; i < lines.Count; i++)
-                if (lines[i].Kind == "행" && lines[i].Column == "b" && lines[i].Change == "달라짐")
+                if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Column == "b" && lines[i].Change == DbDiffLine.ChangeDiff)
                     bb = lines[i];
             Check("바뀐 값이 칸에 하나씩", bb != null && bb.Before == "10" && bb.After == "11",
                   bb == null ? "없음" : bb.Before + " / " + bb.After);
@@ -2785,7 +2785,7 @@ namespace LogScope.Tests
             // ---- 없어진 행 : 열마다 한 줄, 이후 칸은 빈 칸 ----
             var gone = new List<DbDiffLine>();
             for (int i = 0; i < lines.Count; i++)
-                if (lines[i].Kind == "행" && lines[i].Change == "없어짐") gone.Add(lines[i]);
+                if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Change == DbDiffLine.ChangeGone) gone.Add(lines[i]);
             Check("없어진 행을 열마다 펼침", gone.Count == 3, "실제 " + gone.Count);
             Check("없어진 행의 이후 칸은 빔", gone[0].After.Length == 0, gone[0].After);
 
@@ -2797,7 +2797,7 @@ namespace LogScope.Tests
 
             var born = new List<DbDiffLine>();
             for (int i = 0; i < lines.Count; i++)
-                if (lines[i].Kind == "행" && lines[i].Change == "생김") born.Add(lines[i]);
+                if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Change == DbDiffLine.ChangeAdded) born.Add(lines[i]);
             Check("생긴 행도 열마다", born.Count == 3, "실제 " + born.Count);
             Check("생긴 행의 이전 칸은 빔", born[0].Before.Length == 0, born[0].Before);
 
@@ -2808,8 +2808,8 @@ namespace LogScope.Tests
             {
                 if (lines[i].Table != "only_b") continue;
                 onlyAll++;
-                if (lines[i].Kind == "행") onlyRows++;
-                if (lines[i].Kind == "표") head = lines[i];
+                if (lines[i].Kind == DbDiffLine.KindRow) onlyRows++;
+                if (lines[i].Kind == DbDiffLine.KindTable) head = lines[i];
             }
             Check("표가 한쪽에만 있으면 행은 안 펼침", onlyRows == 0, "실제 " + onlyRows);
             Check("그래도 열 모양은 적음", onlyAll == 2, "실제 " + onlyAll);
@@ -2838,7 +2838,7 @@ namespace LogScope.Tests
             List<DbDiffLine> cut = DbDiffList.Build(d, opt);
             bool said = false;
             for (int i = 0; i < cut.Count; i++)
-                if (cut[i].Kind == "알림" && cut[i].Note.Contains("상한")) said = true;
+                if (cut[i].Kind == DbDiffLine.KindNote && cut[i].Note.Contains("상한")) said = true;
             Check("표 상한을 밝힘", said, null);
             // 한 표가 상한에 걸려도 다음 표는 그대로 나옵니다.
             int after = 0;
@@ -2858,7 +2858,7 @@ namespace LogScope.Tests
             List<DbDiffLine> flat = DbDiffList.Build(d, opt3);
             int flatGone = 0;
             for (int i = 0; i < flat.Count; i++)
-                if (flat[i].Kind == "행" && flat[i].Change == "없어짐") flatGone++;
+                if (flat[i].Kind == DbDiffLine.KindRow && flat[i].Change == DbDiffLine.ChangeGone) flatGone++;
             Check("묶으면 행 하나에 한 줄", flatGone == 1, "실제 " + flatGone);
 
             // ---- CSV ----
@@ -2897,6 +2897,28 @@ namespace LogScope.Tests
             Check("채운 v2 도 나감", filled.Contains("°C"), filled);
             Check("채운 v1·v2 가 설명 글에도", bb.Tip.Contains("180") && bb.Tip.Contains("°C"), bb.Tip);
             bb.V1 = string.Empty; bb.V2 = string.Empty;
+
+            // 갈래·구분에는 정해 둔 글자만 들어가야 합니다. 어딘가에서
+            // 글자를 손으로 적어 넣으면 (상수를 안 쓰면) 여기서 걸립니다 —
+            // DbVm 은 알림 줄을 빼낼 때 이 글자를 견주므로, 하나만 어긋나도
+            // 알림이 목록에 섞여 나옵니다.
+            var okKind = new List<string>
+            {
+                DbDiffLine.KindTable, DbDiffLine.KindColumn,
+                DbDiffLine.KindRow, DbDiffLine.KindNote,
+            };
+            var okChange = new List<string>
+            {
+                string.Empty, DbDiffLine.ChangeAdded, DbDiffLine.ChangeGone,
+                DbDiffLine.ChangeDiff, DbDiffLine.ChangeMoved,
+            };
+            string strange = null;
+            for (int i = 0; i < lines.Count && strange == null; i++)
+            {
+                if (!okKind.Contains(lines[i].Kind)) strange = "갈래 " + lines[i].Kind;
+                else if (!okChange.Contains(lines[i].Change)) strange = "구분 " + lines[i].Change;
+            }
+            Check("갈래·구분은 정해 둔 글자뿐", strange == null, strange);
 
             // 마우스 설명에는 잘린 값이 다 들어 있어야 합니다.
             Check("설명 글에 값이 다 있음",
@@ -3249,11 +3271,11 @@ namespace LogScope.Tests
             // 되돌아와야 합니다. 그대로 두면 어느 단추도 안 켜진 채 뜹니다.
             s.ValueScaleMode = "normalized";
             AppSettings old = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
-            Check("없앤 눈금은 값 그대로로", old.ValueScaleMode == "raw", old.ValueScaleMode);
+            Check("없앤 눈금은 값 그대로로", old.ValueScaleMode == AppSettings.ScaleRaw, old.ValueScaleMode);
 
-            s.ValueScaleMode = "delta";
+            s.ValueScaleMode = AppSettings.ScaleDelta;
             AppSettings keep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
-            Check("차이 눈금은 그대로 남음", keep.ValueScaleMode == "delta", keep.ValueScaleMode);
+            Check("차이 눈금은 그대로 남음", keep.ValueScaleMode == AppSettings.ScaleDelta, keep.ValueScaleMode);
 
             // 차이 영역 표시와 파형 분리 보기는 같이 켜지지 않습니다. 둘을 따로
             // 켜던 시절의 설정 파일이 남아 있어도 화면에서 만들 수 없는 상태로

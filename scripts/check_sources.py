@@ -101,7 +101,12 @@ for x in xamls:
     t = read(x)
     cb = x + '.cs'
     if not os.path.exists(cb): continue
-    if 'SetResourceReference(Border.BackgroundProperty' not in read(cb): continue
+    code = read(cb)
+    # 되돌리는 일을 CardTag 로 옮겼으므로(0.76) 그 호출도 셉니다. 전에는
+    # SetResourceReference 글자만 찾아서, 그 줄을 다른 파일로 옮긴 날부터
+    # 이 검사가 조용히 두 화면을 건너뛰게 됩니다.
+    if ('SetResourceReference(Border.BackgroundProperty' not in code
+            and 'CardTag.Lit' not in code): continue
     for m in re.finditer(r'<(\w[\w\.:]*)\b([^>]*?AllowDrop="True"[^>]*?)/?>', t, re.S):
         el, attrs = m.group(1), m.group(2)
         tag = re.search(r'\bTag="([^"]*)"', attrs)
@@ -180,6 +185,47 @@ for c in css:
         head = (0, 0, 0)          # 새 파일. 균형이 맞으면 (0,0,0) 입니다.
     if now != head:
         bad('괄호 균형이 바뀜 %s HEAD=%s 지금=%s' % (rel, head, now))
+
+# 7) XAML 의 x:Static 이 가리키는 상수가 실제로 있는가
+#
+#    글자 열쇠(상태 · 갈래 · 칸 이름)를 한 곳에 모으고 XAML 이 x:Static 으로
+#    읽게 했습니다. 그런데 XAML 은 여기서 컴파일되지 않습니다 — 이름을 잘못
+#    적으면 Windows 에서 창이 뜰 때 터지거나, 트리거가 조용히 안 걸립니다.
+#    그래서 가리키는 이름이 코드에 있는지 여기서 봅니다.
+#    타입은 파일 이름으로 찾지 않습니다 — 한 파일에 클래스가 여럿 있을 수
+#    있습니다 (ScoreBands 는 AnalysisCardVm.cs 안에 있습니다).
+cs_text = {}
+for c in css:
+    body = read(c)
+    for typ in re.findall(r'\b(?:class|struct|enum)\s+(\w+)', body):
+        cs_text[typ] = body
+
+for x in xamls:
+    rel = os.path.relpath(x, ROOT)
+    for ref in re.findall(r'\{x:Static\s+([A-Za-z_][\w]*):([A-Za-z_]\w*)\.([A-Za-z_]\w*)\}', read(x)):
+        _pfx, typ, member = ref
+        src = cs_text.get(typ)
+        if src is None:
+            bad('x:Static 대상 없음 %s.%s (%s 파일을 못 찾음) <- %s' % (typ, member, typ, rel))
+            continue
+        if not re.search(r'(?:const|static|readonly)[^;=\n]*\b' + member + r'\b\s*(?:=|\{|;)', src):
+            bad('x:Static 대상 없음 %s.%s <- %s' % (typ, member, rel))
+
+# 8) XAML 의 Tag 글자를 코드 비하인드가 아는가
+#
+#    Tag="before" 처럼 적어 둔 글자를 code-behind 가 == 로 견줍니다. 한쪽만
+#    고치면 컴파일도 되고 화면도 뜨는데 단추가 반대쪽으로 듭니다 (0.59 에
+#    드롭 칸 색이 그렇게 틀렸습니다).
+#    쪽 글자는 CardTag 한 곳에 상수로 있습니다. 그래서 그 화면의 코드
+#    비하인드만 보지 않고 App 쪽 코드 전체에서 찾습니다.
+app_code = ''.join(read(c) for c in css if '/LogScope.App/' in c.replace('\\', '/'))
+for x in xamls:
+    rel = os.path.relpath(x, ROOT)
+    for raw in re.findall(r'\bTag="([^"{}]+)"', read(x)):
+        word = raw.split('|')[0].strip()
+        if not word: continue
+        if ('"%s"' % word) not in app_code:
+            bad('Tag 글자를 코드가 모름 "%s" <- %s' % (word, rel))
 
 # 6) csproj 파일 목록과 디스크가 맞는가
 for proj in glob.glob(ROOT + '/src/*/*.csproj'):

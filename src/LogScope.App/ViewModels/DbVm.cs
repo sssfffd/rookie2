@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -202,7 +202,7 @@ namespace LogScope.App.ViewModels
             for (int i = 0; i < lines.Count; i++)
             {
                 DbDiffLine ln = lines[i];
-                if (ln.Kind != "알림") { kept.Add(ln); continue; }
+                if (ln.Kind != DbDiffLine.KindNote) { kept.Add(ln); continue; }
 
                 string text = ln.Table.Length > 0 ? ln.Table + " — " + ln.Note : ln.Note;
                 if (text.Length > 0 && seen.Add(text) && notes.Count < 20) notes.Add(text);

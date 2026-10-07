@@ -51,14 +51,25 @@ namespace LogScope.App.ViewModels
             }
         }
 
-        private string _status = "same";
         /// <summary>
-        /// 줄 색을 정하는 값. XAML 의 DataTrigger 가 이 글자를 봅니다.
-        ///   same        양쪽에 있고 값도 같음
-        ///   changed     양쪽에 있는데 값이 다름
-        ///   onlyBefore  이전 로그에만 있음
-        ///   onlyAfter   이후 로그에만 있음
+        /// <see cref="Status"/> 에 들어갈 수 있는 글자. <b>여기 넷이 전부입니다.</b>
+        ///
+        /// 글자로 둔 이유: XAML 의 DataTrigger 가 이 값을 보고 줄 색을 정하는데,
+        /// enum 을 쓰면 XAML 에서 쓰기가 번거롭습니다.
+        ///
+        /// <b>글자를 직접 적지 마세요.</b> 쓰는 쪽(ChannelListVm)과 읽는 쪽
+        /// (아래 SideNote, GraphView.xaml 의 색 규칙 셋)에 같은 글자가 따로
+        /// 적혀 있으면, 한 군데만 고쳤을 때 <b>컴파일도 되고 줄 색만 조용히
+        /// 안 나옵니다.</b> XAML 쪽도 x:Static 으로 이 상수를 읽습니다.
         /// </summary>
+        public const string StatusSame = "same";              // 양쪽에 있고 값도 같음
+        public const string StatusChanged = "changed";        // 양쪽에 있는데 값이 다름
+        public const string StatusOnlyBefore = "onlyBefore";  // 이전 로그에만 있음
+        public const string StatusOnlyAfter = "onlyAfter";    // 이후 로그에만 있음
+
+        private string _status = StatusSame;
+
+        /// <summary>줄 색을 정하는 값. 위 넷 중 하나입니다.</summary>
         public string Status
         {
             get { return _status; }
@@ -71,8 +82,8 @@ namespace LogScope.App.ViewModels
             {
                 switch (_status)
                 {
-                    case "onlyBefore": return "이전에만";
-                    case "onlyAfter": return "이후에만";
+                    case StatusOnlyBefore: return "이전에만";
+                    case StatusOnlyAfter: return "이후에만";
                     default: return string.Empty;
                 }
             }

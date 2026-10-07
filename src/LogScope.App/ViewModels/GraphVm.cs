@@ -91,8 +91,8 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public bool ScaleRaw
         {
-            get { return S.ValueScaleMode != "delta"; }
-            set { if (value) SetScale("raw"); }
+            get { return S.ValueScaleMode != AppSettings.ScaleDelta; }
+            set { if (value) SetScale(AppSettings.ScaleRaw); }
         }
 
         /// <summary>
@@ -114,8 +114,8 @@ namespace LogScope.App.ViewModels
         /// </summary>
         public bool ScaleDelta
         {
-            get { return S.ValueScaleMode == "delta"; }
-            set { if (value) SetScale("delta"); }
+            get { return S.ValueScaleMode == AppSettings.ScaleDelta; }
+            set { if (value) SetScale(AppSettings.ScaleDelta); }
         }
 
         public bool FitVisible

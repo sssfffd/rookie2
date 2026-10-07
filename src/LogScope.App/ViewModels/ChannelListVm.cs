@@ -137,9 +137,9 @@ namespace LogScope.App.ViewModels
 
         private string StatusOf(IoRowVm vm, LogDataset before, LogDataset after)
         {
-            if (!vm.InAfter && before != null && after != null) return "onlyBefore";
-            if (!vm.InBefore && before != null && after != null) return "onlyAfter";
-            return _changedNames.Contains(vm.Name) ? "changed" : "same";
+            if (!vm.InAfter && before != null && after != null) return IoRowVm.StatusOnlyBefore;
+            if (!vm.InBefore && before != null && after != null) return IoRowVm.StatusOnlyAfter;
+            return _changedNames.Contains(vm.Name) ? IoRowVm.StatusChanged : IoRowVm.StatusSame;
         }
 
         private void Add(IoRowVm vm)
