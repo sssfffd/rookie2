@@ -27,33 +27,38 @@
              이후 칸이 있어 거기에 끌어다 놓으면 되고, 분석 2 · 3 에는 아직
              아무것도 없습니다.
         -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,6">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.TopBar}" Padding="12,5">
+            <!--
+              위 줄이 두 줄입니다.
+
+                윗줄   프로그램 이름 · 화면 단추 · 그 화면의 메뉴
+                아랫줄 긴 이름 · 판 번호
+
+              긴 이름을 이름 <b>옆</b>에 두면 화면 단추를 밀고 들어옵니다.
+              폭을 가둬 잘라 봐도 가둔 만큼은 먹습니다 (0.66 에서 그렇게 했다가
+              그래도 길다고 하셨습니다).
+
+              <b>아랫줄로 내리면 미는 것이 없습니다.</b> 그 줄에는 단추가
+              없어서, 창 폭까지 길게 적어도 윗줄은 그대로입니다. 대신 작은
+              글자 한 줄(약 15 픽셀)만큼 아래 화면이 줄어듭니다.
+            -->
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- 왼쪽 : 프로그램 이름과 화면 전환 -->
-                <WrapPanel Grid.Column="0" VerticalAlignment="Center">
+                <WrapPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding ProductName}" FontSize="17" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.TopBarText}"
                                VerticalAlignment="Center" Margin="2,0,4,0"
                                ToolTip="{Binding NameTip}" />
-                    <!--
-                      긴 이름(config.txt 의 fullname)은 여기 적지 않습니다.
-                      이 줄은 화면 단추가 함께 쓰는 자리라, 길게 적으면 단추를
-                      밀고 들어옵니다. 폭을 가둬 "…" 로 잘라 봤지만 그래도
-                      자리를 먹었습니다.
-
-                      대신 <b>창 제목</b>이 맡습니다 (ShellVm.WindowTitle).
-                      운영 체제가 이미 그려 주는 자리라 화면을 더 쓰지 않고,
-                      작업 표시줄과 Alt+Tab 에도 그대로 나옵니다. 프로그램
-                      안에서는 이름에 마우스를 올리면 나옵니다.
-                    -->
-                    <TextBlock Text="{Binding VersionText}" FontSize="11"
-                               Foreground="{DynamicResource Brush.TopBarMuted}"
-                               VerticalAlignment="Bottom" Margin="0,0,14,3" />
+                    <!-- 긴 이름과 판 번호는 아랫줄입니다 (이 Grid 의 Row 1). -->
 
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabMain}"
@@ -76,7 +81,7 @@
                 </WrapPanel>
 
                 <!-- 오른쪽 : 그 화면에서 할 일 -->
-                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                <WrapPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
                     <!--
                       대시보드 · 그래프 · 히트맵은 <b>분석 1 안에서만</b> 뜻이
                       있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
@@ -115,6 +120,26 @@
                     <Button Style="{StaticResource TopBarButton}" Content="설정"
                             Click="OnSettings" Margin="10,3,3,3" />
                 </WrapPanel>
+
+                <!--
+                  아랫줄 : 긴 이름과 판 번호. 이름 왼쪽 끝에 맞춰 시작합니다.
+
+                  두 칸에 걸칩니다. 미는 것이 없으니 길이를 가두지 않고, 창
+                  폭을 넘을 때만 "…" 로 자릅니다 (전체는 마우스를 올리면
+                  나오고, 창 제목에도 같은 글이 있습니다).
+
+                  긴 이름을 안 적었으면 판 번호만 남습니다.
+                -->
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal"
+                            Margin="2,1,0,0">
+                    <TextBlock Text="{Binding FullNameText}" FontSize="11"
+                               Foreground="{DynamicResource Brush.TopBarMuted}"
+                               TextTrimming="CharacterEllipsis" Margin="0,0,8,0"
+                               ToolTip="{Binding FullNameText}"
+                               Visibility="{Binding FullNameText, Converter={StaticResource TextToVisibility}}" />
+                    <TextBlock Text="{Binding VersionText}" FontSize="11"
+                               Foreground="{DynamicResource Brush.TopBarMuted}" />
+                </StackPanel>
             </Grid>
         </Border>
 

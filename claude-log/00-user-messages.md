@@ -867,3 +867,11 @@
 > 근데 fullname 넣으면 좀 많이 길어지는데 방법이 없나?
 
 → 답변: [53-groups-txt.md](53-groups-txt.md) 의 뒷이야기
+
+---
+
+## 요청 75 — 긴 이름을 이름 아래부터
+
+> 지금 fullname이 sw name오른쪽 아래 들어가는데 그냥 아래부터 시작되게 가능?
+
+→ 답변: [53-groups-txt.md](53-groups-txt.md) 의 뒷이야기 2
