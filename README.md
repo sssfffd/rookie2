@@ -550,6 +550,27 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
 
 두 DB 한 벌을 견주고, **차이를 맞추는 SQL 을 만들어 줍니다.**
 
+### 고칠 때 여는 파일 — 다섯 개 (0.73)
+
+DB 쪽 코드는 `src/LogScope.Core/Db/` 에 **다섯 파일**입니다. 전에는 열
+파일이어서 "값 하나를 더 보여 주려면 어디를 고치나" 에 답하기가 어려웠습니다.
+
+| 파일 | 무엇이 | 언제 여나 |
+|---|---|---|
+| **`DbRead.cs`** | 폴더 훑기 · `.sql` · `.csv` | **새 형식을 더하거나 읽는 법을 고칠 때** |
+| **`DbCompare.cs`** | 견주기 · 화면 목록 줄 | **목록에 칸을 더하거나 IO명 · v1 · v2 를 채울 때** |
+| `DbSql.cs` | 맞추는 SQL · `CREATE TABLE` 글 | 만들어 주는 SQL 을 고칠 때 |
+| `DbReadMysql.cs` | `.frm` · mysqldump · ibd2sdi | 거의 안 엽니다 |
+| `DbModel.cs` | 자료 모양 | 읽기만 하는 참고서 |
+
+```
+파일/폴더 → DbRead → DbTable → DbCompare → 화면 목록
+                                   └→ DbSql → 맞추는 SQL
+```
+
+화면 쪽은 `src/LogScope.App/` 의 `ViewModels/DbVm.cs` 와
+`Views/DbView.xaml(.cs)` 둘입니다.
+
 ### 어디를 읽나 — config.txt
 
 ```
@@ -776,7 +797,7 @@ SHOW VARIABLES LIKE 'datadir';
 
 ### [표 정의 저장] 은 없앴습니다 (0.64)
 
-단추를 뺐습니다. 만드는 코드(`Core/Db/DbCreateSql.cs`)는 시험까지 그대로
+단추를 뺐습니다. 만드는 코드(`Core/Db/DbSql.cs` 의 `DbCreateSql`)는 시험까지 그대로
 남아 있으니, 다시 필요하면 단추 하나만 붙이면 됩니다. 아래는 그 글이 무엇이었는지의 기록입니다.
 
 #### 읽은 모양을 CREATE TABLE 로
@@ -892,7 +913,7 @@ db.dump.after  = --login-path=new --databases mydb
 **[DB 읽기]** 로 견주고, 아래 칸에 나온 글을 **[SQL 글 저장]** 으로 저장합니다.
 방향은 늘 **`이전 → 이후`** 입니다 — 이전 DB 를 이후와 같게 만드는 글입니다
 (0.71 에서 고르는 것을 뺐습니다). 만든 글 머리에 어느 방향인지 적혀 있습니다.
-되돌리는 글을 만드는 길은 `Core/Db/SqlScript.cs` 에 그대로 있습니다
+되돌리는 글을 만드는 길은 `Core/Db/DbSql.cs` 에 그대로 있습니다
 (`Direction.ToBefore`) — 다시 필요하면 단추 하나입니다.
 
 ```sql

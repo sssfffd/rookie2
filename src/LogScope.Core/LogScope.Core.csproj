@@ -76,15 +76,10 @@
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\GroupFile.cs" />
     <Compile Include="Db\DbModel.cs" />
-    <Compile Include="Db\SqlDumpReader.cs" />
-    <Compile Include="Db\CsvTableReader.cs" />
-    <Compile Include="Db\DbFolderReader.cs" />
-    <Compile Include="Db\DbDiff.cs" />
-    <Compile Include="Db\DbDiffList.cs" />
-    <Compile Include="Db\FrmReader.cs" />
-    <Compile Include="Db\DbCreateSql.cs" />
-    <Compile Include="Db\SqlScript.cs" />
-    <Compile Include="Db\DbTools.cs" />
+    <Compile Include="Db\DbRead.cs" />
+    <Compile Include="Db\DbReadMysql.cs" />
+    <Compile Include="Db\DbCompare.cs" />
+    <Compile Include="Db\DbSql.cs" />
     <Compile Include="Ai\AiBridge.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
