@@ -171,6 +171,10 @@ if not "%RC%"=="0" (
   if exist "%ERRLOG%" type "%ERRLOG%"
   echo   ------------------------------------------------------------
   call :msg " 전체 내용은 build.log 에 있습니다." " The full log is in build.log."
+  call :msg " VS 에서 성공했다면 LogScope.Tests 를 안 빌드했을 수 있습니다." " If VS succeeded, it may not have built LogScope.Tests."
+  call :msg " VS 는 시작 프로젝트와 그것이 참조하는 것만 빌드하고," " VS builds only the startup project and what it"
+  call :msg " LogScope.App 은 Tests 를 참조하지 않습니다." " references; LogScope.App does not reference Tests."
+  call :msg " VS 에서 같이 보려면 [빌드] - [솔루션 빌드] 입니다." " In VS use Build - Build Solution to see the same."
   goto :fail
 )
 
@@ -186,6 +190,9 @@ call :cp
 if not "%RC%"=="0" (
   echo.
   call :msg "[오류] 테스트가 실패했습니다. 위의 FAIL 줄을 보세요." "[error] A test failed. See the FAIL lines above."
+  call :msg "       Visual Studio 에서는 성공으로 보일 수 있습니다." "       Visual Studio can still look green here:"
+  call :msg "       VS 는 테스트를 돌리지 않습니다. 여기만 돌립니다." "       VS does not run the tests. Only this does."
+  call :msg "       테스트 없이 빌드만: build.bat Release nt" "       Build without tests: build.bat Release nt"
   goto :fail
 )
 

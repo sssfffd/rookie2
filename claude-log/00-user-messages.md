@@ -991,3 +991,13 @@
 > 발생한 IO만 보기 기능도 추가해줘 / SQL 저장 대신 sql문 출력으로 바꿔주고
 
 → 답변: [63-headline-colors-filter.md](63-headline-colors-filter.md)
+
+---
+
+## 요청 89 — VS 는 성공, 배치는 실패 / 테스트는 왜 있나
+
+> 내가 db안에 파일들 고치니까 visual studio에서는 빌드 성공하는데
+> 배치파일은 fail이 뜸
+> 그리고 test 코드들은 목적이 뭐야 없어도돼?
+
+→ 답변: [64-vs-vs-batch.md](64-vs-vs-batch.md)

@@ -260,6 +260,28 @@ src\LogScope.App\bin\Release\LogScope.exe   <- Release 로 빌드한 자리
 src\LogScope.App\bin\Debug\LogScope.exe     <- Visual Studio 에서 F5 로 돌릴 때
 ```
 
+### Visual Studio 는 성공인데 build.bat 은 실패한다면
+
+`build.bat` 이 두 가지를 더 합니다.
+
+| | VS (F5 · 프로젝트 빌드) | build.bat |
+|---|---|---|
+| `LogScope.Tests` 를 빌드 | **안 함** | 함 |
+| 테스트를 돌림 | **안 함** | 함 |
+
+VS 는 **시작 프로젝트와 그것이 참조하는 것만** 빌드하고, `LogScope.App`
+은 `Tests` 를 참조하지 않습니다. VS 에서 같이 보려면 **[빌드] → [솔루션
+빌드]** 입니다.
+
+화면의 글이 어느 쪽인지 말해 줍니다.
+
+```
+빌드 실패. 오류 줄만 추려 보면:     ← Tests 가 컴파일 안 됨
+[오류] 테스트가 실패했습니다.        ← 테스트가 실패
+```
+
+테스트 없이 exe 만 받으려면 `build.bat Release nt` 입니다.
+
 ### Visual Studio 에서 F5 가 엉뚱한 걸 실행한다면
 
 솔루션 탐색기에서 **LogScope.App 을 오른쪽 클릭 → "시작 프로젝트로 설정"**.

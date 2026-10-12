@@ -2888,18 +2888,29 @@ namespace LogScope.Tests
             Check("열 줄의 IO 는 열 이름", col.Io == "a", col.Io);
             Check("한쪽에만 있는 표의 머리는 표 이름", head.Io == "only_b", head.Io);
 
-            // v1 · v2 는 쓰는 쪽이 채우는 빈 칸입니다. 비어 있어야 합니다 —
-            // 아무 값이나 채워 두면 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
-            Check("v1 은 비어 있음", bb.V1.Length == 0, bb.V1);
-            Check("v2 도 비어 있음", bb.V2.Length == 0, bb.V2);
+            // v1 · v2 는 <b>쓰는 쪽이 채우는 칸</b>입니다.
+            //
+            // 전에는 여기서 "Build 가 만든 줄의 v1 은 비어 있어야 한다" 를
+            // 봤습니다. 그건 틀린 시험이었습니다 — 그 칸을 채우는 것이
+            // 바로 쓰는 쪽이 할 일이고, 채우자마자 이 시험이 실패했습니다.
+            // 시험이 "하라고 알려 준 일" 을 막아서는 안 됩니다 (0.83).
+            //
+            // 그래서 두 가지만 봅니다.
+            //   1. 아무것도 안 하면 기본값이 빈 글자 (지어낸 값이 아님)
+            //   2. 채우면 CSV 와 마우스 설명 글에 그대로 나감
+            Check("새 줄의 v1 · v2 기본값은 빈 글자",
+                  new DbDiffLine().V1.Length == 0 && new DbDiffLine().V2.Length == 0, null);
 
-            // 채우면 CSV 와 마우스 설명에 그대로 나갑니다.
-            bb.V1 = "180"; bb.V2 = "°C";
-            string filled = DbDiffList.ToCsv(new List<DbDiffLine> { bb });
+            var mine = new DbDiffLine
+            {
+                Table = "t", Io = "id=1", Kind = DbDiffLine.KindRow,
+                V1 = "180", V2 = "°C",
+            };
+            string filled = DbDiffList.ToCsv(new List<DbDiffLine> { mine });
             Check("채운 v1 이 CSV 에 나감", filled.Contains("180"), filled);
             Check("채운 v2 도 나감", filled.Contains("°C"), filled);
-            Check("채운 v1·v2 가 설명 글에도", bb.Tip.Contains("180") && bb.Tip.Contains("°C"), bb.Tip);
-            bb.V1 = string.Empty; bb.V2 = string.Empty;
+            Check("채운 v1·v2 가 설명 글에도",
+                  mine.Tip.Contains("180") && mine.Tip.Contains("°C"), mine.Tip);
 
             // 갈래·구분에는 정해 둔 글자만 들어가야 합니다. 어딘가에서
             // 글자를 손으로 적어 넣으면 (상수를 안 쓰면) 여기서 걸립니다 —
