@@ -972,3 +972,11 @@
 > 어딘지 알려주셈
 
 → 답변: [61-sql-pane-out-dragdrop.md](61-sql-pane-out-dragdrop.md)
+
+---
+
+## 요청 87 — 끌어다 놓기는 각 칸에
+
+> 아니 끌어다 놓는 거는 로그 분석처럼 각 칸에 들어갈 수 있게 해야자
+
+→ 답변: [62-drop-cards.md](62-drop-cards.md)

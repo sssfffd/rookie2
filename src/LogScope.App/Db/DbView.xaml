@@ -19,13 +19,7 @@
         </Style>
     </UserControl.Resources>
 
-    <!--
-      화면 전체가 끌어다 놓기를 받습니다. 두 칸(이전 · 이후)은 자기
-      Drop 을 먼저 받고 e.Handled 로 멈추므로, 여기까지 올라오는 것은
-      "칸 밖에 놓은 것" 뿐입니다.
-    -->
-    <DockPanel AllowDrop="True" DragOver="OnAnyDragOver"
-               DragLeave="OnAnyDragLeave" Drop="OnAnyDrop">
+    <DockPanel>
 
         <!-- 위: 어디를 견주는지와 단추들 -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Panel}"
@@ -48,12 +42,15 @@
                 </WrapPanel>
 
                 <!--
-                  견줄 두 자리. 정한 자리는 설정 파일에 적혀서 다음에
-                  켤 때도 그대로입니다.
+                  견줄 DB 두 벌. <b>메인 화면의 로그 칸과 같은 모양</b>입니다 —
+                  같은 일(끌어다 놓아 자리를 정하는 것)을 두 화면에서 다르게
+                  생기게 둘 이유가 없습니다.
 
-                  끌어다 놓기는 <b>화면 아무 데나</b> 됩니다 (0.80) —
-                  칸 위에 놓으면 그 쪽, 빈 데 놓으면 비어 있는 쪽,
-                  둘을 한꺼번에 놓으면 첫째가 이전 둘째가 이후입니다.
+                  칸 안의 TextBox 에 AllowDrop="False" 가 붙어 있어야 합니다.
+                  TextBox 는 파일 드롭을 받지도 않고 위로 올려 보내지도 않아서,
+                  그게 없으면 칸의 거의 전부가 "놓아도 아무 일 없는" 자리가
+                  됩니다 (0.80 에서 겪었습니다). 메인 화면 칸은 안에 TextBox 가
+                  없어서 처음부터 됐던 것입니다.
                 -->
                 <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>
@@ -61,77 +58,92 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="이전" FontWeight="Bold"
-                               Foreground="{DynamicResource Brush.Before}"
-                               VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <!--
-                      칸에 직접 타 넣거나 붙여넣어도 됩니다. 탐색기 주소 칸에서
-                      복사해 오는 것이 창을 띄워 찾는 것보다 빠를 때가 많습니다.
-                      폴더든 파일이든 됩니다.
-                    -->
-                    <Border Grid.Row="0" Grid.Column="1" Tag="before|Brush.Window"
-                            Background="{DynamicResource Brush.Window}"
-                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="3" Padding="2" Margin="0,0,6,0"
-                            AllowDrop="True" DragOver="OnPathDragOver"
-                            DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <!--
-                          AllowDrop="False" 가 중요합니다. TextBox 는 기본으로
-                          끌어다 놓기를 받고(글자를 받으려고), 파일을 놓으면
-                          <b>받지도 않고 위로 올려 보내지도 않습니다.</b> 그러면
-                          칸 위에 놓은 파일이 조용히 아무 일도 안 합니다 —
-                          칸 넓이가 거의 이 TextBox 라서 "드래그가 안 된다" 가
-                          됩니다 (0.80 에서 고쳤습니다).
-                          대신 글자를 끌어다 넣는 것은 안 됩니다. 붙여넣기로 됩니다.
-                        -->
-                        <TextBox Text="{Binding BeforePath, Mode=TwoWay}" AllowDrop="False"
-                                 BorderThickness="0" Background="Transparent"
-                                 Padding="6,3" ToolTip="{Binding BeforePath}" />
-                    </Border>
-                    <Button Grid.Row="0" Grid.Column="2" Content="폴더" Tag="before"
-                            Click="OnPickPath" Margin="0,0,4,0"
-                            ToolTip="폴더를 고릅니다 (그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽습니다)." />
-                    <Button Grid.Row="0" Grid.Column="3" Content="파일" Tag="before"
-                            Click="OnPickFile"
-                            ToolTip="파일 하나를 고릅니다 (.sql 덤프 · .csv · .frm)." />
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                               Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
+                               Text="견줄 DB    (칸에 끌어다 놓으면 들어갑니다. 폴더도 파일도 됩니다)" />
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="이후" FontWeight="Bold"
-                               Foreground="{DynamicResource Brush.After}"
-                               VerticalAlignment="Center" Margin="0,6,8,0" />
-                    <!--
-                      칸에 직접 타 넣거나 붙여넣어도 됩니다. 탐색기 주소 칸에서
-                      복사해 오는 것이 창을 띄워 찾는 것보다 빠를 때가 많습니다.
-                      폴더든 파일이든 됩니다.
-                    -->
-                    <Border Grid.Row="1" Grid.Column="1" Tag="after|Brush.Window"
+                    <Border Grid.Row="1" Grid.Column="0" Tag="before|Brush.Window"
                             Background="{DynamicResource Brush.Window}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                            CornerRadius="3" Padding="2" Margin="0,6,6,0"
+                            CornerRadius="4" Padding="9,7"
                             AllowDrop="True" DragOver="OnPathDragOver"
                             DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <!--
-                          AllowDrop="False" 가 중요합니다. TextBox 는 기본으로
-                          끌어다 놓기를 받고(글자를 받으려고), 파일을 놓으면
-                          <b>받지도 않고 위로 올려 보내지도 않습니다.</b> 그러면
-                          칸 위에 놓은 파일이 조용히 아무 일도 안 합니다 —
-                          칸 넓이가 거의 이 TextBox 라서 "드래그가 안 된다" 가
-                          됩니다 (0.80 에서 고쳤습니다).
-                          대신 글자를 끌어다 넣는 것은 안 됩니다. 붙여넣기로 됩니다.
-                        -->
-                        <TextBox Text="{Binding AfterPath, Mode=TwoWay}" AllowDrop="False"
-                                 BorderThickness="0" Background="Transparent"
-                                 Padding="6,3" ToolTip="{Binding AfterPath}" />
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                            Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                    <TextBlock Text="이전" FontWeight="Bold" FontSize="12"
+                                               Foreground="{DynamicResource Brush.Before}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Content="폴더" Tag="before" Click="OnPickPath"
+                                            Padding="8,1" Margin="0,0,4,0"
+                                            ToolTip="폴더를 고릅니다 (그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽습니다)." />
+                                    <Button Content="파일" Tag="before" Click="OnPickFile"
+                                            Padding="8,1"
+                                            ToolTip="파일 하나를 고릅니다 (.sql 덤프 · .csv · .frm)." />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBox Text="{Binding BeforePath, Mode=TwoWay}" AllowDrop="False"
+                                     BorderThickness="0" Background="Transparent"
+                                     FontSize="11" Margin="0,5,0,0" Padding="0"
+                                     ToolTip="{Binding BeforePath}" />
+
+                            <TextBlock Text="{Binding BeforeNote}" Style="{StaticResource Muted}"
+                                       FontSize="10" Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
                     </Border>
-                    <Button Grid.Row="1" Grid.Column="2" Content="폴더" Tag="after"
-                            Click="OnPickPath" Margin="0,6,4,0" />
-                    <Button Grid.Row="1" Grid.Column="3" Content="파일" Tag="after"
-                            Click="OnPickFile" Margin="0,6,0,0" />
+
+                    <Border Grid.Row="1" Grid.Column="2" Tag="after|Brush.Window"
+                            Background="{DynamicResource Brush.Window}"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="4" Padding="9,7"
+                            AllowDrop="True" DragOver="OnPathDragOver"
+                            DragLeave="OnPathDragLeave" Drop="OnPathDrop">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                            Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                    <TextBlock Text="이후" FontWeight="Bold" FontSize="12"
+                                               Foreground="{DynamicResource Brush.After}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Content="폴더" Tag="after" Click="OnPickPath"
+                                            Padding="8,1" Margin="0,0,4,0" />
+                                    <Button Content="파일" Tag="after" Click="OnPickFile"
+                                            Padding="8,1" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBox Text="{Binding AfterPath, Mode=TwoWay}" AllowDrop="False"
+                                     BorderThickness="0" Background="Transparent"
+                                     FontSize="11" Margin="0,5,0,0" Padding="0"
+                                     ToolTip="{Binding AfterPath}" />
+
+                            <TextBlock Text="{Binding AfterNote}" Style="{StaticResource Muted}"
+                                       FontSize="10" Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
 
                 <TextBlock Text="{Binding PathText}" Style="{StaticResource Muted}"

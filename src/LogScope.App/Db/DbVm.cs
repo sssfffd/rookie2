@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Collections.ObjectModel;
 using System.Text;
 using LogScope.Db;
@@ -52,6 +53,7 @@ namespace LogScope.App.Db
             _settings = settings;
             Raise("BeforePath"); Raise("AfterPath");
             Raise("BeforeChosen"); Raise("AfterChosen");
+            Raise("BeforeNote"); Raise("AfterNote");
             Raise("HasPaths"); Raise("PathText");
         }
 
@@ -95,6 +97,35 @@ namespace LogScope.App.Db
             get { return _settings == null ? string.Empty : _settings.Ibd2SdiPath ?? string.Empty; }
         }
 
+        /// <summary>
+        /// 칸 아래에 작게 적는 글. <b>그 자리가 무엇인지</b> 말해 줍니다 —
+        /// 폴더인지 파일인지, 그리고 <b>있기는 한지</b>.
+        ///
+        /// 없는 자리를 말해 주는 것이 중요합니다. 경로를 손으로 타 넣다가
+        /// 한 글자 틀리면 [DB 읽기] 를 눌러야 알게 되는데, 그때 나오는 말은
+        /// "읽은 표가 없습니다" 라서 왜인지 알 수가 없습니다.
+        /// </summary>
+        public string BeforeNote { get { return Note(BeforePath); } }
+
+        public string AfterNote { get { return Note(AfterPath); } }
+
+        private static string Note(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return "끌어다 놓거나, 타 넣거나, 단추로 고르세요";
+
+            try
+            {
+                if (Directory.Exists(path)) return "폴더";
+                if (File.Exists(path)) return "파일";
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException
+                                   || e is ArgumentException || e is NotSupportedException)
+            {
+                return "들여다볼 수 없는 자리입니다";
+            }
+            return "이 자리에 아무것도 없습니다";
+        }
+
         /// <summary>자리가 바뀌었을 때. 저장은 창이 맡습니다.</summary>
         public event EventHandler PathsChanged;
 
@@ -121,6 +152,7 @@ namespace LogScope.App.Db
 
             Raise("BeforePath"); Raise("AfterPath");
             Raise("BeforeChosen"); Raise("AfterChosen");
+            Raise("BeforeNote"); Raise("AfterNote");
             Raise("HasPaths"); Raise("PathText");
 
             EventHandler h = PathsChanged;
@@ -138,11 +170,9 @@ namespace LogScope.App.Db
             {
                 if (!HasPaths)
                 {
-                    return "견줄 두 자리를 정해 주세요. [폴더] · [파일] 로 고르거나, 칸에 직접 타 넣거나, "
-                         + "칸에 폴더나 파일을 끌어다 놓으면 됩니다.\n"
-                         + "한 번 정하면 다음에 켤 때도 그 자리입니다.\n"
-                         + "폴더면 그 안의 .sql / .csv / .frm 을 (하위 폴더까지) 읽고, "
-                         + "파일 하나면 그 파일을 읽습니다.";
+                    return "폴더를 넣으면 그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽고, "
+                         + "파일 하나를 넣으면 그 파일만 읽습니다. "
+                         + "한 번 정하면 다음에 켤 때도 그 자리입니다.";
                 }
                 return string.Empty;
             }
