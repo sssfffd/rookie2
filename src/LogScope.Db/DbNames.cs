@@ -35,6 +35,26 @@
         public const string Note = "설명";
 
         /// <summary>
+        /// <b>v1 · v2 로 볼 DB 열 이름.</b> 대소문자는 가리지 않습니다.
+        ///
+        /// 이 열의 값이 달라진 줄은 목록에서 <b>노란색</b>이 되고, 다른 열이
+        /// 달라진 줄은 <b>빨간색</b>이 됩니다. 설비 DB 마다 열 이름이 다르면
+        /// 여기만 고치면 됩니다 — 색을 정하는 쪽(DbDiffList)과 화면은
+        /// 이 배열을 봅니다.
+        /// </summary>
+        public static readonly string[] SideColumns = { "v1", "v2" };
+
+        /// <summary>그 열 이름이 v1 · v2 쪽인가.</summary>
+        public static bool IsSide(string column)
+        {
+            if (string.IsNullOrEmpty(column)) return false;
+            for (int i = 0; i < SideColumns.Length; i++)
+                if (string.Equals(column, SideColumns[i], System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
         /// CSV 머리글에 들어갈 이름들. <b>순서가 CSV 가 쓰는 순서입니다</b> —
         /// <c>DbDiffList.ToCsv</c> 가 이 배열대로 머리글을 찍습니다. 칸을
         /// 더하거나 순서를 바꿀 때는 여기와 그 쪽 값 쓰는 줄을 같이 고치세요.

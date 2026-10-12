@@ -22,6 +22,9 @@
     <SolidColorBrush x:Key="Brush.Good"         Color="#FF54C176" />
     <SolidColorBrush x:Key="Brush.Warn"         Color="#FFE8B339" />
     <SolidColorBrush x:Key="Brush.Bad"          Color="#FFF06A5B" />
+    <!-- 줄을 칠하는 옅은 색. 값이 달라진 줄은 빨강, v1 · v2 가 달라진 줄은 노랑 (0.82) -->
+    <SolidColorBrush x:Key="Brush.BadSoft" Color="#4A2626" />
+    <SolidColorBrush x:Key="Brush.WarnSoft" Color="#4A4221" />
 
     <SolidColorBrush x:Key="Brush.Before"       Color="#FF5AA6FF" />
     <SolidColorBrush x:Key="Brush.After"        Color="#FFFF6E6E" />

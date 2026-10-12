@@ -69,3 +69,4 @@
 | `60-garbage-values.md` | 목록 칸 둘 지움 · CP949 덤프와 16진수 값이 쓰레기로 보이던 까닭 |
 | `61-sql-pane-out-dragdrop.md` | 맞추는 SQL 창 없앰 · TextBox 가 파일 드롭을 먹던 것 · 분석 2 코드 자리 |
 | `62-drop-cards.md` | 끌어다 놓기를 메인 화면 로그 칸과 같은 모양으로 · 없는 자리 알려 주기 |
+| `63-headline-colors-filter.md` | 세 숫자로 바꿈 · 줄 색(빨강·노랑) · 차이 난 IO만 보기 · SQL 문 출력 창 |

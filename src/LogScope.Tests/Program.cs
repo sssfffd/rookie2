@@ -120,6 +120,7 @@ namespace LogScope.Tests
                 DbCompare();
                 DbDiffLines();
                 DbColumnNames();
+                DbTallyAndMarks();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3134,6 +3135,94 @@ namespace LogScope.Tests
         private static string Show(string v)
         {
             return v == null ? "(NULL)" : v;
+        }
+
+        /// <summary>
+        /// 줄 색(Mark)과 화면 위 세 숫자(Tally).
+        ///
+        /// 둘 다 <b>보는 사람이 수를 믿을 수 있어야</b> 하는 자리입니다.
+        ///   · IO 를 셉니다 — 한 IO 가 세 열에서 달라져도 1 개입니다
+        ///   · v1 · v2 가 달라진 줄은 노랑, 다른 열은 빨강
+        ///   · 생기거나 없어진 줄은 칠하지 않고 따로 셉니다
+        /// </summary>
+        private static void DbTallyAndMarks()
+        {
+            Console.WriteLine("DB — 줄 색과 세 숫자");
+
+            string before =
+                // 기본 키가 있어야 행이 짝지어집니다. 없으면 모든 열로
+                // 짝지어서 "달라짐" 이 "없어짐 + 생김" 으로 보입니다.
+                "CREATE TABLE `t` (`id` int, `a` varchar(8), `b` varchar(8), `v1` varchar(8),\n" +
+                "  PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `t` VALUES " +
+                "(1,'x','y','10'),(2,'x','y','10'),(3,'사라짐','y','10');\n";
+            string after =
+                "CREATE TABLE `t` (`id` int, `a` varchar(8), `b` varchar(8), `v1` varchar(8),\n" +
+                "  PRIMARY KEY (`id`));\n" +
+                "INSERT INTO `t` VALUES " +
+                "(1,'X','Y','10'),(2,'x','y','99'),(4,'새로','y','10');\n";
+
+            var b = new DbSnapshot();
+            var a2 = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("mark_b.sql", before), b, 100);
+            SqlDumpReader.Read(WriteText("mark_a.sql", after), a2, 100);
+
+            DbDiffResult d = DbDiff.Compare(b, a2);
+            List<DbDiffLine> lines = DbDiffList.Build(d, null);
+
+            // id=1 은 a · b 두 열이 달라졌습니다 → 줄 둘, 둘 다 빨강
+            int red = 0, yellow = 0, plain = 0;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (lines[i].Kind == DbDiffLine.KindNote) continue;
+                if (lines[i].Mark == DbDiffLine.MarkValue) red++;
+                else if (lines[i].Mark == DbDiffLine.MarkSide) yellow++;
+                else plain++;
+            }
+            Check("값이 달라진 줄은 빨강 (a · b 두 열)", red == 2,
+                  red.ToString(CultureInfo.InvariantCulture));
+            Check("v1 이 달라진 줄은 노랑", yellow == 1,
+                  yellow.ToString(CultureInfo.InvariantCulture));
+            Check("생기거나 없어진 줄은 안 칠함", plain > 0,
+                  plain.ToString(CultureInfo.InvariantCulture));
+
+            // 세 숫자. id=1 은 두 줄이지만 IO 는 하나입니다.
+            DbDiffList.Tally t = DbDiffList.Count(lines);
+            Check("차이 발생은 IO 로 셈 (id=1 · id=2)", t.Changed == 2,
+                  t.Changed.ToString(CultureInfo.InvariantCulture));
+            Check("없어진 IO 하나 (id=3)", t.Gone == 1,
+                  t.Gone.ToString(CultureInfo.InvariantCulture));
+            Check("새로 생긴 IO 하나 (id=4)", t.Added == 1,
+                  t.Added.ToString(CultureInfo.InvariantCulture));
+
+            string head = DbDiffList.Headline(lines);
+            Check("머리글에 세 숫자가 다 있음",
+                  head.Contains("차이 발생 : 2개") && head.Contains("없어진 IO : 1개")
+                  && head.Contains("새로 생긴 IO : 1개"), head);
+            Check("표 수는 머리글에 없음", !head.Contains("표 "), head);
+
+            // 걸러 보기: 칠한 줄만 남습니다
+            List<DbDiffLine> only = DbDiffList.OnlyChanged(lines);
+            Check("걸러 보면 칠한 줄만", only.Count == red + yellow,
+                  only.Count.ToString(CultureInfo.InvariantCulture));
+            bool allMarked = true;
+            for (int i = 0; i < only.Count; i++) if (only[i].Mark.Length == 0) allMarked = false;
+            Check("걸러 낸 줄에 안 칠한 것이 없음", allMarked, null);
+
+            // 걸러 봐도 세 숫자는 그대로여야 합니다 (감춘 것이 없어진 것이 아닙니다).
+            DbDiffList.Tally t2 = DbDiffList.Count(lines);
+            Check("걸러 보기가 세 숫자를 바꾸지 않음",
+                  t2.Gone == t.Gone && t2.Added == t.Added && t2.Changed == t.Changed, null);
+
+            // v1 으로 볼 열 이름은 한 곳입니다.
+            Check("v1 은 곁값 열", DbNames.IsSide("v1"), null);
+            Check("대소문자 안 가림", DbNames.IsSide("V2"), null);
+            Check("다른 이름은 아님", !DbNames.IsSide("a"), null);
+            Check("빈 이름도 괜찮음", !DbNames.IsSide(null) && !DbNames.IsSide(""), null);
+
+            // 빈 목록에서 터지지 않아야 합니다.
+            DbDiffList.Tally z = DbDiffList.Count(null);
+            Check("빈 목록은 0 0 0", z.Changed == 0 && z.Gone == 0 && z.Added == 0, null);
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>

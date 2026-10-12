@@ -503,6 +503,25 @@ namespace LogScope.Db
         public const string ChangeDiff = "달라짐";
         public const string ChangeMoved = "자리";   // 값은 같고 열 자리만 바뀜
 
+        /// <summary>
+        /// <b>줄 색을 정하는 값.</b> 화면이 이 글자를 보고 줄을 칠합니다.
+        ///
+        ///   MarkValue  값이 달라짐            → 빨강
+        ///   MarkSide   v1 · v2 가 달라짐      → 노랑
+        ///   빈 글자    칠하지 않음 (표·열 줄, 생기거나 없어진 줄, 알림)
+        ///
+        /// 생기거나 없어진 줄을 칠하지 않는 이유: 그건 "값이 달라진" 것이
+        /// 아니고, 위 요약에서 <b>따로 세어 보여 줍니다</b>. 같은 것을 두
+        /// 가지 방법으로 알려 주면 수가 안 맞아 보일 때 어느 쪽이 맞는지
+        /// 알 수 없습니다.
+        ///
+        /// 어느 열을 v1 · v2 로 볼지는 <see cref="DbNames.SideColumns"/> 입니다.
+        /// </summary>
+        public const string MarkValue = "값";
+        public const string MarkSide = "곁값";
+
+        public string Mark { get; set; }
+
         /// <summary>표 · 열 · 행 · 알림. 위 Kind... 상수 중 하나입니다.</summary>
         public string Kind { get; set; }
 
@@ -550,7 +569,7 @@ namespace LogScope.Db
             Table = string.Empty; Kind = string.Empty; Change = string.Empty;
             Where = string.Empty; Column = string.Empty; Io = string.Empty;
             Before = string.Empty; After = string.Empty; Note = string.Empty;
-            V1 = string.Empty; V2 = string.Empty;
+            V1 = string.Empty; V2 = string.Empty; Mark = string.Empty;
         }
 
         /// <summary>
@@ -811,6 +830,7 @@ namespace LogScope.Db
                         Where = key, Column = name, Io = key,
                         Before = DbRow.Show(rd.Before.Get(ci)),
                         After = DbRow.Show(ai < 0 || rd.After == null ? null : rd.After.Get(ai)),
+                        Mark = DbNames.IsSide(name) ? DbDiffLine.MarkSide : DbDiffLine.MarkValue,
                     };
                     if (!s.Add(ln)) return false;
                 }
@@ -883,6 +903,89 @@ namespace LogScope.Db
                 sb.Append(DbRow.Show(row.Get(i)));
             }
             return sb.ToString();
+        }
+
+        // ---------------- 개수 세기 ----------------
+
+        /// <summary>
+        /// 화면 위에 적는 세 숫자. <b>IO 를 셉니다 (줄이 아닙니다).</b>
+        ///
+        /// 한 IO 가 여러 열에서 달라지면 줄은 여러 개지만 IO 는 하나입니다.
+        /// 줄을 세면 "차이 발생 12 개" 인데 IO 는 3 개인 일이 생겨서, 보는
+        /// 사람이 수를 믿을 수 없게 됩니다.
+        ///
+        /// <b>Core 에 둔 이유</b>: 화면이 같은 셈을 한 번 더 짜면 한쪽만
+        /// 고쳐지는 날이 옵니다. 여기 있으면 시험이 지켜 줍니다.
+        /// </summary>
+        public struct Tally
+        {
+            /// <summary>값이 달라진 IO (v1 · v2 가 달라진 것까지 포함).</summary>
+            public int Changed;
+
+            /// <summary>이전에만 있던 IO.</summary>
+            public int Gone;
+
+            /// <summary>이후에 새로 생긴 IO.</summary>
+            public int Added;
+        }
+
+        public static Tally Count(List<DbDiffLine> lines)
+        {
+            var changed = new HashSet<string>(StringComparer.Ordinal);
+            var gone = new HashSet<string>(StringComparer.Ordinal);
+            var added = new HashSet<string>(StringComparer.Ordinal);
+
+            if (lines != null)
+            {
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    DbDiffLine ln = lines[i];
+                    if (ln == null || ln.Kind == DbDiffLine.KindNote) continue;
+
+                    // 같은 이름이 표마다 있을 수 있어 표 이름을 함께 셉니다.
+                    string who = ln.Table + "\u0001" + ln.Io;
+
+                    if (ln.Mark.Length > 0) { changed.Add(who); continue; }
+                    if (ln.Change == DbDiffLine.ChangeGone) { gone.Add(who); continue; }
+                    if (ln.Change == DbDiffLine.ChangeAdded) { added.Add(who); continue; }
+                }
+            }
+
+            var t = new Tally();
+            t.Changed = changed.Count;
+            t.Gone = gone.Count;
+            t.Added = added.Count;
+            return t;
+        }
+
+        /// <summary>
+        /// 화면 위에 적는 한 줄. <b>글자도 Core 에 둡니다</b> — 화면에서
+        /// 만들면 CSV 나 다른 화면이 같은 글을 또 짜게 됩니다.
+        /// </summary>
+        public static string Headline(List<DbDiffLine> lines)
+        {
+            Tally t = Count(lines);
+            return "차이 발생 : " + t.Changed.ToString("N0") + "개"
+                 + "      없어진 IO : " + t.Gone.ToString("N0") + "개"
+                 + "      새로 생긴 IO : " + t.Added.ToString("N0") + "개";
+        }
+
+        /// <summary>
+        /// 값이 달라진 줄만 (빨강 · 노랑으로 칠하는 줄). 화면의
+        /// "차이가 발생한 IO만 보기" 가 이것을 씁니다.
+        ///
+        /// 걸러 내는 것은 <b>생기거나 없어진 줄과 표·열 줄</b>입니다. 그것들도
+        /// 차이는 차이라서, 걸러 두면 "이게 전부" 로 읽힐 수 있습니다 —
+        /// 그래서 화면은 걸러 둔 동안에도 위의 세 숫자를 그대로 보여 줍니다.
+        /// </summary>
+        public static List<DbDiffLine> OnlyChanged(List<DbDiffLine> lines)
+        {
+            var kept = new List<DbDiffLine>();
+            if (lines == null) return kept;
+
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i] != null && lines[i].Mark.Length > 0) kept.Add(lines[i]);
+            return kept;
         }
 
         // ---------------- CSV ----------------

@@ -16,6 +16,24 @@
         <Style x:Key="DiffRow" TargetType="{x:Type ListViewItem}"
                BasedOn="{StaticResource ListRow}">
             <Setter Property="ToolTip" Value="{Binding Tip}" />
+            <!--
+              줄 색. 어느 색인지는 Core 가 정합니다 (DbDiffLine.Mark) —
+              "v1 · v2 인 열 이름" 을 화면에서 또 적으면 한쪽만 고쳐집니다.
+              색 자체는 테마에 있습니다 (밝은/어두운 테마에서 다릅니다).
+
+              마우스 올림과 고름은 ListRow 의 템플릿 트리거가 직접 칠하므로
+              이 색보다 앞섭니다 — 칠한 줄도 고르면 고른 표시가 보입니다.
+            -->
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Mark}"
+                             Value="{x:Static db:DbDiffLine.MarkValue}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.BadSoft}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Mark}"
+                             Value="{x:Static db:DbDiffLine.MarkSide}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.WarnSoft}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
@@ -31,8 +49,8 @@
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
                             ToolTip="위 두 자리를 읽어 견줍니다." />
-                    <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,14,0"
-                            ToolTip="지금 차이로 맞추는 SQL 을 만들어 .sql 파일로 저장합니다. 화면에는 띄우지 않고, 이 프로그램이 돌리지도 않습니다." />
+                    <Button Content="SQL 문 출력" Click="OnShowScript" Margin="0,0,14,0"
+                            ToolTip="지금 차이로 맞추는 SQL 을 만들어 창에 띄웁니다. 그 창에서 복사하거나 파일로 저장할 수 있습니다. 이 프로그램이 돌리지는 않습니다." />
 
                     <!--
                       맞출 방향(이전 → 이후 / 이후 → 이전) 고르기를 뺐습니다.
@@ -186,8 +204,27 @@
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBlock Text="{Binding LineText}" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="12,0,12,0" />
+                            <CheckBox Content="차이가 발생한 IO만 보기"
+                                      IsChecked="{Binding OnlyChanged, Mode=TwoWay}"
+                                      VerticalAlignment="Center" Margin="0,0,14,0"
+                                      ToolTip="값이 달라진 줄(빨강 · 노랑)만 남깁니다. 생기거나 없어진 줄과 표·열 줄은 감춥니다 — 위의 세 숫자는 감춘 것까지 센 그대로입니다." />
+
+                            <!-- 색이 무슨 뜻인지. 색만 칠해 두고 말을 안 하면 못 읽습니다. -->
+                            <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource Brush.BadSoft}"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
+                            <TextBlock Text="value 차이" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource Brush.WarnSoft}"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
+                            <TextBlock Text="v1 · v2 차이" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="0,0,14,0" />
+
                             <Button Content="목록 CSV 저장" Click="OnSaveList"
-                                    ToolTip="지금 보이는 목록을 칸 그대로 저장합니다. 엑셀에서 거르고 정렬하는 쪽이 이 화면보다 낫습니다." />
+                                    ToolTip="차이 목록 전체를 칸 그대로 저장합니다 — 걸러 보는 중이어도 감춘 줄과 알림까지 다 나갑니다. 거르고 정렬하는 일은 엑셀이 이 화면보다 훨씬 잘합니다." />
                         </WrapPanel>
                     </Border>
 

@@ -366,32 +366,34 @@ namespace LogScope.App.Db
             }
         }
 
-        private void OnSaveScript(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// 맞추는 SQL 을 <b>창에 띄웁니다.</b> 저장은 그 창 안에 있습니다.
+        ///
+        /// 0.79 까지는 화면 아래에 글 칸이 붙어 있었고, 0.80 에서 그걸
+        /// 없애고 바로 파일로 저장하게 했습니다. 그런데 보지도 않고
+        /// 저장하는 것은 이상합니다 — 이 글은 <b>사람이 읽어 보고</b>
+        /// 직접 돌리는 것입니다. 그래서 띄우고, 그 창에서 복사하거나
+        /// 저장하게 했습니다.
+        /// </summary>
+        private void OnShowScript(object sender, RoutedEventArgs e)
         {
             if (_vm.ScriptText.Length == 0)
             {
                 MessageBox.Show(Window.GetWindow(this), "먼저 [DB 읽기] 를 눌러 주세요.",
-                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Information);
+                    _vm.ScreenTitle, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var dlg = new Microsoft.Win32.SaveFileDialog();
-            dlg.Title = "맞추는 SQL 저장";
-            dlg.Filter = "SQL (*.sql)|*.sql|모든 파일 (*.*)|*.*";
-            dlg.FileName = "db_diff_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".sql";
-            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
-
-            try
-            {
-                // BOM 을 붙입니다. mysql 클라이언트가 한글을 UTF-8 로 읽게 하는
-                // 가장 확실한 방법입니다.
-                File.WriteAllText(dlg.FileName, _vm.ScriptText, new UTF8Encoding(true));
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-            {
-                MessageBox.Show(Window.GetWindow(this), "저장하지 못했습니다.\n\n" + ex.Message,
-                    "DB 분석", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            var win = new TextViewWindow(
+                "맞추는 SQL",
+                "이전 DB 를 이후와 같게 만드는 글입니다. "
+                + "이 프로그램은 이 글을 돌리지 않습니다 — 읽어 보고 직접 돌리세요. "
+                + "DROP 과 DELETE 는 주석으로 적혀 있습니다 (지우는 일은 되돌릴 수 없어서입니다).",
+                _vm.ScriptText,
+                "db_diff_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".sql",
+                "SQL (*.sql)|*.sql|모든 파일 (*.*)|*.*");
+            win.Owner = Window.GetWindow(this);
+            win.ShowDialog();
         }
     }
 }

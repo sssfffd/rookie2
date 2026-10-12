@@ -374,13 +374,23 @@
 
     <Style x:Key="ListRow" TargetType="{x:Type ListViewItem}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <!--
+          배경을 템플릿 안에 "Transparent" 로 박아 두면, 줄마다 색을 바꾸려고
+          Background 를 Setter 로 줘도 <b>아무 일도 안 납니다</b> — 템플릿이
+          그 값을 안 보기 때문입니다. 그래서 기본값은 여기에 두고 템플릿은
+          TemplateBinding 으로 받아 갑니다 (0.82).
+          마우스 올림·고름 은 아래 트리거가 Bd 를 직접 칠하므로 줄 색보다
+          앞섭니다 — 색칠한 줄도 고르면 고른 표시가 보입니다.
+        -->
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="4,3" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ListViewItem}">
-                    <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}"
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <GridViewRowPresenter Content="{TemplateBinding Content}"
                                               Columns="{TemplateBinding GridView.ColumnCollection}" />

@@ -273,9 +273,32 @@ namespace LogScope.App.Db
             return DbDiffList.ToCsv(_diff == null ? _lines : DbDiffList.Build(_diff, null));
         }
 
+        private bool _onlyChanged;
+
+        /// <summary>
+        /// <b>차이가 발생한 IO만 보기.</b> 값이 달라진 줄(빨강 · 노랑)만
+        /// 남기고, 생기거나 없어진 줄과 표·열 줄을 감춥니다.
+        ///
+        /// 감춘 것이 "없는 것" 으로 읽히면 안 되므로, 켜 둔 동안에도
+        /// <b>위의 세 숫자는 전체 기준 그대로</b>이고 줄 수 옆에 "걸러 보는
+        /// 중" 이라고 적습니다.
+        /// </summary>
+        public bool OnlyChanged
+        {
+            get { return _onlyChanged; }
+            set
+            {
+                if (_onlyChanged == value) return;
+                _onlyChanged = value;
+                Raise("OnlyChanged");
+                Rebuild();
+            }
+        }
+
         private void Rebuild()
         {
             // 늘 전체입니다. 표를 고르는 왼쪽 목록을 없앴으니 범위도 하나입니다.
+            int all = 0;
             if (_diff == null)
             {
                 _lines = new List<DbDiffLine>();
@@ -284,12 +307,22 @@ namespace LogScope.App.Db
             else
             {
                 _lines = TakeNotes(DbDiffList.Build(_diff, null));
+                all = _lines.Count;
+                if (_onlyChanged) _lines = DbDiffList.OnlyChanged(_lines);
+
                 EmptyText = _diff.Tables.Count == 0
                     ? "읽은 표가 없습니다. 위 두 자리를 봐 주세요."
-                    : "두 DB 가 같습니다 — 다른 데가 없습니다.";
+                    : _onlyChanged && all > 0
+                        ? "값이 달라진 줄이 없습니다. [차이가 발생한 IO만 보기] 를 끄면 "
+                          + "생기거나 없어진 줄도 보입니다."
+                        : "두 DB 가 같습니다 — 다른 데가 없습니다.";
             }
 
-            LineText = _lines.Count == 0 ? string.Empty : _lines.Count.ToString("N0") + " 줄";
+            LineText = _lines.Count == 0 ? string.Empty
+                     : _onlyChanged
+                         ? _lines.Count.ToString("N0") + " 줄  (걸러 보는 중 · 전체 "
+                           + all.ToString("N0") + " 줄)"
+                         : _lines.Count.ToString("N0") + " 줄";
             Raise("Lines");
             Raise("LinesIsEmpty");
             Raise("Notes");
@@ -306,25 +339,29 @@ namespace LogScope.App.Db
         public void Take(DbSnapshot before, DbSnapshot after)
         {
             _diff = DbDiff.Compare(before, after);
-
-            Summary = Overview(before, after, _diff);
             _fileNotes = string.Join("\n", _diff.Notes.ToArray());
+
+            // 세는 것은 늘 <b>걸러내지 않은 전체</b>입니다. 걸러 보기를
+            // 켰다고 "없어진 IO" 가 0 개로 보이면 안 됩니다.
+            Summary = Overview(before, after, TakeNotes(DbDiffList.Build(_diff, null)));
 
             Rebuild();
             BuildScript();
         }
 
-        private static string Overview(DbSnapshot b, DbSnapshot a, DbDiffResult d)
+        /// <summary>
+        /// 화면 위 한 줄. <b>IO 를 셉니다</b> — 표를 세던 것("표 12 개 중 …")을
+        /// 0.82 에서 뺐습니다. 보는 사람이 찾는 것은 "어느 IO 가 달라졌나"
+        /// 라서, 표 수는 그 답으로 가는 길에 없습니다.
+        ///
+        /// 세는 일과 글자는 <see cref="DbDiffList.Headline"/> 에 있습니다.
+        /// 여기서 또 세면 걸러 보기를 켰을 때 수가 달라집니다.
+        /// </summary>
+        private static string Overview(DbSnapshot b, DbSnapshot a, List<DbDiffLine> all)
         {
-            var sb = new StringBuilder();
-            sb.Append("표 ").Append(d.Tables.Count);
-            sb.Append(" 개 중  달라짐 ").Append(d.TablesChanged);
-            sb.Append(" · 이전에만 ").Append(d.TablesOnlyBefore);
-            sb.Append(" · 이후에만 ").Append(d.TablesOnlyAfter);
-            sb.Append(" · 같음 ").Append(d.TablesSame);
-            sb.Append("      (읽은 행 ").Append(b.RowCount.ToString("N0"));
-            sb.Append(" / ").Append(a.RowCount.ToString("N0")).Append(")");
-            return sb.ToString();
+            return DbDiffList.Headline(all)
+                 + "      (읽은 행 " + b.RowCount.ToString("N0")
+                 + " / " + a.RowCount.ToString("N0") + ")";
         }
 
         public void BuildScript()
