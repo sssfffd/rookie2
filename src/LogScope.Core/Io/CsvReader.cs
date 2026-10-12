@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+using LogScope.Core.Text;
+
 namespace LogScope.Core.Io
 {
     /// <summary>
@@ -28,44 +30,12 @@ namespace LogScope.Core.Io
             _file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1 << 16);
             _length = _file.Length;
 
-            Encoding enc = SniffEncoding(_file);
+            Encoding enc = TextSniff.Of(_file);
             DetectedEncoding = enc;
             _file.Position = 0;
             _reader = new StreamReader(_file, enc, true, 1 << 16);
 
             _delim = SniffDelimiter(path, _file, enc);
-        }
-
-        /// <summary>
-        /// BOM 이 있으면 그대로 따르고, 없으면 앞부분이 올바른 UTF-8 인지 봅니다.
-        /// 아니면 시스템 기본 코드페이지(한국 윈도우면 CP949)로 읽습니다.
-        /// 예전 장비가 뽑은 로그는 대개 이 둘 중 하나입니다.
-        /// </summary>
-        private static Encoding SniffEncoding(FileStream fs)
-        {
-            byte[] head = new byte[Math.Min(65536, (int)Math.Min(fs.Length, 65536))];
-            int n = fs.Read(head, 0, head.Length);
-            if (n >= 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF) return new UTF8Encoding(true);
-            if (n >= 2 && head[0] == 0xFF && head[1] == 0xFE) return Encoding.Unicode;
-            if (n >= 2 && head[0] == 0xFE && head[1] == 0xFF) return Encoding.BigEndianUnicode;
-
-            bool ascii = true;
-            for (int i = 0; i < n; i++) if (head[i] >= 0x80) { ascii = false; break; }
-            if (ascii) return new UTF8Encoding(false);
-
-            try
-            {
-                // 잘린 마지막 글자 때문에 헛되이 실패하지 않도록 끝을 조금 잘라 냅니다.
-                int len = n;
-                while (len > 0 && (head[len - 1] & 0xC0) == 0x80) len--;
-                if (len > 0) len--;
-                new UTF8Encoding(false, true).GetString(head, 0, Math.Max(0, len));
-                return new UTF8Encoding(false);
-            }
-            catch (DecoderFallbackException)
-            {
-                return Encoding.Default;
-            }
         }
 
         private static char SniffDelimiter(string path, FileStream fs, Encoding enc)

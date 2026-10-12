@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using LogScope.Core.Text;
 
 namespace LogScope.Core.Settings
 {
@@ -239,38 +240,23 @@ namespace LogScope.Core.Settings
         public static string[] ReadLines(string path)
         {
             byte[] raw = File.ReadAllBytes(path);
-            string text;
 
-            if (raw.Length >= 3 && raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF)
-            {
-                text = new UTF8Encoding(false).GetString(raw, 3, raw.Length - 3);
-            }
-            else if (raw.Length >= 2 && raw[0] == 0xFF && raw[1] == 0xFE)
-            {
-                text = Encoding.Unicode.GetString(raw, 2, raw.Length - 2);
-            }
-            else
-            {
-                try
-                {
-                    // throwOnInvalidBytes: CP949 로 저장된 파일이면 여기서 걸립니다.
-                    text = new UTF8Encoding(false, true).GetString(raw);
-                }
-                catch (DecoderFallbackException)
-                {
-                    text = Legacy().GetString(raw);
-                }
-            }
+            // 인코딩 가리기는 TextSniff 한 곳입니다. 전에는 여기에도 같은
+            // 코드가 있었고, 셋 중 덤프 쪽 하나가 틀려 있었습니다.
+            Encoding enc = TextSniff.Of(raw, raw.Length);
+            int skip = Preamble(raw, enc);
+            string text = enc.GetString(raw, skip, raw.Length - skip);
 
             return text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         }
 
-        /// <summary>CP949. 없는 환경(리눅스의 mono 등)에서는 기본 인코딩으로 물러섭니다.</summary>
-        private static Encoding Legacy()
+        /// <summary>BOM 이 있으면 그 길이. GetString 에 BOM 을 넘기면 글자로 섞입니다.</summary>
+        private static int Preamble(byte[] raw, Encoding enc)
         {
-            try { return Encoding.GetEncoding(949); }
-            catch (ArgumentException) { return Encoding.Default; }
-            catch (NotSupportedException) { return Encoding.Default; }
+            byte[] bom = enc.GetPreamble();
+            if (bom == null || bom.Length == 0 || raw.Length < bom.Length) return 0;
+            for (int i = 0; i < bom.Length; i++) if (raw[i] != bom[i]) return 0;
+            return bom.Length;
         }
 
         /// <summary>

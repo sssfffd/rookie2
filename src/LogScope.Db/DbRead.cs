@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using LogScope.Core.Io;
+using LogScope.Core.Text;
 
 // ==========================================================
 //  DbRead
@@ -504,7 +505,9 @@ namespace LogScope.Db
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
                                            FileShare.ReadWrite, 1 << 16))
             {
-                Encoding enc = Sniff(fs);
+                // 덤프가 CP949(ANSI)일 수 있습니다. 전에는 BOM 이 없으면
+                // 무조건 UTF-8 로 읽어서 한글 값이 통째로 깨졌습니다.
+                Encoding enc = TextSniff.Of(fs);
                 fs.Position = 0;
                 using (var sr = new StreamReader(fs, enc, true, 1 << 16))
                 {
@@ -514,15 +517,6 @@ namespace LogScope.Db
                     }
                 }
             }
-        }
-
-        /// <summary>BOM 이 있으면 따르고, 없으면 UTF-8 로 봅니다 (덤프 기본).</summary>
-        private static Encoding Sniff(FileStream fs)
-        {
-            byte[] head = new byte[3];
-            int n = fs.Read(head, 0, 3);
-            if (n >= 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF) return new UTF8Encoding(true);
-            return new UTF8Encoding(false);
         }
 
         /// <summary>
@@ -878,6 +872,21 @@ namespace LogScope.Db
         /// <c>NULL</c> 은 null 로, 따옴표 글자는 <b>원래 글자</b>로 되돌립니다
         /// (<c>\'</c> → <c>'</c>). 그렇게 해야 두 덤프가 같은 값을 다르게
         /// 적어 둔 것(이스케이프 차이)을 차이로 세지 않습니다.
+        ///
+        /// <b>16진수로 적힌 값</b>도 되돌립니다. mysqldump 는 글자가 아닌
+        /// 바이트가 섞인 열을 <c>0x4D7953</c> 처럼 적고, <c>--hex-blob</c> 을
+        /// 주면 늘 그렇게 적습니다. <c>X'4D79'</c> 와 <c>_binary'…'</c> 꼴도
+        /// 있습니다. 그대로 두면 화면에 16진수가 줄줄이 나와서 <b>값이
+        /// 쓰레기처럼 보입니다.</b>
+        ///
+        /// 두 가지를 같이 고칩니다.
+        ///   1. 바이트가 <b>읽을 수 있는 글자</b>면 그 글자로 보여 줍니다.
+        ///   2. 한쪽 덤프가 16진수로, 다른 쪽이 따옴표로 같은 값을 적어
+        ///      두었을 때 <b>없는 차이를 만들지 않습니다.</b>
+        ///
+        /// 글자가 아닌 진짜 바이너리는 <c>0x…</c> 소문자로 맞춰 둡니다 —
+        /// 글자로 바꾸는 척하면 안 되고, 길이만 적으면 서로 다른 두
+        /// 바이너리가 같아 보입니다.
         /// </summary>
         private static List<string> ReadValues(string s, int from, int end)
         {
@@ -890,6 +899,24 @@ namespace LogScope.Db
             {
                 char c = s[i];
                 if (char.IsWhiteSpace(c) && sb.Length == 0) { i++; continue; }
+
+                // _binary'…' · X'…' 꼴은 접두어를 떼고 따옴표부터 읽습니다.
+                int pre = Prefix(s, i, end);
+                if (pre > 0)
+                {
+                    bool hex = s[i] == 'X' || s[i] == 'x';
+                    i += pre;
+                    string body = Quoted(s, ref i, end);
+                    if (hex)
+                    {
+                        string got = Bytes(body);
+                        list.Add(got ?? ("X'" + body + "'"));
+                    }
+                    else list.Add(body);
+                    while (i < end && s[i] != ',') i++;
+                    if (i < end) i++;
+                    continue;
+                }
 
                 if (c == '\'' || c == '"')
                 {
@@ -928,13 +955,131 @@ namespace LogScope.Db
                     w.Append(d); i++;
                 }
                 string raw = w.ToString().Trim();
-                list.Add(string.Equals(raw, "NULL", StringComparison.OrdinalIgnoreCase) ? null : raw);
+                list.Add(string.Equals(raw, "NULL", StringComparison.OrdinalIgnoreCase)
+                         ? null : Literal(raw));
                 if (i < end) i++;
                 any = false;
             }
 
             if (any) list.Add(sb.ToString());
             return list;
+        }
+
+        /// <summary>
+        /// <c>_binary'</c> 나 <c>X'</c> 처럼 따옴표 앞에 붙는 접두어의 길이.
+        /// 없으면 0 입니다.
+        /// </summary>
+        private static int Prefix(string s, int i, int end)
+        {
+            if (i < end && (s[i] == 'X' || s[i] == 'x')
+                && i + 1 < end && s[i + 1] == '\'') return 1;
+
+            const string bin = "_binary";
+            if (i + bin.Length <= end
+                && string.Compare(s, i, bin, 0, bin.Length, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                int j = i + bin.Length;
+                while (j < end && char.IsWhiteSpace(s[j])) j++;
+                if (j < end && (s[j] == '\'' || s[j] == '"')) return j - i;
+            }
+            return 0;
+        }
+
+        /// <summary>따옴표 한 벌을 읽어 원래 글자로 돌려줍니다. 끝 따옴표 뒤에 섭니다.</summary>
+        private static string Quoted(string s, ref int i, int end)
+        {
+            if (i >= end) return string.Empty;
+            char q = s[i]; i++;
+
+            var v = new StringBuilder();
+            while (i < end)
+            {
+                char d = s[i];
+                if (d == '\\' && i + 1 < end) { v.Append(Unescape(s[i + 1])); i += 2; continue; }
+                if (d == q)
+                {
+                    if (i + 1 < end && s[i + 1] == q) { v.Append(q); i += 2; continue; }
+                    i++; break;
+                }
+                v.Append(d); i++;
+            }
+            return v.ToString();
+        }
+
+        /// <summary>
+        /// 따옴표가 없는 값. <c>0x4D7953</c> 이면 되돌리고, 나머지는 적힌
+        /// 그대로입니다 (숫자 · 함수 호출 등).
+        /// </summary>
+        private static string Literal(string raw)
+        {
+            if (raw.Length >= 3 && raw[0] == '0' && (raw[1] == 'x' || raw[1] == 'X'))
+            {
+                // 16진수가 아니면 null 입니다. 그때는 적힌 그대로 둡니다 —
+                // 떼어 낸 "0x" 를 잃으면 값이 조용히 달라집니다.
+                string got = Bytes(raw.Substring(2));
+                return got ?? raw;
+            }
+            return raw;
+        }
+
+        /// <summary>
+        /// 16진수 글자를 바이트로 되돌리고, <b>읽을 수 있는 글자면</b> 그
+        /// 글자로 돌려줍니다. 아니면 <c>0x…</c> 소문자로 맞춰 돌려줍니다.
+        ///
+        /// 16진수가 아닌 글자가 섞여 있으면 손대지 않습니다 — 모르는 것을
+        /// 짐작해서 바꾸면 값이 조용히 달라집니다.
+        /// </summary>
+        private static string Bytes(string hex)
+        {
+            if (string.IsNullOrEmpty(hex) || (hex.Length & 1) != 0) return null;
+
+            var bytes = new byte[hex.Length / 2];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                int hi = Nibble(hex[i * 2]);
+                int lo = Nibble(hex[i * 2 + 1]);
+                if (hi < 0 || lo < 0) return null;      // 16진수가 아닙니다
+                bytes[i] = (byte)((hi << 4) | lo);
+            }
+
+            string text = AsText(bytes);
+            if (text != null) return text;
+
+            var sb = new StringBuilder(2 + bytes.Length * 2);
+            sb.Append("0x");
+            for (int i = 0; i < bytes.Length; i++) sb.Append(bytes[i].ToString("x2"));
+            return sb.ToString();
+        }
+
+        private static int Nibble(char c)
+        {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return -1;
+        }
+
+        /// <summary>
+        /// 바이트가 읽을 수 있는 글자인가. 올바른 UTF-8 이고 제어 문자가
+        /// 없어야 합니다. 아니면 null (바이너리로 봅니다).
+        /// </summary>
+        private static string AsText(byte[] bytes)
+        {
+            if (bytes.Length == 0) return string.Empty;
+
+            // throwOnInvalidBytes 로 <b>끝까지</b> 봅니다. TextSniff 의 검사는
+            // 흘려 읽는 앞부분용이라 마지막 글자를 잘라 보므로 여기선 느슨합니다.
+            string text;
+            try { text = new UTF8Encoding(false, true).GetString(bytes); }
+            catch (DecoderFallbackException) { return null; }
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '\t' || c == '\n' || c == '\r') continue;
+                if (char.IsControl(c)) return null;
+            }
+            return text;
         }
 
         private static char Unescape(char c)

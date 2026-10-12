@@ -171,26 +171,25 @@
                                       칸은 화면 나무에 없어서 Binding 이 조용히
                                       실패하고 머리글이 빈 채로 나옵니다.
 
-                                      표 이름은 남겨 뒀습니다. 폴더에 DB 가 여럿
-                                      있으면 같은 IO 이름이 표마다 나와서, 이
-                                      칸이 없으면 어느 DB 의 값인지 알 수가
-                                      없습니다. 한 DB 만 보신다면 이 한 줄만
-                                      지우면 됩니다.
+                                      표 · 열 칸은 0.79 에서 뺐습니다. 값만
+                                      보시겠다고 해서입니다. 그 둘이 아주
+                                      없어진 것은 아닙니다 — 줄에 마우스를
+                                      올리면 뜨는 글(Tip)에 표 이름과 열
+                                      이름이 그대로 들어 있고, [목록 CSV 저장]
+                                      으로 뽑은 CSV 에도 칸으로 남아 있습니다.
+                                      다시 보이게 하려면 아래에 한 줄
+                                      더하면 됩니다.
                                     -->
-                                    <GridViewColumn Header="{x:Static db:DbNames.Table}" Width="130"
-                                                    DisplayMemberBinding="{Binding Table}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="150"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="200"
                                                     DisplayMemberBinding="{Binding Io}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="130"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="170"
                                                     DisplayMemberBinding="{Binding Before}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.After}" Width="130"
+                                    <GridViewColumn Header="{x:Static db:DbNames.After}" Width="170"
                                                     DisplayMemberBinding="{Binding After}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.V1}" Width="90"
+                                    <GridViewColumn Header="{x:Static db:DbNames.V1}" Width="110"
                                                     DisplayMemberBinding="{Binding V1}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.V2}" Width="90"
+                                    <GridViewColumn Header="{x:Static db:DbNames.V2}" Width="110"
                                                     DisplayMemberBinding="{Binding V2}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.Column}" Width="110"
-                                                    DisplayMemberBinding="{Binding Column}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>

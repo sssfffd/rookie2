@@ -107,6 +107,8 @@ namespace LogScope.Tests
                 WindowTitleText();
                 TraceColorRule();
                 DbSqlDump();
+                TextSniffRules();
+                DbDumpBytes();
                 DbCsvTable();
                 DbNestedFolders();
                 DbFrmIbdNote();
@@ -2966,6 +2968,172 @@ namespace LogScope.Tests
             lines.Add(new DbDiffLine { Table = "a,b" });
             Check("쉼표 든 값은 따옴표로", DbDiffList.ToCsv(lines).Contains("\"a,b\""),
                   DbDiffList.ToCsv(lines));
+        }
+
+        /// <summary>
+        /// 인코딩을 가리는 규칙. <b>CP949 코드페이지가 없는 환경에서도</b>
+        /// 돕니다 — 아래 CP949 덤프 시험은 리눅스의 mono 에서 건너뛰어지므로,
+        /// 정작 고친 "어느 인코딩으로 읽을지" 를 아무도 안 보게 됩니다.
+        /// 그래서 <b>결정만</b> 따로 봅니다 (글자로 바꾸지 않습니다).
+        /// </summary>
+        private static void TextSniffRules()
+        {
+            Console.WriteLine("글자 — 인코딩 가리기");
+
+            const int Utf8Page = 65001;
+
+            // CP949 로 "가나다" (B0A1 B3AA B4D9). UTF-8 로서는 올바르지 않습니다.
+            byte[] cp949 = { 0xB0, 0xA1, 0xB3, 0xAA, 0xB4, 0xD9 };
+            Check("CP949 바이트는 UTF-8 이 아님", !TextSniff.LooksUtf8(cp949, cp949.Length), null);
+            Check("CP949 바이트는 UTF-8 로 읽지 않음",
+                  TextSniff.Of(cp949, cp949.Length).CodePage != Utf8Page,
+                  TextSniff.Of(cp949, cp949.Length).WebName);
+
+            // UTF-8 로 "가나다"
+            byte[] utf8 = Encoding.UTF8.GetBytes("가나다");
+            Check("UTF-8 바이트는 UTF-8 로 읽음",
+                  TextSniff.Of(utf8, utf8.Length).CodePage == Utf8Page,
+                  TextSniff.Of(utf8, utf8.Length).WebName);
+
+            // BOM 은 그대로 따릅니다
+            byte[] bom = { 0xEF, 0xBB, 0xBF, (byte)'a' };
+            Check("UTF-8 BOM", TextSniff.Of(bom, bom.Length).CodePage == Utf8Page, null);
+            byte[] le = { 0xFF, 0xFE, (byte)'a', 0 };
+            Check("UTF-16 LE BOM", TextSniff.Of(le, le.Length).CodePage == 1200, null);
+            byte[] be = { 0xFE, 0xFF, 0, (byte)'a' };
+            Check("UTF-16 BE BOM", TextSniff.Of(be, be.Length).CodePage == 1201, null);
+
+            // ASCII 만 있으면 어느 쪽으로 읽어도 같습니다 — UTF-8 로 둡니다
+            byte[] ascii = Encoding.ASCII.GetBytes("id,name\n1,a\n");
+            Check("ASCII 는 UTF-8", TextSniff.Of(ascii, ascii.Length).CodePage == Utf8Page, null);
+
+            // 빈 파일에서 터지지 않아야 합니다
+            Check("빈 바이트도 괜찮음", TextSniff.Of(new byte[0], 0) != null, null);
+            Check("null 도 괜찮음", TextSniff.Of(null, 0) != null, null);
+
+            // 마지막 글자가 잘려 있어도 UTF-8 로 봅니다 (흘려 읽는 앞부분).
+            byte[] cut = { 0xEA, 0xB0, 0x80, 0xEA, 0xB0 };   // "가" + 잘린 "가"
+            Check("잘린 마지막 글자 때문에 CP949 로 넘어가지 않음",
+                  TextSniff.Of(cut, cut.Length).CodePage == Utf8Page,
+                  TextSniff.Of(cut, cut.Length).WebName);
+        }
+
+        /// <summary>
+        /// 덤프의 <b>바이트</b> 쪽. 값이 쓰레기로 보이던 두 자리입니다.
+        ///
+        ///   1. CP949(ANSI)로 저장된 덤프 — 전에는 BOM 이 없으면 무조건
+        ///      UTF-8 로 읽어서 한글이 통째로 깨졌습니다.
+        ///   2. 16진수로 적힌 값 — mysqldump 는 글자가 아닌 바이트가 섞인
+        ///      열을 0x4D7953 처럼 적습니다 (--hex-blob 이면 늘).
+        ///
+        /// 둘 다 <b>읽기는 성공하고 값만 틀립니다.</b> 그래서 시험이 없으면
+        /// 화면을 눈으로 봐야만 압니다.
+        /// </summary>
+        private static void DbDumpBytes()
+        {
+            Console.WriteLine("DB — 덤프의 인코딩과 16진수 값");
+
+            // ---- 1. CP949 덤프 ----
+            string body =
+                "CREATE TABLE `레시피` (\n" +
+                "  `이름` varchar(64) NOT NULL\n" +
+                ") ENGINE=InnoDB;\n" +
+                "INSERT INTO `레시피` VALUES ('가열 온도'),('냉각 시간');\n";
+
+            Encoding cp949;
+            try { cp949 = Encoding.GetEncoding(949); }
+            catch (Exception e) when (e is ArgumentException || e is NotSupportedException)
+            {
+                cp949 = null;
+            }
+
+            if (cp949 == null)
+            {
+                Console.WriteLine("  (CP949 가 없는 환경이라 이 시험은 건너뜁니다)");
+            }
+            else
+            {
+                string path = Path.Combine(_dir, "ansi.sql");
+                File.WriteAllBytes(path, cp949.GetBytes(body));
+
+                var snap = new DbSnapshot();
+                SqlDumpReader.Read(path, snap, 100);
+
+                DbTable t = snap.Find("레시피");
+                Check("CP949 덤프의 표 이름이 안 깨짐", t != null,
+                      t == null ? Names(snap) : "ok");
+                if (t != null)
+                {
+                    Check("CP949 덤프의 열 이름이 안 깨짐",
+                          t.Columns.Count == 1 && t.Columns[0].Name == "이름",
+                          t.Columns.Count > 0 ? t.Columns[0].Name : "열이 없음");
+                    Check("CP949 덤프의 값이 안 깨짐",
+                          t.Rows.Count == 2 && t.Rows[0].Get(0) == "가열 온도",
+                          t.Rows.Count > 0 ? t.Rows[0].Get(0) : "행이 없음");
+                }
+            }
+
+            // ---- 2. 16진수로 적힌 값 ----
+            //  mysqldump 가 같은 값을 한쪽은 따옴표로, 다른 쪽은 16진수로
+            //  적어 두는 일이 있습니다. 그걸 차이로 세면 안 됩니다.
+            string hexDump =
+                "CREATE TABLE `t` (`a` varbinary(64), `b` varbinary(64), `c` varbinary(8));\n" +
+                "INSERT INTO `t` VALUES (0xEAB080EC9798,X'EAB080EC9798',0x00010203);\n";
+            string hp = WriteText("hex.sql", hexDump);
+            var hs = new DbSnapshot();
+            SqlDumpReader.Read(hp, hs, 100);
+
+            DbTable ht = hs.Find("t");
+            Check("16진수 표를 읽음", ht != null && ht.Rows.Count == 1,
+                  ht == null ? Names(hs) : ht.Rows.Count.ToString(CultureInfo.InvariantCulture));
+            if (ht != null && ht.Rows.Count == 1)
+            {
+                Check("0x… 가 글자로 돌아옴", ht.Rows[0].Get(0) == "가엘",
+                      Show(ht.Rows[0].Get(0)));
+                Check("X'…' 도 같은 글자", ht.Rows[0].Get(1) == ht.Rows[0].Get(0),
+                      Show(ht.Rows[0].Get(1)));
+                // 글자가 아닌 바이트는 글자로 바꾸는 척하지 않습니다.
+                Check("진짜 바이너리는 0x… 로 남음", ht.Rows[0].Get(2) == "0x00010203",
+                      Show(ht.Rows[0].Get(2)));
+            }
+
+            // _binary'…' 접두어. 따옴표 값 앞에 붙어 옵니다.
+            string binDump =
+                "CREATE TABLE `u` (`a` varbinary(64));\n" +
+                "INSERT INTO `u` VALUES (_binary'abc');\n";
+            var bs = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("bin.sql", binDump), bs, 100);
+            DbTable bt = bs.Find("u");
+            Check("_binary 접두어를 떼고 읽음",
+                  bt != null && bt.Rows.Count == 1 && bt.Rows[0].Get(0) == "abc",
+                  bt == null || bt.Rows.Count == 0 ? "행이 없음" : Show(bt.Rows[0].Get(0)));
+
+            // 16진수가 아닌 글자가 섞이면 손대지 않습니다 (짐작 금지).
+            string odd =
+                "CREATE TABLE `v` (`a` varchar(64));\n" +
+                "INSERT INTO `v` VALUES (0xZZ);\n";
+            var os_ = new DbSnapshot();
+            SqlDumpReader.Read(WriteText("odd.sql", odd), os_, 100);
+            DbTable ot = os_.Find("v");
+            Check("16진수가 아니면 적힌 그대로",
+                  ot != null && ot.Rows.Count == 1 && ot.Rows[0].Get(0) == "0xZZ",
+                  ot == null || ot.Rows.Count == 0 ? "행이 없음" : Show(ot.Rows[0].Get(0)));
+        }
+
+        private static string Names(DbSnapshot snap)
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < snap.Tables.Count; i++)
+            {
+                if (i > 0) sb.Append(" · ");
+                sb.Append(snap.Tables[i].Name);
+            }
+            return sb.Length == 0 ? "표가 없음" : sb.ToString();
+        }
+
+        private static string Show(string v)
+        {
+            return v == null ? "(NULL)" : v;
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>
