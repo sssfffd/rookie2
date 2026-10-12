@@ -136,11 +136,88 @@ namespace LogScope.App.Db
             e.Handled = true;
             Lit(sender as Border, false);
 
-            if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
-            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
-            if (paths == null || paths.Length == 0) return;
+            string[] paths = Dropped(e);
+            if (paths == null) return;
 
-            _vm.SetPath(Before(sender), paths[0]);   // SetPath 가 PathsChanged 를 알립니다
+            bool before = Before(sender);
+
+            // 칸 위에 놓으면 그 쪽입니다. 둘을 한꺼번에 놓았으면 놓은
+            // 쪽부터 차례로 넣습니다 (이전 칸에 둘 → 이전 · 이후).
+            _vm.SetPath(before, paths[0]);
+            if (paths.Length > 1) _vm.SetPath(!before, paths[1]);
+            Said(paths, 2);
+        }
+
+        // ---------------- 화면 아무 데나 놓기 ----------------
+        //
+        // 두 칸이 자기 Drop 을 먼저 받고 e.Handled 로 멈추므로, 여기
+        // 오는 것은 칸 밖에 놓은 것뿐입니다.
+
+        private void OnAnyDragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = Dropped(e) != null ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void OnAnyDragLeave(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// 칸 밖에 놓았을 때. 어느 쪽에 넣을지 <b>물어보지 않고</b> 정합니다 —
+        /// 끌어다 놓는 중에 창을 띄우면 끌어 온 뜻이 없어집니다.
+        ///
+        /// 규칙은 하나입니다. <b>빈 쪽부터 채웁니다.</b>
+        ///   하나 놓음 → 이전이 비었으면 이전, 아니면 이후가 비었으면 이후,
+        ///               둘 다 차 있으면 이전을 바꿉니다 (다시 견주려는 것입니다)
+        ///   둘 놓음  → 첫째가 이전, 둘째가 이후 (늘 그렇습니다)
+        ///
+        /// 어디로 들어갔는지는 칸에 글자로 보이므로 조용히 사라지지 않습니다.
+        /// </summary>
+        private void OnAnyDrop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+
+            string[] paths = Dropped(e);
+            if (paths == null) return;
+
+            if (paths.Length > 1)
+            {
+                _vm.SetPath(true, paths[0]);
+                _vm.SetPath(false, paths[1]);
+                Said(paths, 2);
+                return;
+            }
+
+            bool toBefore = _vm.BeforePath.Length == 0 || _vm.AfterPath.Length > 0;
+            _vm.SetPath(toBefore, paths[0]);
+        }
+
+        /// <summary>끌어온 것이 파일·폴더면 그 목록, 아니면 null.</summary>
+        private static string[] Dropped(DragEventArgs e)
+        {
+            if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return null;
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            return paths == null || paths.Length == 0 ? null : paths;
+        }
+
+        /// <summary>
+        /// 쓴 것보다 많이 놓았으면 그렇다고 알립니다. 한쪽은 자리 <b>하나</b>
+        /// 라서 셋째부터는 쓸 데가 없습니다 — 조용히 버리면 "넣었는데 왜
+        /// 안 보이지" 가 됩니다. 여러 파일을 한쪽으로 묶어 읽으려면 그
+        /// 파일들이 든 <b>폴더</b>를 놓으면 됩니다.
+        /// </summary>
+        private void Said(string[] paths, int used)
+        {
+            if (paths.Length <= used) return;
+
+            MessageBox.Show(Window.GetWindow(this),
+                paths.Length + " 개를 놓으셨는데 자리는 둘(이전 · 이후)입니다.\n"
+                + "앞의 " + used + " 개만 넣었습니다.\n\n"
+                + "여러 파일을 한쪽으로 묶어 읽으시려면 그 파일들이 든 폴더를 놓아 주세요 — "
+                + "폴더 안의 .sql / .csv / .frm 을 하위 폴더까지 다 읽습니다.",
+                _vm.ScreenTitle, MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         /// <summary>

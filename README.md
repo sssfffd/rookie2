@@ -629,6 +629,17 @@ DB 쪽 알맹이는 **`src/LogScope.Db/` 한 프로젝트, 여섯 파일**입니
 | **`DbNames.cs`** | 목록 칸에 **적히는 이름** | **v1 · v2 같은 칸 이름을 바꿀 때** (한 곳) |
 | **`DbRead.cs`** | 폴더 훑기 · `.sql` · `.csv` | **새 형식을 더하거나 읽는 법을 고칠 때** |
 
+화면 쪽은 `src/LogScope.App/Db/` 세 파일이고, 부르는 자리는 넷입니다.
+
+```
+DbView.xaml.cs:324   DbFolderReader.Read(path, null)   ← 파일을 읽어 자료로
+DbView.xaml.cs:272   _vm.Take(snaps[0], snaps[1])      ← 뷰모델로 넘김
+DbVm.cs:278          DbDiff.Compare(before, after)     ← 두 벌 견주기
+DbVm.cs:256          DbDiffList.Build(_diff, null)     ← 화면 목록 줄로
+```
+
+**v1 · v2 를 채우는 자리는 `DbCompare.cs` 의 `DbDiffList.OneRow`** 입니다.
+
 목록에 보이는 칸은 **다섯**입니다 (IO명 · 이전 value · 이후 value · v1 · v2).
 표 이름과 열 이름은 0.79 에서 칸에서 뺐지만 **없어진 것은 아닙니다** — 줄에
 마우스를 올리면 뜨는 글과 `[목록 CSV 저장]` 의 CSV 에 그대로 있습니다.

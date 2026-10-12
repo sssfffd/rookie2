@@ -247,6 +247,30 @@ for x in xamls:
         if not re.search(r'(?:const|static|readonly)[^;=\n]*\b' + mem + r'\b\s*(?:=|\{|;)', body):
             bad('x:Static 대상 없음 %s.%s <- %s' % (typ, mem, rel))
 
+# 7d) 놓는 칸 안의 TextBox 가 파일 드롭을 먹지 않는가
+#
+#     TextBox 는 기본으로 끌어다 놓기를 받습니다 (글자를 받으려고). 그런데
+#     파일을 놓으면 <b>받지도 않고 위로 올려 보내지도 않습니다.</b> 놓는 칸
+#     안에 TextBox 가 들어 있으면, 칸 넓이의 거의 전부가 TextBox 라서
+#     "파일을 끌어다 놓아도 아무 일도 안 난다" 가 됩니다 (0.80 에서 겪었습니다).
+#
+#     고치는 법은 그 TextBox 에 AllowDrop="False" 한 마디입니다. 눈으로는
+#     절대 안 보이는 종류라 여기서 봅니다.
+for x in xamls:
+    rel = os.path.relpath(x, ROOT)
+    t = read(x)
+
+    # AllowDrop="True" 를 가진 여는 꼬리표부터 그 요소가 닫히기까지를 봅니다.
+    for m in re.finditer(r'<(\w[\w\.:]*)\b[^>]*?AllowDrop="True"[^>]*?(/?)>', t, re.S):
+        if m.group(2) == '/': continue            # 혼자 닫는 꼬리표 — 안에 아무것도 없습니다
+        el = m.group(1)
+        close = t.find('</' + el, m.end())
+        inner = t[m.end(): close if close >= 0 else len(t)]
+        for tb in re.finditer(r'<TextBox\b[^>]*?>', inner, re.S):
+            if 'AllowDrop' in tb.group(0): continue
+            bad('놓는 칸(%s) 안의 TextBox 에 AllowDrop="False" 가 없음 — '
+                '파일 드롭을 먹습니다 <- %s' % (el, rel))
+
 # 7c) 폴더 이름과 이름 공간이 같은가
 #
 #     0.77 부터 폴더가 "기능" 입니다 (App/Db, App/Logs, …). 폴더와 이름

@@ -961,3 +961,14 @@
 > 들어가는 것 같은데?
 
 → 답변: [60-garbage-values.md](60-garbage-values.md)
+
+---
+
+## 요청 86 — SQL 창 없애기 · 끌어다 놓기 · 코드 자리
+
+> 맞추는 sql창 없애고 io명 가로 크기를 더 키우셈
+> 파일들 드래그해서 넣을 수 있게 해줘
+> 그리고 2번 분석 안에 데이터 파싱하고 데이터들 집어 넣는 코드 위치가
+> 어딘지 알려주셈
+
+→ 답변: [61-sql-pane-out-dragdrop.md](61-sql-pane-out-dragdrop.md)

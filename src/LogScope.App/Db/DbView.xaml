@@ -19,7 +19,13 @@
         </Style>
     </UserControl.Resources>
 
-    <DockPanel>
+    <!--
+      화면 전체가 끌어다 놓기를 받습니다. 두 칸(이전 · 이후)은 자기
+      Drop 을 먼저 받고 e.Handled 로 멈추므로, 여기까지 올라오는 것은
+      "칸 밖에 놓은 것" 뿐입니다.
+    -->
+    <DockPanel AllowDrop="True" DragOver="OnAnyDragOver"
+               DragLeave="OnAnyDragLeave" Drop="OnAnyDrop">
 
         <!-- 위: 어디를 견주는지와 단추들 -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Panel}"
@@ -30,9 +36,9 @@
                     <TextBlock Text="{Binding ScreenTitle}" Style="{StaticResource H2}"
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
-                            ToolTip="config.txt 의 db.before / db.after 를 읽어 견줍니다." />
+                            ToolTip="위 두 자리를 읽어 견줍니다." />
                     <Button Content="SQL 글 저장" Click="OnSaveScript" Margin="0,0,14,0"
-                            ToolTip="아래 글을 .sql 파일로 저장합니다. 돌리는 것은 직접 하세요." />
+                            ToolTip="지금 차이로 맞추는 SQL 을 만들어 .sql 파일로 저장합니다. 화면에는 띄우지 않고, 이 프로그램이 돌리지도 않습니다." />
 
                     <!--
                       맞출 방향(이전 → 이후 / 이후 → 이전) 고르기를 뺐습니다.
@@ -42,9 +48,12 @@
                 </WrapPanel>
 
                 <!--
-                  견줄 두 자리. 칸에 폴더나 파일을 끌어다 놓아도 됩니다.
-                  config.txt 의 db.before / db.after 가 기본값이고, 여기서
-                  고른 것이 이깁니다 (설정 파일에 적힙니다).
+                  견줄 두 자리. 정한 자리는 설정 파일에 적혀서 다음에
+                  켤 때도 그대로입니다.
+
+                  끌어다 놓기는 <b>화면 아무 데나</b> 됩니다 (0.80) —
+                  칸 위에 놓으면 그 쪽, 빈 데 놓으면 비어 있는 쪽,
+                  둘을 한꺼번에 놓으면 첫째가 이전 둘째가 이후입니다.
                 -->
                 <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>
@@ -72,7 +81,16 @@
                             CornerRadius="3" Padding="2" Margin="0,0,6,0"
                             AllowDrop="True" DragOver="OnPathDragOver"
                             DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <TextBox Text="{Binding BeforePath, Mode=TwoWay}"
+                        <!--
+                          AllowDrop="False" 가 중요합니다. TextBox 는 기본으로
+                          끌어다 놓기를 받고(글자를 받으려고), 파일을 놓으면
+                          <b>받지도 않고 위로 올려 보내지도 않습니다.</b> 그러면
+                          칸 위에 놓은 파일이 조용히 아무 일도 안 합니다 —
+                          칸 넓이가 거의 이 TextBox 라서 "드래그가 안 된다" 가
+                          됩니다 (0.80 에서 고쳤습니다).
+                          대신 글자를 끌어다 넣는 것은 안 됩니다. 붙여넣기로 됩니다.
+                        -->
+                        <TextBox Text="{Binding BeforePath, Mode=TwoWay}" AllowDrop="False"
                                  BorderThickness="0" Background="Transparent"
                                  Padding="6,3" ToolTip="{Binding BeforePath}" />
                     </Border>
@@ -97,7 +115,16 @@
                             CornerRadius="3" Padding="2" Margin="0,6,6,0"
                             AllowDrop="True" DragOver="OnPathDragOver"
                             DragLeave="OnPathDragLeave" Drop="OnPathDrop">
-                        <TextBox Text="{Binding AfterPath, Mode=TwoWay}"
+                        <!--
+                          AllowDrop="False" 가 중요합니다. TextBox 는 기본으로
+                          끌어다 놓기를 받고(글자를 받으려고), 파일을 놓으면
+                          <b>받지도 않고 위로 올려 보내지도 않습니다.</b> 그러면
+                          칸 위에 놓은 파일이 조용히 아무 일도 안 합니다 —
+                          칸 넓이가 거의 이 TextBox 라서 "드래그가 안 된다" 가
+                          됩니다 (0.80 에서 고쳤습니다).
+                          대신 글자를 끌어다 넣는 것은 안 됩니다. 붙여넣기로 됩니다.
+                        -->
+                        <TextBox Text="{Binding AfterPath, Mode=TwoWay}" AllowDrop="False"
                                  BorderThickness="0" Background="Transparent"
                                  Padding="6,3" ToolTip="{Binding AfterPath}" />
                     </Border>
@@ -124,14 +151,13 @@
           이름을 칸으로 들고 있어서 같은 것을 두 군데서 보고 있었고,
           목록이 폭을 다 쓰는 쪽이 값을 읽기에 낫습니다.
         -->
-            <!-- 차이 목록과 맞추는 SQL 글 -->
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="5" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
+            <!--
+              차이 목록. 아래에 있던 "맞추는 SQL" 글 칸을 0.80 에서
+              없앴습니다 — 목록이 창 높이를 다 쓰는 쪽이 값을 읽기에
+              낫습니다. SQL 을 만드는 기능은 그대로 있습니다:
+              위의 [SQL 글 저장] 이 지금 차이로 글을 만들어 파일로
+              저장합니다 (화면에 띄우지만 않습니다).
+            -->
                 <!--
                   차이 목록. 칸마다 값 하나입니다.
 
@@ -139,7 +165,7 @@
                   바뀐 열마다 한 줄이라, 같은 열이 몇 군데서 바뀌었는지가
                   보입니다.
                 -->
-                <DockPanel Grid.Row="0">
+                <DockPanel>
                     <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.PanelAlt}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                             Padding="10,5">
@@ -180,7 +206,7 @@
                                       다시 보이게 하려면 아래에 한 줄
                                       더하면 됩니다.
                                     -->
-                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="200"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="340"
                                                     DisplayMemberBinding="{Binding Io}" />
                                     <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="170"
                                                     DisplayMemberBinding="{Binding Before}" />
@@ -212,26 +238,5 @@
                     </Grid>
                 </DockPanel>
 
-                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
-                              VerticalAlignment="Center" Background="Transparent" />
-
-                <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Border}"
-                        BorderThickness="0,1,0,0">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource FieldLabel}"
-                                   Margin="12,6,12,4"
-                                   Text="맞추는 SQL — 이 프로그램이 돌리지 않습니다. 읽어 보고 직접 돌리세요." />
-                        <!--
-                          읽기 전용이지만 TextBox 입니다. 글을 골라 복사할 수
-                          있어야 합니다 — 저장만 되고 복사가 안 되면 번거롭습니다.
-                        -->
-                        <TextBox Text="{Binding ScriptText, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" AcceptsReturn="True"
-                                 VerticalScrollBarVisibility="Auto"
-                                 HorizontalScrollBarVisibility="Auto"
-                                 BorderThickness="0" Background="Transparent" />
-                    </DockPanel>
-                </Border>
-            </Grid>
     </DockPanel>
 </UserControl>
