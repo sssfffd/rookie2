@@ -186,41 +186,23 @@ for c in css:
     if now != head:
         bad('괄호 균형이 바뀜 %s HEAD=%s 지금=%s' % (rel, head, now))
 
-# 7) XAML 의 x:Static 이 가리키는 상수가 실제로 있는가
+# 7) XAML 이 가리키는 우리 타입·상수가 정말 거기 있는가
 #
-#    글자 열쇠(상태 · 갈래 · 칸 이름)를 한 곳에 모으고 XAML 이 x:Static 으로
-#    읽게 했습니다. 그런데 XAML 은 여기서 컴파일되지 않습니다 — 이름을 잘못
-#    적으면 Windows 에서 창이 뜰 때 터지거나, 트리거가 조용히 안 걸립니다.
-#    그래서 가리키는 이름이 코드에 있는지 여기서 봅니다.
-#    타입은 파일 이름으로 찾지 않습니다 — 한 파일에 클래스가 여럿 있을 수
-#    있습니다 (ScoreBands 는 AnalysisCardVm.cs 안에 있습니다).
-cs_text = {}
-for c in css:
-    body = read(c)
-    for typ in re.findall(r'\b(?:class|struct|enum)\s+(\w+)', body):
-        cs_text[typ] = body
-
-for x in xamls:
-    rel = os.path.relpath(x, ROOT)
-    for ref in re.findall(r'\{x:Static\s+([A-Za-z_][\w]*):([A-Za-z_]\w*)\.([A-Za-z_]\w*)\}', read(x)):
-        _pfx, typ, member = ref
-        src = cs_text.get(typ)
-        if src is None:
-            bad('x:Static 대상 없음 %s.%s (%s 파일을 못 찾음) <- %s' % (typ, member, typ, rel))
-            continue
-        if not re.search(r'(?:const|static|readonly)[^;=\n]*\b' + member + r'\b\s*(?:=|\{|;)', src):
-            bad('x:Static 대상 없음 %s.%s <- %s' % (typ, member, rel))
-
-# 7b) XAML 이 <접두어:타입> 으로 쓰는 우리 타입이 그 이름 공간에 있는가
+#    글자 열쇠를 한 곳에 모으고 XAML 이 x:Static 으로 읽게 했습니다. 그리고
+#    0.77 에서 파일을 기능 폴더로 다시 묶었습니다. 둘 다 XAML 의
+#    clr-namespace 를 건드리는데, XAML 은 여기서 컴파일되지 않습니다 —
+#    어긋나도 <b>Windows 에서 창을 띄울 때</b>서야 터집니다.
 #
-#     파일을 다른 폴더로 옮기면 clr-namespace 가 어긋납니다. XAML 은 여기서
-#     컴파일되지 않고, 어긋나도 <b>창을 띄울 때</b>서야 터집니다. 0.77 에서
-#     기능별로 폴더를 다시 묶을 때 실제로 셋이 어긋났습니다 —
-#     변환기(inf:)가 Themes 를 가리키고, 창 세 개가 Shell 을 가리켰습니다.
+#    세 가지를 봅니다.
+#      1. 쓰는 접두어가 선언되어 있는가   (xmlns:vm 을 지웠는데 vm: 를 계속
+#         쓰고 있었습니다 — 0.77 에서 제가 그랬고, 이 검사가 없어서 놓쳤습니다)
+#      2. 그 접두어가 가리키는 이름 공간에 그 타입이 있는가
+#      3. x:Static 이 가리키는 상수가 그 타입에 있는가
 #
-#     어느 이름 공간에 무엇이 있는지는 소스에서 찾습니다 (표로 적어 두면
-#     그 표가 또 어긋납니다).
-ns_types = {}
+#    어디에 무엇이 있는지는 소스에서 찾습니다 — 표로 적어 두면 그 표가
+#    또 어긋납니다.
+ns_types = {}        # 이름 공간 -> 타입 이름 모음
+type_body = {}       # 타입 이름 -> 그 파일 내용
 for c in css:
     body = read(c)
     m = re.search(r'^namespace\s+([\w\.]+)', body, re.M)
@@ -228,16 +210,62 @@ for c in css:
     for typ in re.findall(r'^\s*(?:public |internal |sealed |partial |abstract |static )*'
                           r'(?:class|enum|struct|interface)\s+(\w+)', body, re.M):
         ns_types.setdefault(m.group(1), set()).add(typ)
+        type_body[m.group(1) + '.' + typ] = body
+
+# XAML 쪽이 스스로 아는 접두어 (우리 코드가 아닙니다)
+XAML_OWN = ('x', 'mc', 'd', 'sys', 'xmlns')
 
 for x in xamls:
     rel = os.path.relpath(x, ROOT)
     t = read(x)
-    pfx = dict(re.findall(r'xmlns:(\w+)="clr-namespace:([\w\.]+?)(?:;assembly=[\w\.]+)?"', t))
-    for p_, typ in re.findall(r'<(\w+):(\w+)[\s/>]', t):
-        ns = pfx.get(p_)
-        if ns is None: continue              # x: 같은 XAML 쪽 접두어
+
+    # 선언된 접두어: clr-namespace 인 것만 우리 코드입니다
+    clr = dict(re.findall(r'xmlns:(\w+)="clr-namespace:([\w\.]+?)(?:;assembly=[\w\.]+)?"', t))
+    declared = set(re.findall(r'xmlns:(\w+)=', t)) | set(XAML_OWN)
+
+    # 쓰이는 자리 셋을 모읍니다: <접두어:타입> · {x:Type 접두어:타입} ·
+    # {x:Static 접두어:타입.이름}
+    uses = []
+    for pfx, typ in re.findall(r'<(\w+):(\w+)[\s/>]', t):
+        uses.append((pfx, typ, None))
+    for pfx, typ in re.findall(r'x:Type\s+(\w+):(\w+)', t):
+        uses.append((pfx, typ, None))
+    for pfx, typ, mem in re.findall(r'x:Static\s+(\w+):(\w+)\.(\w+)', t):
+        uses.append((pfx, typ, mem))
+
+    for pfx, typ, mem in uses:
+        if pfx not in declared:
+            bad('XAML 접두어 %s: 가 선언되어 있지 않음 (%s:%s) <- %s' % (pfx, pfx, typ, rel))
+            continue
+        ns = clr.get(pfx)
+        if ns is None: continue          # WPF 쪽 이름 공간이면 우리가 볼 것이 없습니다
         if typ not in ns_types.get(ns, set()):
-            bad('XAML 이 쓰는 %s:%s 가 %s 에 없음 <- %s' % (p_, typ, ns, rel))
+            bad('XAML 이 쓰는 %s:%s 가 %s 에 없음 <- %s' % (pfx, typ, ns, rel))
+            continue
+        if mem is None: continue
+        body = type_body.get(ns + '.' + typ, '')
+        if not re.search(r'(?:const|static|readonly)[^;=\n]*\b' + mem + r'\b\s*(?:=|\{|;)', body):
+            bad('x:Static 대상 없음 %s.%s <- %s' % (typ, mem, rel))
+
+# 7c) 폴더 이름과 이름 공간이 같은가
+#
+#     0.77 부터 폴더가 "기능" 입니다 (App/Db, App/Logs, …). 폴더와 이름
+#     공간이 어긋나면 "DB 화면은 App/Db 를 열면 된다" 가 거짓말이 되고,
+#     XAML 의 clr-namespace 를 적을 때마다 틀립니다. 컴파일은 되므로
+#     아무도 말해 주지 않습니다.
+for c in css:
+    rel = os.path.relpath(c, ROOT).replace('\\', '/')
+    parts = rel.split('/')
+    if len(parts) < 3 or parts[0] != 'src': continue
+    if 'Properties' in parts or parts[-1].endswith('.g.cs'): continue
+
+    want = parts[1]                       # 프로젝트 이름 = 이름 공간의 뿌리
+    for seg in parts[2:-1]:               # 그 아래 폴더가 이름 공간의 나머지
+        want += '.' + seg
+
+    m = re.search(r'^namespace\s+([\w\.]+)', read(c), re.M)
+    if m and m.group(1) != want:
+        bad('폴더와 이름 공간이 다름 %s: %s (폴더대로면 %s)' % (rel, m.group(1), want))
 
 # 8) XAML 의 Tag 글자를 코드 비하인드가 아는가
 #

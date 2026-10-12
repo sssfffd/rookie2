@@ -1,7 +1,7 @@
 ﻿<UserControl x:Class="LogScope.App.Logs.HeatmapView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ctl="clr-namespace:LogScope.App.Logs"
+             xmlns:logs="clr-namespace:LogScope.App.Logs"
              Background="{DynamicResource Brush.Window}"
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
@@ -54,7 +54,7 @@
                 <Popup x:Name="AlignPopup" PlacementTarget="{Binding ElementName=AlignAnchor}"
                        Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                        Closed="OnAlignPopupClosed">
-                    <ctl:AlignPanel DataContext="{Binding Align}"
+                    <logs:AlignPanel DataContext="{Binding Align}"
                                       CloseRequested="OnAlignPanelClose" />
                 </Popup>
 
@@ -142,7 +142,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <ctl:HeatmapCanvas x:Name="Map" Grid.Row="0" Grid.Column="0" />
+            <logs:HeatmapCanvas x:Name="Map" Grid.Row="0" Grid.Column="0" />
 
             <ScrollBar Grid.Row="0" Grid.Column="1" Orientation="Vertical" Minimum="0"
                        SmallChange="26" LargeChange="200"
