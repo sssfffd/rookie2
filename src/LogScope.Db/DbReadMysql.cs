@@ -197,7 +197,8 @@ namespace LogScope.Db
             int columnCount = U16(b, formInfo + 258);
             int namesLength = U16(b, formInfo + 268);
             int labelsLength = U16(b, formInfo + 274);
-            int commentsLength = U16(b, formInfo + 284);
+            // formInfo + 284 에 설명(comment) 길이가 있습니다. 표의 모양과는
+            // 상관없어서 읽지 않습니다.
 
             if (columnCount <= 0) throw new FormatException("열이 0 개로 적혀 있습니다.");
             if (columnCount > 4096) throw new FormatException("열이 " + columnCount + " 개로 적혀 있습니다 (너무 많습니다).");

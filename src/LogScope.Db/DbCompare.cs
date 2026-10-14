@@ -631,8 +631,8 @@ namespace LogScope.Db
         ///   MarkValue  값이 달라짐  → 빨강
         ///   빈 글자    칠하지 않음 (열 줄, 생기거나 없어진 줄, 알림)
         ///
-        /// 0.87 에서 노랑(v1 · v2 가 달라짐)을 없앴습니다 — v1 · v2 자리
-        /// 자체를 뺐습니다.
+        /// 0.87 에서 노랑(v1 · v2 가 달라짐)을 없앴습니다 — 그 자리 자체를
+        /// 뺐습니다. 색이 하나면 "칠했나 안 칠했나" 만 보면 됩니다.
         ///
         /// 생기거나 없어진 줄을 칠하지 않는 이유: 그건 "값이 달라진" 것이
         /// 아니고, 위 요약에서 <b>따로 세어 보여 줍니다</b>. 같은 것을 두
@@ -817,7 +817,8 @@ namespace LogScope.Db
                 if (_capped)
                     Say(string.Empty, "목록이 " + Opt.MaxLines.ToString("N0")
                         + " 줄을 넘어 그 뒤는 적지 않았습니다 (상한). "
-                        + "왼쪽에서 표를 골라 [고른 표만] 으로 보거나, CSV 로 내보내 보세요.");
+                        + "CSV 로 내보내도 같은 상한이 걸립니다 — 견줄 자리를 "
+                        + "좁혀 주세요 (폴더 대신 파일 하나).");
             }
         }
 
@@ -1057,7 +1058,7 @@ namespace LogScope.Db
         /// </summary>
         public struct Tally
         {
-            /// <summary>값이 달라진 IO (v1 · v2 가 달라진 것까지 포함).</summary>
+            /// <summary>값이 달라진 IO.</summary>
             public int Changed;
 
             /// <summary>이전에만 있던 IO.</summary>

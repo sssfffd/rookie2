@@ -1293,51 +1293,8 @@ namespace LogScope.Db
                     return t;
                 }
 
-                // 첫 줄은 열 이름입니다. 두 자리만 씁니다 — 3 번(IO 이름)과
-                // 4 번(값). 어느 자리인지는 DbNames 한 곳에 있습니다.
-                int key = DbNames.CsvKeyColumn - 1;        // 사람은 1 부터 셉니다
-                int val = DbNames.CsvValueColumn - 1;
-
-                bool twoOnly = count > key && count > val;
-                if (!twoOnly)
-                {
-                    // 열이 모자란 파일입니다. 통째로 읽고 열쇠는 두지 않습니다 —
-                    // 자리를 짐작해 엉뚱한 열을 열쇠로 쓰면 없는 차이가 생깁니다.
-                    t.Note += " / 열이 " + count + " 개뿐이라 "
-                            + DbNames.CsvKeyColumn + " 번과 " + DbNames.CsvValueColumn
-                            + " 번을 쓸 수 없습니다. 모든 열을 읽고 열쇠 없이 견줍니다";
-                }
-
-                int[] take = twoOnly ? new[] { key, val } : null;
-                int wide = count;
-
-                for (int i = 0; i < count; i++)
-                {
-                    if (twoOnly && i != key && i != val) continue;
-
-                    var c = new DbColumn();
-                    string name = Text(cells[i]);
-                    c.Name = string.IsNullOrEmpty(name) ? "열" + (i + 1) : name;
-                    c.Ordinal = t.Columns.Count;
-                    c.IsKey = twoOnly && i == key;
-                    t.Columns.Add(c);
-                }
-
-                if (twoOnly && count > 2)
-                {
-                    var skipped = new StringBuilder();
-                    for (int i = 0; i < count; i++)
-                    {
-                        if (i == key || i == val) continue;
-                        if (skipped.Length > 0) skipped.Append(" · ");
-                        string nm = Text(cells[i]);
-                        skipped.Append(string.IsNullOrEmpty(nm) ? "열" + (i + 1) : nm);
-                    }
-                    t.Note += " / " + count + " 개 열 중 " + DbNames.CsvKeyColumn + " 번("
-                            + t.Columns[0].Name + ")으로 행을 짝짓고 "
-                            + DbNames.CsvValueColumn + " 번(" + t.Columns[1].Name
-                            + ") 값을 견줍니다. 안 본 열: " + skipped;
-                }
+                // 첫 줄로 열을 세웁니다. 어느 자리를 쓸지는 Head 가 정합니다.
+                int[] take = Head(t, cells, count);
 
                 while (src.NextRow(out cells, out count))
                 {
@@ -1358,12 +1315,7 @@ namespace LogScope.Db
 
                     // 줄이 머리보다 길면 열을 늘립니다. 잘라 버리면 값이 조용히 사라집니다.
                     while (t.Columns.Count < count)
-                    {
-                        var c = new DbColumn();
-                        c.Name = "열" + (t.Columns.Count + 1);
-                        c.Ordinal = t.Columns.Count;
-                        t.Columns.Add(c);
-                    }
+                        t.Columns.Add(NewColumn("열" + (t.Columns.Count + 1), t.Columns.Count, false));
 
                     var row = new DbRow(t.Columns.Count);
                     for (int i = 0; i < count && i < row.Values.Length; i++)
@@ -1375,9 +1327,76 @@ namespace LogScope.Db
                     t.Rows.Add(row);
                 }
                 t.HasRows = true;
-                if (wide > 0) { }   // 읽은 열 수는 위 알림에 적었습니다
             }
             return t;
+        }
+
+        /// <summary>
+        /// 첫 줄(열 이름)로 표의 열을 세웁니다.
+        ///
+        /// 돌려주는 것은 <b>각 행에서 읽을 자리</b>입니다.
+        ///   자리 둘  : 3 번(IO 이름) · 4 번(값) 만 읽습니다
+        ///   <c>null</c> : 열이 모자라 통째로 읽습니다
+        ///
+        /// 통째로 읽을 때는 <b>열쇠를 두지 않습니다.</b> 자리를 짐작해
+        /// 엉뚱한 열을 열쇠로 쓰면 엉뚱한 행끼리 짝지어 <b>없는 차이가
+        /// 생깁니다.</b> 왜 그랬는지는 표의 알림에 적습니다.
+        /// </summary>
+        private static int[] Head(DbTable t, Cell[] cells, int count)
+        {
+            int key = DbNames.CsvKeyColumn - 1;        // 사람은 1 부터 셉니다
+            int val = DbNames.CsvValueColumn - 1;
+            bool two = count > key && count > val;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (two && i != key && i != val) continue;
+                t.Columns.Add(NewColumn(Name(cells[i], i), t.Columns.Count, two && i == key));
+            }
+
+            if (!two)
+            {
+                t.Note += " / 열이 " + count + " 개뿐이라 " + DbNames.CsvKeyColumn
+                        + " 번과 " + DbNames.CsvValueColumn + " 번을 쓸 수 없습니다. "
+                        + "모든 열을 읽고 열쇠 없이 견줍니다";
+                return null;
+            }
+
+            if (count > 2) t.Note += " / " + count + " 개 열 중 " + DbNames.CsvKeyColumn
+                        + " 번(" + t.Columns[0].Name + ")으로 행을 짝짓고 "
+                        + DbNames.CsvValueColumn + " 번(" + t.Columns[1].Name
+                        + ") 값을 견줍니다. 안 본 열: " + Skipped(cells, count, key, val);
+
+            return new[] { key, val };
+        }
+
+        /// <summary>안 읽은 열 이름들. 조용히 버리지 않으려고 적습니다.</summary>
+        private static string Skipped(Cell[] cells, int count, int key, int val)
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < count; i++)
+            {
+                if (i == key || i == val) continue;
+                if (sb.Length > 0) sb.Append(" · ");
+                sb.Append(Name(cells[i], i));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>적힌 열 이름. 비어 있으면 "열3" 처럼 자리로 부릅니다.</summary>
+        private static string Name(Cell c, int i)
+        {
+            string name = Text(c);
+            return string.IsNullOrEmpty(name) ? "열" + (i + 1) : name;
+        }
+
+        private static DbColumn NewColumn(string name, int ordinal, bool isKey)
+        {
+            var c = new DbColumn();
+            c.Name = name;
+            c.Ordinal = ordinal;
+            c.IsKey = isKey;
+            return c;
         }
 
         private static string Text(Cell c)

@@ -368,14 +368,8 @@ namespace LogScope.App.Db
         {
             if (_diff == null) { ScriptText = string.Empty; return; }
 
-            // 늘 "이전 → 이후" 입니다. 화면에서 방향을 고르던 것을 뺐습니다.
-            //
-            // 되돌리는 글(이후 → 이전)을 만드는 길은 Core 에 그대로
-            // 남아 있습니다 (SqlScript.Direction.ToBefore). 다시 필요하면
-            // 여기 한 줄과 단추 하나입니다.
-            var opt = new SqlScript.Options();
-            opt.Way = SqlScript.Direction.ToAfter;
-            ScriptText = SqlScript.Build(_diff, opt);
+            // 늘 "이전 → 이후" 입니다 (SqlScript 가 한 방향만 만듭니다).
+            ScriptText = SqlScript.Build(_diff, null);
         }
     }
 }

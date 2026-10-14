@@ -10,7 +10,9 @@ using System.Text;
 //
 //   SqlScript    차이를 맞추는 글 (ALTER · UPDATE · INSERT.
 //                지우는 문장은 늘 주석입니다)
-//   DbCreateSql  읽은 모양을 CREATE TABLE 글로 (확인용)
+//
+//  0.88 에 DbCreateSql(읽은 모양을 CREATE TABLE 글로)을 지웠습니다 —
+//  0.64 에 그 단추를 뺀 뒤로 부르는 쪽이 없었습니다.
 //
 //  한 파일로 모았습니다 (0.73). 전에는 SqlScript · DbCreateSql
 //  로 나뉘어 있었습니다 — DB 화면을 고치려면 열 파일을 뒤져야 했습니다.
@@ -35,37 +37,28 @@ namespace LogScope.Db
     /// 그래서 <b>사람이 읽고 직접 돌리는 글</b>로 만듭니다. 위험한 줄은
     /// 주석으로 표시해 두고, 지울지 말지는 보는 사람이 정합니다.
     ///
-    /// 방향은 둘 다 만들 수 있습니다.
-    ///   ToAfter  : 이전 DB 를 이후와 같게 (보통 "새 것으로 맞추기")
-    ///   ToBefore : 이후 DB 를 이전과 같게 (되돌리기)
+    /// 방향은 <b>하나뿐입니다 — 이전 DB 를 이후와 같게.</b>
     ///
-    /// <b>화면에서는 ToAfter 만 씁니다</b> (0.71 에 고르는 칸을 뺐습니다).
-    /// 쓰는 쪽이 한쪽뿐이면 고르는 칸은 자리만 먹고, 잘못 고른 채 저장하면
-    /// 되돌리는 글을 맞추는 글로 착각하게 됩니다. ToBefore 를 지우지 않은
-    /// 이유는 지우면 다시 필요할 때 처음부터 짜야 하기 때문입니다 —
-    /// 남겨 두는 값은 부르는 쪽 한 줄입니다.
+    /// 0.71 에 화면의 고르는 칸을 뺐고, 0.88 에 코드에서도 뺐습니다. 반대
+    /// 방향(되돌리기)을 만드는 길이 남아 있었는데 부르는 쪽이 없었고, 그
+    /// 때문에 이 파일의 <b>열다섯 군데가 "이 방향이면 A, 저 방향이면 B"</b>
+    /// 로 갈라져 있었습니다. 읽는 사람이 매번 두 경우를 머리에 올려야
+    /// 했습니다. 되돌리는 글이 다시 필요해지면 git 에 그대로 있습니다.
     ///
     /// 어느 방향으로 만든 글인지는 <b>글 머리에 적힙니다.</b> 저장한 .sql 을
     /// 나중에 열어 본 사람이 방향을 짐작하게 두면 안 됩니다.
     /// </summary>
     public static class SqlScript
     {
-        public enum Direction
-        {
-            /// <summary>이전 DB 를 이후처럼 바꾸는 글.</summary>
-            ToAfter = 0,
-            /// <summary>이후 DB 를 이전처럼 바꾸는 글 (되돌리기).</summary>
-            ToBefore = 1,
-        }
-
         public sealed class Options
         {
-            public Direction Way = Direction.ToAfter;
-
-            /// <summary>표를 지우거나 만드는 문장도 넣을지. 기본은 주석으로만.</summary>
-            public bool IncludeTableCreateDrop;
-
-            /// <summary>한 표에서 적어 둘 행 문장 수 상한.</summary>
+            /// <summary>
+            /// 한 표에서 적어 둘 행 문장 수 상한.
+            ///
+            /// 앱은 기본값만 씁니다. <b>시험이 상한에 걸리는 것을 싸게
+            /// 볼 수 있게</b> 둔 자리입니다 — 이것이 없으면 상한을 보려고
+            /// 2000 줄짜리 자료를 만들어야 합니다.
+            /// </summary>
             public int MaxRowStatements = 2000;
         }
 
@@ -74,10 +67,7 @@ namespace LogScope.Db
             if (opt == null) opt = new Options();
             var sb = new StringBuilder();
 
-            bool toAfter = opt.Way == Direction.ToAfter;
-
-            sb.AppendLine("-- " + (toAfter ? "이전 DB 를 이후와 같게 만드는 글"
-                                           : "이후 DB 를 이전과 같게 되돌리는 글"));
+            sb.AppendLine("-- 이전 DB 를 이후와 같게 만드는 글");
             sb.AppendLine("--");
             sb.AppendLine("-- 이 글은 LogScope 가 \"두 DB 의 차이\" 를 보고 적은 것입니다.");
             sb.AppendLine("-- 프로그램이 직접 돌리지 않습니다. 읽어 보고 직접 돌리세요.");
@@ -103,7 +93,7 @@ namespace LogScope.Db
                 if (td.RowNote.Length > 0) sb.AppendLine("-- " + td.RowNote);
                 sb.AppendLine("-- ======================================================");
 
-                wrote += Table(sb, td, opt, toAfter);
+                wrote += Table(sb, td, opt);
                 sb.AppendLine();
             }
 
@@ -111,17 +101,12 @@ namespace LogScope.Db
             return sb.ToString();
         }
 
-        private static int Table(StringBuilder sb, TableDiff td, Options opt, bool toAfter)
+        private static int Table(StringBuilder sb, TableDiff td, Options opt)
         {
             int n = 0;
 
             // ---- 표 자체가 한쪽에만 있는 경우 ----
-            bool onlyHere = (toAfter && td.Change == DbChange.OnlyBefore)
-                         || (!toAfter && td.Change == DbChange.OnlyAfter);
-            bool onlyThere = (toAfter && td.Change == DbChange.OnlyAfter)
-                          || (!toAfter && td.Change == DbChange.OnlyBefore);
-
-            if (onlyHere)
+            if (td.Change == DbChange.OnlyBefore)
             {
                 // 지우는 문장은 늘 주석으로 둡니다. 표를 지우는 일을
                 // 글만 보고 돌리게 하면 안 됩니다.
@@ -129,15 +114,12 @@ namespace LogScope.Db
                 sb.AppendLine("-- DROP TABLE " + Quote(td.Name) + ";");
                 return 0;
             }
-            if (onlyThere)
+            if (td.Change == DbChange.OnlyAfter)
             {
+                // 만드는 문장도 주석으로만 둡니다. 표를 만드는 일은 열 타입을
+                // 짐작해 적는 것이라, 그대로 돌리면 틀린 표가 생깁니다.
                 sb.AppendLine("-- 이 표가 없습니다. 만들어야 합니다.");
                 sb.AppendLine("-- " + CreateHint(td));
-                if (opt.IncludeTableCreateDrop)
-                {
-                    DbTable src = toAfter ? td.After : td.Before;
-                    if (src != null) { sb.AppendLine(Create(src)); n++; }
-                }
                 return n;
             }
 
@@ -146,15 +128,15 @@ namespace LogScope.Db
             {
                 ColumnDiff cd = td.Columns[i];
                 if (cd.Change == DbChange.Same) continue;
-                n += Column(sb, td, cd, toAfter);
+                n += Column(sb, td, cd);
             }
 
             // ---- 행 ----
-            n += Rows(sb, td, opt, toAfter);
+            n += Rows(sb, td, opt);
             return n;
         }
 
-        private static int Column(StringBuilder sb, TableDiff td, ColumnDiff cd, bool toAfter)
+        private static int Column(StringBuilder sb, TableDiff td, ColumnDiff cd)
         {
             string table = Quote(td.Name);
 
@@ -162,7 +144,7 @@ namespace LogScope.Db
             // CHANGE 로 돌려 버리면, 짐작이 틀렸을 때 다른 열의 값이 사라집니다.
             if (cd.RenameGuess != null)
             {
-                DbColumn from = toAfter ? cd.Before : cd.After;
+                DbColumn from = cd.Before;
                 string to = cd.RenameGuess;
                 if (from == null) return 0;      // 짝의 다른 쪽에서 이미 적었습니다
 
@@ -175,20 +157,16 @@ namespace LogScope.Db
                 return 0;
             }
 
-            bool missingHere = (toAfter && cd.Change == DbChange.OnlyAfter)
-                            || (!toAfter && cd.Change == DbChange.OnlyBefore);
-            bool extraHere = (toAfter && cd.Change == DbChange.OnlyBefore)
-                          || (!toAfter && cd.Change == DbChange.OnlyAfter);
-
-            if (missingHere)
+            // 이전 쪽에 없는 열은 더하고, 이전 쪽에만 있는 열은 주석으로 둡니다.
+            if (cd.Change == DbChange.OnlyAfter)
             {
-                DbColumn want = toAfter ? cd.After : cd.Before;
+                DbColumn want = cd.After;
                 sb.AppendLine("ALTER TABLE " + table + " ADD COLUMN " + Quote(want.Name)
                               + " " + Spec(want) + After(want) + ";");
                 return 1;
             }
 
-            if (extraHere)
+            if (cd.Change == DbChange.OnlyBefore)
             {
                 // 열을 지우면 그 안의 값이 다 사라집니다. 주석으로 둡니다.
                 sb.AppendLine("-- 이 열은 한쪽에만 있습니다. 지우면 값이 사라집니다:");
@@ -198,7 +176,7 @@ namespace LogScope.Db
 
             if (cd.Change == DbChange.Changed)
             {
-                DbColumn want = toAfter ? cd.After : cd.Before;
+                DbColumn want = cd.After;
                 if (cd.MovedOnly && !cd.TypeChanged && !cd.NullChanged && !cd.DefaultChanged)
                 {
                     // 자리만 다른 것은 고치지 않아도 값에는 영향이 없습니다.
@@ -215,12 +193,12 @@ namespace LogScope.Db
             return 0;
         }
 
-        private static int Rows(StringBuilder sb, TableDiff td, Options opt, bool toAfter)
+        private static int Rows(StringBuilder sb, TableDiff td, Options opt)
         {
             if (!td.RowsDiffer) return 0;
 
-            DbTable here = toAfter ? td.Before : td.After;
-            DbTable there = toAfter ? td.After : td.Before;
+            DbTable here = td.Before;      // 바꿀 쪽
+            DbTable there = td.After;      // 같게 만들 목표
             if (here == null || there == null) return 0;
 
             if (!here.HasRows || !there.HasRows)
@@ -247,10 +225,10 @@ namespace LogScope.Db
                 }
 
                 RowDiff rd = td.Rows[i];
-                DbRow want = toAfter ? rd.After : rd.Before;
-                DbRow have = toAfter ? rd.Before : rd.After;
+                DbRow want = rd.After;     // 이후에 있는 모습
+                DbRow have = rd.Before;    // 이전에 있는 모습
 
-                // 이 방향에서 "없는 행" 이면 넣고, "남는 행" 이면 지웁니다.
+                // 이후에만 있으면 넣고, 이전에만 있으면 지웁니다.
                 if (want == null)
                 {
                     sb.AppendLine("-- 한쪽에만 있는 행입니다. 지우려면 주석을 풀어 주세요:");
@@ -304,23 +282,6 @@ namespace LogScope.Db
             return "CREATE TABLE " + Quote(t.Name) + " (열 " + t.Columns.Count + " 개) ...";
         }
 
-        private static string Create(DbTable t)
-        {
-            var sb = new StringBuilder();
-            sb.Append("CREATE TABLE ").Append(Quote(t.Name)).AppendLine(" (");
-            var keys = new List<string>();
-            for (int i = 0; i < t.Columns.Count; i++)
-            {
-                DbColumn c = t.Columns[i];
-                sb.Append("  ").Append(Quote(c.Name)).Append(' ').Append(Spec(c));
-                if (i < t.Columns.Count - 1 || t.HasKey) sb.Append(',');
-                sb.AppendLine();
-                if (c.IsKey) keys.Add(Quote(c.Name));
-            }
-            if (keys.Count > 0) sb.Append("  PRIMARY KEY (").Append(string.Join(", ", keys.ToArray())).AppendLine(")");
-            sb.Append(");");
-            return sb.ToString();
-        }
 
         private static string Insert(DbTable shape, string table, DbRow row)
         {
@@ -445,139 +406,6 @@ namespace LogScope.Db
     }
 
     // ======================================================
-    //  DbCreateSql
     // ======================================================
 
-    /// <summary>
-    /// 읽은 표의 모양을 <c>CREATE TABLE</c> 글로 적습니다.
-    ///
-    /// <b>쓰임이 둘입니다.</b>
-    ///
-    /// 1. <b>확인용.</b> <c>.frm</c> 을 우리가 제대로 읽었는지 보는 가장 빠른
-    ///    길입니다. 서버에서 <c>SHOW CREATE TABLE</c> 을 찍어 이 글과 나란히
-    ///    놓고 보면, 열 이름·타입·순서가 맞는지 한눈에 드러납니다.
-    ///
-    /// 2. <b>받는 쪽 표를 만들 때의 출발점.</b> 값을 옮기려면 받는 서버에 같은
-    ///    표가 먼저 있어야 합니다 (transportable tablespace).
-    ///
-    /// <b>그대로 쓰면 안 되는 글입니다.</b> 빠진 것이 있습니다 —
-    /// 기본값(<c>.frm</c> 에서 안 읽습니다), <c>AUTO_INCREMENT</c>, 문자셋과
-    /// <c>COLLATE</c>, 외래 키, <b>기본 키가 아닌 색인</b>, 엔진과 행 포맷.
-    /// 머리에 그렇다고 적어 둡니다. 모르는 것을 아는 척 적는 쪽이 더
-    /// 나쁩니다 — 그 글을 믿고 돌리면 엉뚱한 표가 생깁니다.
-    /// </summary>
-    public static class DbCreateSql
-    {
-        /// <summary>두 쪽을 한 글로. 한 파일로 저장해 나란히 보게 합니다.</summary>
-        public static string Both(DbSnapshot before, DbSnapshot after)
-        {
-            var sb = new StringBuilder();
-            Head(sb);
-            sb.Append(Build(before, "이전"));
-            sb.AppendLine();
-            sb.Append(Build(after, "이후"));
-            return sb.ToString();
-        }
-
-        private static void Head(StringBuilder sb)
-        {
-            sb.AppendLine("-- 읽은 표의 모양입니다. LogScope 가 적었습니다.");
-            sb.AppendLine("--");
-            sb.AppendLine("-- 그대로 돌리지 마세요. 빠진 것이 있습니다:");
-            sb.AppendLine("--   기본값(DEFAULT) · AUTO_INCREMENT · 문자셋/COLLATE ·");
-            sb.AppendLine("--   외래 키 · 기본 키가 아닌 색인 · 엔진/행 포맷");
-            sb.AppendLine("--");
-            sb.AppendLine("-- 쓸 곳");
-            sb.AppendLine("--   1. 서버의 SHOW CREATE TABLE 과 나란히 놓고 견주기");
-            sb.AppendLine("--      (.frm 을 제대로 읽었는지 보는 가장 빠른 길입니다)");
-            sb.AppendLine("--   2. 값을 옮길 때 받는 쪽 표를 만드는 출발점");
-            sb.AppendLine();
-        }
-
-        /// <summary>한 쪽.</summary>
-        public static string Build(DbSnapshot snap, string title)
-        {
-            var sb = new StringBuilder();
-            sb.Append("-- ===== ").Append(title).Append(" ");
-            if (snap != null && snap.Source.Length > 0) sb.Append("· ").Append(snap.Source).Append(' ');
-            sb.AppendLine("=====");
-            sb.AppendLine();
-
-            if (snap == null || snap.Tables.Count == 0)
-            {
-                sb.AppendLine("-- 읽은 표가 없습니다.");
-                return sb.ToString();
-            }
-
-            for (int i = 0; i < snap.Tables.Count; i++)
-            {
-                sb.Append(One(snap.Tables[i]));
-                sb.AppendLine();
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>표 하나.</summary>
-        public static string One(DbTable t)
-        {
-            if (t == null) return string.Empty;
-
-            var sb = new StringBuilder();
-            if (t.Note.Length > 0) sb.Append("-- ").AppendLine(t.Note);
-            if (!t.HasRows) sb.AppendLine("-- 값은 읽지 못했습니다 (모양만).");
-
-            sb.Append("CREATE TABLE ").Append(Quote(t.Name)).AppendLine(" (");
-
-            var lines = new List<string>();
-            for (int i = 0; i < t.Columns.Count; i++) lines.Add("  " + Column(t.Columns[i]));
-
-            string keys = Keys(t);
-            if (keys.Length > 0) lines.Add("  " + keys);
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                sb.Append(lines[i]);
-                sb.AppendLine(i + 1 < lines.Count ? "," : string.Empty);
-            }
-            sb.AppendLine(");");
-            return sb.ToString();
-        }
-
-        private static string Column(DbColumn c)
-        {
-            var sb = new StringBuilder();
-            sb.Append(Quote(c.Name)).Append(' ');
-            sb.Append(c.Type.Length > 0 ? c.Type : "/* 타입을 모릅니다 */");
-
-            if (!c.Nullable) sb.Append(" NOT NULL");
-
-            // 모르는 기본값은 적지 않습니다. "DEFAULT NULL" 로 적으면 모르는
-            // 것을 아는 척하는 것이고, 그걸 믿고 돌리면 기본값이 바뀝니다.
-            if (c.DefaultKnown && c.Default != null) sb.Append(" DEFAULT ").Append(c.Default);
-            else if (!c.DefaultKnown) sb.Append(" /* 기본값 모름 */");
-
-            return sb.ToString();
-        }
-
-        private static string Keys(DbTable t)
-        {
-            int[] keys = t.KeyIndexes();
-            if (keys.Length == 0) return string.Empty;
-
-            var sb = new StringBuilder("PRIMARY KEY (");
-            for (int i = 0; i < keys.Length; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(Quote(t.Columns[keys[i]].Name));
-            }
-            sb.Append(')');
-            return sb.ToString();
-        }
-
-        /// <summary>이름을 홑따옴표가 아니라 역따옴표로 감쌉니다. 안의 역따옴표는 두 번.</summary>
-        private static string Quote(string name)
-        {
-            return "`" + (name ?? string.Empty).Replace("`", "``") + "`";
-        }
-    }
 }

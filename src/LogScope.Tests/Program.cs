@@ -132,7 +132,6 @@ namespace LogScope.Tests
                 FrmDefaultUnknown();
                 FrmInFolder();
                 DbSingleFile();
-                DbCreateSqlText();
                 DbCompare();
                 DbDiffLines();
                 DbColumnNames();
@@ -2598,65 +2597,6 @@ namespace LogScope.Tests
             Put16(b, at + 15, 0);                       // 주석 길이
         }
 
-        /// <summary>
-        /// 읽은 모양을 CREATE TABLE 글로 적는 것.
-        ///
-        /// 여기서 지키려는 것은 <b>모르는 것을 아는 척 적지 않기</b>입니다.
-        /// 기본값을 모르는 열에 "DEFAULT NULL" 을 적어 두면, 그 글을 믿고
-        /// 돌린 사람이 없던 기본값을 만들어 버립니다.
-        /// </summary>
-        private static void DbCreateSqlText()
-        {
-            Say("DB — 표 정의 글 만들기");
-
-            var t = new DbTable { Name = "recipe", HasRows = true };
-            t.Columns.Add(new DbColumn { Name = "id", Type = "int(11)", Nullable = false, IsKey = true });
-            t.Columns.Add(new DbColumn { Name = "name", Type = "varchar(64)", Nullable = true, Default = "'가'" });
-            var unknown = new DbColumn { Name = "온도", Type = "decimal(6,2)", Nullable = true };
-            unknown.DefaultKnown = false;
-            t.Columns.Add(unknown);
-
-            string sql = DbCreateSql.One(t);
-
-            Check("CREATE TABLE 로 시작", sql.Contains("CREATE TABLE `recipe` ("), sql);
-            Check("역따옴표로 이름", sql.Contains("`id` int(11) NOT NULL"), sql);
-            Check("한글 열 이름", sql.Contains("`온도`"), sql);
-            Check("아는 기본값은 적음", sql.Contains("DEFAULT '가'"), sql);
-            // 모르는 기본값에 DEFAULT NULL 을 적으면 안 됩니다 — 없던 기본값이 생깁니다.
-            Check("모르는 기본값은 안 적음", !sql.Contains("DEFAULT NULL"), sql);
-            Check("모른다고 적음", sql.Contains("기본값 모름"), sql);
-            Check("기본 키", sql.Contains("PRIMARY KEY (`id`)"), sql);
-            Check("쉼표가 마지막 줄엔 없음", sql.Contains("PRIMARY KEY (`id`)\n)")
-                  || sql.Contains("PRIMARY KEY (`id`)\r\n)"), sql);
-
-            // 키가 없으면 PRIMARY KEY 줄 자체가 없어야 합니다.
-            var nokey = new DbTable { Name = "t", HasRows = false };
-            nokey.Columns.Add(new DbColumn { Name = "a", Type = "int(11)", Nullable = true });
-            string sql2 = DbCreateSql.One(nokey);
-            Check("키 없으면 줄도 없음", !sql2.Contains("PRIMARY KEY"), sql2);
-            Check("값 못 읽었다고 적음", sql2.Contains("값은 읽지 못했습니다"), sql2);
-
-            // 역따옴표가 든 이름은 두 번으로.
-            var odd = new DbTable { Name = "we`ird", HasRows = true };
-            odd.Columns.Add(new DbColumn { Name = "a`b", Type = "int(11)", Nullable = true });
-            string sql3 = DbCreateSql.One(odd);
-            Check("역따옴표는 두 번", sql3.Contains("`we``ird`") && sql3.Contains("`a``b`"), sql3);
-
-            // 두 쪽을 한 글로. 머리에 "그대로 돌리지 마세요" 가 있어야 합니다.
-            var b = new DbSnapshot { Source = "D:\\db\\이전" };
-            b.Tables.Add(t);
-            var a = new DbSnapshot { Source = "D:\\db\\이후" };
-            string both = DbCreateSql.Both(b, a);
-            Check("그대로 돌리지 말라고 적음", both.Contains("그대로 돌리지 마세요"), null);
-            Check("빠진 것을 밝힘",
-                  both.Contains("AUTO_INCREMENT") && both.Contains("외래 키")
-                  && both.Contains("색인"), null);
-            Check("SHOW CREATE TABLE 과 견주라고 안내", both.Contains("SHOW CREATE TABLE"), null);
-            Check("두 쪽을 다 적음", both.Contains("이전") && both.Contains("이후"), null);
-            Check("읽은 쪽 경로를 적음", both.Contains("D:\\db\\이전"), null);
-            Check("빈 쪽은 그렇다고", both.Contains("읽은 표가 없습니다"), null);
-            Check("null 도 견딤", DbCreateSql.Both(null, null).Length > 0, null);
-        }
 
         /// <summary>
         /// 선 색이 무엇을 가리키는지 정하는 규칙.
@@ -3244,7 +3184,7 @@ namespace LogScope.Tests
         ///
         /// 둘 다 <b>보는 사람이 수를 믿을 수 있어야</b> 하는 자리입니다.
         ///   · IO 를 셉니다 — 한 IO 가 세 열에서 달라져도 1 개입니다
-        ///   · v1 · v2 가 달라진 줄은 노랑, 다른 열은 빨강
+        ///   · 값이 달라진 줄은 빨강
         ///   · 생기거나 없어진 줄은 칠하지 않고 따로 셉니다
         /// </summary>
         private static void DbTallyAndMarks()
@@ -3583,13 +3523,11 @@ namespace LogScope.Tests
             Check("숫자는 따옴표 없이", SqlScript.Literal("182.50") == "182.50", SqlScript.Literal("182.50"));
             Check("이름의 역따옴표를 막음", SqlScript.Quote("a`b") == "`a``b`", SqlScript.Quote("a`b"));
 
-            // 되돌리는 방향
-            var opt = new SqlScript.Options();
-            opt.Way = SqlScript.Direction.ToBefore;
-            string back = SqlScript.Build(d, opt);
-            Check("되돌리는 글은 반대 값", back.Contains("182.50"), null);
-            Check("되돌릴 때 새 열은 지우기(주석)",
-                  back.Contains("-- ALTER TABLE `recipe` DROP COLUMN `added`"), null);
+            // 방향은 하나뿐입니다 (0.88 에 되돌리는 방향을 뺐습니다).
+            // 만든 글의 머리에 어느 방향인지 적혀 있어야 합니다 — 저장한
+            // .sql 을 나중에 열어 본 사람이 짐작하게 두면 안 됩니다.
+            Check("글 머리에 방향이 적힘", sql.StartsWith("-- 이전 DB 를 이후와 같게"),
+                  sql.Substring(0, Math.Min(40, sql.Length)));
 
             // 명령 줄 나누기
             string exe, args;
