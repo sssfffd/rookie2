@@ -1001,3 +1001,12 @@
 > 그리고 test 코드들은 목적이 뭐야 없어도돼?
 
 → 답변: [64-vs-vs-batch.md](64-vs-vs-batch.md)
+
+---
+
+## 요청 90 — 테스트가 빌드를 막지 않게
+
+> test는 너가 쓰기 위한거라고?
+> ㅇㅇ A처럼 바꿔줘
+
+→ 답변: [65-tests-dont-block.md](65-tests-dont-block.md)

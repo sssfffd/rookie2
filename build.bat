@@ -35,6 +35,7 @@ rem    are here so the file still explains itself.
 rem
 rem  Usage:
 rem     build.bat              Release, then run the self tests
+rem                            (a failing test warns; it does not stop)
 rem     build.bat Debug        Debug
 rem     build.bat Release nt   skip the tests
 rem
@@ -187,13 +188,24 @@ echo   ------------------------------------------------------------
 set "RC=%ERRORLEVEL%"
 call :cp
 
+rem  A failed test does NOT stop the build (since 0.84).
+rem
+rem  The tests are mostly a safety net for the agent that edits this
+rem  repository: it cannot run Windows or WPF, so they are the only
+rem  way it can tell whether a change to the value-handling code
+rem  broke something. That is not a good reason to stop the owner of
+rem  the repository from getting an exe.
+rem
+rem  So we remember it, keep going, and say it again at the very end
+rem  so it cannot scroll away unnoticed.
 if not "%RC%"=="0" (
+  set "TESTFAIL=1"
   echo.
-  call :msg "[오류] 테스트가 실패했습니다. 위의 FAIL 줄을 보세요." "[error] A test failed. See the FAIL lines above."
-  call :msg "       Visual Studio 에서는 성공으로 보일 수 있습니다." "       Visual Studio can still look green here:"
-  call :msg "       VS 는 테스트를 돌리지 않습니다. 여기만 돌립니다." "       VS does not run the tests. Only this does."
-  call :msg "       테스트 없이 빌드만: build.bat Release nt" "       Build without tests: build.bat Release nt"
-  goto :fail
+  call :msg "[알림] 테스트가 실패했습니다. 위의 FAIL 줄을 보세요." "[note] A test failed. See the FAIL lines above."
+  call :msg "       빌드는 계속합니다. exe 는 그대로 만들어집니다." "       The build continues; the exe is still made."
+  call :msg "       Visual Studio 에서는 이 글이 안 나옵니다." "       Visual Studio never shows this:"
+  call :msg "       VS 는 테스트를 돌리지 않습니다." "       VS does not run the tests."
+  call :msg "       테스트를 아예 건너뛰려면: build.bat Release nt" "       To skip the tests entirely: build.bat Release nt"
 )
 
 :collect
@@ -238,6 +250,10 @@ call :msg " 실행 파일 : %OUT%\!APPNAME!.exe" " Executable : %OUT%\!APPNAME!.exe"
 call :msg " out 폴더를 통째로 복사해서 쓰면 됩니다." " Copy the whole out folder and run it."
 call :msg " 설치 프로그램은 필요 없습니다." " No installer is needed."
 echo   ============================================================
+if defined TESTFAIL echo.
+if defined TESTFAIL call :msg " [알림] 테스트가 실패한 채로 만들어졌습니다." " [note] Built with a failing test."
+if defined TESTFAIL call :msg "        위쪽 FAIL 줄을 한 번 봐 주세요." "        Please look at the FAIL lines above."
+if defined TESTFAIL call :msg "        값을 다루는 쪽이 틀렸을 수 있습니다." "        Something in the value handling may be wrong."
 echo.
 call :hold
 endlocal

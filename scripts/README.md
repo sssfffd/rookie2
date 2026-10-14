@@ -9,6 +9,10 @@ mono 가 없어도 프로그램은 그대로 빌드되고 돌아갑니다.
 
 ```
 sh scripts/check_compile.sh      진짜 컴파일 + 테스트 실행   ← 제일 중요
+                                 (여기서는 테스트 실패가 곧 실패입니다.
+                                  윈도우의 build.bat 은 알리고 계속합니다 —
+                                  테스트는 이 환경의 안전망이지, 저장소
+                                  주인의 빌드를 막을 것이 아닙니다)
 python scripts/check_sources.py  XAML · 리소스 · csproj 훑기
 python scripts/check_shadowing.py 이름 겹침(CS0136)
 python scripts/check_handlers.py XAML 이벤트 처리기 서명
