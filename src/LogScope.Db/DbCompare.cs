@@ -112,6 +112,15 @@ namespace LogScope.Db
         /// <summary>행을 못 읽었거나 키가 없어 짐작으로 짝지을 수 없을 때의 설명.</summary>
         public string RowNote = string.Empty;
 
+        /// <summary>
+        /// <b>이름이 달랐는데 짝지은 경우</b> 이후 쪽 표 이름. 같으면 빈 글자입니다.
+        ///
+        /// <see cref="Name"/> 을 "a ↔ b" 처럼 바꾸지 않은 이유: 그 이름이
+        /// 그대로 <c>ALTER TABLE</c> 의 식별자로 나갑니다 (DbSql). 거기에
+        /// 화살표가 섞이면 돌아가지 않는 SQL 이 나옵니다.
+        /// </summary>
+        public string PairedName = string.Empty;
+
         public int ColumnsChanged;
         public int RowsAdded, RowsRemoved, RowsChanged;
 
@@ -179,35 +188,44 @@ namespace LogScope.Db
             for (int i = 0; i < before.Notes.Count; i++) res.Notes.Add("이전: " + before.Notes[i]);
             for (int i = 0; i < after.Notes.Count; i++) res.Notes.Add("이후: " + after.Notes[i]);
 
+            // 1) 이름이 같은 표끼리 짝짓습니다.
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var leftBefore = new List<DbTable>();
 
             for (int i = 0; i < before.Tables.Count; i++)
             {
                 DbTable b = before.Tables[i];
                 seen.Add(b.Name);
                 DbTable a = after.Find(b.Name);
+                if (a == null) { leftBefore.Add(b); continue; }
 
-                if (a == null)
-                {
-                    var d = new TableDiff();
-                    d.Name = b.Name; d.Change = DbChange.OnlyBefore; d.Before = b;
-                    res.Tables.Add(d);
-                    res.TablesOnlyBefore++;
-                    continue;
-                }
-
-                TableDiff td = CompareTable(b, a);
-                res.Tables.Add(td);
-                if (td.SchemaChanged || td.RowsDiffer) { td.Change = DbChange.Changed; res.TablesChanged++; }
-                else { td.Change = DbChange.Same; res.TablesSame++; }
+                Took(res, CompareTable(b, a));
             }
 
+            var leftAfter = new List<DbTable>();
             for (int i = 0; i < after.Tables.Count; i++)
             {
                 DbTable a = after.Tables[i];
-                if (seen.Contains(a.Name)) continue;
+                if (!seen.Contains(a.Name)) leftAfter.Add(a);
+            }
+
+            // 2) 이름으로 못 지은 것끼리 짝짓습니다 (.csv 파일 이름이 다른 경우).
+            PairLeftovers(res, leftBefore, leftAfter);
+
+            // 3) 그래도 남은 것은 한쪽에만 있는 표입니다.
+            for (int i = 0; i < leftBefore.Count; i++)
+            {
+                if (leftBefore[i] == null) continue;
                 var d = new TableDiff();
-                d.Name = a.Name; d.Change = DbChange.OnlyAfter; d.After = a;
+                d.Name = leftBefore[i].Name; d.Change = DbChange.OnlyBefore; d.Before = leftBefore[i];
+                res.Tables.Add(d);
+                res.TablesOnlyBefore++;
+            }
+            for (int i = 0; i < leftAfter.Count; i++)
+            {
+                if (leftAfter[i] == null) continue;
+                var d = new TableDiff();
+                d.Name = leftAfter[i].Name; d.Change = DbChange.OnlyAfter; d.After = leftAfter[i];
                 res.Tables.Add(d);
                 res.TablesOnlyAfter++;
             }
@@ -219,6 +237,111 @@ namespace LogScope.Db
                 return string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase);
             });
             return res;
+        }
+
+        /// <summary>짝지은 표 하나를 결과에 담습니다.</summary>
+        private static void Took(DbDiffResult res, TableDiff td)
+        {
+            res.Tables.Add(td);
+            if (td.SchemaChanged || td.RowsDiffer) { td.Change = DbChange.Changed; res.TablesChanged++; }
+            else { td.Change = DbChange.Same; res.TablesSame++; }
+        }
+
+        /// <summary>
+        /// <b>이름이 달라도 짝지어 줍니다.</b>
+        ///
+        /// `.csv` 는 <b>파일 이름이 표 이름</b>입니다. 그래서 같은 설비의
+        /// 같은 자료인데도 <c>2026-03-14.csv</c> / <c>2026-03-21.csv</c> 처럼
+        /// 이름이 다르면, 이름으로만 짝지을 때 "없어짐 + 생김" 이 되어
+        /// <b>차이를 하나도 못 보게</b> 됩니다.
+        ///
+        /// 규칙은 둘뿐입니다. 짐작을 늘리면 엉뚱한 표를 견주게 됩니다.
+        ///
+        /// 규칙은 하나입니다. <b>열 구성(열 이름)이 똑같은 표가 양쪽에
+        /// 하나씩</b>일 때만 짝짓습니다.
+        ///
+        /// "양쪽에 하나씩 남았으면 그 둘" 로도 해 봤는데 위험했습니다 —
+        /// 서로 상관없는 표 둘이 남아 있을 때 그것들을 견주게 됩니다.
+        /// 열 이름이 똑같다는 것은 <b>같은 자료를 두 번 뽑은 것</b>이라는
+        /// 꽤 센 근거이고, 이름이 다를 때 우리가 가진 유일한 근거입니다.
+        ///
+        /// 아니면 짝짓지 않고, <b>왜 못 지었는지 적습니다.</b>
+        /// 그리고 짝지을 때마다 그렇다고 적습니다 — 이름이 다른 둘을
+        /// 말없이 견주면, 보는 사람은 같은 표를 본 줄로 압니다.
+        /// </summary>
+        private static void PairLeftovers(DbDiffResult res, List<DbTable> b, List<DbTable> a)
+        {
+            if (b.Count == 0 || a.Count == 0) return;
+
+            for (int i = 0; i < b.Count; i++)
+            {
+                if (b[i] == null) continue;
+
+                string sig = Signature(b[i]);
+                if (sig.Length == 0) continue;     // 열을 못 읽은 표끼리는 짝짓지 않습니다
+
+                int mine = 0;
+                for (int k = 0; k < b.Count; k++)
+                    if (b[k] != null && Signature(b[k]) == sig) mine++;
+                if (mine != 1) continue;          // 이전 쪽에 같은 모양이 여럿
+
+                int found = -1, hits = 0;
+                for (int j = 0; j < a.Count; j++)
+                {
+                    if (a[j] == null || Signature(a[j]) != sig) continue;
+                    found = j; hits++;
+                }
+
+                if (hits == 1) Pair(res, b, i, a, found, "열 구성이 같아서");
+                else if (hits > 1)
+                {
+                    res.Notes.Add("'" + b[i].Name + "' 과 열 구성이 같은 표가 이후 쪽에 "
+                        + hits + " 개 있어 어느 것과 견줄지 정할 수 없었습니다. "
+                        + "파일 이름을 맞춰 주시면 그대로 짝지읍니다.");
+                }
+            }
+
+            // 짝을 못 지은 채 양쪽에 남았으면 그렇다고 적습니다.
+            int bl = Alive(b), al = Alive(a);
+            if (bl > 0 && al > 0)
+            {
+                res.Notes.Add("이름이 다른 표가 이전 쪽에 " + bl + " 개, 이후 쪽에 " + al
+                    + " 개 남았습니다. 열 구성이 같은 짝이 하나씩일 때만 이름이 달라도 "
+                    + "견줍니다 — 파일 이름을 맞춰 주시면 그대로 짝지읍니다.");
+            }
+        }
+
+        private static void Pair(DbDiffResult res, List<DbTable> b, int i,
+                                 List<DbTable> a, int j, string why)
+        {
+            TableDiff td = CompareTable(b[i], a[j]);
+            td.PairedName = a[j].Name;
+            res.Notes.Add("이름이 다른 표를 짝지었습니다: '" + b[i].Name + "' ↔ '"
+                + a[j].Name + "' (" + why + ").");
+            Took(res, td);
+            b[i] = null; a[j] = null;
+        }
+
+        private static int Alive(List<DbTable> list)
+        {
+            int n = 0;
+            for (int i = 0; i < list.Count; i++) if (list[i] != null) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// 표의 <b>열 구성</b>. 열 이름만 보고, 순서는 안 가립니다 —
+        /// `.csv` 에는 타입이 없고, 열 순서가 바뀐 것도 같은 표입니다.
+        /// </summary>
+        private static string Signature(DbTable t)
+        {
+            if (t == null) return string.Empty;
+
+            var names = new List<string>(t.Columns.Count);
+            for (int i = 0; i < t.Columns.Count; i++)
+                names.Add((t.Columns[i].Name ?? string.Empty).ToLowerInvariant());
+            names.Sort(StringComparer.Ordinal);
+            return string.Join(",", names.ToArray());
         }
 
         /// <summary>달라진 표를 위로. "같음" 만 아래로 모읍니다.</summary>

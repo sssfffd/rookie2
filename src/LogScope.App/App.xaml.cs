@@ -9,7 +9,6 @@ using LogScope.Core.Settings;
 
 using LogScope.App.Common;
 using LogScope.App.Shell;
-using LogScope.App.Themes;
 namespace LogScope.App
 {
     public partial class App : Application

@@ -1018,3 +1018,12 @@
 > 그리고 build.bat 돌렸을 때 맨 밑에 실패한 부분들만 모아서 띄워줘
 
 → 답변: [66-fail-summary.md](66-fail-summary.md)
+
+---
+
+## 요청 92 — 파일명이 달라도 짝짓기
+
+> 이거 앞뒤로 .csv파일명 같아야 동작하는 거지?? 파일명 달라도 가능하게
+> 만들어줘
+
+→ 답변: [67-pair-different-names.md](67-pair-different-names.md)

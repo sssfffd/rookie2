@@ -12,7 +12,6 @@ using LogScope.Logs.Render;
 
 using LogScope.App.Common;
 using LogScope.App.Settings;
-using LogScope.App.Themes;
 namespace LogScope.App.Logs
 {
     /// <summary>

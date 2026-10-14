@@ -9,7 +9,6 @@ using LogScope.Core.Settings;
 
 using LogScope.App.Common;
 using LogScope.App.Logs;
-using LogScope.App.Themes;
 namespace LogScope.App.Settings
 {
     /// <summary>

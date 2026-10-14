@@ -137,6 +137,7 @@ namespace LogScope.Tests
                 DbDiffLines();
                 DbColumnNames();
                 DbTallyAndMarks();
+                DbPairByShape();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -2753,8 +2754,12 @@ namespace LogScope.Tests
                 "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
                 " `temp_max` decimal(6,2) DEFAULT NULL, `old_only` int, PRIMARY KEY (`id`));\n" +
                 "INSERT INTO `recipe` VALUES (1,'가열 A',182.50,7),(2,'가열 B',150.00,8),(3,'사라질 행',1.00,9);\n" +
-                "CREATE TABLE `gone` (`k` int NOT NULL, PRIMARY KEY (`k`));\n" +
-                "INSERT INTO `gone` VALUES (1);\n";
+                // gone 과 born 의 <b>열 구성을 일부러 다르게</b> 뒀습니다.
+                // 0.86 부터 "이름이 달라도 열 구성이 똑같으면 짝짓기" 가
+                // 생겼습니다. 둘 다 (k) 한 열이면 그 규칙에 걸려 짝지어지고,
+                // 그러면 이 시험이 보려는 것("한쪽에만 있는 표")이 사라집니다.
+                "CREATE TABLE `gone` (`k` int NOT NULL, `only_here` int, PRIMARY KEY (`k`));\n" +
+                "INSERT INTO `gone` VALUES (1,1);\n";
 
             string after =
                 "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(128) NOT NULL," +
@@ -3332,6 +3337,135 @@ namespace LogScope.Tests
             // 빈 목록에서 터지지 않아야 합니다.
             DbDiffList.Tally z = DbDiffList.Count(null);
             Check("빈 목록은 0 0 0", z.Changed == 0 && z.Gone == 0 && z.Added == 0, null);
+        }
+
+        /// <summary>
+        /// <b>이름이 달라도 짝짓기.</b> `.csv` 는 파일 이름이 표 이름이라,
+        /// 같은 자료를 다른 이름으로 뽑으면 이름으로만 짝지을 때
+        /// "없어짐 + 생김" 이 되어 차이를 하나도 못 봅니다.
+        ///
+        /// 규칙은 하나입니다 — <b>열 구성이 똑같은 표가 양쪽에 하나씩</b>.
+        /// 그래서 여기서는 "짝지어야 할 때" 와 <b>"안 지어야 할 때"</b> 를
+        /// 함께 봅니다. 뒤쪽이 더 중요합니다: 상관없는 표 둘을 말없이
+        /// 견주면 없는 차이를 만들어 냅니다.
+        /// </summary>
+        private static void DbPairByShape()
+        {
+            Say("DB — 이름이 달라도 짝짓기");
+
+            // ---- 1. 이름만 다르고 열 구성이 같음 → 짝지어야 합니다 ----
+            var b1 = new DbSnapshot();
+            var a1 = new DbSnapshot();
+            b1.Tables.Add(CsvLike("2026-03-14", "id,name,v1", "1,가열,10"));
+            a1.Tables.Add(CsvLike("2026-03-21", "id,name,v1", "1,냉각,10"));
+
+            DbDiffResult d1 = DbDiff.Compare(b1, a1);
+            Check("이름이 달라도 짝지음", d1.TablesChanged == 1 && d1.TablesOnlyBefore == 0
+                  && d1.TablesOnlyAfter == 0,
+                  "달라짐 " + d1.TablesChanged + " · 이전만 " + d1.TablesOnlyBefore
+                  + " · 이후만 " + d1.TablesOnlyAfter);
+            Check("짝지었다고 적음", Joined(d1.Notes).Contains("이름이 다른 표를 짝지었습니다"),
+                  Joined(d1.Notes));
+            Check("짝지은 이후 쪽 이름을 들고 있음",
+                  d1.Tables.Count == 1 && d1.Tables[0].PairedName == "2026-03-21",
+                  d1.Tables.Count == 0 ? "표가 없음" : d1.Tables[0].PairedName);
+            Check("SQL 이 쓰는 이름은 이전 쪽 그대로",
+                  d1.Tables[0].Name == "2026-03-14", d1.Tables[0].Name);
+
+            // 값 차이가 실제로 보여야 합니다 (이게 안 되면 고친 뜻이 없습니다).
+            List<DbDiffLine> lines = DbDiffList.Build(d1, null);
+            bool sawValue = false;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Mark == DbDiffLine.MarkValue) sawValue = true;
+            Check("짝지은 뒤 값 차이가 보임", sawValue, lines.Count + " 줄");
+
+            // ---- 2. 이름도 열 구성도 다름 → 짝짓지 않아야 합니다 ----
+            var b2 = new DbSnapshot();
+            var a2 = new DbSnapshot();
+            b2.Tables.Add(CsvLike("레시피", "id,name", "1,가열"));
+            a2.Tables.Add(CsvLike("알람", "time,code,level", "0,E1,3"));
+
+            DbDiffResult d2 = DbDiff.Compare(b2, a2);
+            Check("열 구성이 다르면 짝짓지 않음",
+                  d2.TablesOnlyBefore == 1 && d2.TablesOnlyAfter == 1 && d2.TablesChanged == 0,
+                  "이전만 " + d2.TablesOnlyBefore + " · 이후만 " + d2.TablesOnlyAfter);
+            Check("왜 못 지었는지 적음", Joined(d2.Notes).Contains("파일 이름을 맞춰"),
+                  Joined(d2.Notes));
+
+            // ---- 3. 같은 열 구성이 여럿 → 애매하므로 짝짓지 않아야 합니다 ----
+            var b3 = new DbSnapshot();
+            var a3 = new DbSnapshot();
+            b3.Tables.Add(CsvLike("b1", "id,v", "1,1"));
+            a3.Tables.Add(CsvLike("a1", "id,v", "1,2"));
+            a3.Tables.Add(CsvLike("a2", "id,v", "1,3"));
+
+            DbDiffResult d3 = DbDiff.Compare(b3, a3);
+            Check("짝이 여럿이면 짝짓지 않음", d3.TablesChanged == 0,
+                  "달라짐 " + d3.TablesChanged);
+            Check("어느 것과 견줄지 모른다고 적음",
+                  Joined(d3.Notes).Contains("어느 것과 견줄지"), Joined(d3.Notes));
+
+            // ---- 4. 이름이 같으면 전처럼 조용히 짝지어야 합니다 ----
+            var b4 = new DbSnapshot();
+            var a4 = new DbSnapshot();
+            b4.Tables.Add(CsvLike("recipe", "id,v", "1,1"));
+            a4.Tables.Add(CsvLike("recipe", "id,v", "1,2"));
+
+            DbDiffResult d4 = DbDiff.Compare(b4, a4);
+            Check("이름이 같으면 그대로 짝지음", d4.TablesChanged == 1, d4.TablesChanged.ToString(CultureInfo.InvariantCulture));
+            Check("이름이 같으면 짝지었다는 말이 없음",
+                  !Joined(d4.Notes).Contains("이름이 다른 표"), Joined(d4.Notes));
+            Check("이름이 같으면 짝 이름이 빈 글자",
+                  d4.Tables[0].PairedName.Length == 0, d4.Tables[0].PairedName);
+
+            // ---- 5. 열 순서가 달라도 같은 구성으로 봅니다 ----
+            var b5 = new DbSnapshot();
+            var a5 = new DbSnapshot();
+            b5.Tables.Add(CsvLike("x", "id,name,v1", "1,가열,10"));
+            a5.Tables.Add(CsvLike("y", "v1,id,name", "10,1,가열"));
+
+            DbDiffResult d5 = DbDiff.Compare(b5, a5);
+            Check("열 순서가 달라도 같은 구성", d5.TablesChanged + d5.TablesSame == 1,
+                  "달라짐 " + d5.TablesChanged + " · 같음 " + d5.TablesSame);
+        }
+
+        /// <summary>
+        /// CSV 한 장처럼 생긴 표 하나. 첫 줄이 열 이름입니다.
+        ///
+        /// <b>첫 열을 열쇠로 둡니다.</b> 진짜 `.csv` 에는 열쇠가 없어서 값이
+        /// 바뀐 행이 "없어진 행 + 생긴 행" 으로 보입니다. 이 시험이 보려는
+        /// 것은 <b>표를 짝지었는지</b>라서, 그 문제가 끼어들지 않게 열쇠를
+        /// 줬습니다.
+        /// </summary>
+        private static DbTable CsvLike(string name, string header, string row)
+        {
+            var t = new DbTable();
+            t.Name = name;
+
+            string[] cols = header.Split(',');
+            for (int i = 0; i < cols.Length; i++)
+            {
+                var c = new DbColumn();
+                c.Name = cols[i];
+                c.Ordinal = i;
+                c.IsKey = i == 0;
+                t.Columns.Add(c);
+            }
+
+            string[] cells = row.Split(',');
+            // HasRows 를 켜 주어야 행을 견줍니다. 끄면 "모양만 견줬습니다" 로
+            // 넘어가서, 짝은 지었는데 "같음" 으로 세어집니다.
+            t.HasRows = true;
+
+            var r = new DbRow(cols.Length);
+            for (int i = 0; i < cols.Length && i < cells.Length; i++) r.Values[i] = cells[i];
+            t.Rows.Add(r);
+            return t;
+        }
+
+        private static string Joined(List<string> notes)
+        {
+            return notes == null ? string.Empty : string.Join(" | ", notes.ToArray());
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>
