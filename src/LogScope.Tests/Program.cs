@@ -25,6 +25,18 @@ namespace LogScope.Tests
         private static string _dir;
 
         /// <summary>
+        /// 실패한 줄만 모아 둡니다. 시험이 670 개라 FAIL 줄이 OK 줄 사이에
+        /// 묻혀 스크롤로 올라갑니다 — <b>맨 밑에 다시 모아 찍습니다.</b>
+        ///
+        /// build.bat 도 이 목록을 파일로 받아 빌드가 다 끝난 뒤 한 번 더
+        /// 찍습니다 (테스트는 빌드 중간에 지나갑니다).
+        /// </summary>
+        private static readonly List<string> _fails = new List<string>();
+
+        /// <summary>지금 돌고 있는 묶음 이름. 어느 묶음에서 났는지 함께 적습니다.</summary>
+        private static string _group = string.Empty;
+
+        /// <summary>
         /// 콘솔 글자 인코딩을 정합니다.
         ///
         /// <b>윈도우에서는 손대지 않습니다.</b> 코드 페이지는 프로세스가 아니라
@@ -41,12 +53,16 @@ namespace LogScope.Tests
         /// 로 맞춥니다. 리눅스에는 "콘솔 코드 페이지" 라는 것이 없어서 남의
         /// 뒷정리를 망칠 일도 없습니다.
         /// </summary>
-        private static void UseConsoleEncoding()
+        private static bool Windows()
         {
             PlatformID id = Environment.OSVersion.Platform;
-            bool windows = id == PlatformID.Win32NT || id == PlatformID.Win32Windows
-                        || id == PlatformID.Win32S || id == PlatformID.WinCE;
-            if (windows) return;
+            return id == PlatformID.Win32NT || id == PlatformID.Win32Windows
+                || id == PlatformID.Win32S || id == PlatformID.WinCE;
+        }
+
+        private static void UseConsoleEncoding()
+        {
+            if (Windows()) return;
 
             // 출력이 파일로 돌려져 있으면 런타임에 따라 예외가 납니다.
             // 인코딩 하나 때문에 테스트가 안 돌아가면 곤란합니다.
@@ -55,7 +71,7 @@ namespace LogScope.Tests
             catch (NotSupportedException) { }
         }
 
-        private static int Main()
+        private static int Main(string[] args)
         {
             UseConsoleEncoding();
             _dir = Path.Combine(Path.GetTempPath(), "logscope-test-" + Guid.NewGuid().ToString("N").Substring(0, 8));
@@ -132,15 +148,97 @@ namespace LogScope.Tests
 
             Console.WriteLine();
             Console.WriteLine("통과 " + _pass + " / 실패 " + _fail);
+
+            Report(args);
             return _fail == 0 ? 0 : 1;
+        }
+
+        /// <summary>
+        /// 실패한 줄만 맨 밑에 모아 찍습니다. 인수로 파일 자리를 주면 그
+        /// 파일에도 같은 내용을 적습니다 (build.bat 이 끝에서 다시 찍습니다).
+        ///
+        /// 파일은 <b>시스템 기본 인코딩</b>으로 적습니다. 한국어 윈도우면
+        /// CP949 입니다 — build.bat 이 그걸 <c>type</c> 으로 찍는데, UTF-8 로
+        /// 적어 두면 콘솔에서 한글이 깨집니다.
+        ///
+        /// 성공했으면 <b>그 파일을 지웁니다.</b> 남겨 두면 다음 빌드에서
+        /// 지난번 실패가 "지금 실패" 로 보입니다.
+        /// </summary>
+        private static void Report(string[] args)
+        {
+            string path = args != null && args.Length > 0 ? args[0] : null;
+
+            if (_fails.Count == 0)
+            {
+                if (path != null) Erase(path);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("실패한 것만 모으면 (" + _fails.Count + " 개)");
+            Console.WriteLine("  ------------------------------------------------------------");
+            for (int i = 0; i < _fails.Count; i++) Console.WriteLine("  " + _fails[i]);
+
+            if (path == null) return;
+            try
+            {
+                var sb = new StringBuilder();
+                for (int i = 0; i < _fails.Count; i++) sb.Append("  ").Append(_fails[i]).Append("\r\n");
+                File.WriteAllText(path, sb.ToString(), LogEncoding());
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException
+                                   || e is NotSupportedException || e is ArgumentException)
+            {
+                // 파일에 못 적어도 위에 이미 찍었습니다. 그것 때문에 테스트가
+                // 실패한 것처럼 보이면 안 됩니다.
+            }
+        }
+
+        /// <summary>
+        /// 실패 목록 파일의 인코딩.
+        ///
+        /// 윈도우에서는 <b>시스템 기본(ANSI)</b> 입니다 — build.bat 이
+        /// <c>type</c> 으로 찍는데, UTF-8 로 적어 두면 CP949 콘솔에서 한글이
+        /// 깨집니다. 윈도우 밖에서는 반대로 Encoding.Default 가 ASCII 로
+        /// 잡혀 한글이 물음표가 되므로 UTF-8 로 적습니다.
+        ///
+        /// 콘솔 인코딩을 정하는 쪽(UseConsoleEncoding)과 <b>같은 판단</b>을
+        /// 씁니다. 두 군데서 따로 판단하면 한쪽만 고쳐지는 날이 옵니다.
+        /// </summary>
+        private static Encoding LogEncoding()
+        {
+            return Windows() ? Encoding.Default : (Encoding)new UTF8Encoding(false);
+        }
+
+        private static void Erase(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException
+                                   || e is NotSupportedException || e is ArgumentException)
+            {
+            }
         }
 
         // ---------------- 도우미 ----------------
 
+        /// <summary>
+        /// 묶음 머리글. 글자를 찍으면서 <b>지금 묶음 이름을 기억</b>합니다 —
+        /// 그래야 맨 밑에 모아 찍을 때 "어느 묶음에서 났나" 를 적을 수 있습니다.
+        /// </summary>
+        private static void Say(string group)
+        {
+            _group = group ?? string.Empty;
+            Console.WriteLine(_group);
+        }
+
         private static void Check(string name, bool ok, string detail)
         {
-            if (ok) { _pass++; Console.WriteLine("  OK    " + name); }
-            else { _fail++; Console.WriteLine("  FAIL  " + name + (detail != null ? "  — " + detail : "")); }
+            if (ok) { _pass++; Console.WriteLine("  OK    " + name); return; }
+
+            _fail++;
+            string line = "  FAIL  " + name + (detail != null ? "  — " + detail : "");
+            Console.WriteLine(line);
+            _fails.Add((_group.Length > 0 ? "[" + _group + "] " : string.Empty) + line.Trim());
         }
 
         private static void Near(string name, double actual, double expected, double tol)
@@ -174,7 +272,7 @@ namespace LogScope.Tests
 
         private static void CsvColumnsLayout()
         {
-            Console.WriteLine("열이 IO 인 CSV");
+            Say("열이 IO 인 CSV");
             string p = WriteCsv("cols.csv",
                 "Time,밸브 OPEN,압력 PT-01,상태\n" +
                 "0.0,0,101.5,IDLE\n" +
@@ -191,7 +289,7 @@ namespace LogScope.Tests
 
         private static void CsvRowsLayout()
         {
-            Console.WriteLine("행이 IO 인 CSV");
+            Say("행이 IO 인 CSV");
             string p = WriteCsv("rows.csv",
                 "이름,0.0,0.1,0.2,0.3\n" +
                 "DI_00,0,1,1,0\n" +
@@ -206,7 +304,7 @@ namespace LogScope.Tests
 
         private static void PreambleAndMidSheetTable()
         {
-            Console.WriteLine("머리말이 붙어 표가 중간에서 시작하는 경우");
+            Say("머리말이 붙어 표가 중간에서 시작하는 경우");
             string p = WriteCsv("preamble.csv",
                 "장비명,3호기\n" +
                 "측정일시,2024-05-02 09:00\n" +
@@ -225,7 +323,7 @@ namespace LogScope.Tests
 
         private static void SparseTimeColumn()
         {
-            Console.WriteLine("시간이 바뀔 때만 적힌 경우");
+            Say("시간이 바뀔 때만 적힌 경우");
             string p = WriteCsv("sparse.csv",
                 "Time,V\n" +
                 "10,0\n" +
@@ -248,7 +346,7 @@ namespace LogScope.Tests
 
         private static void RepeatedTimestampsSpread()
         {
-            Console.WriteLine("같은 시각이 반복되는 경우 (분 단위 표기 + 초 단위 기록)");
+            Say("같은 시각이 반복되는 경우 (분 단위 표기 + 초 단위 기록)");
             var sb = new StringBuilder("Time,V\n");
             for (int minute = 0; minute < 3; minute++)
                 for (int k = 0; k < 4; k++)
@@ -272,7 +370,7 @@ namespace LogScope.Tests
 
         private static void AllSameTimestampsFallBackToIndex()
         {
-            Console.WriteLine("시각이 전부 같은 경우");
+            Say("시각이 전부 같은 경우");
             var sb = new StringBuilder("Time,V\n");
             for (int i = 0; i < 5; i++) sb.Append("09:00:00,").Append(i).Append('\n');
             LogDataset ds = Open(WriteCsv("same.csv", sb.ToString()), Orientation.Auto);
@@ -284,7 +382,7 @@ namespace LogScope.Tests
 
         private static void ZeroRunSurvives()
         {
-            Console.WriteLine("0 이 오래 이어지는 구간");
+            Say("0 이 오래 이어지는 구간");
             var sb = new StringBuilder("Time,V\n");
             for (int i = 0; i < 200; i++) sb.Append(i).Append(',').Append(i >= 50 && i < 150 ? 0 : 1).Append('\n');
             LogDataset ds = Open(WriteCsv("zeros.csv", sb.ToString()), Orientation.Auto);
@@ -298,7 +396,7 @@ namespace LogScope.Tests
 
         private static void XlsxRoundTrip()
         {
-            Console.WriteLine("xlsx 읽기");
+            Say("xlsx 읽기");
             var rows = new List<object[]>();
             rows.Add(new object[] { "설비", "A라인" });
             rows.Add(new object[] { });
@@ -323,7 +421,7 @@ namespace LogScope.Tests
 
         private static void DigitalAndStateKinds()
         {
-            Console.WriteLine("채널 타입 판별");
+            Say("채널 타입 판별");
             string p = WriteCsv("kinds.csv",
                 "Time,DI,AI,ST\n" +
                 "0,0,12.5,IDLE\n" +
@@ -344,7 +442,7 @@ namespace LogScope.Tests
 
         private static void DecimationKeepsExtremes()
         {
-            Console.WriteLine("픽셀 열 접기");
+            Say("픽셀 열 접기");
             var sb = new StringBuilder("Time,V\n");
             for (int i = 0; i < 10000; i++)
                 sb.Append(i).Append(',').Append(i == 5000 ? 999 : (i % 2)).Append('\n');
@@ -373,7 +471,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DecimationAccumulatesPerColumn()
         {
-            Console.WriteLine("픽셀 열 접기 — 열 경계와 최소/최대");
+            Say("픽셀 열 접기 — 열 경계와 최소/최대");
 
             // 값이 시간과 함께 0 에서 999 까지 늘어나는 표본 1000 개.
             var sb = new StringBuilder("Time,V\n");
@@ -416,7 +514,7 @@ namespace LogScope.Tests
 
         private static void ZoomedInTraceSurvives()
         {
-            Console.WriteLine("확대했을 때 선이 남아 있는지");
+            Say("확대했을 때 선이 남아 있는지");
 
             // 표본 100 개. 크게 확대하면 화면 안에 표본이 서너 개뿐입니다.
             var sb = new StringBuilder("Time,V,D\n");
@@ -484,7 +582,7 @@ namespace LogScope.Tests
 
         private static void CompareMetrics()
         {
-            Console.WriteLine("두 로그 비교");
+            Say("두 로그 비교");
             // V 는 뒤쪽 20 개만 1 만큼 벌어집니다 (한 번 크게 틀어진 채널).
             // W 는 한 표본 걸러 1 씩 흔들립니다 (+1/-1 이 반복되는 채널).
             // 최대 차이는 둘 다 1 로 같지만, 구간 수와 시간 비율은 크게 다릅니다.
@@ -528,7 +626,7 @@ namespace LogScope.Tests
 
         private static void ExistenceDifference()
         {
-            Console.WriteLine("IO 존재 차이");
+            Say("IO 존재 차이");
             LogDataset a = Open(WriteCsv("ex_a.csv", "Time,A,B\n0,1,2\n1,1,2\n"), Orientation.Auto);
             LogDataset b = Open(WriteCsv("ex_b.csv", "Time,B,C\n0,2,3\n1,2,3\n"), Orientation.Auto);
 
@@ -546,7 +644,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void ToleranceIsPercentOfBefore()
         {
-            Console.WriteLine("허용 오차 — 이전 값 대비 %");
+            Say("허용 오차 — 이전 값 대비 %");
 
             var opt = new DiffOptions();
             Near("기본값은 0.1%", opt.RelativePercent, 0.1, 1e-9);
@@ -615,7 +713,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void ChangedMatchesMaxPercent()
         {
-            Console.WriteLine("허용 오차 — 목록의 숫자와 판정이 맞는지");
+            Say("허용 오차 — 목록의 숫자와 판정이 맞는지");
 
             // 한 표본만 5% 벌어집니다. 나머지는 똑같습니다.
             var a = new StringBuilder("Time,V\n");
@@ -650,7 +748,7 @@ namespace LogScope.Tests
 
         private static void HeatmapBuckets()
         {
-            Console.WriteLine("히트맵 — 1분 칸으로 자르기");
+            Say("히트맵 — 1분 칸으로 자르기");
 
             // 5 분치, 1 초 간격. 2 분대(120~179초)에서만 SMALL 이 10 만큼 벌어집니다.
             var a = new StringBuilder("Time,SMALL\n");
@@ -694,7 +792,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HeatmapRelativeTolerance()
         {
-            Console.WriteLine("히트맵 — 이전 값 대비 %로 판정");
+            Say("히트맵 — 이전 값 대비 %로 판정");
 
             // 1000 에 있다가 2 분대에서만 1002 가 됩니다 → 오차 0.2%.
             var a = new StringBuilder("Time,V\n");
@@ -742,7 +840,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HeatmapCellNumberDoesNotFollowTolerance()
         {
-            Console.WriteLine("히트맵 — 허용 오차를 바꿔도 칸의 숫자는 그대로");
+            Say("히트맵 — 허용 오차를 바꿔도 칸의 숫자는 그대로");
 
             // 2 분대 60 표본 중 한 표본만 5% 벌어지고, 나머지 59 개는 0.5%.
             var a = new StringBuilder("Time,V\n");
@@ -805,7 +903,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HeatmapStateNamesIgnoreTolerance()
         {
-            Console.WriteLine("히트맵 — 상태 이름은 허용 오차와 무관");
+            Say("히트맵 — 상태 이름은 허용 오차와 무관");
 
             var a = new StringBuilder("Time,상태\n");
             var b = new StringBuilder("Time,상태\n");
@@ -841,7 +939,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void UnitsFromUnitRowAndName()
         {
-            Console.WriteLine("세로축 단위");
+            Say("세로축 단위");
 
             // (1) 단위 줄이 따로 있는 경우
             string p1 = WriteCsv("unit_row.csv",
@@ -884,7 +982,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HeatmapOrderIsSameForEveryBucketWidth()
         {
-            Console.WriteLine("히트맵 — 칸 폭을 바꿔도 IO 차례가 같은지");
+            Say("히트맵 — 칸 폭을 바꿔도 IO 차례가 같은지");
 
             // 세 채널. 벌어지는 모양을 일부러 다르게 둡니다.
             //   SPIKE : 딱 한 순간만 크게 (한 칸 안에서도 평균이 묻히는 모양)
@@ -958,7 +1056,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void NumberTextHasNoExponent()
         {
-            Console.WriteLine("숫자 표기 — 지수 표기 안 씀");
+            Say("숫자 표기 — 지수 표기 안 씀");
 
             double[] probes =
             {
@@ -1002,7 +1100,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TriggerAlignOnEdge()
         {
-            Console.WriteLine("시간 맞추기 — IO 가 바뀌는 순간 기준");
+            Say("시간 맞추기 — IO 가 바뀌는 순간 기준");
 
             // 이전 로그: 0 초에 시작, 30 초에 START 가 0 → 1
             // 이후 로그: 100 초에 시작, 145 초에 START 가 0 → 1
@@ -1082,7 +1180,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TriggerAlignCountsStartAsEdge()
         {
-            Console.WriteLine("시간 맞추기 — 처음부터 그 값인 로그");
+            Say("시간 맞추기 — 처음부터 그 값인 로그");
 
             // 이전 로그: 0 초 시작, 30 초에 START 가 0 → 1
             // 이후 로그: 200 초 시작, 처음부터 끝까지 START 가 1
@@ -1121,7 +1219,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TriggerAlignOnAnyLevel()
         {
-            Console.WriteLine("시간 맞추기 — 0/1 말고 최댓값까지");
+            Say("시간 맞추기 — 0/1 말고 최댓값까지");
 
             // STEP 은 10 표본마다 한 단계씩 0 → 5 로 오릅니다.
             //   이전 로그: i 초,      5 가 되는 시각 = 50
@@ -1171,7 +1269,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TriggerAlignRefusesBadIo()
         {
-            Console.WriteLine("시간 맞추기 — 못 맞출 때 이유를 돌려주는지");
+            Say("시간 맞추기 — 못 맞출 때 이유를 돌려주는지");
 
             var a = new StringBuilder("Time,FLAT,ONLYHERE\n");
             var b = new StringBuilder("Time,FLAT\n");
@@ -1210,7 +1308,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceOfTwoLogs()
         {
-            Console.WriteLine("차이 — 두 로그의 차이");
+            Say("차이 — 두 로그의 차이");
 
             // 두 로그가 같은 격자(0..9)에 있고 V 만 다릅니다.
             //   이전 10,10,10,10,10,10,10,10,10,10
@@ -1264,7 +1362,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceAcrossGrids()
         {
-            Console.WriteLine("차이 — 격자가 다르고 시간이 어긋난 두 로그");
+            Say("차이 — 격자가 다르고 시간이 어긋난 두 로그");
 
             // 이전: 0,2,4,6,8 에서 값 100 (2 초마다)
             // 이후: 1000 부터 1 초마다 값 100, 단 1005 에서만 105
@@ -1299,7 +1397,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceOfStateChannels()
         {
-            Console.WriteLine("차이 — 상태 채널은 이름으로");
+            Say("차이 — 상태 채널은 이름으로");
 
             // 두 로그에서 상태가 나오는 차례가 달라 번호가 서로 어긋납니다.
             string b = "Time,MODE\n0,IDLE\n1,IDLE\n2,RUN\n3,RUN\n";
@@ -1328,7 +1426,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DifferenceOutsideOverlap()
         {
-            Console.WriteLine("차이 — 겹치지 않는 구간");
+            Say("차이 — 겹치지 않는 구간");
 
             // 이전은 0~9, 이후는 5~14. 겹치는 곳은 5~9 뿐입니다.
             var b = new StringBuilder("Time,V\n");
@@ -1351,7 +1449,7 @@ namespace LogScope.Tests
 
         private static void AxisChannelSwap()
         {
-            Console.WriteLine("가로축 바꿔 끼우기");
+            Say("가로축 바꿔 끼우기");
 
             // ELAPSED 는 0 에서 990 까지 10 씩 늘어납니다.
             // WOBBLE 은 오르내립니다 — 가로축이 될 수 없습니다.
@@ -1400,7 +1498,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void AxisRefusesCoarseValues()
         {
-            Console.WriteLine("가로축 — 값이 너무 커서 표본이 뭉개질 때");
+            Say("가로축 — 값이 너무 커서 표본이 뭉개질 때");
 
             // EPOCH 는 1.7e12 근처에서 100 씩 오릅니다. 그 크기에서 float 눈금은
             // 약 20 만이라, 100 간격은 아예 담기지 않습니다.
@@ -1429,7 +1527,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void AxisWarnsOnFlatRuns()
         {
-            Console.WriteLine("가로축 — 여러 표본이 같은 자리에 겹칠 때");
+            Say("가로축 — 여러 표본이 같은 자리에 겹칠 때");
 
             // TICK 은 10 표본마다 1 씩 오릅니다. 100 표본 중 90 개가 직전과
             // 같은 값입니다.
@@ -1458,7 +1556,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HeatmapNameFilter()
         {
-            Console.WriteLine("히트맵 — 그룹만 추려 보기");
+            Say("히트맵 — 그룹만 추려 보기");
 
             // 세 IO 가 다 달라집니다. 그중 둘만 남기는지 봅니다.
             var b = new StringBuilder("Time,밸브 A,밸브 B,압력 PT-01\n");
@@ -1512,7 +1610,7 @@ namespace LogScope.Tests
 
         private static void HistorySaveAndLoad()
         {
-            Console.WriteLine("분석 결과 저장");
+            Say("분석 결과 저장");
 
             string folder = Path.Combine(_dir, "history-test");
 
@@ -1594,7 +1692,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void HistoryEdgeCases()
         {
-            Console.WriteLine("분석 결과 저장 — 가장자리");
+            Say("분석 결과 저장 — 가장자리");
 
             string folder = Path.Combine(_dir, "history-edge");
             var t = new DateTime(2026, 5, 1, 12, 0, 0);
@@ -1638,7 +1736,7 @@ namespace LogScope.Tests
 
         private static void JsonRoundTrip()
         {
-            Console.WriteLine("JSON");
+            Say("JSON");
             var root = new Dictionary<string, object>(StringComparer.Ordinal);
             root["name"] = "밸브 \"OPEN\"\n둘째 줄";
             root["n"] = 12.5;
@@ -1661,7 +1759,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void ToleranceTableRules()
         {
-            Console.WriteLine("IO 별 허용 오차 — 표");
+            Say("IO 별 허용 오차 — 표");
 
             var rules = new List<ToleranceOverride>();
             var t1 = new ToleranceOverride(); t1.Io = "밸브 OPEN"; t1.Percent = 0.0;
@@ -1727,7 +1825,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TolerancePerIo()
         {
-            Console.WriteLine("IO 별 허용 오차 — 실제 비교");
+            Say("IO 별 허용 오차 — 실제 비교");
 
             // 두 IO 가 똑같이 10 → 11 로 벌어집니다 (10%).
             var b = new StringBuilder("Time,흔들리는 온도,밸브 OPEN\n");
@@ -1846,7 +1944,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void WindowTitleText()
         {
-            Console.WriteLine("창 제목 — 긴 이름");
+            Say("창 제목 — 긴 이름");
 
             // 규칙: "이름 — 긴 이름". 긴 이름이 없으면 전에 쓰던 글.
             Check("긴 이름을 적으면 제목에",
@@ -1878,7 +1976,7 @@ namespace LogScope.Tests
 
         private static void GroupFileParse()
         {
-            Console.WriteLine("그룹 파일 — groups.txt");
+            Say("그룹 파일 — groups.txt");
 
             List<GroupDef> g = GroupFile.Parse(new[]
             {
@@ -1965,7 +2063,7 @@ namespace LogScope.Tests
 
         private static void DbSqlDump()
         {
-            Console.WriteLine("DB — .sql 덤프 읽기");
+            Say("DB — .sql 덤프 읽기");
 
             string dump =
                 "-- MySQL dump 10.13  Distrib 8.0.36\n" +
@@ -2049,7 +2147,7 @@ namespace LogScope.Tests
 
         private static void DbCsvTable()
         {
-            Console.WriteLine("DB — .csv 표 읽기");
+            Say("DB — .csv 표 읽기");
 
             string path = WriteText("설비목록.csv", "id,name,temp\n1,가열 A,182.5\n2,\"쉼표, 포함\",0\n");
             DbTable t = CsvTableReader.Read(path, 0);
@@ -2087,7 +2185,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbNestedFolders()
         {
-            Console.WriteLine("DB — 하위 폴더까지 읽기");
+            Say("DB — 하위 폴더까지 읽기");
 
             string root = Path.Combine(_dir, "nested");
             Directory.CreateDirectory(Path.Combine(root, "db1"));
@@ -2177,7 +2275,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbFrmIbdNote()
         {
-            Console.WriteLine("DB — .frm / .ibd 안내가 갈라지는지");
+            Say("DB — .frm / .ibd 안내가 갈라지는지");
 
             // 5.x : 표마다 .frm + .ibd 짝
             string five = Path.Combine(_dir, "five");
@@ -2217,7 +2315,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void FrmShape()
         {
-            Console.WriteLine("DB — .frm 에서 표 모양 읽기");
+            Say("DB — .frm 에서 표 모양 읽기");
 
             byte[] frm = BuildFrm(50619);
             FrmReader.Result r = FrmReader.Read(frm, "recipe");
@@ -2311,7 +2409,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void FrmDefaultUnknown()
         {
-            Console.WriteLine("DB — 모르는 기본값을 차이로 세지 않기");
+            Say("DB — 모르는 기본값을 차이로 세지 않기");
 
             var shape = new DbColumn { Name = "a", Type = "int(11)", Nullable = true };
             shape.Default = null; shape.DefaultKnown = false;        // .frm 에서 읽은 열
@@ -2345,7 +2443,7 @@ namespace LogScope.Tests
         /// <summary>폴더에서 .frm 을 읽고, 같은 이름의 덤프가 있으면 덤프가 이기는지.</summary>
         private static void FrmInFolder()
         {
-            Console.WriteLine("DB — 폴더의 .frm");
+            Say("DB — 폴더의 .frm");
 
             string dir = Path.Combine(_dir, "frmdir");
             Directory.CreateDirectory(dir);
@@ -2507,7 +2605,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbCreateSqlText()
         {
-            Console.WriteLine("DB — 표 정의 글 만들기");
+            Say("DB — 표 정의 글 만들기");
 
             var t = new DbTable { Name = "recipe", HasRows = true };
             t.Columns.Add(new DbColumn { Name = "id", Type = "int(11)", Nullable = false, IsKey = true });
@@ -2568,7 +2666,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TraceColorRule()
         {
-            Console.WriteLine("그래프 — 선 색이 무엇을 가리키나");
+            Say("그래프 — 선 색이 무엇을 가리키나");
 
             // 레인으로 나눠 보면 IO 마다 칸이 따로라 색으로 IO 를 가릴 일이
             // 없습니다. 그때 색은 이전(파랑)/이후(빨강)입니다.
@@ -2609,7 +2707,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbSingleFile()
         {
-            Console.WriteLine("DB — 파일 하나만 줘도 읽기");
+            Say("DB — 파일 하나만 줘도 읽기");
 
             string sql = WriteText("one.sql",
                 "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64), PRIMARY KEY (`id`));\n" +
@@ -2649,7 +2747,7 @@ namespace LogScope.Tests
 
         private static void DbCompare()
         {
-            Console.WriteLine("DB — 두 벌 견주기");
+            Say("DB — 두 벌 견주기");
 
             string before =
                 "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
@@ -2749,7 +2847,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbDiffLines()
         {
-            Console.WriteLine("DB — 차이를 칸으로 쪼갠 목록");
+            Say("DB — 차이를 칸으로 쪼갠 목록");
 
             var b = new DbSnapshot();
             SqlDumpReader.Read(WriteText("ln_before.sql",
@@ -2952,7 +3050,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbColumnNames()
         {
-            Console.WriteLine("DB — 목록 칸 이름은 한 곳");
+            Say("DB — 목록 칸 이름은 한 곳");
 
             Check("칸 수", DbNames.CsvNames().Length == 11,
                   DbNames.CsvNames().Length.ToString(CultureInfo.InvariantCulture));
@@ -2990,7 +3088,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void TextSniffRules()
         {
-            Console.WriteLine("글자 — 인코딩 가리기");
+            Say("글자 — 인코딩 가리기");
 
             const int Utf8Page = 65001;
 
@@ -3043,7 +3141,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbDumpBytes()
         {
-            Console.WriteLine("DB — 덤프의 인코딩과 16진수 값");
+            Say("DB — 덤프의 인코딩과 16진수 값");
 
             // ---- 1. CP949 덤프 ----
             string body =
@@ -3158,7 +3256,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void DbTallyAndMarks()
         {
-            Console.WriteLine("DB — 줄 색과 세 숫자");
+            Say("DB — 줄 색과 세 숫자");
 
             string before =
                 // 기본 키가 있어야 행이 짝지어집니다. 없으면 모든 열로
@@ -3256,7 +3354,7 @@ namespace LogScope.Tests
 
         private static void DbScript()
         {
-            Console.WriteLine("DB — SQL 글 만들기");
+            Say("DB — SQL 글 만들기");
 
             var b = new DbSnapshot();
             SqlDumpReader.Read(WriteText("sc_before.sql",
@@ -3345,7 +3443,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void AppConfigParse()
         {
-            Console.WriteLine("설정 파일(config.txt) 읽기");
+            Say("설정 파일(config.txt) 읽기");
 
             AppConfig def = AppConfig.Default;
             Check("기본 프로그램 이름", def.Name == "LogScope", def.Name);
@@ -3410,7 +3508,7 @@ namespace LogScope.Tests
         /// </summary>
         private static void AppConfigFile()
         {
-            Console.WriteLine("설정 파일 인코딩과 옛 파일");
+            Say("설정 파일 인코딩과 옛 파일");
 
             string dir = Path.Combine(_dir, "cfg");
             Directory.CreateDirectory(dir);
@@ -3478,7 +3576,7 @@ namespace LogScope.Tests
 
         private static void SettingsRoundTrip()
         {
-            Console.WriteLine("설정 저장/불러오기");
+            Say("설정 저장/불러오기");
             var s = new AppSettings();
             s.Theme = "dark";
             s.ActiveSet = 3;

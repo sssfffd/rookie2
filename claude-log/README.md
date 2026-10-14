@@ -72,3 +72,4 @@
 | `63-headline-colors-filter.md` | 세 숫자로 바꿈 · 줄 색(빨강·노랑) · 차이 난 IO만 보기 · SQL 문 출력 창 |
 | `64-vs-vs-batch.md` | VS 는 성공 배치는 실패하는 까닭 · v1 채우기를 막던 시험 · 테스트가 왜 있나 |
 | `65-tests-dont-block.md` | 테스트 실패가 build.bat 을 멈추지 않게 (알리고 계속) |
+| `66-fail-summary.md` | 실패한 시험만 맨 밑에 모아 찍기 (묶음 이름과 함께) |

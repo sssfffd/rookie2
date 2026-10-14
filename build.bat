@@ -46,6 +46,7 @@ rem
 rem  Logs:
 rem     build.log       everything, UTF-8, meant to be opened in an editor
 rem     build.err.log   error lines only, console encoding, printed below
+rem     test.fail.log   the FAIL lines only; deleted when all pass
 rem
 rem  See ":cp" at the bottom: after every child process we put the code
 rem  page back, because a child can change it for the whole window.
@@ -59,6 +60,7 @@ if "%CONFIG%"=="" set "CONFIG=Release"
 set "SKIPTEST=%~2"
 set "LOG=%ROOT%build.log"
 set "ERRLOG=%ROOT%build.err.log"
+set "FAILLOG=%ROOT%test.fail.log"
 
 rem ---- program name: one place, config.txt ---------------------------
 rem  config.txt holds everything the user edits by hand. The exe is built as
@@ -159,6 +161,7 @@ rem    build.err.log  default (ANSI) encoding, so the "type" below
 rem                   prints the compiler's own messages without
 rem                   turning them into garbage on a CP949 console.
 if exist "%ERRLOG%" del "%ERRLOG%" >nul 2>nul
+if exist "%FAILLOG%" del "%FAILLOG%" >nul 2>nul
 
 "%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl1 "/flp1:logfile=%LOG%;verbosity=normal;encoding=UTF-8" /fl2 "/flp2:logfile=%ERRLOG%;errorsonly;verbosity=normal"
 set "RC=%ERRORLEVEL%"
@@ -184,7 +187,11 @@ if /i "%SKIPTEST%"=="nt" goto :collect
 echo.
 call :msg "테스트" "Tests"
 echo   ------------------------------------------------------------
-"%ROOT%src\LogScope.Tests\bin\%CONFIG%\LogScope.Tests.exe"
+rem  The exe writes just the FAIL lines to this file (ANSI, so "type"
+rem  prints them correctly on a CP949 console), and deletes it when
+rem  everything passed. We print it again at the very bottom: the test
+rem  run sits in the middle of the build, so its FAIL lines scroll away.
+"%ROOT%src\LogScope.Tests\bin\%CONFIG%\LogScope.Tests.exe" "%FAILLOG%"
 set "RC=%ERRORLEVEL%"
 call :cp
 
@@ -252,8 +259,12 @@ call :msg " 설치 프로그램은 필요 없습니다." " No installer is needed."
 echo   ============================================================
 if defined TESTFAIL echo.
 if defined TESTFAIL call :msg " [알림] 테스트가 실패한 채로 만들어졌습니다." " [note] Built with a failing test."
-if defined TESTFAIL call :msg "        위쪽 FAIL 줄을 한 번 봐 주세요." "        Please look at the FAIL lines above."
 if defined TESTFAIL call :msg "        값을 다루는 쪽이 틀렸을 수 있습니다." "        Something in the value handling may be wrong."
+if defined TESTFAIL echo.
+if defined TESTFAIL echo   ------------------------------------------------------------
+if defined TESTFAIL if exist "%FAILLOG%" type "%FAILLOG%"
+if defined TESTFAIL echo   ------------------------------------------------------------
+if defined TESTFAIL call :msg "        같은 목록이 %FAILLOG% 에도 있습니다." "        The same list is in %FAILLOG%."
 echo.
 call :hold
 endlocal

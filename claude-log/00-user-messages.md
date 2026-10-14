@@ -1010,3 +1010,11 @@
 > ㅇㅇ A처럼 바꿔줘
 
 → 답변: [65-tests-dont-block.md](65-tests-dont-block.md)
+
+---
+
+## 요청 91 — 실패한 것만 맨 밑에 모아서
+
+> 그리고 build.bat 돌렸을 때 맨 밑에 실패한 부분들만 모아서 띄워줘
+
+→ 답변: [66-fail-summary.md](66-fail-summary.md)
