@@ -139,6 +139,7 @@ namespace LogScope.Tests
                 DbPairByShape();
                 CsvKeyAndValue();
                 DbVerdictRule();
+                DbPathNames();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3464,6 +3465,64 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// 견줄 자리를 칸에 적을 때 쓰는 이름 조각.
+        ///
+        /// <b>Windows 경로를 리눅스에서도 같게 끊어야 합니다.</b> 여기 시험이
+        /// 도는 자리에서는 <c>\</c> 가 구분 기호가 아니라서,
+        /// <c>Path.GetFileName</c> 을 쓰면 <c>C:\db\io</c> 가 통째로 "이름" 이
+        /// 됩니다 — 그러면 칸에 전체 경로가 박혀 들어가고, 그건 Windows 에서
+        /// 열어 봐야만 드러납니다.
+        /// </summary>
+        private static void DbPathNames()
+        {
+            Say("DB — 견줄 자리 이름");
+
+            Check("파일 이름만 뗌", DbPathText.Name("C:\\db\\before\\io.csv") == "io.csv",
+                  DbPathText.Name("C:\\db\\before\\io.csv"));
+            Check("폴더도 마지막 조각", DbPathText.Name("C:\\db\\before") == "before",
+                  DbPathText.Name("C:\\db\\before"));
+            Check("끝에 붙은 구분 기호는 떼고",
+                  DbPathText.Name("C:\\db\\before\\") == "before",
+                  DbPathText.Name("C:\\db\\before\\"));
+            Check("빗금 경로도 같게", DbPathText.Name("/srv/db/after") == "after",
+                  DbPathText.Name("/srv/db/after"));
+            Check("조각이 하나면 그대로", DbPathText.Name("io.csv") == "io.csv",
+                  DbPathText.Name("io.csv"));
+
+            // 뿌리만 적은 경우. 빈 칸을 보여 주면 "안 넣었다" 로 읽히므로
+            // 무엇이든 남겨야 합니다 — 드라이브는 글자가 남고, 구분 기호
+            // 하나뿐이면 적은 그대로 보여 줍니다.
+            Check("드라이브만 적었으면 드라이브", DbPathText.Name("C:\\") == "C:",
+                  DbPathText.Name("C:\\"));
+            Check("구분 기호 하나면 적은 그대로", DbPathText.Name("/") == "/",
+                  DbPathText.Name("/"));
+            Check("비어 있으면 빈 글", DbPathText.Name(string.Empty).Length == 0, null);
+            Check("null 도 빈 글", DbPathText.Name(null).Length == 0, null);
+
+            // ---- 아래 한 줄 ----
+            Check("안 정했으면 어떻게 넣는지 알려 줌",
+                  DbPathText.Note(string.Empty) == DbPathText.None, DbPathText.Note(string.Empty));
+            Check("없는 자리는 없다고 말함",
+                  DbPathText.Note(Path.Combine(Path.GetTempPath(), "logscope-no-such-place"))
+                      == "이 자리에 아무것도 없습니다",
+                  DbPathText.Note(Path.Combine(Path.GetTempPath(), "logscope-no-such-place")));
+
+            string dir = Path.Combine(Path.GetTempPath(), "logscope-note-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, "io.csv");
+            File.WriteAllText(file, "a,b\n");
+            try
+            {
+                Check("폴더는 폴더라고", DbPathText.Note(dir) == "폴더", DbPathText.Note(dir));
+                Check("파일은 파일이라고", DbPathText.Note(file) == "파일", DbPathText.Note(file));
+            }
+            finally
+            {
+                try { Directory.Delete(dir, true); } catch (IOException) { }
+            }
         }
 
         /// <summary>

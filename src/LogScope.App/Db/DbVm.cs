@@ -109,21 +109,11 @@ namespace LogScope.App.Db
 
         public string AfterNote { get { return Note(AfterPath); } }
 
+        // 그 한 줄을 적는 곳은 DbPathText 한 곳입니다 — 메인 화면 칸도
+        // 같은 글을 보여 주므로, 각자 적으면 한쪽만 고치는 날이 옵니다.
         private static string Note(string path)
         {
-            if (string.IsNullOrEmpty(path)) return "끌어다 놓거나, 타 넣거나, 단추로 고르세요";
-
-            try
-            {
-                if (Directory.Exists(path)) return "폴더";
-                if (File.Exists(path)) return "파일";
-            }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException
-                                   || e is ArgumentException || e is NotSupportedException)
-            {
-                return "들여다볼 수 없는 자리입니다";
-            }
-            return "이 자리에 아무것도 없습니다";
+            return DbPathText.Note(path);
         }
 
         /// <summary>자리가 바뀌었을 때. 저장은 창이 맡습니다.</summary>

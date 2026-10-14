@@ -50,6 +50,7 @@ namespace LogScope.App.Shell
             Main.AnalysisOpened += OnAnalysisOpened;
             Main.GroupOpened += OnGroupOpened;
             Main.LogDropped += OnLogDropped;
+            Main.DbDropped += OnMainDbDropped;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -278,9 +279,22 @@ namespace LogScope.App.Shell
         }
 
         /// <summary>메인 화면의 이전/이후 줄에 놓았을 때.</summary>
-        private void OnLogDropped(object sender, MainView.LogDropEventArgs e)
+        private void OnLogDropped(object sender, MainView.FileDropEventArgs e)
         {
             TakeFiles(e.Files, e.Before);
+        }
+
+        /// <summary>
+        /// 메인 화면의 <b>분석 2 칸</b>에 놓았을 때. 분석 2 화면으로 그대로
+        /// 넘깁니다 — 자리를 적고 (둘 다 찼으면) 읽는 일은 거기서 합니다.
+        ///
+        /// 여기서 설정을 직접 고치지 않는 이유: 자리를 적는 곳이 둘이 되면
+        /// 한쪽만 알림을 내보내는 날이 오고, 그러면 화면에는 들어갔는데
+        /// 저장은 안 되는 일이 생깁니다.
+        /// </summary>
+        private void OnMainDbDropped(object sender, MainView.FileDropEventArgs e)
+        {
+            Db.TakePaths(e.Files, e.Before);
         }
 
         // ---------------- 비교 ----------------
@@ -358,10 +372,15 @@ namespace LogScope.App.Shell
             SaveSettings();
         }
 
-        /// <summary>DB 화면에서 견줄 자리를 고쳤을 때. 그 자리에서 저장합니다.</summary>
+        /// <summary>
+        /// 견줄 자리가 바뀌었을 때 (분석 2 화면에서 고쳤든, 메인 화면 칸에
+        /// 놓았든). 저장하고, <b>메인 화면 칸의 글도 다시 그립니다</b> —
+        /// 자리는 설정 한 곳에 있으므로 다시 읽기만 하면 됩니다.
+        /// </summary>
         private void OnDbPathsChanged(object sender, EventArgs e)
         {
             SaveSettings();
+            _vm.Main.Refresh();
         }
 
         /// <summary>

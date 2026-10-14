@@ -47,6 +47,7 @@
     <Compile Include="DbRead.cs" />
     <Compile Include="DbReadMysql.cs" />
     <Compile Include="DbSql.cs" />
+    <Compile Include="DbPathText.cs" />
     <Compile Include="DbVerdict.cs" />
   </ItemGroup>
   <ItemGroup>

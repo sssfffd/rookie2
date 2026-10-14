@@ -29,16 +29,26 @@ namespace LogScope.App.Shell
             public AnalysisEventArgs(int number) { Number = number; }
         }
 
-        /// <summary>이전/이후 줄에 Log 파일을 끌어다 놓았을 때.</summary>
-        public event EventHandler<LogDropEventArgs> LogDropped;
+        /// <summary>분석 1 의 이전/이후 칸에 Log 파일을 끌어다 놓았을 때.</summary>
+        public event EventHandler<FileDropEventArgs> LogDropped;
 
-        public sealed class LogDropEventArgs : EventArgs
+        /// <summary>
+        /// 분석 2 의 이전/이후 칸에 폴더나 파일을 끌어다 놓았을 때.
+        ///
+        /// 로그와 따로 둡니다. 받는 쪽이 다르고 (한쪽은 로그를 읽고 한쪽은
+        /// DB 자리를 적습니다), 하나로 묶어 "어느 분석이냐" 를 안에 넣으면
+        /// 받는 곳에서 다시 갈라야 합니다.
+        /// </summary>
+        public event EventHandler<FileDropEventArgs> DbDropped;
+
+        /// <summary>놓은 것과, 어느 쪽 칸인지.</summary>
+        public sealed class FileDropEventArgs : EventArgs
         {
             public readonly List<string> Files;
-            /// <summary>참이면 이전 로그, 거짓이면 이후 로그 자리입니다.</summary>
+            /// <summary>참이면 이전 자리, 거짓이면 이후 자리입니다.</summary>
             public readonly bool Before;
 
-            public LogDropEventArgs(List<string> files, bool before)
+            public FileDropEventArgs(List<string> files, bool before)
             {
                 Files = files;
                 Before = before;
@@ -50,7 +60,7 @@ namespace LogScope.App.Shell
         /// 쪽으로 들어갈지 보여야 해서입니다. 이게 없으면 커서 옆의 파일
         /// 아이콘이 글자를 가려 어느 칸인지 알 수가 없습니다.
         /// </summary>
-        private void OnLogRowDragOver(object sender, DragEventArgs e)
+        private void OnDropCardDragOver(object sender, DragEventArgs e)
         {
             bool ok = HasFiles(e);
             e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
@@ -58,7 +68,7 @@ namespace LogScope.App.Shell
             e.Handled = true;
         }
 
-        private void OnLogRowDragLeave(object sender, DragEventArgs e)
+        private void OnDropCardDragLeave(object sender, DragEventArgs e)
         {
             Lit(sender as Border, false);
             e.Handled = true;
@@ -101,7 +111,7 @@ namespace LogScope.App.Shell
         /// 실제로 읽는 일은 창(ShellWindow)이 맡습니다. 진행 창을 띄워야 하고,
         /// 읽은 뒤에 다시 견줘야 하기 때문입니다.
         /// </summary>
-        private void OnLogRowDrop(object sender, DragEventArgs e)
+        private void OnLogDrop(object sender, DragEventArgs e)
         {
             e.Handled = true;
             Lit(sender as Border, false);
@@ -114,8 +124,27 @@ namespace LogScope.App.Shell
 
             bool before = CardTag.IsBefore(g);
 
-            EventHandler<LogDropEventArgs> h = LogDropped;
-            if (h != null) h(this, new LogDropEventArgs(new List<string>(paths), before));
+            EventHandler<FileDropEventArgs> h = LogDropped;
+            if (h != null) h(this, new FileDropEventArgs(new List<string>(paths), before));
+        }
+
+        /// <summary>
+        /// 분석 2 칸에 놓았을 때. 적는 일도 읽는 일도 분석 2 화면이 맡습니다 —
+        /// 여기서 설정을 직접 고치면 자리를 적는 곳이 둘이 됩니다.
+        /// </summary>
+        private void OnDbDrop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+            Lit(sender as Border, false);
+
+            var g = sender as FrameworkElement;
+            if (g == null || !HasFiles(e)) return;
+
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null || paths.Length == 0) return;
+
+            EventHandler<FileDropEventArgs> h = DbDropped;
+            if (h != null) h(this, new FileDropEventArgs(new List<string>(paths), CardTag.IsBefore(g)));
         }
 
         private static bool HasFiles(DragEventArgs e)

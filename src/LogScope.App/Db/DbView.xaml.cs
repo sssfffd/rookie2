@@ -160,6 +160,27 @@ namespace LogScope.App.Db
             Said(paths, 1);
         }
 
+        /// <summary>
+        /// <b>메인 화면 칸에 놓은 것</b>을 받습니다. 분석 2 화면을 열지
+        /// 않고도 자리가 들어가야 해서 밖으로 열어 둔 길입니다.
+        ///
+        /// 자리가 둘 다 차면 <b>바로 읽습니다.</b> 분석 1 이 그렇게
+        /// 동작하기 때문입니다 — 로그를 놓으면 묻지 않고 읽고 견줘서 메인
+        /// 칸의 점수가 바뀝니다. DB 만 "이제 분석 2 로 가서 [DB 읽기] 를
+        /// 누르세요" 가 되면, 놓고 나서 메인 칸이 그대로인 까닭을 알 수가
+        /// 없습니다. 오래 걸리는 동안은 진행 창이 뜨고, 거기서 멈출 수
+        /// 있습니다.
+        /// </summary>
+        public void TakePaths(IList<string> paths, bool before)
+        {
+            if (paths == null || paths.Count == 0) return;
+
+            _vm.SetPath(before, paths[0]);   // SetPath 가 PathsChanged 를 알립니다
+            Said(paths, 1);
+
+            if (_vm.HasPaths) Read();
+        }
+
         /// <summary>끌어온 것이 파일·폴더면 그 목록, 아니면 null.</summary>
         private static string[] Dropped(DragEventArgs e)
         {
@@ -174,12 +195,12 @@ namespace LogScope.App.Db
         /// "넣었는데 왜 안 보이지" 가 됩니다. 여러 파일을 한쪽으로 묶어
         /// 읽으려면 그 파일들이 든 <b>폴더</b>를 놓으면 됩니다.
         /// </summary>
-        private void Said(string[] paths, int used)
+        private void Said(IList<string> paths, int used)
         {
-            if (paths.Length <= used) return;
+            if (paths.Count <= used) return;
 
             MessageBox.Show(Window.GetWindow(this),
-                paths.Length + " 개를 놓으셨습니다. 한 칸에는 자리가 하나라서 "
+                paths.Count + " 개를 놓으셨습니다. 한 칸에는 자리가 하나라서 "
                 + "맨 앞의 것만 넣었습니다.\n\n"
                 + "여러 파일을 한쪽으로 묶어 읽으시려면 그 파일들이 든 폴더를 놓아 주세요 — "
                 + "폴더 안의 .sql / .csv / .frm 을 하위 폴더까지 다 읽습니다.",
@@ -208,6 +229,15 @@ namespace LogScope.App.Db
                 return;
             }
 
+            Read();
+        }
+
+        /// <summary>
+        /// 두 자리를 읽고 견줍니다. 자리가 둘 다 정해져 있어야 합니다 —
+        /// 부르는 쪽이 보고 부릅니다.
+        /// </summary>
+        private void Read()
+        {
             object result; Exception error;
             bool ok = BackgroundJob.Run(Window.GetWindow(this), "DB 를 읽는 중",
                 delegate (LoadProgress p)

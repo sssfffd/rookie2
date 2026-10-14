@@ -89,6 +89,9 @@ namespace LogScope.App.Shell
             Raise("BeforeFileName"); Raise("AfterFileName");
             Raise("BeforeText"); Raise("AfterText");
             Raise("BeforePath"); Raise("AfterPath");
+            Raise("DbBeforePath"); Raise("DbAfterPath");
+            Raise("DbBeforeName"); Raise("DbAfterName");
+            Raise("DbBeforeNote"); Raise("DbAfterNote");
             Raise("ComparedText");
             Raise("OverallHeadline"); Raise("OverallGrade");
             Raise("OverallBasis");
@@ -254,6 +257,31 @@ namespace LogScope.App.Shell
         /// <summary>풍선 도움말에 띄울 전체 경로. 이름을 잘라 보여 주므로 필요합니다.</summary>
         public string BeforePath { get { return _state.BeforePath; } }
         public string AfterPath { get { return _state.AfterPath; } }
+
+        // ---------------- 분석 2 가 견줄 자리 (DB) ----------------
+        //
+        // 분석 1 의 로그 칸과 같은 모양으로 메인 화면에 둡니다. 여기 있는
+        // 것은 <b>보여 주기</b>만 합니다 — 놓은 것을 받아 넣는 일은 분석 2
+        // 화면(DbView)이 맡습니다. 그래야 자리를 적는 곳이 한 곳입니다.
+        //
+        // 자리 자체는 설정에 그대로 있습니다. 메인 화면용으로 따로 베껴
+        // 두면, 분석 2 화면에서 고친 날 두 화면에 다른 자리가 적힙니다.
+
+        public string DbBeforePath { get { return DbPath(true); } }
+        public string DbAfterPath { get { return DbPath(false); } }
+
+        public string DbBeforeName { get { return DbPathText.Name(DbPath(true)); } }
+        public string DbAfterName { get { return DbPathText.Name(DbPath(false)); } }
+
+        public string DbBeforeNote { get { return DbPathText.Note(DbPath(true)); } }
+        public string DbAfterNote { get { return DbPathText.Note(DbPath(false)); } }
+
+        private string DbPath(bool before)
+        {
+            AppSettings s = _state.Settings;
+            if (s == null) return string.Empty;
+            return (before ? s.DbBeforePath : s.DbAfterPath) ?? string.Empty;
+        }
 
         /// <summary>
         /// 지금 보고 있는 결과가 언제 나온 것인지.

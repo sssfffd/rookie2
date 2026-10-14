@@ -172,6 +172,12 @@ namespace LogScope.App.Shell
         /// </summary>
         public bool HasLogBox { get; private set; }
 
+        /// <summary>
+        /// 이 칸 안에 <b>이전/이후 DB 칸</b>을 넣을지. 로그 칸과 같은 뜻으로,
+        /// 견줄 자리를 정하는 일은 DB 비교(분석 2)의 준비입니다.
+        /// </summary>
+        public bool HasDbBox { get; private set; }
+
         public AnalysisCardVm(int number, string title, string summary, bool ready)
         {
             Number = number;
@@ -179,6 +185,7 @@ namespace LogScope.App.Shell
             Summary = summary;
             Ready = ready;
             HasLogBox = number == 1;
+            HasDbBox = number == 2;
             _stats = new List<StatVm>();
         }
 
