@@ -138,6 +138,7 @@ namespace LogScope.Tests
                 DbColumnNames();
                 DbTallyAndMarks();
                 DbPairByShape();
+                CsvKeyAndValue();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -2890,10 +2891,15 @@ namespace LogScope.Tests
             Check("어느 행인지 적힘", bb.Where == "id=1", bb.Where);
 
             // ---- 없어진 행 : 열마다 한 줄, 이후 칸은 빈 칸 ----
+            //
+            // 0.87 부터 <b>열쇠 열은 빼고</b> 셉니다. 그 값은 이미 IO명 칸에
+            // 있어서, 적으면 "TEMP_MAX → TEMP_MAX" 같은 줄이 하나 더 생기고
+            // 없어진 행 하나가 줄 둘로 보입니다. 여기 표는 열이 셋(id · a · b)
+            // 이고 id 가 열쇠라 둘이 됩니다.
             var gone = new List<DbDiffLine>();
             for (int i = 0; i < lines.Count; i++)
                 if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Change == DbDiffLine.ChangeGone) gone.Add(lines[i]);
-            Check("없어진 행을 열마다 펼침", gone.Count == 3, "실제 " + gone.Count);
+            Check("없어진 행을 열마다 펼침 (열쇠 열 빼고)", gone.Count == 2, "실제 " + gone.Count);
             Check("없어진 행의 이후 칸은 빔", gone[0].After.Length == 0, gone[0].After);
 
             // NULL 은 NULL 로 적습니다. "없는 쪽" 의 빈 칸과 다른 것입니다.
@@ -2905,7 +2911,7 @@ namespace LogScope.Tests
             var born = new List<DbDiffLine>();
             for (int i = 0; i < lines.Count; i++)
                 if (lines[i].Kind == DbDiffLine.KindRow && lines[i].Change == DbDiffLine.ChangeAdded) born.Add(lines[i]);
-            Check("생긴 행도 열마다", born.Count == 3, "실제 " + born.Count);
+            Check("생긴 행도 열마다 (열쇠 열 빼고)", born.Count == 2, "실제 " + born.Count);
             Check("생긴 행의 이전 칸은 빔", born[0].Before.Length == 0, born[0].Before);
 
             // ---- 한쪽에만 있는 표 : 행은 펼치지 않습니다 ----
@@ -2916,7 +2922,7 @@ namespace LogScope.Tests
                 if (lines[i].Table != "only_b") continue;
                 onlyAll++;
                 if (lines[i].Kind == DbDiffLine.KindRow) onlyRows++;
-                if (lines[i].Kind == DbDiffLine.KindTable) head = lines[i];
+                if (lines[i].Kind == DbDiffLine.KindNote && lines[i].Note.Contains("only_b")) head = lines[i];
             }
             Check("표가 한쪽에만 있으면 행은 안 펼침", onlyRows == 0, "실제 " + onlyRows);
             Check("그래도 열 모양은 적음", onlyAll == 2, "실제 " + onlyAll);
@@ -2975,7 +2981,7 @@ namespace LogScope.Tests
             // 순서로 나오는지" 만 봅니다.
             Check("CSV 머리글", csv.StartsWith(string.Join(",", DbNames.CsvNames())),
                   csv.Substring(0, 40));
-            Check("CSV 칸 수", DbNames.CsvNames().Length == 11,
+            Check("CSV 칸 수", DbNames.CsvNames().Length == 8,
                   DbNames.CsvNames().Length.ToString(CultureInfo.InvariantCulture));
             Check("CSV 줄 수", CountLines(csv) == lines.Count + 1,
                   CountLines(csv) + " / " + (lines.Count + 1));
@@ -2987,33 +2993,20 @@ namespace LogScope.Tests
             Check("따옴표는 두 번으로", csv2.Contains("\"그가 \"\"말\"\"했다\""), csv2);
 
             // IO 이름은 "그 줄을 가리키는 가장 좁은 이름" 입니다.
-            Check("행 줄의 IO 는 행 열쇠", bb.Io == "id=1", bb.Io);
+            //
+            // 열쇠가 <b>한 열</b>이면 그 값만 적습니다 (0.87) — `.csv` 는
+            // 3 번 열이 열쇠고 거기 IO 이름이 들어 있어서, "io=TEMP_MAX" 가
+            // 아니라 "TEMP_MAX" 가 나와야 합니다. 여기 id 도 한 열이라
+            // "id=1" 이 아니라 "1" 입니다. 행을 가리키는 글("id=1")은
+            // Where 칸에 그대로 있습니다.
+            Check("행 줄의 IO 는 열쇠 값", bb.Io == "1", bb.Io);
+            Check("행 줄의 Where 는 열 이름까지", bb.Where == "id=1", bb.Where);
             Check("열 줄의 IO 는 열 이름", col.Io == "a", col.Io);
-            Check("한쪽에만 있는 표의 머리는 표 이름", head.Io == "only_b", head.Io);
-
-            // v1 · v2 는 <b>쓰는 쪽이 채우는 칸</b>입니다.
-            //
-            // 전에는 여기서 "Build 가 만든 줄의 v1 은 비어 있어야 한다" 를
-            // 봤습니다. 그건 틀린 시험이었습니다 — 그 칸을 채우는 것이
-            // 바로 쓰는 쪽이 할 일이고, 채우자마자 이 시험이 실패했습니다.
-            // 시험이 "하라고 알려 준 일" 을 막아서는 안 됩니다 (0.83).
-            //
-            // 그래서 두 가지만 봅니다.
-            //   1. 아무것도 안 하면 기본값이 빈 글자 (지어낸 값이 아님)
-            //   2. 채우면 CSV 와 마우스 설명 글에 그대로 나감
-            Check("새 줄의 v1 · v2 기본값은 빈 글자",
-                  new DbDiffLine().V1.Length == 0 && new DbDiffLine().V2.Length == 0, null);
-
-            var mine = new DbDiffLine
-            {
-                Table = "t", Io = "id=1", Kind = DbDiffLine.KindRow,
-                V1 = "180", V2 = "°C",
-            };
-            string filled = DbDiffList.ToCsv(new List<DbDiffLine> { mine });
-            Check("채운 v1 이 CSV 에 나감", filled.Contains("180"), filled);
-            Check("채운 v2 도 나감", filled.Contains("°C"), filled);
-            Check("채운 v1·v2 가 설명 글에도",
-                  mine.Tip.Contains("180") && mine.Tip.Contains("°C"), mine.Tip);
+            // 0.87 부터 "파일 한쪽이 통째로 없다" 는 목록 줄이 아니라
+            // <b>알림</b>입니다 (목록에서 "표" 갈래를 없앴습니다). 알림은
+            // 목록 위에 적히므로 사실은 그대로 남습니다.
+            Check("한쪽에만 있는 파일은 알림으로", head != null && head.Note.Contains("이전 쪽에만"),
+                  head == null ? "못 찾음" : head.Note);
 
             // 갈래·구분에는 정해 둔 글자만 들어가야 합니다. 어딘가에서
             // 글자를 손으로 적어 넣으면 (상수를 안 쓰면) 여기서 걸립니다 —
@@ -3021,7 +3014,7 @@ namespace LogScope.Tests
             // 알림이 목록에 섞여 나옵니다.
             var okKind = new List<string>
             {
-                DbDiffLine.KindTable, DbDiffLine.KindColumn,
+                DbDiffLine.KindColumn,
                 DbDiffLine.KindRow, DbDiffLine.KindNote,
             };
             var okChange = new List<string>
@@ -3057,7 +3050,7 @@ namespace LogScope.Tests
         {
             Say("DB — 목록 칸 이름은 한 곳");
 
-            Check("칸 수", DbNames.CsvNames().Length == 11,
+            Check("칸 수", DbNames.CsvNames().Length == 8,
                   DbNames.CsvNames().Length.ToString(CultureInfo.InvariantCulture));
 
             string[] names = DbNames.CsvNames();
@@ -3071,16 +3064,11 @@ namespace LogScope.Tests
             Check("CSV 머리글이 DbNames 를 따라감",
                   csv.StartsWith(string.Join(",", names)), csv);
 
-            // 마우스 설명 글도 같은 이름을 앞에 붙입니다.
-            var one = new DbDiffLine { Table = "t", V1 = "180", V2 = "°C" };
-            Check("설명 글이 v1 이름을 씀", one.Tip.Contains(DbNames.V1), one.Tip);
-            Check("설명 글이 v2 이름을 씀", one.Tip.Contains(DbNames.V2), one.Tip);
-
             // 이름에 쉼표가 들어가도 CSV 가 깨지면 안 됩니다. 값과 같은
             // 함수로 찍으므로 따옴표가 붙습니다 (이름을 "설정값, 단위" 처럼
             // 바꿔 둘 수 있으니까요).
             var lines = new List<DbDiffLine>();
-            lines.Add(new DbDiffLine { Table = "a,b" });
+            lines.Add(new DbDiffLine { Io = "a,b" });
             Check("쉼표 든 값은 따옴표로", DbDiffList.ToCsv(lines).Contains("\"a,b\""),
                   DbDiffList.ToCsv(lines));
         }
@@ -3284,19 +3272,16 @@ namespace LogScope.Tests
             DbDiffResult d = DbDiff.Compare(b, a2);
             List<DbDiffLine> lines = DbDiffList.Build(d, null);
 
-            // id=1 은 a · b 두 열이 달라졌습니다 → 줄 둘, 둘 다 빨강
-            int red = 0, yellow = 0, plain = 0;
+            // id=1 은 a · b 두 열이, id=2 는 v1 열이 달라졌습니다.
+            int red = 0, plain = 0;
             for (int i = 0; i < lines.Count; i++)
             {
                 if (lines[i].Kind == DbDiffLine.KindNote) continue;
                 if (lines[i].Mark == DbDiffLine.MarkValue) red++;
-                else if (lines[i].Mark == DbDiffLine.MarkSide) yellow++;
                 else plain++;
             }
-            Check("값이 달라진 줄은 빨강 (a · b 두 열)", red == 2,
+            Check("값이 달라진 줄은 빨강", red == 3,
                   red.ToString(CultureInfo.InvariantCulture));
-            Check("v1 이 달라진 줄은 노랑", yellow == 1,
-                  yellow.ToString(CultureInfo.InvariantCulture));
             Check("생기거나 없어진 줄은 안 칠함", plain > 0,
                   plain.ToString(CultureInfo.InvariantCulture));
 
@@ -3317,7 +3302,7 @@ namespace LogScope.Tests
 
             // 걸러 보기: 칠한 줄만 남습니다
             List<DbDiffLine> only = DbDiffList.OnlyChanged(lines);
-            Check("걸러 보면 칠한 줄만", only.Count == red + yellow,
+            Check("걸러 보면 칠한 줄만", only.Count == red,
                   only.Count.ToString(CultureInfo.InvariantCulture));
             bool allMarked = true;
             for (int i = 0; i < only.Count; i++) if (only[i].Mark.Length == 0) allMarked = false;
@@ -3327,12 +3312,6 @@ namespace LogScope.Tests
             DbDiffList.Tally t2 = DbDiffList.Count(lines);
             Check("걸러 보기가 세 숫자를 바꾸지 않음",
                   t2.Gone == t.Gone && t2.Added == t.Added && t2.Changed == t.Changed, null);
-
-            // v1 으로 볼 열 이름은 한 곳입니다.
-            Check("v1 은 곁값 열", DbNames.IsSide("v1"), null);
-            Check("대소문자 안 가림", DbNames.IsSide("V2"), null);
-            Check("다른 이름은 아님", !DbNames.IsSide("a"), null);
-            Check("빈 이름도 괜찮음", !DbNames.IsSide(null) && !DbNames.IsSide(""), null);
 
             // 빈 목록에서 터지지 않아야 합니다.
             DbDiffList.Tally z = DbDiffList.Count(null);
@@ -3364,7 +3343,7 @@ namespace LogScope.Tests
                   && d1.TablesOnlyAfter == 0,
                   "달라짐 " + d1.TablesChanged + " · 이전만 " + d1.TablesOnlyBefore
                   + " · 이후만 " + d1.TablesOnlyAfter);
-            Check("짝지었다고 적음", Joined(d1.Notes).Contains("이름이 다른 표를 짝지었습니다"),
+            Check("짝지었다고 적음", Joined(d1.Notes).Contains("이름이 다른 파일을 짝지었습니다"),
                   Joined(d1.Notes));
             Check("짝지은 이후 쪽 이름을 들고 있음",
                   d1.Tables.Count == 1 && d1.Tables[0].PairedName == "2026-03-21",
@@ -3414,7 +3393,7 @@ namespace LogScope.Tests
             DbDiffResult d4 = DbDiff.Compare(b4, a4);
             Check("이름이 같으면 그대로 짝지음", d4.TablesChanged == 1, d4.TablesChanged.ToString(CultureInfo.InvariantCulture));
             Check("이름이 같으면 짝지었다는 말이 없음",
-                  !Joined(d4.Notes).Contains("이름이 다른 표"), Joined(d4.Notes));
+                  !Joined(d4.Notes).Contains("이름이 다른 파일"), Joined(d4.Notes));
             Check("이름이 같으면 짝 이름이 빈 글자",
                   d4.Tables[0].PairedName.Length == 0, d4.Tables[0].PairedName);
 
@@ -3466,6 +3445,84 @@ namespace LogScope.Tests
         private static string Joined(List<string> notes)
         {
             return notes == null ? string.Empty : string.Join(" | ", notes.ToArray());
+        }
+
+        /// <summary>
+        /// `.csv` 는 <b>3 번 열을 열쇠로, 4 번 열을 값으로</b> 읽습니다 (0.87).
+        ///
+        /// 쓰는 파일이 이렇게 생겼습니다.
+        /// <code>
+        ///   1,2,3,4,5,6         ← 첫 줄은 열 이름
+        ///   …,…,IO 이름,값,…,…   ← 둘째 줄부터 자료
+        /// </code>
+        ///
+        /// 전에는 열쇠가 없어서 값이 하나 바뀐 행이 "없어진 행 + 생긴 행"
+        /// 으로 보였습니다. 그게 이 시험이 지키려는 것입니다.
+        /// </summary>
+        private static void CsvKeyAndValue()
+        {
+            Say("DB — .csv 의 3 번 열쇠 · 4 번 값");
+
+            string head = "no,addr,io,value,unit,note\n";
+            string before = head
+                + "1,%M0,TEMP_MAX,180,C,설정\n"
+                + "2,%M1,FLOW_SET,12.0,L,설정\n"
+                + "3,%M2,GONE,1,-,없어질 것\n";
+            string after = head
+                + "1,%M0,TEMP_MAX,185,C,설정\n"          // 값이 달라짐
+                + "2,%M1,FLOW_SET,12.0,L,바뀐 설명\n"     // 안 보는 열만 달라짐
+                + "4,%M3,BORN,7,-,새로 생긴 것\n";
+
+            DbTable tb = CsvTableReader.Read(WriteText("io_before.csv", before), 0);
+            DbTable ta = CsvTableReader.Read(WriteText("io_after.csv", after), 0);
+
+            Check("두 열만 읽음", tb.Columns.Count == 2,
+                  tb.Columns.Count.ToString(CultureInfo.InvariantCulture));
+            Check("첫 열은 3 번 (io)", tb.Columns[0].Name == "io", tb.Columns[0].Name);
+            Check("둘째 열은 4 번 (value)", tb.Columns[1].Name == "value", tb.Columns[1].Name);
+            Check("3 번이 열쇠", tb.Columns[0].IsKey && !tb.Columns[1].IsKey, null);
+            Check("안 본 열을 적음", tb.Note.Contains("안 본 열"), tb.Note);
+            Check("행 셋", tb.Rows.Count == 3, tb.Rows.Count.ToString(CultureInfo.InvariantCulture));
+            Check("3 번 값이 들어옴", tb.Rows[0].Get(0) == "TEMP_MAX", tb.Rows[0].Get(0));
+            Check("4 번 값이 들어옴", tb.Rows[0].Get(1) == "180", tb.Rows[0].Get(1));
+
+            var b = new DbSnapshot(); b.Tables.Add(tb);
+            var a2 = new DbSnapshot(); a2.Tables.Add(ta);
+            DbDiffResult d = DbDiff.Compare(b, a2);
+            List<DbDiffLine> lines = DbDiffList.Build(d, null);
+
+            // 값이 바뀐 행은 "달라짐" 한 줄입니다 (없어짐 + 생김이 아닙니다).
+            DbDiffLine changed = null;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Io == "TEMP_MAX" && lines[i].Change == DbDiffLine.ChangeDiff)
+                    changed = lines[i];
+            Check("값이 바뀐 행은 달라짐 한 줄", changed != null,
+                  changed == null ? "못 찾음" : "ok");
+            if (changed != null)
+            {
+                Check("IO 이름이 3 번 값", changed.Io == "TEMP_MAX", changed.Io);
+                Check("이전 값", changed.Before == "180", changed.Before);
+                Check("이후 값", changed.After == "185", changed.After);
+                Check("빨간 줄", changed.Mark == DbDiffLine.MarkValue, changed.Mark);
+            }
+
+            // 안 보는 열(note)만 달라진 행은 차이가 아니어야 합니다.
+            bool flowSaid = false;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Io == "FLOW_SET") flowSaid = true;
+            Check("안 보는 열만 달라진 행은 차이 아님", !flowSaid, "FLOW_SET 이 목록에 있음");
+
+            // 세 숫자.
+            DbDiffList.Tally t = DbDiffList.Count(lines);
+            Check("차이 발생 하나", t.Changed == 1, t.Changed.ToString(CultureInfo.InvariantCulture));
+            Check("없어진 IO 하나", t.Gone == 1, t.Gone.ToString(CultureInfo.InvariantCulture));
+            Check("새로 생긴 IO 하나", t.Added == 1, t.Added.ToString(CultureInfo.InvariantCulture));
+
+            // 열이 모자란 파일: 짐작하지 않고 그렇다고 적습니다.
+            DbTable thin = CsvTableReader.Read(WriteText("thin.csv", "a,b\n1,2\n"), 0);
+            Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
+            Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
+            Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>

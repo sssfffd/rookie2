@@ -29,10 +29,6 @@
                              Value="{x:Static db:DbDiffLine.MarkValue}">
                     <Setter Property="Background" Value="{DynamicResource Brush.BadSoft}" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Mark}"
-                             Value="{x:Static db:DbDiffLine.MarkSide}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarnSoft}" />
-                </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
@@ -214,13 +210,7 @@
                                     VerticalAlignment="Center"
                                     Background="{DynamicResource Brush.BadSoft}"
                                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
-                            <TextBlock Text="value 차이" Style="{StaticResource Muted}"
-                                       VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource Brush.WarnSoft}"
-                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
-                            <TextBlock Text="v1 · v2 차이" Style="{StaticResource Muted}"
+                            <TextBlock Text="값이 달라진 줄" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="0,0,14,0" />
 
                             <Button Content="목록 CSV 저장" Click="OnSaveList"
@@ -246,25 +236,18 @@
                                       칸은 화면 나무에 없어서 Binding 이 조용히
                                       실패하고 머리글이 빈 채로 나옵니다.
 
-                                      표 · 열 칸은 0.79 에서 뺐습니다. 값만
-                                      보시겠다고 해서입니다. 그 둘이 아주
-                                      없어진 것은 아닙니다 — 줄에 마우스를
-                                      올리면 뜨는 글(Tip)에 표 이름과 열
-                                      이름이 그대로 들어 있고, [목록 CSV 저장]
-                                      으로 뽑은 CSV 에도 칸으로 남아 있습니다.
-                                      다시 보이게 하려면 아래에 한 줄
-                                      더하면 됩니다.
+                                      칸은 셋입니다 — IO명 · 이전 value ·
+                                      이후 value. 0.87 에서 v1 · v2 를
+                                      뺐고, 표 칸은 0.79 에서 뺐습니다.
+                                      열 이름은 줄에 마우스를 올리면 뜨는
+                                      글에 그대로 있습니다.
                                     -->
-                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="340"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Io}" Width="360"
                                                     DisplayMemberBinding="{Binding Io}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="170"
+                                    <GridViewColumn Header="{x:Static db:DbNames.Before}" Width="220"
                                                     DisplayMemberBinding="{Binding Before}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.After}" Width="170"
+                                    <GridViewColumn Header="{x:Static db:DbNames.After}" Width="220"
                                                     DisplayMemberBinding="{Binding After}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.V1}" Width="110"
-                                                    DisplayMemberBinding="{Binding V1}" />
-                                    <GridViewColumn Header="{x:Static db:DbNames.V2}" Width="110"
-                                                    DisplayMemberBinding="{Binding V2}" />
                                 </GridView>
                             </ListView.View>
                         </ListView>

@@ -7,11 +7,11 @@ using System.Text;
 //
 // 견주기와 목록.
 //
-// 화면에 나오는 줄을 고칠 때 보는 파일입니다 (IO명 · v1 · v2).
+// 화면에 나오는 줄을 고칠 때 보는 파일입니다.
 //
-//   DbDiff      두 벌을 견주는 세 단계 (표 → 열 → 행)
+//   DbDiff      두 벌을 견주는 세 단계 (파일 → 열 → 행)
 //   DbDiffList  그 차이를 화면 목록의 줄로 펼칩니다.
-//               Io · V1 · V2 를 채우는 자리가 DbDiffList.OneRow 입니다.
+//               줄에 값을 담는 자리가 DbDiffList.OneRow 입니다.
 //
 //  칸에 "적히는 이름" 은 이 파일에 없습니다 — DbNames.cs 한 곳입니다
 //  — 거기 한 줄만 고치면 됩니다. 여기 있는 것은 칸에 담기는
@@ -295,7 +295,7 @@ namespace LogScope.Db
                 if (hits == 1) Pair(res, b, i, a, found, "열 구성이 같아서");
                 else if (hits > 1)
                 {
-                    res.Notes.Add("'" + b[i].Name + "' 과 열 구성이 같은 표가 이후 쪽에 "
+                    res.Notes.Add("'" + b[i].Name + "' 과 열 구성이 같은 것이 이후 쪽에 "
                         + hits + " 개 있어 어느 것과 견줄지 정할 수 없었습니다. "
                         + "파일 이름을 맞춰 주시면 그대로 짝지읍니다.");
                 }
@@ -305,7 +305,7 @@ namespace LogScope.Db
             int bl = Alive(b), al = Alive(a);
             if (bl > 0 && al > 0)
             {
-                res.Notes.Add("이름이 다른 표가 이전 쪽에 " + bl + " 개, 이후 쪽에 " + al
+                res.Notes.Add("이름이 다른 것이 이전 쪽에 " + bl + " 개, 이후 쪽에 " + al
                     + " 개 남았습니다. 열 구성이 같은 짝이 하나씩일 때만 이름이 달라도 "
                     + "견줍니다 — 파일 이름을 맞춰 주시면 그대로 짝지읍니다.");
             }
@@ -316,7 +316,7 @@ namespace LogScope.Db
         {
             TableDiff td = CompareTable(b[i], a[j]);
             td.PairedName = a[j].Name;
-            res.Notes.Add("이름이 다른 표를 짝지었습니다: '" + b[i].Name + "' ↔ '"
+            res.Notes.Add("이름이 다른 파일을 짝지었습니다: '" + b[i].Name + "' ↔ '"
                 + a[j].Name + "' (" + why + ").");
             Took(res, td);
             b[i] = null; a[j] = null;
@@ -616,7 +616,6 @@ namespace LogScope.Db
         /// 거기 두지 않았습니다 — 이름은 보여 주기만 하는 것이고, 이것은
         /// 견주는 값입니다.
         /// </summary>
-        public const string KindTable = "표";
         public const string KindColumn = "열";
         public const string KindRow = "행";
         public const string KindNote = "알림";
@@ -629,23 +628,23 @@ namespace LogScope.Db
         /// <summary>
         /// <b>줄 색을 정하는 값.</b> 화면이 이 글자를 보고 줄을 칠합니다.
         ///
-        ///   MarkValue  값이 달라짐            → 빨강
-        ///   MarkSide   v1 · v2 가 달라짐      → 노랑
-        ///   빈 글자    칠하지 않음 (표·열 줄, 생기거나 없어진 줄, 알림)
+        ///   MarkValue  값이 달라짐  → 빨강
+        ///   빈 글자    칠하지 않음 (열 줄, 생기거나 없어진 줄, 알림)
+        ///
+        /// 0.87 에서 노랑(v1 · v2 가 달라짐)을 없앴습니다 — v1 · v2 자리
+        /// 자체를 뺐습니다.
         ///
         /// 생기거나 없어진 줄을 칠하지 않는 이유: 그건 "값이 달라진" 것이
         /// 아니고, 위 요약에서 <b>따로 세어 보여 줍니다</b>. 같은 것을 두
         /// 가지 방법으로 알려 주면 수가 안 맞아 보일 때 어느 쪽이 맞는지
         /// 알 수 없습니다.
         ///
-        /// 어느 열을 v1 · v2 로 볼지는 <see cref="DbNames.SideColumns"/> 입니다.
         /// </summary>
         public const string MarkValue = "값";
-        public const string MarkSide = "곁값";
 
         public string Mark { get; set; }
 
-        /// <summary>표 · 열 · 행 · 알림. 위 Kind... 상수 중 하나입니다.</summary>
+        /// <summary>열 · 행 · 알림. 위 Kind... 상수 중 하나입니다.</summary>
         public string Kind { get; set; }
 
         /// <summary>생김 · 없어짐 · 달라짐 · 자리. 알림 줄은 빕니다.</summary>
@@ -664,18 +663,6 @@ namespace LogScope.Db
         /// </summary>
         public string Io { get; set; }
 
-        /// <summary>
-        /// 쓰는 쪽에서 채우는 빈 칸 둘. 설비 DB 마다 함께 봐야 하는 열이
-        /// 달라서(설정값 · 단위 · 판본 같은 것) 여기 이름을 박지 않았습니다.
-        ///
-        /// <b>기본은 빈 글자입니다.</b> 비어 있으면 칸은 그냥 빕니다 —
-        /// 아무 값이나 채워 두면 그게 DB 에서 읽은 값인 줄 알고 읽게 됩니다.
-        /// 채우는 자리는 <c>DbDiffList.OneRow</c> 입니다.
-        /// </summary>
-        public string V1 { get; set; }
-
-        public string V2 { get; set; }
-
         /// <summary>열 이름.</summary>
         public string Column { get; set; }
 
@@ -692,7 +679,7 @@ namespace LogScope.Db
             Table = string.Empty; Kind = string.Empty; Change = string.Empty;
             Where = string.Empty; Column = string.Empty; Io = string.Empty;
             Before = string.Empty; After = string.Empty; Note = string.Empty;
-            V1 = string.Empty; V2 = string.Empty; Mark = string.Empty;
+            Mark = string.Empty;
         }
 
         /// <summary>
@@ -703,24 +690,20 @@ namespace LogScope.Db
         {
             get
             {
+                // 표 이름은 안 적습니다 (0.87). 파일 하나를 넣어 견주는
+                // 쓰임이라 표를 가를 일이 없습니다.
                 var sb = new StringBuilder();
-                sb.Append(Table);
+                sb.Append(Io.Length > 0 ? Io : Table);
                 if (Kind.Length > 0) sb.Append("  [").Append(Kind).Append(']');
                 if (Change.Length > 0) sb.Append(' ').Append(Change);
                 // 앞에 붙는 이름은 목록 칸 이름을 그대로 씁니다 — 칸 이름을
                 // 바꿨는데 설명 글만 옛 이름으로 남으면 안 됩니다.
-                Label(sb, DbNames.Io, Io);
                 Label(sb, DbNames.Where, Where);
                 Label(sb, DbNames.Column, Column);
                 if (Before.Length > 0 || After.Length > 0)
                 {
                     Label(sb, DbNames.Before, Before);
                     Label(sb, DbNames.After, After);
-                }
-                if (V1.Length > 0 || V2.Length > 0)
-                {
-                    Label(sb, DbNames.V1, V1);
-                    Label(sb, DbNames.V2, V2);
                 }
                 if (Note.Length > 0) sb.Append('\n').Append(Note);
                 return sb.ToString();
@@ -887,10 +870,14 @@ namespace LogScope.Db
             int cols = only == null ? 0 : only.Columns.Count;
             int rows = only == null ? 0 : only.Rows.Count;
 
-            var head = new DbDiffLine { Table = td.Name, Kind = DbDiffLine.KindTable, Change = ch, Io = td.Name };
-            head.Note = "표 자체가 " + (before ? "이전에만" : "이후에만") + " 있습니다"
-                      + " — 열 " + cols + " 개 · 읽은 행 " + rows.ToString("N0") + " 개."
-                      + " 행은 칸마다 적지 않습니다 (전부 한쪽에만 있는 것이라 적어도 같은 말입니다).";
+            // 0.87: 표 단위 줄을 <b>알림</b>으로 바꿨습니다. 목록에서 "표"
+            // 갈래를 없앴지만 이 사실까지 없애면 안 됩니다 — 파일 한쪽이
+            // 통째로 없는 것은 가장 큰 차이입니다. 알림은 목록 위에 적힙니다.
+            var head = new DbDiffLine { Table = td.Name, Kind = DbDiffLine.KindNote };
+            head.Note = "'" + td.Name + "' 은 " + (before ? "이전 쪽에만" : "이후 쪽에만")
+                      + " 있습니다 — 열 " + cols + " 개 · 읽은 행 "
+                      + rows.ToString("N0") + " 개."
+                      + " 행은 하나씩 적지 않습니다 (전부 한쪽에만 있는 것이라 같은 말입니다).";
             s.Add(head);
 
             if (only == null) return;
@@ -924,19 +911,18 @@ namespace LogScope.Db
         /// <summary>
         /// 행 하나를 줄로 펼칩니다.
         ///
-        /// <b>v1 · v2 를 채우는 자리가 여기입니다.</b> 설비 DB 마다 함께 봐야
-        /// 하는 열이 달라서 이름을 박아 두지 않았습니다. 그 표에서 값을 꺼내
-        /// <c>ln.V1</c> · <c>ln.V2</c> 에 넣으면 목록의 v1 · v2 칸에 그대로
-        /// 나옵니다. 꺼낼 때는 <c>td.Before</c> / <c>td.After</c> 의
-        /// <c>IndexOf("열이름")</c> 으로 자리를 찾고 <c>rd.Before.Get(i)</c> 로
-        /// 읽습니다 — 위의 "달라진 열" 을 꺼내는 것과 같은 방법입니다.
+        /// <b>줄에 값을 담는 자리가 여기입니다.</b> 열을 더 보여 주고 싶으면
+        /// <c>td.Before</c> / <c>td.After</c> 의 <c>IndexOf("열이름")</c> 으로
+        /// 자리를 찾고 <c>rd.Before.Get(i)</c> 로 읽어 넣으면 됩니다.
         ///
-        /// IO 이름도 같습니다. 지금은 행 열쇠를 넣는데, 이름이 담긴 열이
-        /// 따로 있으면 <c>ln.Io</c> 에 그 값을 넣으면 됩니다.
+        /// <c>ln.Io</c> 에는 행 열쇠가 들어갑니다. <c>.csv</c> 는 3 번 열이
+        /// 열쇠라서(<see cref="DbNames.CsvKeyColumn"/>) 거기 적힌 IO 이름이
+        /// 그대로 들어옵니다.
         /// </summary>
         private static bool OneRow(TableDiff td, RowDiff rd, Sink s)
         {
             string key = KeyText(td, rd);
+            string io = IoText(td, rd);
 
             if (rd.Change == DbChange.Changed)
             {
@@ -950,10 +936,10 @@ namespace LogScope.Db
                     var ln = new DbDiffLine
                     {
                         Table = td.Name, Kind = DbDiffLine.KindRow, Change = DbDiffLine.ChangeDiff,
-                        Where = key, Column = name, Io = key,
+                        Where = key, Column = name, Io = io,
                         Before = DbRow.Show(rd.Before.Get(ci)),
                         After = DbRow.Show(ai < 0 || rd.After == null ? null : rd.After.Get(ai)),
-                        Mark = DbNames.IsSide(name) ? DbDiffLine.MarkSide : DbDiffLine.MarkValue,
+                        Mark = DbDiffLine.MarkValue,
                     };
                     if (!s.Add(ln)) return false;
                 }
@@ -969,7 +955,7 @@ namespace LogScope.Db
             {
                 var one = new DbDiffLine
                 {
-                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = key,
+                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = io,
                     Column = "(행 전체)",
                 };
                 string all = RowText(shape, row);
@@ -979,9 +965,14 @@ namespace LogScope.Db
 
             for (int c = 0; c < shape.Columns.Count; c++)
             {
+                // 열쇠 열은 줄로 적지 않습니다 (0.87). 그 값은 이미 IO명 칸에
+                // 있습니다 — 적으면 "TEMP_MAX → TEMP_MAX" 같은 줄이 하나 더
+                // 생기고, 없어진 행 하나가 줄 둘로 보입니다.
+                if (shape.Columns[c].IsKey && shape.KeyIndexes().Length == 1) continue;
+
                 var ln = new DbDiffLine
                 {
-                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = key,
+                    Table = td.Name, Kind = DbDiffLine.KindRow, Change = ch, Where = key, Io = io,
                     Column = shape.Columns[c].Name,
                 };
                 // 한쪽 칸은 비워 둡니다. "없음" 과 NULL 은 다른 것입니다 —
@@ -1012,6 +1003,30 @@ namespace LogScope.Db
                   .Append(DbRow.Show(row.Get(keys[i])));
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// 그 행의 <b>IO 이름</b>. 목록 첫 칸에 적힙니다.
+        ///
+        /// 열쇠가 <b>한 열</b>이면 그 값만 적습니다 — `.csv` 는 3 번 열이
+        /// 열쇠고 거기 IO 이름이 들어 있어서, <c>io=TEMP_MAX</c> 가 아니라
+        /// <c>TEMP_MAX</c> 가 나와야 합니다.
+        ///
+        /// 열쇠가 여러 열이면 <see cref="KeyText"/> 와 같습니다 — 어느 값이
+        /// 어느 열인지 적어 주지 않으면 읽을 수 없습니다.
+        /// </summary>
+        public static string IoText(TableDiff td, RowDiff rd)
+        {
+            if (td == null || rd == null) return string.Empty;
+
+            DbTable shape = td.Before ?? td.After;
+            DbRow row = rd.Before ?? rd.After;
+            if (shape == null || row == null || !shape.HasKey) return KeyText(td, rd);
+
+            int[] keys = shape.KeyIndexes();
+            if (keys.Length != 1) return KeyText(td, rd);
+
+            return DbRow.Show(row.Get(keys[0]));
         }
 
         private static string RowText(DbTable shape, DbRow row)
@@ -1138,7 +1153,6 @@ namespace LogScope.Db
             for (int i = 0; i < lines.Count; i++)
             {
                 DbDiffLine ln = lines[i];
-                Cell(sb, ln.Table); sb.Append(',');
                 Cell(sb, ln.Io); sb.Append(',');
                 Cell(sb, ln.Kind); sb.Append(',');
                 Cell(sb, ln.Change); sb.Append(',');
@@ -1146,8 +1160,6 @@ namespace LogScope.Db
                 Cell(sb, ln.Column); sb.Append(',');
                 Cell(sb, ln.Before); sb.Append(',');
                 Cell(sb, ln.After); sb.Append(',');
-                Cell(sb, ln.V1); sb.Append(',');
-                Cell(sb, ln.V2); sb.Append(',');
                 Cell(sb, ln.Note);
                 sb.Append("\r\n");
             }

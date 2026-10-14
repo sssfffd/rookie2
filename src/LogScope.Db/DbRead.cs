@@ -295,6 +295,30 @@ namespace LogScope.Db
         }
 
         /// <summary>표 수 상한에 닿았는지. 닿으면 한 번만 적습니다.</summary>
+        /// <summary>
+        /// `.csv` 를 읽으며 생긴 말을 <b>화면까지</b> 올립니다.
+        ///
+        /// "6 개 열 중 3 번과 4 번만 봤습니다" 같은 말이 표 안에만 있으면
+        /// 아무도 못 봅니다 — <b>안 본 열이 있다는 것을 모르고</b> "차이가
+        /// 없네" 로 읽게 됩니다. 조용히 덜 보여 주는 것이 이 프로그램에서
+        /// 가장 나쁜 고장입니다.
+        ///
+        /// 같은 모양의 파일이 폴더에 여럿이면 말도 똑같습니다. 같은 말은
+        /// 한 번만 적습니다.
+        /// </summary>
+        private static void CsvNote(DbSnapshot snap, DbTable t)
+        {
+            if (t == null || string.IsNullOrEmpty(t.Note)) return;
+
+            int bar = t.Note.IndexOf(" / ", StringComparison.Ordinal);
+            if (bar < 0) return;                       // 파일 이름뿐이면 적을 것이 없습니다
+
+            string what = t.Note.Substring(bar + 3);
+            foreach (string had in snap.Notes) if (had.EndsWith(what, StringComparison.Ordinal)) return;
+
+            snap.Notes.Add(t.Note.Substring(0, bar) + " — " + what);
+        }
+
         private static bool Full(DbSnapshot snap, Options opt)
         {
             if (snap.Tables.Count < opt.MaxTables) return false;
@@ -459,6 +483,7 @@ namespace LogScope.Db
                 DbTable old = snap.Find(t.Name);
                 if (old != null) snap.Tables.Remove(old);
                 snap.Tables.Add(t);
+                CsvNote(snap, t);
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException
                                    || e is FormatException || e is NotSupportedException)
@@ -1228,9 +1253,23 @@ namespace LogScope.Db
     /// 판별, 따옴표 안의 줄바꿈 처리가 이미 거기 있습니다. 같은 일을 두 번
     /// 만들면 한쪽만 고치게 됩니다.
     ///
-    /// <b>키가 없습니다.</b> CSV 에는 기본 키라는 것이 없으니, 행을 짝지을 때는
-    /// "모든 열이 같은 행끼리" 가 됩니다 (DbTable.RowKey 참고). 키로 쓸 열을
-    /// 정하고 싶으면 <c>.sql</c> 덤프를 쓰시는 편이 맞습니다.
+    /// <b>3 번 열을 열쇠로, 4 번 열을 값으로 읽습니다</b> (0.87).
+    /// 쓰는 `.csv` 가 이렇게 생겼습니다.
+    ///
+    /// <code>
+    ///   1,2,3,4,5,6         ← 첫 줄은 열 이름
+    ///   …,…,IO 이름,값,…,…   ← 둘째 줄부터 자료
+    /// </code>
+    ///
+    /// 그래서 "3 번이 같은 행끼리 짝지어 4 번 값을 견준다" 가 됩니다. 전에는
+    /// 열쇠가 없어서 <b>값이 하나 바뀐 행이 "없어진 행 + 생긴 행" 으로</b>
+    /// 보였습니다.
+    ///
+    /// 나머지 열(1 · 2 · 5 · 6)은 <b>읽지 않습니다.</b> 읽어 두면 "안 본
+    /// 열인데 왜 차이에 안 나오지" 가 되고, 견주면 묻지 않은 차이가
+    /// 쏟아집니다. <b>안 봤다는 것은 화면에 적습니다.</b>
+    ///
+    /// 자리는 <see cref="DbNames.CsvKeyColumn"/> 한 곳입니다.
     /// </summary>
     public static class CsvTableReader
     {
@@ -1242,7 +1281,9 @@ namespace LogScope.Db
             t.Name = Path.GetFileNameWithoutExtension(path);
             t.Note = Path.GetFileName(path);
 
-            using (var src = new CsvReader(path))
+            // rawText: 적힌 글자 그대로 읽습니다. 가려 읽으면 ON 과 1 이
+            // 둘 다 참이 되어 <b>서로 다른 값이 같아 보입니다.</b>
+            using (var src = new CsvReader(path, true))
             {
                 Cell[] cells; int count;
 
@@ -1252,13 +1293,50 @@ namespace LogScope.Db
                     return t;
                 }
 
+                // 첫 줄은 열 이름입니다. 두 자리만 씁니다 — 3 번(IO 이름)과
+                // 4 번(값). 어느 자리인지는 DbNames 한 곳에 있습니다.
+                int key = DbNames.CsvKeyColumn - 1;        // 사람은 1 부터 셉니다
+                int val = DbNames.CsvValueColumn - 1;
+
+                bool twoOnly = count > key && count > val;
+                if (!twoOnly)
+                {
+                    // 열이 모자란 파일입니다. 통째로 읽고 열쇠는 두지 않습니다 —
+                    // 자리를 짐작해 엉뚱한 열을 열쇠로 쓰면 없는 차이가 생깁니다.
+                    t.Note += " / 열이 " + count + " 개뿐이라 "
+                            + DbNames.CsvKeyColumn + " 번과 " + DbNames.CsvValueColumn
+                            + " 번을 쓸 수 없습니다. 모든 열을 읽고 열쇠 없이 견줍니다";
+                }
+
+                int[] take = twoOnly ? new[] { key, val } : null;
+                int wide = count;
+
                 for (int i = 0; i < count; i++)
                 {
+                    if (twoOnly && i != key && i != val) continue;
+
                     var c = new DbColumn();
                     string name = Text(cells[i]);
                     c.Name = string.IsNullOrEmpty(name) ? "열" + (i + 1) : name;
-                    c.Ordinal = i;
+                    c.Ordinal = t.Columns.Count;
+                    c.IsKey = twoOnly && i == key;
                     t.Columns.Add(c);
+                }
+
+                if (twoOnly && count > 2)
+                {
+                    var skipped = new StringBuilder();
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (i == key || i == val) continue;
+                        if (skipped.Length > 0) skipped.Append(" · ");
+                        string nm = Text(cells[i]);
+                        skipped.Append(string.IsNullOrEmpty(nm) ? "열" + (i + 1) : nm);
+                    }
+                    t.Note += " / " + count + " 개 열 중 " + DbNames.CsvKeyColumn + " 번("
+                            + t.Columns[0].Name + ")으로 행을 짝짓고 "
+                            + DbNames.CsvValueColumn + " 번(" + t.Columns[1].Name
+                            + ") 값을 견줍니다. 안 본 열: " + skipped;
                 }
 
                 while (src.NextRow(out cells, out count))
@@ -1267,6 +1345,15 @@ namespace LogScope.Db
                     {
                         t.Note += " / 행 " + maxRows.ToString("N0") + " 개까지만 읽었습니다 (상한)";
                         break;
+                    }
+
+                    if (take != null)
+                    {
+                        var two = new DbRow(2);
+                        for (int i = 0; i < take.Length; i++)
+                            two.Values[i] = take[i] < count ? Text(cells[take[i]]) : string.Empty;
+                        t.Rows.Add(two);
+                        continue;
                     }
 
                     // 줄이 머리보다 길면 열을 늘립니다. 잘라 버리면 값이 조용히 사라집니다.
@@ -1288,6 +1375,7 @@ namespace LogScope.Db
                     t.Rows.Add(row);
                 }
                 t.HasRows = true;
+                if (wide > 0) { }   // 읽은 열 수는 위 알림에 적었습니다
             }
             return t;
         }

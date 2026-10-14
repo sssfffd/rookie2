@@ -74,3 +74,4 @@
 | `65-tests-dont-block.md` | 테스트 실패가 build.bat 을 멈추지 않게 (알리고 계속) |
 | `66-fail-summary.md` | 실패한 시험만 맨 밑에 모아 찍기 (묶음 이름과 함께) |
 | `67-pair-different-names.md` | .csv 파일 이름이 달라도 열 구성이 같으면 짝지음 · CSV 에 열쇠가 없는 문제 |
+| `68-csv-3-and-4.md` | v1·v2 와 표 걷어냄 · .csv 는 3 번 열쇠 4 번 값 · ON 이 TRUE 로 바뀌던 버그 |

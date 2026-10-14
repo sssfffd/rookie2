@@ -21,12 +21,26 @@ namespace LogScope.Core.Io
         private readonly List<Cell> _row = new List<Cell>(256);
         private Cell[] _buffer = new Cell[256];
         private long _rows;
+        private readonly bool _raw;
 
         public char Delimiter { get { return _delim; } }
         public Encoding DetectedEncoding { get; private set; }
 
-        public CsvReader(string path)
+        public CsvReader(string path) : this(path, false) { }
+
+        /// <summary>
+        /// <paramref name="rawText"/> 를 켜면 <b>적힌 글자를 그대로</b>
+        /// 돌려줍니다 — 참거짓도 숫자도 가리지 않습니다.
+        ///
+        /// 로그를 읽을 때는 가려야 합니다 (그래야 그래프를 그립니다). 하지만
+        /// <b>DB 를 견줄 때는 가리면 안 됩니다.</b> <c>ON</c> 과 <c>1</c> 이
+        /// 둘 다 참으로 읽히면 <b>서로 다른 두 값이 같아 보이고</b>, 있는
+        /// 차이가 조용히 사라집니다. <c>12.0</c> 이 <c>12</c> 로 적히는 것도
+        /// 같은 종류입니다 — 적힌 글자를 바꿔 보여 주는 셈입니다.
+        /// </summary>
+        public CsvReader(string path, bool rawText)
         {
+            _raw = rawText;
             _file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1 << 16);
             _length = _file.Length;
 
@@ -88,7 +102,7 @@ namespace LogScope.Core.Io
             _rows++;
 
             _row.Clear();
-            SplitLine(line, _delim, _row);
+            SplitLine(line, _delim, _row, _raw);
 
             if (_row.Count > _buffer.Length)
             {
@@ -125,7 +139,7 @@ namespace LogScope.Core.Io
             return (q & 1) == 0;
         }
 
-        private static void SplitLine(string line, char delim, List<Cell> outCells)
+        private static void SplitLine(string line, char delim, List<Cell> outCells, bool raw)
         {
             int i = 0, n = line.Length;
             var sb = new StringBuilder(32);
@@ -154,12 +168,20 @@ namespace LogScope.Core.Io
                     while (i < n && line[i] != delim) { sb.Append(line[i]); i++; }
                 }
 
-                outCells.Add(Classify(sb.ToString()));
+                outCells.Add(raw ? Raw(sb.ToString()) : Classify(sb.ToString()));
 
                 if (i >= n) break;
                 i++;   // 구분자 건너뛰기
                 if (i == n) { outCells.Add(Cell.Empty); break; }   // 줄 끝의 구분자 = 빈 칸 하나
             }
+        }
+
+        /// <summary>적힌 글자 그대로. 앞뒤 공백만 떼어 냅니다.</summary>
+        public static Cell Raw(string s)
+        {
+            if (s == null) return Cell.Empty;
+            s = s.Trim();
+            return s.Length == 0 ? Cell.Empty : Cell.FromText(s);
         }
 
         /// <summary>글자를 보고 빈 칸 / 참거짓 / 숫자 / 글자로 나눕니다.</summary>
