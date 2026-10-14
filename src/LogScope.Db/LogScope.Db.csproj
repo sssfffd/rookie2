@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- LogScope.Db — 분석 2(DB 분석)의 알맹이.
      폴더/덤프 읽기 · 두 벌 견주기 · 맞추는 SQL · 목록 칸 이름.
      LogScope.Core(파일 읽기 · JSON)만 봅니다. 화면은 모릅니다. -->
@@ -47,6 +47,7 @@
     <Compile Include="DbRead.cs" />
     <Compile Include="DbReadMysql.cs" />
     <Compile Include="DbSql.cs" />
+    <Compile Include="DbVerdict.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LogScope.Core\LogScope.Core.csproj">

@@ -37,6 +37,20 @@ namespace LogScope.App.Db
             // 끌어다 놓기만 챙기면, 타 넣은 사람은 저장이 안 되는 것을
             // 다시 켤 때 압니다.
             _vm.PathsChanged += OnVmPathsChanged;
+            _vm.ResultChanged += OnVmResultChanged;
+        }
+
+        /// <summary>읽고 견준 뒤. 창이 받아 메인 화면 칸에 넘깁니다.</summary>
+        public event EventHandler ResultChanged;
+
+        /// <summary>마지막으로 센 수. 아직 안 읽었으면 <c>HasTally</c> 가 거짓입니다.</summary>
+        public bool HasTally { get { return _vm.HasTally; } }
+        public DbDiffList.Tally Tally { get { return _vm.Tally; } }
+
+        private void OnVmResultChanged(object sender, EventArgs e)
+        {
+            EventHandler h = ResultChanged;
+            if (h != null) h(this, EventArgs.Empty);
         }
 
         private void OnVmPathsChanged(object sender, EventArgs e)

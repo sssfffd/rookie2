@@ -144,8 +144,13 @@
 
                                 <!-- 점수 -->
                                 <StackPanel Orientation="Horizontal">
+                                    <!--
+                                      글자 크기를 뷰모델이 정합니다. 점수는
+                                      두세 자인데 "WARNING" 은 일곱 자라,
+                                      34 로 고정하면 칸을 넘깁니다.
+                                    -->
                                     <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
-                                               FontSize="34" FontWeight="Bold"
+                                               FontSize="{Binding ScoreSize}" FontWeight="Bold"
                                                Foreground="{DynamicResource Brush.Muted}"
                                                VerticalAlignment="Bottom" />
                                     <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,7"

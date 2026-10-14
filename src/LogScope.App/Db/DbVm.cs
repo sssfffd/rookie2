@@ -129,6 +129,25 @@ namespace LogScope.App.Db
         /// <summary>자리가 바뀌었을 때. 저장은 창이 맡습니다.</summary>
         public event EventHandler PathsChanged;
 
+        // ---- 센 결과를 밖으로 ----
+        //
+        // 메인 화면 칸이 PASS · WARNING · FAIL 을 보여 주려면 이 수가
+        // 거기까지 가야 합니다. 뷰모델이 AppState 를 직접 만지지 않고
+        // <b>알리기만</b> 합니다 — 누가 받아 어디에 둘지는 창이 정합니다
+        // (자리가 바뀌었을 때와 같은 방식입니다).
+
+        private bool _hasTally;
+        private DbDiffList.Tally _tally;
+
+        /// <summary>한 번이라도 읽어서 센 적이 있는지.</summary>
+        public bool HasTally { get { return _hasTally; } }
+
+        /// <summary>마지막으로 센 수 (차이 발생 · 없어진 IO · 새로 생긴 IO).</summary>
+        public DbDiffList.Tally Tally { get { return _tally; } }
+
+        /// <summary>읽고 견준 뒤. 메인 화면 칸이 이걸 듣습니다.</summary>
+        public event EventHandler ResultChanged;
+
         /// <summary>자리가 정해졌는지 (지우기 단추를 보일지).</summary>
         public bool BeforeChosen
         {
@@ -347,6 +366,13 @@ namespace LogScope.App.Db
 
             Rebuild();
             BuildScript();
+
+            // 센 수는 걸러내지 않은 전체 기준입니다 (위 Summary 와 같습니다).
+            _tally = DbDiffList.Count(TakeNotes(DbDiffList.Build(_diff, null)));
+            _hasTally = true;
+
+            EventHandler h = ResultChanged;
+            if (h != null) h(this, EventArgs.Empty);
         }
 
         /// <summary>

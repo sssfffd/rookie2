@@ -1046,3 +1046,12 @@
 > 코드좀 간결하게 만들여줘(단 개발자가 코드보고 의도 파악 쉽도록)
 
 → 답변: [69-db-slim.md](69-db-slim.md)
+
+---
+
+## 요청 95 — 메인 화면 DB 칸은 점수 말고 판정
+
+> 메인 화면에 db쪽은 점수말고 pass/warning/fail로 뜨게 해주셈
+> 차이 발생 100개 이상이 fail, 0개는 pass
+
+→ 답변: [70-db-pass-fail.md](70-db-pass-fail.md)

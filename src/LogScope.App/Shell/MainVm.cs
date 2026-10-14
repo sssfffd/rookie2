@@ -5,6 +5,7 @@ using LogScope.Logs.Compare;
 using LogScope.Logs.History;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
+using LogScope.Db;
 
 using LogScope.App.Common;
 using LogScope.App.Logs;
@@ -71,13 +72,15 @@ namespace LogScope.App.Shell
 
             Cards[0].SetGroups(BuildGroups(r));
 
-            // 분석 2·3 은 아직 없습니다. 점수를 비워 둬야 "안 만들었다" 가
+            // 분석 3 은 아직 없습니다. 점수를 비워 둬야 "안 만들었다" 가
             // 그대로 읽힙니다.
             for (int i = 1; i < Cards.Count; i++)
             {
                 Cards[i].ClearScore();
                 Cards[i].SetGroups(new List<GroupSummaryVm>());
             }
+
+            ShowDbVerdict();
 
             RefreshDeltas();
 
@@ -89,6 +92,40 @@ namespace LogScope.App.Shell
             Raise("ComparedText");
             Raise("OverallHeadline"); Raise("OverallGrade");
             Raise("OverallBasis");
+        }
+
+        /// <summary>
+        /// 분석 2(DB) 칸에 <b>PASS · WARNING · FAIL</b> 을 적습니다.
+        ///
+        /// 점수가 아닌 이유는 <see cref="LogScope.Db.DbVerdict"/> 에 적어
+        /// 두었습니다. 가르는 규칙도 거기 한 곳입니다 — 여기서 또 가르면
+        /// 낱말과 색이 어긋나는 날이 옵니다.
+        ///
+        /// 한 번도 안 읽었으면 <b>비워 둡니다.</b> 0 개를 PASS 로 적으면
+        /// "봤는데 차이가 없다" 가 되어, 아직 안 본 것과 가릴 수 없습니다.
+        /// </summary>
+        private void ShowDbVerdict()
+        {
+            if (Cards.Count < 2) return;
+            AnalysisCardVm card = Cards[1];
+
+            if (!_state.HasDbResult) { card.ClearVerdict(); return; }
+
+            var t = new DbDiffList.Tally();
+            t.Changed = _state.DbChanged;
+            t.Gone = _state.DbGone;
+            t.Added = _state.DbAdded;
+
+            string word = DbVerdict.Of(t.Changed);
+            card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t));
+        }
+
+        /// <summary>판정 낱말에 맞는 색. 칸의 색 이름으로 옮겨 줍니다.</summary>
+        private static string GradeOf(string verdict)
+        {
+            if (verdict == DbVerdict.Pass) return ScoreBands.GradeGood;
+            if (verdict == DbVerdict.Fail) return ScoreBands.GradeBad;
+            return ScoreBands.GradeWarn;
         }
 
         private static string Count(int n)

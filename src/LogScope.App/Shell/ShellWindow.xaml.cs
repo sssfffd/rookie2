@@ -78,6 +78,7 @@ namespace LogScope.App.Shell
 
             Db.Attach(_state);
             Db.PathsChanged += OnDbPathsChanged;
+            Db.ResultChanged += OnDbResultChanged;
 
             Loaded += OnLoaded;
         }
@@ -361,6 +362,22 @@ namespace LogScope.App.Shell
         private void OnDbPathsChanged(object sender, EventArgs e)
         {
             SaveSettings();
+        }
+
+        /// <summary>
+        /// 분석 2 가 읽고 견준 뒤. 센 수를 상태에 옮기고 메인 화면을
+        /// 다시 그립니다 — 메인 칸이 PASS · WARNING · FAIL 을 적습니다.
+        ///
+        /// 뷰모델이 상태를 직접 만지지 않고 창이 옮기는 것은 자리가
+        /// 바뀔 때와 같은 방식입니다.
+        /// </summary>
+        private void OnDbResultChanged(object sender, EventArgs e)
+        {
+            _state.HasDbResult = Db.HasTally;
+            _state.DbChanged = Db.Tally.Changed;
+            _state.DbGone = Db.Tally.Gone;
+            _state.DbAdded = Db.Tally.Added;
+            _vm.Main.Refresh();
         }
 
         private void OnAlignmentChanged(object sender, EventArgs e)

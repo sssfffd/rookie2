@@ -194,6 +194,48 @@ namespace LogScope.App.Shell
         private bool _has;
         private double _score;
 
+        // ---- 점수 대신 낱말 (PASS · WARNING · FAIL) ----
+        //
+        // 분석 2(DB)는 점수가 아니라 판정입니다. "무엇을 어떻게 100 점으로
+        // 환산했나" 를 묻게 만들 바에, 사람이 알고 싶은 것 하나만
+        // 적습니다 — 그냥 넘겨도 되나.
+        //
+        // 점수 자리를 그대로 씁니다 (ScoreText · Grade · ScoreNote). 그래서
+        // 화면은 고칠 것이 거의 없고, 칸마다 다른 틀을 둘 일도 없습니다.
+        // 낱말이 들어 있으면 점수는 무시됩니다.
+
+        private string _word = string.Empty;
+        private string _wordGrade = ScoreBands.GradeNone;
+        private string _wordNote = string.Empty;
+
+        /// <summary>점수 대신 낱말을 쓰는 칸인지.</summary>
+        public bool HasVerdict { get { return _word.Length > 0; } }
+
+        /// <summary>
+        /// 낱말과 색, 그리고 그 아래 작은 글을 함께 받습니다.
+        ///
+        /// 셋을 따로 받으면 "낱말은 PASS 인데 색은 빨강" 같은 어긋남이
+        /// 생길 수 있습니다. 가르는 쪽(DbVerdict)이 한 번에 넘깁니다.
+        /// </summary>
+        public void SetVerdict(string word, string grade, string note)
+        {
+            _word = word ?? string.Empty;
+            _wordGrade = grade ?? ScoreBands.GradeNone;
+            _wordNote = note ?? string.Empty;
+            RaiseScore();
+            Raise("HasVerdict");
+        }
+
+        public void ClearVerdict()
+        {
+            if (_word.Length == 0) return;
+            _word = string.Empty;
+            _wordGrade = ScoreBands.GradeNone;
+            _wordNote = string.Empty;
+            RaiseScore();
+            Raise("HasVerdict");
+        }
+
         /// <summary>점수가 있는지. 아직 안 재 봤으면 거짓입니다.</summary>
         public bool HasScore { get { return _has; } }
 
@@ -219,6 +261,7 @@ namespace LogScope.App.Shell
         {
             Raise("HasScore"); Raise("Score");
             Raise("ScoreText"); Raise("ScoreNote"); Raise("Grade");
+            Raise("ScoreOutOf"); Raise("ScoreSize");
         }
 
         /// <summary>
@@ -227,26 +270,41 @@ namespace LogScope.App.Shell
         /// </summary>
         public string Grade
         {
-            get { return _has ? ScoreBands.GradeOf(_score) : ScoreBands.GradeNone; }
+            get
+            {
+                if (HasVerdict) return _wordGrade;
+                return _has ? ScoreBands.GradeOf(_score) : ScoreBands.GradeNone;
+            }
         }
 
-        /// <summary>칸에 크게 적는 점수. 아직 안 재 봤으면 "??".</summary>
+        /// <summary>칸에 크게 적는 글. 점수거나 낱말이거나, 아직이면 "??".</summary>
         public string ScoreText
         {
-            get { return _has ? _score.ToString("0.#") : "??"; }
+            get
+            {
+                if (HasVerdict) return _word;
+                return _has ? _score.ToString("0.#") : "??";
+            }
         }
 
-        /// <summary>점수 뒤에 붙는 "/ 100".</summary>
+        /// <summary>점수 뒤에 붙는 "/ 100". 낱말 칸에는 안 붙습니다.</summary>
         public string ScoreOutOf
         {
-            get { return "/ " + MaxScore.ToString("0"); }
+            get { return HasVerdict ? string.Empty : "/ " + MaxScore.ToString("0"); }
         }
+
+        /// <summary>
+        /// 크게 적는 글의 글자 크기. 숫자는 두세 자인데 "WARNING" 은 일곱
+        /// 자라, 같은 크기로 두면 칸을 넘깁니다.
+        /// </summary>
+        public double ScoreSize { get { return HasVerdict ? 24.0 : 34.0; } }
 
         /// <summary>점수 아래의 작은 글.</summary>
         public string ScoreNote
         {
             get
             {
+                if (HasVerdict) return _wordNote;
                 if (!Ready) return "아직 만들지 않았습니다";
                 if (!_has) return "Log 파일을 비교한 후 점수가 나옵니다";
                 switch (ScoreBands.GradeOf(_score))

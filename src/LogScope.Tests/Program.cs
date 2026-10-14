@@ -138,6 +138,7 @@ namespace LogScope.Tests
                 DbTallyAndMarks();
                 DbPairByShape();
                 CsvKeyAndValue();
+                DbVerdictRule();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3463,6 +3464,58 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// 메인 화면 칸의 판정 — PASS · WARNING · FAIL.
+        ///
+        /// <b>경계를 봅니다.</b> "100 개 이상이 FAIL" 을 99/100 으로 한 번
+        /// 틀리면, 딱 100 개인 날에 FAIL 이 안 뜨고 아무도 모릅니다.
+        ///
+        /// 그리고 <b>판정에 안 들어간 수가 글에 남는지</b> 봅니다. 없어진
+        /// IO 가 스무 개인데 PASS 만 보이면 "아무 일 없었다" 로 읽힙니다.
+        /// </summary>
+        private static void DbVerdictRule()
+        {
+            Say("DB — 판정 PASS · WARNING · FAIL");
+
+            Check("0 개는 PASS", DbVerdict.Of(0) == DbVerdict.Pass, DbVerdict.Of(0));
+            Check("1 개는 WARNING", DbVerdict.Of(1) == DbVerdict.Warning, DbVerdict.Of(1));
+            Check("99 개는 WARNING", DbVerdict.Of(99) == DbVerdict.Warning, DbVerdict.Of(99));
+            Check("100 개는 FAIL", DbVerdict.Of(100) == DbVerdict.Fail, DbVerdict.Of(100));
+            Check("101 개도 FAIL", DbVerdict.Of(101) == DbVerdict.Fail, DbVerdict.Of(101));
+            Check("기준이 100", DbVerdict.FailFrom == 100,
+                  DbVerdict.FailFrom.ToString(CultureInfo.InvariantCulture));
+
+            // 세 낱말이 서로 달라야 합니다 (하나라도 같으면 색이 엉킵니다).
+            Check("세 낱말이 서로 다름",
+                  DbVerdict.Pass != DbVerdict.Warning && DbVerdict.Warning != DbVerdict.Fail
+                  && DbVerdict.Pass != DbVerdict.Fail, null);
+
+            // ---- 낱말 아래 글 ----
+            var clean = new DbDiffList.Tally();
+            Check("PASS 의 글은 차이 발생 0 개", DbVerdict.Why(clean).Contains("차이 발생 0개"),
+                  DbVerdict.Why(clean));
+            Check("PASS 인데 다른 수가 없으면 덧말 없음",
+                  !DbVerdict.Why(clean).Contains("없어진 IO"), DbVerdict.Why(clean));
+
+            var hidden = new DbDiffList.Tally();
+            hidden.Gone = 20;
+            Check("차이 발생 0 이라도 없어진 IO 는 글에 남음",
+                  DbVerdict.Why(hidden).Contains("없어진 IO 20개"), DbVerdict.Why(hidden));
+            Check("판정에 안 넣는다고 적음",
+                  DbVerdict.Why(hidden).Contains("판정에 안 넣습니다"), DbVerdict.Why(hidden));
+            Check("그래도 판정은 PASS", DbVerdict.Of(hidden.Changed) == DbVerdict.Pass, null);
+
+            var mid = new DbDiffList.Tally();
+            mid.Changed = 7;
+            Check("WARNING 이면 FAIL 기준을 알려 줌",
+                  DbVerdict.Why(mid).Contains("100개부터 FAIL"), DbVerdict.Why(mid));
+
+            var many = new DbDiffList.Tally();
+            many.Changed = 100;
+            Check("FAIL 이면 기준을 다시 안 적음",
+                  !DbVerdict.Why(many).Contains("부터 FAIL"), DbVerdict.Why(many));
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>

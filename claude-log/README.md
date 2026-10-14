@@ -76,3 +76,4 @@
 | `67-pair-different-names.md` | .csv 파일 이름이 달라도 열 구성이 같으면 짝지음 · CSV 에 열쇠가 없는 문제 |
 | `68-csv-3-and-4.md` | v1·v2 와 표 걷어냄 · .csv 는 3 번 열쇠 4 번 값 · ON 이 TRUE 로 바뀌던 버그 |
 | `69-db-slim.md` | DB 쪽에서 안 쓰는 길 걷어냄 (되돌리는 방향 · DbCreateSql) · 거짓이 된 안내 글 |
+| `70-db-pass-fail.md` | 메인 화면 DB 칸을 점수에서 PASS·WARNING·FAIL 로 · 안 읽어 본 것과 0 개 |
