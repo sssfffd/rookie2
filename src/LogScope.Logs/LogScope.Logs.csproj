@@ -44,7 +44,8 @@
     <Compile Include="Compare\DiffEngine.cs" />
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\HeatBuckets.cs" />
-    <Compile Include="Compare\Heatmap.cs" />
+    <Compile Include="Compare\HeatTypes.cs" />
+    <Compile Include="Compare\HeatmapBuilder.cs" />
     <Compile Include="Align\TriggerAlign.cs" />
     <Compile Include="Align\StepPairs.cs" />
     <Compile Include="Render\Decimator.cs" />

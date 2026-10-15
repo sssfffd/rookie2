@@ -78,3 +78,4 @@
 | `69-db-slim.md` | DB 쪽에서 안 쓰는 길 걷어냄 (되돌리는 방향 · DbCreateSql) · 거짓이 된 안내 글 |
 | `70-db-pass-fail.md` | 메인 화면 DB 칸을 점수에서 PASS·WARNING·FAIL 로 · 안 읽어 본 것과 0 개 |
 | `71-main-db-drop.md` | 메인 화면 분석 2 칸에도 견줄 자리 · 놓으면 바로 읽기 · 경로 끊기 |
+| `72-steps.md` | 단계(Step) — 히트맵 가로 · 그래프 단계 고르기 · 분석 1 파일 나누기 |

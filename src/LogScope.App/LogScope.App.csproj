@@ -158,6 +158,11 @@
     <Compile Include="Db\DbVm.cs" />
     <Compile Include="Shell\ShellVm.cs" />
     <Compile Include="Logs\GraphCanvas.cs" />
+    <Compile Include="Logs\GraphCanvas.Draw.cs" />
+    <Compile Include="Logs\GraphCanvas.Lane.cs" />
+    <Compile Include="Logs\GraphCanvas.Trace.cs" />
+    <Compile Include="Logs\GraphCanvas.Axis.cs" />
+    <Compile Include="Logs\GraphCanvas.Input.cs" />
     <Compile Include="Logs\HeatmapCanvas.cs" />
     <Compile Include="Shell\ShellWindow.xaml.cs">
       <DependentUpon>ShellWindow.xaml</DependentUpon>
