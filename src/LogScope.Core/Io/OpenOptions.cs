@@ -31,6 +31,16 @@ namespace LogScope.Core.Io
         /// <summary>읽을 시트 이름. 비우면 첫 번째 시트.</summary>
         public string SheetName = null;
 
+        /// <summary>
+        /// <b>단계를 담은 IO 이름.</b> 비우면 단계를 찾지 않습니다.
+        ///
+        /// 이 이름의 IO 값이 바뀌는 자리가 단계 경계가 됩니다. 글자
+        /// 채널이면 그 글자가 단계 이름이고, 숫자면 값이 그대로 이름입니다.
+        /// 로그 모양이 달라 이걸로 안 되면 <c>StepRead.Fill</c> 에 직접
+        /// 넣는 자리가 있습니다.
+        /// </summary>
+        public string StepIo = string.Empty;
+
         public OpenOptions Clone()
         {
             return (OpenOptions)MemberwiseClone();

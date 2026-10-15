@@ -140,6 +140,8 @@ namespace LogScope.Tests
                 CsvKeyAndValue();
                 DbVerdictRule();
                 DbPathNames();
+                StepsFromChannel();
+                StepPairing();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -262,6 +264,15 @@ namespace LogScope.Tests
         {
             var o = new OpenOptions();
             o.Orientation = orient;
+            return LogReader.Open(path, o, null);
+        }
+
+        /// <summary>단계 IO 를 지정해 엽니다. StepRead 를 거치는 길입니다.</summary>
+        private static LogDataset OpenWithSteps(string path, string stepIo)
+        {
+            var o = new OpenOptions();
+            o.Orientation = Orientation.Auto;
+            o.StepIo = stepIo;
             return LogReader.Open(path, o, null);
         }
 
@@ -3465,6 +3476,205 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// 로그 안의 <b>단계</b>를 IO 하나에서 뽑아냅니다.
+        ///
+        /// 여기가 틀리면 그 뒤가 전부 틀립니다 — 히트맵의 칸도, 그래프가
+        /// 보여 주는 구간도 단계에서 나옵니다. 그런데 <b>그림만 봐서는 맞는지
+        /// 알 수가 없습니다</b> (단계 경계가 한 칸 밀려도 그래프는 멀쩡해
+        /// 보입니다). 그래서 경계를 표본 번호로 직접 셉니다.
+        /// </summary>
+        private static void StepsFromChannel()
+        {
+            Say("단계 — IO 에서 뽑기");
+
+            // 0~9 준비 · 10~29 가열 · 30~39 유지 · 40~49 가열(두 번째)
+            // 50~59 는 빈 칸 — 단계 밖입니다.
+            var sb = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 60; i++)
+            {
+                string name = i < 10 ? "준비" : i < 30 ? "가열" : i < 40 ? "유지" : i < 50 ? "가열" : "";
+                sb.Append(i).Append(',').Append(name).Append(',').Append(i).Append('\n');
+            }
+            LogDataset ds = OpenWithSteps(WriteCsv("steps.csv", sb.ToString()), "STEP");
+
+            Check("단계를 찾음", ds.HasSteps, ds.StepNote);
+            if (!ds.HasSteps) return;
+
+            StepTable t = ds.Steps;
+            Check("단계 넷", t.Count == 4, t.Count.ToString());
+            Check("첫 단계 이름", t[0].Name == "준비", t[0].Name);
+            Check("첫 단계 시작 표본", t[0].First == 0, t[0].First.ToString());
+            Check("첫 단계 끝 표본", t[0].Last == 9, t[0].Last.ToString());
+            Check("둘째 단계 시작 표본", t[1].First == 10, t[1].First.ToString());
+            Check("셋째 단계 끝 표본", t[2].Last == 39, t[2].Last.ToString());
+
+            // 값이 빈 구간은 단계가 아닙니다. 직전 단계로 끌고 가면 그
+            // 구간의 차이가 엉뚱한 단계에 적힙니다.
+            Check("마지막 단계는 49 에서 끝", t[3].Last == 49, t[3].Last.ToString());
+            Check("빈 구간은 어느 단계도 아님", t.IndexOfSample(55) < 0,
+                  t.IndexOfSample(55).ToString());
+            Check("단계 안의 표본은 그 단계", t.IndexOfSample(20) == 1,
+                  t.IndexOfSample(20).ToString());
+
+            // 시각은 표본 번호에서 그때그때 읽습니다 (가로축을 바꿔도 맞게).
+            Near("둘째 단계 시작 시각", t.StartTime(ds, 1), 10, 1e-9);
+            Near("둘째 단계 끝 시각", t.EndTime(ds, 1), 29, 1e-9);
+
+            // 같은 이름이 두 번 나오면 번호로 가립니다. 이름만 적으면
+            // 목록에서 어느 쪽인지 고를 수가 없습니다.
+            Check("목록 글에 번호가 붙음", t.Label(3) == "4. 가열", t.Label(3));
+            Check("같은 이름의 첫째", t.IndexOfName("가열", 0) == 1,
+                  t.IndexOfName("가열", 0).ToString());
+            Check("같은 이름의 둘째", t.IndexOfName("가열", 1) == 3,
+                  t.IndexOfName("가열", 1).ToString());
+
+            // 가로축을 다른 IO 로 갈아 끼워도 단계는 그 자리입니다.
+            // 시각을 적어 두었다면 여기서 어긋납니다.
+            string problem;
+            Check("가로축 갈아 끼우기", ds.SetAxisChannel("PV", out problem), problem);
+            Check("단계는 그대로", ds.Steps.Count == 4 && ds.Steps[1].First == 10, null);
+            Near("바뀐 축에서의 시작 값", ds.Steps.StartTime(ds, 1), 10, 1e-6);
+            ds.ClearAxisChannel();
+
+            // 없는 IO 를 집으면 짐작하지 않고 이유를 돌려줍니다.
+            LogDataset none = OpenWithSteps(WriteCsv("steps2.csv", sb.ToString()), "NO_SUCH_IO");
+            Check("없는 IO 면 단계 없음", !none.HasSteps, null);
+            Check("왜 없는지 적어 줌", none.StepNote.Contains("NO_SUCH_IO"), none.StepNote);
+
+            // 단계 IO 를 안 적으면 찾지 않습니다 (말도 없습니다).
+            LogDataset plain = Open(WriteCsv("steps3.csv", sb.ToString()), Orientation.Auto);
+            Check("안 적으면 단계 없음", !plain.HasSteps, null);
+            Check("안 적었으면 말도 없음", plain.StepNote.Length == 0, plain.StepNote);
+
+            // ---- 구간을 직접 넣는 길 ----
+            var mine = new List<LogStep>();
+            mine.Add(new LogStep("나중", 30, 100));   // 로그보다 긴 구간
+            mine.Add(new LogStep("먼저", 0, 20));     // 차례가 뒤바뀜
+            mine.Add(new LogStep("겹침", 15, 25));    // 앞 단계와 겹침
+            mine.Add(new LogStep("거꾸로", 40, 35));  // 끝이 시작보다 앞
+            StepTable mt = StepTable.FromRanges(ds, mine, "시험");
+
+            Check("차례대로 세움", mt.Count == 3 && mt[0].Name == "먼저", mt.Count.ToString());
+            Check("로그 끝으로 잘림", mt[2].Last == ds.SampleCount - 1, mt[2].Last.ToString());
+            Check("겹침은 앞 단계 다음으로 밀림", mt[1].First == 21, mt[1].First.ToString());
+            Check("밀었다고 말해 줌", mt.Note.Contains("겹치는 단계"), mt.Note);
+            Check("버렸다고 말해 줌", mt.Note.Contains("버렸습니다"), mt.Note);
+        }
+
+        /// <summary>
+        /// 두 로그의 단계를 짝짓습니다. <b>틀린 짝으로 맞추면 두 로그가
+        /// 나란히 그려져서 맞는 것처럼 보입니다</b> — 그래서 이름이 다르면
+        /// 짝짓지 않습니다 (DB 에서 0.86 에 겪은 것과 같은 짐작입니다).
+        /// </summary>
+        private static void StepPairing()
+        {
+            Say("단계 — 두 로그 짝짓기");
+
+            // 이전: 0 초 시작, 준비(0~9) 가열(10~29) 유지(30~49)
+            // 이후: 100 초 시작, 준비(0~14) 가열(15~39) 냉각(40~49)
+            //   가열의 시작은 이전 10 초, 이후 115 초 → 밀기 값 -105
+            var a = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 50; i++)
+                a.Append(i).Append(',').Append(i < 10 ? "준비" : i < 30 ? "가열" : "유지").Append('\n');
+
+            var b = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 50; i++)
+                b.Append(100 + i).Append(',').Append(i < 15 ? "준비" : i < 40 ? "가열" : "냉각").Append('\n');
+
+            LogDataset dsA = OpenWithSteps(WriteCsv("pair_a.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("pair_b.csv", b.ToString()), "STEP");
+
+            StepPairList pl = StepPairList.Build(dsA, dsB);
+            Check("짝 넷 (셋 + 이후에만 있는 하나)", pl.Count == 4, pl.Count.ToString());
+            Check("고를 수 있는 것은 둘", pl.UsableCount == 2, pl.UsableCount.ToString());
+
+            StepPair heat = pl[1];
+            Check("둘째는 가열", heat.Name == "가열", heat.Name);
+            Check("양쪽에 다 있음", heat.HasBoth, null);
+            Near("이전 가열 시작", heat.BeforeStart, 10, 1e-9);
+            Near("이후 가열 시작", heat.AfterStart, 115, 1e-9);
+            Near("밀기 값", heat.Shift, -105, 1e-9);
+            Near("맞추면 시작이 겹침", heat.AfterStart + heat.Shift, heat.BeforeStart, 1e-9);
+
+            // 길이가 19 와 24 로 1.26 배 차이입니다 — 기준(1.5 배) 아래라
+            // 아무 말도 안 합니다. 조금 다른 것까지 말하면 늘 떠 있는 글이
+            // 되어, 정말 잘릴 때도 눈에 안 들어옵니다.
+            Check("조금 다른 길이는 말 없음", heat.Note.Length == 0, heat.Note);
+
+            // 이전에만 있는 단계는 맞출 수 없고, 그렇다고 말해 줍니다.
+            StepPair hold = pl[2];
+            Check("셋째는 유지", hold.Name == "유지", hold.Name);
+            Check("이전에만 있음", !hold.HasBoth && hold.HasBefore, null);
+            Check("못 맞춘다고 적음", hold.Note.Contains("맞출 수 없습니다"), hold.Note);
+            Check("밀기 값은 NaN", double.IsNaN(hold.Shift), null);
+
+            // 이후에만 있는 단계도 목록에 남습니다 (조용히 빠지지 않게).
+            StepPair cool = pl[3];
+            Check("이후에만 있는 단계가 남음", cool.HasAfter && !cool.HasBefore, cool.Label);
+            Check("이후만이라고 적힘", cool.Label.Contains("이후만"), cool.Label);
+            Check("요약에 짝 없는 수가 적힘",
+                  pl.Note.Contains("이전 로그에만") && pl.Note.Contains("이후 로그에만"), pl.Note);
+
+            // 많이 다르면 알려 줍니다 — 짧은 쪽에 맞춰 보면 긴 쪽의
+            // 뒷부분이 화면 밖으로 잘리는데, 모르면 "왜 뒤가 없지" 가 됩니다.
+            var g = new StringBuilder("Time,STEP\n");
+            var h = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 40; i++)
+            {
+                g.Append(i).Append(',').Append(i < 10 ? "가열" : "유지").Append('\n');
+                h.Append(i).Append(',').Append(i < 30 ? "가열" : "유지").Append('\n');
+            }
+            LogDataset dsG = OpenWithSteps(WriteCsv("pair_g.csv", g.ToString()), "STEP");
+            LogDataset dsH = OpenWithSteps(WriteCsv("pair_h.csv", h.ToString()), "STEP");
+
+            StepPair longer = StepPairList.Build(dsG, dsH)[0];
+            Check("많이 다른 길이는 알려 줌", longer.Note.Contains("길이"), longer.Note);
+            Check("두 길이를 다 적어 줌",
+                  longer.Note.Contains("9") && longer.Note.Contains("29"), longer.Note);
+
+            // ---- 같은 이름이 두 번 나오는 공정 ----
+            //
+            // 가열 → 냉각 → 가열. n 번째끼리 맞춰야 합니다. 하나씩 남았다고
+            // 아무거나 붙이면 두 번째 가열이 첫 번째와 맞춰집니다.
+            var c = new StringBuilder("Time,STEP\n");
+            var d = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 30; i++)
+            {
+                c.Append(i).Append(',').Append(i < 10 ? "가열" : i < 20 ? "냉각" : "가열").Append('\n');
+                d.Append(i).Append(',').Append(i < 12 ? "가열" : i < 22 ? "냉각" : "가열").Append('\n');
+            }
+            LogDataset dsC = OpenWithSteps(WriteCsv("pair_c.csv", c.ToString()), "STEP");
+            LogDataset dsD = OpenWithSteps(WriteCsv("pair_d.csv", d.ToString()), "STEP");
+
+            StepPairList rep = StepPairList.Build(dsC, dsD);
+            Check("짝 셋", rep.Count == 3, rep.Count.ToString());
+            Check("첫 가열끼리", rep[0].BeforeIndex == 0 && rep[0].AfterIndex == 0, null);
+            Check("둘째 가열은 둘째끼리", rep[2].BeforeIndex == 2 && rep[2].AfterIndex == 2,
+                  rep[2].AfterIndex.ToString());
+            Near("둘째 가열의 밀기 값", rep[2].Shift, 20 - 22, 1e-9);
+            Check("짝이 다 맞으면 요약 없음", rep.Note.Length == 0, rep.Note);
+
+            // 이름이 다른 단계는 하나씩 남아도 붙이지 않습니다.
+            var e = new StringBuilder("Time,STEP\n");
+            var f = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 20; i++)
+            {
+                e.Append(i).Append(',').Append("세척").Append('\n');
+                f.Append(i).Append(',').Append("건조").Append('\n');
+            }
+            LogDataset dsE = OpenWithSteps(WriteCsv("pair_e.csv", e.ToString()), "STEP");
+            LogDataset dsF = OpenWithSteps(WriteCsv("pair_f.csv", f.ToString()), "STEP");
+
+            StepPairList no = StepPairList.Build(dsE, dsF);
+            Check("이름이 다르면 안 붙임", no.UsableCount == 0, no.UsableCount.ToString());
+            Check("둘 다 목록에는 남음", no.Count == 2, no.Count.ToString());
+
+            // 단계가 없는 로그끼리는 빈 목록입니다.
+            LogDataset bare = Open(WriteCsv("pair_bare.csv", a.ToString()), Orientation.Auto);
+            Check("단계 없으면 빈 목록", StepPairList.Build(bare, bare).IsEmpty, null);
         }
 
         /// <summary>

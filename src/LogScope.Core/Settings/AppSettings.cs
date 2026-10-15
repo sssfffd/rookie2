@@ -114,6 +114,18 @@ namespace LogScope.Core.Settings
         /// </summary>
         public string AxisIo = string.Empty;
 
+        /// <summary>
+        /// <b>단계를 담은 IO 이름.</b> 빈 글자면 단계를 찾지 않습니다.
+        ///
+        /// 이 IO 의 값이 바뀌는 자리가 단계 경계가 됩니다 ("준비" → "가열").
+        /// 단계가 있으면 히트맵의 가로를 단계로 놓을 수 있고, 그래프에서
+        /// 단계 하나만 골라 볼 수 있습니다.
+        ///
+        /// 로그 모양이 달라 IO 하나로 안 되는 경우에는 <c>StepRead.Fill</c>
+        /// 에 직접 넣는 자리가 있습니다. 거기 넣은 것이 이 설정보다 먼저입니다.
+        /// </summary>
+        public string StepIo = string.Empty;
+
         // ---- 분석 2 (DB) 에서 견줄 자리 ----
         //
         // 자리는 DB 화면에서 정하고 여기 저장됩니다 (config.txt 에는 없습니다).
@@ -258,6 +270,7 @@ namespace LogScope.Core.Settings
             // NaN 은 JSON 에 담을 수 없어서 "알아서 고름" 은 아예 안 적습니다.
             if (!double.IsNaN(AlignLevel)) root["alignLevel"] = AlignLevel;
             root["axisIo"] = AxisIo;
+            root["stepIo"] = StepIo;
             root["dbBefore"] = DbBeforePath;
             root["dbAfter"] = DbAfterPath;
             root["dbMysqlDump"] = MysqlDumpPath ?? string.Empty;
@@ -377,6 +390,7 @@ namespace LogScope.Core.Settings
                 ? Json.GetDouble(root, "alignLevel", double.NaN)
                 : double.NaN;
             s.AxisIo = Json.GetString(root, "axisIo", string.Empty);
+            s.StepIo = Json.GetString(root, "stepIo", string.Empty);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);
             s.DbAfterPath = Json.GetString(root, "dbAfter", string.Empty);
             s.MysqlDumpPath = Json.GetString(root, "dbMysqlDump", string.Empty);

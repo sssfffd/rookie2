@@ -151,6 +151,11 @@ namespace LogScope.App.Shell
         private bool LoadInto(string path, bool before)
         {
             var options = new OpenOptions();
+            // 단계를 담은 IO 이름. 비어 있으면 단계를 찾지 않습니다.
+            // 로그를 읽는 그 자리에서 단계까지 찾습니다 — 나중에 따로
+            // 찾으면 "읽었는데 단계가 없는" 상태가 잠깐 생기고, 그 틈에
+            // 그려지는 화면은 단계가 없는 화면입니다.
+            options.StepIo = _state.Settings.StepIo;
             object result; Exception error;
             string title = (before ? "이전 로그를 읽는 중" : "이후 로그를 읽는 중")
                          + " — " + Path.GetFileName(path);

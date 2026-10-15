@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- LogScope.Logs — 분석 1(로그 비교)의 알맹이.
      견주기 · 히트맵 · 시간 맞추기 · 그리기 좌표 · 지난 기록 · AI 다리.
      LogScope.Core(자료·파일·설정)만 봅니다. 화면은 모릅니다. -->
@@ -45,6 +45,7 @@
     <Compile Include="Compare\DiffTypes.cs" />
     <Compile Include="Compare\Heatmap.cs" />
     <Compile Include="Align\TriggerAlign.cs" />
+    <Compile Include="Align\StepPairs.cs" />
     <Compile Include="Render\Decimator.cs" />
     <Compile Include="Render\DifferenceSeries.cs" />
     <Compile Include="Render\TraceColors.cs" />

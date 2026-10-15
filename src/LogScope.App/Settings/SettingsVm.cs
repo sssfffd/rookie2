@@ -217,6 +217,25 @@ namespace LogScope.App.Settings
             }
         }
 
+        /// <summary>
+        /// 단계를 담은 IO 이름. 비우면 단계를 안 씁니다.
+        ///
+        /// <b>로그를 다시 읽어야 바뀝니다.</b> 단계는 로그를 읽는 그
+        /// 자리에서 찾기 때문입니다. 그래서 화면에도 그렇게 적어 둡니다 —
+        /// 적고 나서 아무 일도 안 일어나면 안 먹은 줄 알게 됩니다.
+        /// </summary>
+        public string StepIoText
+        {
+            get { return _s.StepIo; }
+            set
+            {
+                string v = (value ?? string.Empty).Trim();
+                if (_s.StepIo == v) return;
+                _s.StepIo = v;
+                Raise();
+            }
+        }
+
         // ---------------- AI 모듈 (선택) ----------------
 
         public bool AiEnabled

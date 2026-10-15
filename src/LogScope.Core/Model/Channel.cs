@@ -61,6 +61,28 @@ namespace LogScope.Core.Model
         /// <summary>계단으로 그려야 하는 채널인지 (디지털/상태).</summary>
         public bool IsStepped { get { return Kind != ChannelKind.Analog; } }
 
+        /// <summary>
+        /// 표본 하나를 글자로. <b>값이 없으면 빈 글자</b>입니다.
+        ///
+        /// <see cref="FormatValue"/> 와 다른 점은 거기뿐인데, 그 차이가
+        /// 중요합니다. 단계를 뽑을 때 "값 없음" 은 <b>단계 밖</b>이라는
+        /// 뜻이라, "-" 가 돌아오면 그게 단계 이름이 되어 버립니다.
+        /// </summary>
+        public string TextAt(int i)
+        {
+            if (Values == null || i < 0 || i >= Values.Length) return string.Empty;
+            float v = Values[i];
+            if (float.IsNaN(v)) return string.Empty;
+
+            if (Kind == ChannelKind.State && States != null)
+            {
+                int k = (int)Math.Round(v);
+                return k >= 0 && k < States.Length ? (States[k] ?? string.Empty) : string.Empty;
+            }
+            if (Kind == ChannelKind.Digital) return v >= 0.5f ? "1" : "0";
+            return NumberText.Plain(v);
+        }
+
         /// <summary>커서 자리에 보여줄 글자. 상태 채널이면 상태 이름을 돌려줍니다.</summary>
         public string FormatValue(double v)
         {

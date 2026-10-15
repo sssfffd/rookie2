@@ -20,6 +20,20 @@ namespace LogScope.Core.Model
         /// <summary>읽으면서 남긴 알림 (시간축 대체, 건너뛴 줄 등).</summary>
         public List<string> Notes = new List<string>();
 
+        /// <summary>
+        /// 이 로그의 <b>단계</b> 목록 (준비 → 가열 → 유지 …). 단계가 없는
+        /// 로그면 빈 표입니다 — null 이 아니므로 쓰는 쪽에서 가릴 일이
+        /// 없습니다.
+        ///
+        /// 채우는 자리는 <c>StepRead.Fill</c> 한 곳입니다.
+        /// </summary>
+        public StepTable Steps = StepTable.None;
+
+        /// <summary>단계를 찾다가 생긴 말. 못 찾았으면 그 이유입니다.</summary>
+        public string StepNote = string.Empty;
+
+        public bool HasSteps { get { return !Steps.IsEmpty; } }
+
         /// <summary>실제로 사용한 배치. Auto 를 돌려주는 일은 없습니다.</summary>
         public Orientation Orientation = Orientation.Cols;
 

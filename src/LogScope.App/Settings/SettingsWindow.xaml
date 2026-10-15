@@ -104,6 +104,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="허용 오차 (이전 값 대비 %)"
@@ -144,6 +145,21 @@
                         <TextBox Grid.Row="5" Grid.Column="1" Margin="0,3"
                                  Text="{Binding ManualShiftText, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="시간축 단위입니다. 시각 로그라면 밀리초." />
+
+                        <!--
+                          단계 IO. 이것만 적으면 히트맵의 가로를 단계로 놓고,
+                          그래프에서 단계 하나만 골라 볼 수 있습니다.
+                          로그 모양이 달라 IO 하나로 안 되는 경우에는
+                          StepRead.Fill 에 직접 넣는 자리가 있습니다.
+                        -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="단계 IO"
+                                   Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="6" Grid.Column="1" Margin="0,3"
+                                 Text="{Binding StepIoText, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="이 IO 의 값이 바뀌는 자리가 단계 경계입니다 (&quot;준비&quot; → &quot;가열&quot;).&#x0a;글자 IO 면 그 글자가 단계 이름이고, 숫자면 값이 그대로 이름입니다.&#x0a;비우면 단계를 안 씁니다." />
+                        <TextBlock Grid.Row="6" Grid.Column="2" Style="{StaticResource Muted}"
+                                   Margin="10,0,0,0" VerticalAlignment="Center"
+                                   Text="적고 나서 로그를 다시 읽어야 들어갑니다." />
                     </Grid>
 
                     <!--

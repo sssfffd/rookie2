@@ -65,6 +65,11 @@ namespace LogScope.Core.Io
                 src.Dispose();
             }
 
+            // 단계를 찾습니다. 넣는 자리는 StepRead 한 곳입니다 —
+            // 히트맵도 그래프도 ds.Steps 만 보므로 여기만 채우면 됩니다.
+            StepRead.Fill(ds, options);
+            if (ds.StepNote.Length > 0) ds.AddNote(ds.StepNote);
+
             ds.SourceBytes = info.Length;
             ds.LoadSeconds = sw.Elapsed.TotalSeconds;
 
