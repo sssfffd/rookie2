@@ -27,13 +27,20 @@ namespace LogScope.App.Shell
         /// </summary>
         public AlignVm Align { get; private set; }
 
+        /// <summary>
+        /// 단계 고르기. 그래프 화면의 도구 줄에 있고, 히트맵의
+        /// [가로를 단계로] 와 같은 짝 목록을 봅니다.
+        /// </summary>
+        public StepVm Step { get; private set; }
+
         public ShellVm(AppState state)
         {
             _state = state;
             Main = new MainVm(state);
             Align = new AlignVm(state);
+            Step = new StepVm(state);
             Dashboard = new DashboardVm(state);
-            Graph = new GraphVm(state, Align);
+            Graph = new GraphVm(state, Align, Step);
             Heatmap = new HeatmapVm(state, Align);
 
             UpdateStatus();
@@ -273,6 +280,7 @@ namespace LogScope.App.Shell
         public void ReloadAll()
         {
             Align.Reload();
+            Step.Reload();
             Graph.Reload();
             Heatmap.Reload();
             Dashboard.Refresh();

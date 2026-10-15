@@ -382,23 +382,11 @@ namespace LogScope.Core.Model
             switch (TimeKind)
             {
                 case TimeKind.ClockMs:
-                    {
-                        if (double.IsNaN(t) || double.IsInfinity(t)) return "-";
-                        double ms = t;
-                        bool neg = ms < 0;
-                        if (neg) ms = -ms;
-                        long total = (long)Math.Floor(ms);
-                        int msec = (int)(total % 1000);
-                        long sec = total / 1000;
-                        int s = (int)(sec % 60);
-                        long min = sec / 60;
-                        int m = (int)(min % 60);
-                        long h = min / 60;
-                        string text = msec != 0
-                            ? string.Format("{0:00}:{1:00}:{2:00}.{3:000}", h, m, s, msec)
-                            : string.Format("{0:00}:{1:00}:{2:00}", h, m, s);
-                        return neg ? "-" + text : text;
-                    }
+                    // 시계 모양으로 적는 규칙은 TimeText 한 곳입니다 —
+                    // 경과 시간을 적는 쪽(단계 시작을 0 으로)도 같은
+                    // 규칙을 써야 두 글자가 같은 모양으로 읽힙니다.
+                    return TimeText.Clock(t);
+
                 case TimeKind.DateMs:
                     {
                         try

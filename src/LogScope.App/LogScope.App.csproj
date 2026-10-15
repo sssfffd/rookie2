@@ -146,6 +146,7 @@
     <Compile Include="Logs\GroupRowVm.cs" />
     <Compile Include="Logs\ChannelListVm.cs" />
     <Compile Include="Logs\AlignVm.cs" />
+    <Compile Include="Logs\StepVm.cs" />
     <Compile Include="Shell\AnalysisCardVm.cs" />
     <Compile Include="Shell\MainVm.cs" />
     <Compile Include="Shell\HistoryRowVm.cs" />

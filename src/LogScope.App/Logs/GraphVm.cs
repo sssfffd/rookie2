@@ -28,10 +28,18 @@ namespace LogScope.App.Logs
         /// <summary>도구 줄에서 뭔가 바뀌면 불립니다.</summary>
         public event EventHandler OptionsChanged;
 
-        public GraphVm(AppState state, AlignVm align)
+        /// <summary>
+        /// 단계 고르기. 히트맵의 [가로를 단계로] 와 <b>같은 짝 목록</b>을
+        /// 봅니다 (AppState.StepPairs) — 각자 지으면 두 화면의 단계 번호가
+        /// 어긋납니다.
+        /// </summary>
+        public StepVm Step { get; private set; }
+
+        public GraphVm(AppState state, AlignVm align, StepVm step)
         {
             _state = state;
             Align = align;
+            Step = step;
             List = new ChannelListVm(state);
         }
 

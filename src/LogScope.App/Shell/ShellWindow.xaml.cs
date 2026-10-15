@@ -60,6 +60,7 @@ namespace LogScope.App.Shell
             // 가로축·시간 맞추기는 그래프와 히트맵이 같은 것 하나를 씁니다.
             // 그래서 어느 화면을 거치지 않고 여기서 바로 받습니다.
             _vm.Align.Changed += OnAlignmentChanged;
+            _vm.Step.Changed += OnStepChanged;
 
             // 그룹을 고치면 그 자리에서 저장합니다.
             //
@@ -418,10 +419,41 @@ namespace LogScope.App.Shell
             _vm.ReloadAll();
             Graph.OnDataChanged();
 
+            // 단계를 고른 채로 축이나 맞추기를 바꿨을 수 있습니다. 위
+            // OnDataChanged 가 구간을 전체로 되돌리므로 다시 걸어 줍니다 —
+            // 안 걸면 고른 단계가 그대로인데 화면은 전체가 됩니다.
+            Graph.ApplyStep();
+
             // 히트맵을 보고 있는 중이라면 바로 다시 계산합니다. 비워만 두면
             // 맞추기를 바꾼 그 자리에서 화면이 텅 비고, 왜 비었는지도
             // 알 수 없습니다. 다른 화면에 있으면 비워만 두고, 히트맵으로
             // 넘어올 때 OnPageChanged 가 계산합니다.
+            Heatmap.Invalidate();
+            if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
+
+            SaveSettings();
+        }
+
+        /// <summary>
+        /// 그래프에서 단계를 골랐을 때 (또는 [시작을 0 으로] 를 눌렀을 때).
+        ///
+        /// 차례가 중요합니다. <b>다시 견준 뒤에</b> 구간을 맞춰야 합니다 —
+        /// 단계로 맞춘 밀기 값이 들어가야 이후 로그가 제자리에 오고,
+        /// 그래야 보여 줄 구간도 맞습니다.
+        ///
+        /// 그래프는 <c>OnDataChanged</c> 로 되돌리지 않습니다. 그 함수는
+        /// 보이는 구간을 전체로 되돌리는데, 단계를 고른 사람은 그 단계만
+        /// 보려고 고른 것입니다.
+        /// </summary>
+        private void OnStepChanged(object sender, EventArgs e)
+        {
+            Recompare();
+            _vm.ReloadAll();
+            Graph.PushAll();
+            Graph.ApplyStep();
+
+            // 히트맵도 밀기 값이 달라졌으니 옛 그림입니다. 보고 있는 중이면
+            // 다시 계산하고, 아니면 비워 둡니다 (넘어올 때 계산합니다).
             Heatmap.Invalidate();
             if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
 
@@ -434,6 +466,12 @@ namespace LogScope.App.Shell
             Recompare();
             _vm.ReloadAll();
             Graph.OnDataChanged();
+
+            // 로그가 바뀌면 고른 단계가 풀립니다 (ForgetSteps). 여기서
+            // 걸어 주면 가로축 0 자리도 같이 풀립니다 — 안 풀면 옛 로그의
+            // 단계 시작부터 센 눈금이 새 로그에 그대로 남습니다.
+            Graph.ApplyStep();
+
             Heatmap.Invalidate();
         }
 

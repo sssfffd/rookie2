@@ -131,6 +131,48 @@ namespace LogScope.App.Logs
         }
 
         /// <summary>
+        /// 선과 설정만 다시 밀어 넣습니다 (보이는 구간은 그대로).
+        /// 단계를 고를 때 씁니다 — OnDataChanged 는 구간을 전체로
+        /// 되돌리는데, 단계를 고른 사람은 그 단계만 보려고 고른 것입니다.
+        /// </summary>
+        public void PushAll()
+        {
+            PushOptions();
+            PushChannels();
+        }
+
+        // ---------------- 단계 ----------------
+
+        private void OnStepPrev(object sender, RoutedEventArgs e)
+        {
+            if (_vm != null) _vm.Step.Step(-1);
+        }
+
+        private void OnStepNext(object sender, RoutedEventArgs e)
+        {
+            if (_vm != null) _vm.Step.Step(+1);
+        }
+
+        /// <summary>
+        /// 고른 단계로 그래프를 맞춥니다. 창이 다시 견준 <b>뒤에</b>
+        /// 불러야 합니다 — 밀기 값이 바뀌어야 구간이 맞습니다.
+        ///
+        /// 안 고른 상태면 전체 구간으로 돌아갑니다. 단계를 보다가 [전체] 로
+        /// 돌렸는데 좁은 구간이 그대로 남아 있으면, 왜 조금만 보이는지
+        /// 알 수가 없습니다.
+        /// </summary>
+        public void ApplyStep()
+        {
+            if (_vm == null) return;
+
+            Plot.ZeroAt = _vm.Step.ZeroTime;
+
+            double t0, t1;
+            if (_vm.Step.TryWindow(out t0, out t1)) SetTimeRange(t0, t1);
+            else { Plot.ResetTime(); Plot.ResetValueZoom(); }
+        }
+
+        /// <summary>
         /// 히트맵에서 칸을 눌러 넘어왔을 때 그 시간대로 맞춥니다.
         /// 가로축뿐 아니라 <b>세로축도</b> 그 구간에 맞춥니다 — 그러지 않으면
         /// 값이 큰 채널에서 차이가 선 굵기에 묻혀 보이지 않습니다.

@@ -3760,6 +3760,43 @@ namespace LogScope.Tests
             Check("이름이 다르면 안 붙임", no.UsableCount == 0, no.UsableCount.ToString());
             Check("둘 다 목록에는 남음", no.Count == 2, no.Count.ToString());
 
+            // ---- 그래프가 보여 줄 구간 ----
+            //
+            // 긴 쪽까지 덮어야 합니다. 이전 로그의 단계에만 맞추면 이후
+            // 로그의 뒷부분이 조용히 화면 밖으로 나가는데, 그래프만 봐서는
+            // 잘린 줄 모릅니다.
+            //
+            // dsG 의 가열은 0~9, dsH 의 가열은 0~29 입니다. 맞추면 밀기
+            // 값이 0 이라 덮어야 할 구간은 0~29 입니다.
+            StepPair wide = StepPairList.Build(dsG, dsH)[0];
+            double w0, w1;
+            Check("구간이 나옴", StepWindow.Of(wide, out w0, out w1), null);
+            Check("긴 쪽까지 덮음", w1 >= 29, w1.ToString("0.###", CultureInfo.InvariantCulture));
+            Check("여유가 양쪽에 조금", w0 < 0 && w1 > 29, w0.ToString("0.###", CultureInfo.InvariantCulture));
+            Near("여유는 구간의 2%", (w1 - w0) - 29, 29 * 2 * StepWindow.Pad, 1e-6);
+
+            // 짝이 없는 단계는 구간이 없습니다 (맞출 수가 없으므로).
+            double n0, n1;
+            Check("짝 없는 단계는 구간 없음", !StepWindow.Of(hold, out n0, out n1), null);
+            Check("null 도 구간 없음", !StepWindow.Of(null, out n0, out n1), null);
+
+            // ---- 경과 시간 글자 ----
+            //
+            // 단계 시작을 0 으로 놓으면 가로축이 경과 시간이 됩니다.
+            // 날짜 로그에서 이걸 그 로그의 모양으로 적으면 1970 년이
+            // 찍히는데, 그게 날짜로 읽히면 로그를 잘못 읽은 줄 압니다.
+            var clock = new LogDataset();
+            clock.TimeKind = TimeKind.DateMs;
+            Check("날짜 로그의 경과 시간은 시계로",
+                  TimeText.Elapsed(clock, 5000) == "+00:00:05", TimeText.Elapsed(clock, 5000));
+            Check("0 자리 앞은 음수로",
+                  TimeText.Elapsed(clock, -1500).StartsWith("-"), TimeText.Elapsed(clock, -1500));
+
+            var idx = new LogDataset();
+            idx.TimeKind = TimeKind.Index;
+            Check("표본 번호 로그는 표본으로",
+                  TimeText.Elapsed(idx, 12) == "+12표본", TimeText.Elapsed(idx, 12));
+
             // 단계가 없는 로그끼리는 빈 목록입니다.
             LogDataset bare = Open(WriteCsv("pair_bare.csv", a.ToString()), Orientation.Auto);
             Check("단계 없으면 빈 목록", StepPairList.Build(bare, bare).IsEmpty, null);

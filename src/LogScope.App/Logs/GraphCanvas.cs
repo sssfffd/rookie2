@@ -286,6 +286,39 @@ namespace LogScope.App.Logs
             InvalidateVisual();
         }
 
+        // ---- 가로축 0 자리 ----
+        //
+        // 단계 하나를 볼 때 가로축을 <b>그 단계 시작부터</b> 세고 싶습니다.
+        // 그러면 단계를 바꿔 가며 봐도 눈금이 늘 0 에서 시작해서, 다른
+        // 단계끼리도 "시작 몇 초 뒤" 를 바로 견줄 수 있습니다.
+        //
+        // 그림은 그대로 그립니다 — <b>눈금 글자만</b> 바뀝니다. 선을 옮기면
+        // 커서 값·차이 음영·이후 로그 밀기까지 다 어긋납니다.
+
+        private double _zeroAt = double.NaN;
+
+        /// <summary>
+        /// 가로축 글자를 이 시각부터 셉니다. NaN 이면 로그의 시간을 그대로
+        /// 적습니다.
+        /// </summary>
+        public double ZeroAt
+        {
+            get { return _zeroAt; }
+            set
+            {
+                if (_zeroAt.Equals(value)) return;
+                _zeroAt = value;
+                InvalidateVisual();
+            }
+        }
+
+        /// <summary>눈금 한 칸의 글자.</summary>
+        private string TimeLabel(LogDataset refDs, double t)
+        {
+            if (!double.IsNaN(_zeroAt)) return TimeText.Elapsed(refDs, t - _zeroAt);
+            return refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
+        }
+
         /// <summary>보이는 시간 구간을 그대로 정합니다. 히트맵에서 칸을 눌러
         /// 넘어올 때 그 구간으로 맞추는 데 씁니다.</summary>
         public void SetTimeRange(double t0, double t1)
@@ -1657,7 +1690,7 @@ namespace LogScope.App.Logs
                 dc.DrawLine(p.GridPen, new Point(gx, plot.Top), new Point(gx, plot.Bottom));
                 dc.DrawLine(p.BorderPen, new Point(gx, strip.Top), new Point(gx, strip.Top + 4));
 
-                string label = refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
+                string label = TimeLabel(refDs, t);
                 FormattedText ft = Text(label, FontSmall, p.MutedBrush);
                 dc.DrawText(ft, new Point(x - ft.Width * 0.5, strip.Top + 5));
             }

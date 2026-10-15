@@ -126,6 +126,16 @@ namespace LogScope.Core.Settings
         /// </summary>
         public string StepIo = string.Empty;
 
+        /// <summary>
+        /// 그래프에서 단계를 골랐을 때 <b>가로축 글자를 단계 시작부터</b>
+        /// 셀지 (0, +1초 …). 그림은 안 옮기고 글자만 바뀝니다.
+        ///
+        /// 고른 단계 자체는 저장하지 않습니다 — 로그가 바뀌면 그 번호가
+        /// 다른 단계를 가리키는데, 그걸 그대로 되살리면 엉뚱한 구간이
+        /// 열립니다.
+        /// </summary>
+        public bool StepZeroAtStart;
+
         // ---- 분석 2 (DB) 에서 견줄 자리 ----
         //
         // 자리는 DB 화면에서 정하고 여기 저장됩니다 (config.txt 에는 없습니다).
@@ -271,6 +281,7 @@ namespace LogScope.Core.Settings
             if (!double.IsNaN(AlignLevel)) root["alignLevel"] = AlignLevel;
             root["axisIo"] = AxisIo;
             root["stepIo"] = StepIo;
+            root["stepZero"] = StepZeroAtStart;
             root["dbBefore"] = DbBeforePath;
             root["dbAfter"] = DbAfterPath;
             root["dbMysqlDump"] = MysqlDumpPath ?? string.Empty;
@@ -391,6 +402,7 @@ namespace LogScope.Core.Settings
                 : double.NaN;
             s.AxisIo = Json.GetString(root, "axisIo", string.Empty);
             s.StepIo = Json.GetString(root, "stepIo", string.Empty);
+            s.StepZeroAtStart = Json.GetBool(root, "stepZero", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);
             s.DbAfterPath = Json.GetString(root, "dbAfter", string.Empty);
             s.MysqlDumpPath = Json.GetString(root, "dbMysqlDump", string.Empty);

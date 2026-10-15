@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using LogScope.Core.Model;
 
@@ -64,6 +64,51 @@ namespace LogScope.Logs.Align
         /// 없으면 빈 글자입니다.
         /// </summary>
         public string Note = string.Empty;
+    }
+
+    /// <summary>
+    /// 단계 하나를 볼 때 그래프가 보여 줄 <b>구간</b>.
+    ///
+    /// 화면이 아니라 여기 둔 까닭: 여기가 틀리면 로그의 일부가 조용히
+    /// 화면 밖으로 나갑니다. 사람이 보기엔 그냥 그래프라서 잘린 줄
+    /// 모릅니다 — 그래서 시험이 닿는 자리에 둡니다.
+    /// </summary>
+    public static class StepWindow
+    {
+        /// <summary>
+        /// 양쪽에 두는 여유 (구간 길이의 몫). 단계 경계의 값이 화면 끝에
+        /// 딱 붙어 있으면 그 자리의 변화가 안 보입니다.
+        /// </summary>
+        public const double Pad = 0.02;
+
+        /// <summary>
+        /// 그 단계를 보여 줄 구간. 맞출 수 없는 단계면 거짓.
+        ///
+        /// <b>두 로그 중 긴 쪽까지 덮습니다.</b> 이전 로그의 단계에만
+        /// 맞추면, 이후 로그에서 그 단계가 더 길 때 뒷부분이 화면 밖으로
+        /// 나갑니다. 잘린 줄 모르면 "이후 로그는 왜 중간에 끊겼지" 가
+        /// 됩니다.
+        ///
+        /// 돌려주는 시각은 <b>이전 로그 기준</b>입니다 (그래프의 가로축이
+        /// 그 기준입니다). 이후 로그의 끝은 밀기 값을 더해 옮겨 옵니다.
+        /// </summary>
+        public static bool Of(StepPair p, out double t0, out double t1)
+        {
+            t0 = 0; t1 = 1;
+            if (p == null || !p.HasBoth) return false;
+
+            double shift = p.Shift;
+            if (double.IsNaN(shift)) return false;
+
+            double a = p.BeforeStart;
+            double b = Math.Max(p.BeforeEnd, p.AfterEnd + shift);
+            if (!(b > a)) return false;
+
+            double pad = (b - a) * Pad;
+            t0 = a - pad;
+            t1 = b + pad;
+            return true;
+        }
     }
 
     /// <summary>
