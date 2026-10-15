@@ -311,8 +311,6 @@ namespace LogScope.App.Logs
             dc.DrawRectangle(p.AxisStripBrush, null, strip);
             dc.DrawLine(p.BorderPen, new Point(NameW, HeaderH), new Point(ActualWidth, HeaderH));
 
-            LogDataset refDs = _result.TimeReference;
-
             // 칸이 좁으면 눈금 글자가 겹치므로 몇 칸에 하나만 적습니다.
             double need = 62;
             int every = Math.Max(1, (int)Math.Ceiling(need / _cellW));
@@ -324,8 +322,10 @@ namespace LogScope.App.Logs
                 double x = NameW + c * _cellW - offX;
                 dc.DrawLine(p.BorderPen, new Point(x, HeaderH - 5), new Point(x, HeaderH));
 
-                double t = _result.BucketStart(c);
-                string label = refDs != null ? refDs.FormatTime(t) : t.ToString("0.###");
+                // 칸 글자는 결과가 들고 있습니다 — 시간으로 잘랐으면 시각,
+                // 단계로 잘랐으면 단계 이름입니다. 여기서 FormatTime 을
+                // 직접 부르면 단계로 바꿘 날 가로에 시각이 적힙니다.
+                string label = _result.BucketText(c);
                 FormattedText ft = Text(label, FontSmall, p.MutedBrush);
                 dc.DrawText(ft, new Point(x + 3, (HeaderH - ft.Height) * 0.5));
             }
@@ -489,10 +489,15 @@ namespace LogScope.App.Logs
             LogDataset refDs = _result.TimeReference;
 
             double t0 = _result.BucketStart(c);
-            double t1 = t0 + _result.BucketSpan;
-            string when = refDs != null
+            double t1 = _result.BucketEnd(c);
+            string span = refDs != null
                 ? refDs.FormatTime(t0) + " ~ " + refDs.FormatTime(t1)
                 : t0.ToString("0.###") + " ~ " + t1.ToString("0.###");
+
+            // 단계로 잘랐으면 단계 이름을 앞에 적고 시각도 같이 적습니다.
+            // 이름만 적으면 그 단계가 언제였는지 알 수 없고, 시각만 적으면
+            // 어느 단계인지 알 수 없습니다.
+            string when = _result.ByStep ? _result.BucketText(c) + "   " + span : span;
 
             if (!cell.HasData) return row.Name + "   " + when + "   기록 없음";
 
@@ -527,9 +532,9 @@ namespace LogScope.App.Logs
             if (!HitCell(e.GetPosition(this), out r, out c)) return;
 
             HeatRow row = _result.Rows[r];
-            double t0 = _result.BucketStart(c);
             EventHandler<CellEventArgs> h = CellActivated;
-            if (h != null) h(this, new CellEventArgs(row.Name, t0, t0 + _result.BucketSpan));
+            if (h != null) h(this, new CellEventArgs(row.Name,
+                _result.BucketStart(c), _result.BucketEnd(c)));
         }
 
         protected override void OnMouseWheel(MouseWheelEventArgs e)

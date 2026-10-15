@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using LogScope.Core.Settings;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
+using LogScope.Logs.Align;
 
 namespace LogScope.Logs.Compare
 {
@@ -173,6 +174,20 @@ namespace LogScope.Logs.Compare
         public double Shift;
 
         /// <summary>
+        /// <b>가로를 단계로 자를지.</b> 참이면 단계 하나가 칸 하나입니다
+        /// (시간 폭 대신). 단계가 없으면 시간으로 자르고 그렇다고 말해
+        /// 줍니다 — 조용히 시간으로 돌아가면 "단계로 봤다" 고 착각합니다.
+        /// </summary>
+        public bool ByStep;
+
+        /// <summary>
+        /// 짝지어 둔 단계. <see cref="ByStep"/> 일 때만 씁니다.
+        /// 여기서 짓지 않고 받는 이유: 그래프 화면도 같은 목록을 쓰는데,
+        /// 각자 지으면 두 화면의 단계 번호가 어긋날 수 있습니다.
+        /// </summary>
+        public StepPairList Steps;
+
+        /// <summary>
         /// 이 이름들만 봅니다. 비어 있으면 모두 봅니다.
         ///
         /// 메인 화면에서 그룹을 눌러 넘어왔을 때, 그 그룹의 IO 만 남깁니다.
@@ -217,12 +232,48 @@ namespace LogScope.Logs.Compare
         /// <summary>1 분 단위로 잘랐는지, 아니면 다른 폭으로 잘랐는지.</summary>
         public string BucketLabel = string.Empty;
 
+        /// <summary>
+        /// 칸의 경계. 가로축 글자도 여기서 나옵니다.
+        /// <b>칸 번호를 셈하는 곳은 여기 하나입니다</b> — 단계로 자르면
+        /// 칸 폭이 다 다르고 칸 사이에 빈틈이 있어서, 셈하는 식을 여러
+        /// 곳에 두면 한 곳만 고쳐도 조용히 어긋납니다.
+        /// </summary>
+        public HeatBuckets Buckets;
+
+        /// <summary>단계로 잘렸는지. 화면이 가로축 이름을 바꿔 적습니다.</summary>
+        public bool ByStep { get { return Buckets != null && Buckets.ByStep; } }
+
         public string Warning = string.Empty;
 
         public int ComparedChannels;
         public int ChangedChannels;
 
-        public double BucketStart(int index) { return Start + index * BucketSpan; }
+        /// <summary>
+        /// 칸이 시작하는 시각. <b>칸 목록에게 묻습니다</b> — 단계로 자르면
+        /// 폭이 다 달라서 "시작 + 번호 x 폭" 이 맞지 않습니다.
+        /// </summary>
+        public double BucketStart(int index)
+        {
+            if (Buckets != null && index >= 0 && index < Buckets.Count) return Buckets.From(index);
+            return Start + index * BucketSpan;
+        }
+
+        /// <summary>
+        /// 칸이 끝나는 시각. <b>"시작 + 폭" 으로 셈하면 안 됩니다</b> —
+        /// 단계로 자르면 폭이 다 다르고 BucketSpan 은 NaN 입니다.
+        /// </summary>
+        public double BucketEnd(int index)
+        {
+            if (Buckets != null && index >= 0 && index < Buckets.Count) return Buckets.To(index);
+            return Start + (index + 1) * BucketSpan;
+        }
+
+        /// <summary>칸 하나의 가로축 글자. 단계면 단계 이름입니다.</summary>
+        public string BucketText(int index)
+        {
+            if (Buckets == null) return string.Empty;
+            return Buckets.Label(index, TimeReference);
+        }
     }
 
     /// <summary>
@@ -255,14 +306,45 @@ namespace LogScope.Logs.Compare
                 return res;
             }
 
-            double span = ChooseBucketSpan(before, t0, t1, opt, res);
-            int buckets = (int)Math.Ceiling((t1 - t0) / span);
-            if (buckets < 1) buckets = 1;
+            // 칸을 어떻게 자를지 먼저 정합니다 — 단계로, 아니면 시간 폭으로.
+            HeatBuckets cuts = null;
+            if (opt.ByStep)
+            {
+                string why;
+                cuts = HeatBuckets.Steps(opt.Steps, before, t0, t1, out why);
+                if (cuts != null)
+                {
+                    res.BucketLabel = "단계";
+                    if (why.Length > 0) res.Warning = why;
+                }
+                else
+                {
+                    // 단계로 못 자르면 시간으로 돌아가되 <b>말해 줍니다</b>.
+                    // 조용히 돌아가면 가로가 단계인 줄 알고 읽습니다.
+                    res.Warning = why.Length > 0 ? why
+                        : "단계가 없어 가로를 시간으로 둡니다.";
+                }
+            }
+
+            double span;
+            int buckets;
+            if (cuts != null)
+            {
+                span = double.NaN;
+                buckets = cuts.Count;
+            }
+            else
+            {
+                span = ChooseBucketSpan(before, t0, t1, opt, res);
+                cuts = HeatBuckets.Uniform(t0, t1, span);
+                buckets = cuts.Count;
+            }
 
             res.Start = t0;
             res.End = t1;
             res.BucketSpan = span;
             res.BucketCount = buckets;
+            res.Buckets = cuts;
 
             int compared = 0, changed = 0;
 
@@ -282,7 +364,7 @@ namespace LogScope.Logs.Compare
                 if (ai < 0) continue;   // 한쪽에만 있는 IO 는 여기서 다루지 않습니다.
 
                 compared++;
-                HeatRow row = BuildRow(before, bi, after, ai, t0, t1, span, buckets, shift, opt);
+                HeatRow row = BuildRow(before, bi, after, ai, t0, t1, cuts, shift, opt);
                 if (row.HasDifference) changed++;
                 if (row.HasDifference || opt.IncludeUnchanged) res.Rows.Add(row);
             }
@@ -308,7 +390,13 @@ namespace LogScope.Logs.Compare
             });
 
             if (res.Rows.Count == 0 && !opt.IncludeUnchanged)
-                res.Warning = "허용 오차 안에서 차이가 난 IO 가 없습니다.";
+            {
+                // 덮어쓰지 않고 뒤에 붙입니다. 칸을 자를 때의 말(짝 없는
+                // 단계를 뺐다 …)이 지워지면, 왜 칸이 그것뿐인지 알 수가
+                // 없습니다.
+                string none = "허용 오차 안에서 차이가 난 IO 가 없습니다.";
+                res.Warning = res.Warning.Length > 0 ? res.Warning + " " + none : none;
+            }
 
             return res;
         }
@@ -368,9 +456,10 @@ namespace LogScope.Logs.Compare
         /// 채널 하나가 O(표본 수) 로 끝납니다.
         /// </summary>
         private static HeatRow BuildRow(LogDataset before, int bi, LogDataset after, int ai,
-                                        double t0, double t1, double span, int buckets,
+                                        double t0, double t1, HeatBuckets cuts,
                                         double shift, HeatmapOptions opt)
         {
+            int buckets = cuts.Count;
             Channel bc = before.Channels[bi];
             Channel ac = after.Channels[ai];
 
@@ -407,6 +496,7 @@ namespace LogScope.Logs.Compare
             while (start < before.SampleCount && bt[start] < t0) start++;
 
             int j = 0;   // 이후 로그에서 지금 보고 있는 자리 (뒤로 가지 않습니다)
+            int walk = 0;   // 지금 보고 있는 칸 (앞으로만 밉니다)
 
             for (int i = start; i < before.SampleCount && bt[i] <= t1; i++)
             {
@@ -459,9 +549,12 @@ namespace LogScope.Logs.Compare
                     over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
                 }
 
-                int k = (int)((t - t0) / span);
-                if (k < 0) k = 0;
-                if (k >= buckets) k = buckets - 1;
+                // 어느 칸인지는 칸 목록이 압니다. 단계로 자르면 칸 사이에
+                // 빈틈(공정이 멈춘 구간)이 있어서, 그 자리의 표본은 어느
+                // 칸에도 넣지 않습니다 — 옆 칸으로 밀어 넣으면 그 단계에서
+                // 나지 않은 차이가 그 단계에 적힙니다.
+                int k = cuts.Walk(t, ref walk);
+                if (k < 0) continue;
 
                 HeatCell cell = row.Cells[k];
                 cell.Samples++;

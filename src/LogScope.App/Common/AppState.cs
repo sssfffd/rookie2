@@ -120,6 +120,10 @@ namespace LogScope.App.Common
         /// </summary>
         public string ApplyAxisChannel()
         {
+            // 축이 바뀌면 단계의 시각도 달라집니다. 짝 목록은 시각을 들고
+            // 있으므로 여기서 버려야 합니다.
+            ForgetSteps();
+
             string name = Settings.AxisIo;
             if (string.IsNullOrEmpty(name))
             {
@@ -248,9 +252,20 @@ namespace LogScope.App.Common
             // 바탕이 되고 시작 시각 자동 맞춤은 비켜섭니다 — 둘 다 걸면
             // 서로를 밀어 엉뚱한 자리로 갑니다. 설정 창에서 손으로 넣은
             // ManualShift 는 어느 쪽이든 그 위에 더해지는 미세 조정입니다.
-            bool trigger = UsesTriggerAlign;
-            o.Shift = Settings.ManualShift + (trigger ? TriggerShift : 0.0);
-            o.AutoAlign = !trigger && Settings.AutoAlign;
+            // 단계를 골랐으면 그 단계의 시작으로 맞춥니다. <b>사건 맞추기와
+            // 시작 시각 맞추기보다 먼저입니다</b> — 단계를 고른 사람은 그
+            // 단계를 겹쳐 보려고 고른 것인데, 다른 맞추기가 그 위에 또
+            // 걸리면 단계 시작이 어긋납니다.
+            //
+            // 손으로 넣은 ManualShift 는 어느 쪽이든 그 위에 더해지는 미세
+            // 조정이라 그대로 둡니다.
+            StepPair step = PickedStep;
+            bool bystep = step != null && !double.IsNaN(step.Shift);
+            bool trigger = !bystep && UsesTriggerAlign;
+
+            o.Shift = Settings.ManualShift
+                    + (bystep ? step.Shift : (trigger ? TriggerShift : 0.0));
+            o.AutoAlign = !bystep && !trigger && Settings.AutoAlign;
             o.SortBy = Settings.SortMetric;
             return o;
         }
@@ -300,6 +315,47 @@ namespace LogScope.App.Common
                 else { if (a0 < t0) t0 = a0; if (a1 > t1) t1 = a1; }
             }
             if (!any || !(t1 > t0)) { t0 = 0; t1 = 1; }
+        }
+
+        // ---- 단계 (분석 1) -------------------------------------------------
+        //
+        // 단계 목록은 로그를 읽을 때 만들어지고(StepRead), 두 로그를
+        // 짝짓는 일은 여기서 한 번만 합니다. <b>화면마다 따로 지으면
+        // 단계 번호가 어긋날 수 있습니다</b> — 히트맵의 "2. 가열" 과
+        // 그래프의 "2. 가열" 이 다른 단계를 가리키면 아무도 못 찾습니다.
+        //
+        // 짝 목록에는 단계가 시작하는 <b>시각</b>이 들어 있습니다. 가로축을
+        // 갈아 끼우면 그 시각이 달라지므로, 그때 반드시 버려야 합니다
+        // (ForgetSteps). 안 버리면 옛 축의 시각으로 그래프가 움직입니다.
+
+        private StepPairList _stepPairs;
+
+        /// <summary>두 로그의 단계를 짝지은 목록. 없으면 빈 목록입니다.</summary>
+        public StepPairList StepPairs()
+        {
+            if (_stepPairs == null) _stepPairs = StepPairList.Build(Before, After);
+            return _stepPairs;
+        }
+
+        /// <summary>로그나 가로축이 바뀌었을 때. 다음에 물으면 다시 짓습니다.</summary>
+        public void ForgetSteps() { _stepPairs = null; }
+
+        /// <summary>고를 수 있는 단계가 있는지 (양쪽에 다 있는 단계).</summary>
+        public bool HasSteps { get { return StepPairs().UsableCount > 0; } }
+
+        /// <summary>지금 고른 단계. -1 이면 전체를 봅니다.</summary>
+        public int StepPick = -1;
+
+        /// <summary>고른 단계의 짝. 안 골랐거나 번호가 어긋나면 null.</summary>
+        public StepPair PickedStep
+        {
+            get
+            {
+                StepPairList l = StepPairs();
+                if (StepPick < 0 || StepPick >= l.Count) return null;
+                StepPair p = l[StepPick];
+                return p.HasBoth ? p : null;
+            }
         }
 
         /// <summary>시간축 눈금 글자를 어느 로그 기준으로 쓸지.</summary>

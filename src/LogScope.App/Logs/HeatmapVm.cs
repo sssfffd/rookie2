@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using LogScope.Core.Settings;
 using System.Globalization;
+using LogScope.Logs.Align;
 using LogScope.Logs.Compare;
 using LogScope.Core.Model;
 
@@ -68,11 +69,72 @@ namespace LogScope.App.Logs
         {
             get
             {
+                if (ByStep && HasSteps)
+                    return "가로가 단계입니다 — 칸 하나가 단계 하나이고, 칸 폭은 쓰지 않습니다.";
+
                 LogDataset ds = _state.TimeReference;
                 bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
                 return clock
                     ? "시간축이 시각이라 분 단위로 자를 수 있습니다."
                     : "시간축이 시각이 아니라(샘플 번호 또는 단위 없는 숫자) 전체를 60 칸으로 나눕니다.";
+            }
+        }
+
+        // ---------------- 가로를 단계로 ----------------
+        //
+        // 시간 폭 대신 공정 차례로 봅니다 — 칸 하나가 단계 하나입니다.
+        // 단계마다 길이가 달라도 칸 하나씩이라, "가열에서 벌어졌나" 를
+        // 시각을 세지 않고 바로 읽습니다.
+
+        private bool _byStep;
+
+        /// <summary>참이면 칸 하나가 단계 하나입니다.</summary>
+        public bool ByStep
+        {
+            get { return _byStep; }
+            set { if (Set(ref _byStep, value)) { Raise("BucketHint"); Raise("CanChooseSpan"); } }
+        }
+
+        /// <summary>
+        /// 칸 폭을 고를 수 있는지. 단계로 자르면 폭이 단계 길이라 고를
+        /// 것이 없습니다 — 고를 수 있게 두면 골라 놓고 왜 안 먹는지
+        /// 찾게 됩니다.
+        /// </summary>
+        public bool CanChooseSpan { get { return !_byStep; } }
+
+        /// <summary>
+        /// 고를 수 있는 단계가 있는지. 없으면 단추를 끕니다 — 눌러도
+        /// 아무 일이 없는 단추는 고장으로 보입니다.
+        /// </summary>
+        public bool HasSteps { get { return _state.HasSteps; } }
+
+        /// <summary>
+        /// 로그가 바뀌었을 때. 단계가 생겼는지 없어졌는지 다시 봅니다.
+        /// (창이 로그를 읽은 뒤 ShellVm.ReloadAll 에서 불립니다.)
+        /// </summary>
+        public void Reload()
+        {
+            Raise("HasSteps"); Raise("StepHint"); Raise("BucketHint");
+
+            // 단계가 없어졌으면 단추도 내립니다. 켜진 채로 두면 가로가
+            // 단계인 줄 알고 읽는데, 실제로는 시간으로 그려집니다.
+            if (_byStep && !HasSteps) { _byStep = false; Raise("ByStep"); }
+        }
+
+        /// <summary>단추 옆에 적는 글. 단계가 없으면 왜 없는지 적습니다.</summary>
+        public string StepHint
+        {
+            get
+            {
+                if (_state.HasSteps)
+                {
+                    StepPairList l = _state.StepPairs();
+                    string s = "단계 " + l.UsableCount + " 개";
+                    if (l.Source.Length > 0) s += " (" + l.Source + ")";
+                    return l.Note.Length > 0 ? s + " · " + l.Note : s;
+                }
+                if (!_state.HasBoth) return "두 로그를 열면 단계를 봅니다.";
+                return "단계가 없습니다. 설정 [비교] 의 \"단계 IO\" 에 단계를 담은 IO 이름을 적어 주세요.";
             }
         }
 
@@ -245,6 +307,12 @@ namespace LogScope.App.Logs
                                                _state.Settings.Tolerances);
             o.IncludeUnchanged = _includeUnchanged;
             o.Shift = _state.AppliedShift;
+
+            // 단계로 자르기. 짝 목록은 화면이 짓지 않고 받아 옵니다 —
+            // 그래프 화면도 같은 목록을 쓰므로, 각자 지으면 두 화면의
+            // 단계 번호가 어긋날 수 있습니다.
+            o.ByStep = _byStep;
+            o.Steps = _state.StepPairs();
             return o;
         }
 
@@ -293,10 +361,14 @@ namespace LogScope.App.Logs
             string from = ds != null ? ds.FormatTime(r.Start) : r.Start.ToString("0.###");
             string to = ds != null ? ds.FormatTime(r.End) : r.End.ToString("0.###");
 
+            // 단계로 잘렸는지는 <b>그린 결과</b>에서 읽습니다. 단추 상태로
+            // 적으면, 단계가 없어 시간으로 돌아간 날에도 "단계" 라고
+            // 적힙니다 (그 경우 r.Warning 이 왜 그런지 말해 줍니다).
             Summary = "차이가 난 IO " + r.ChangedChannels + "개"
                     + "   /   양쪽에 다 있는 IO " + r.ComparedChannels + "개"
-                    + "        칸 폭 " + r.BucketLabel
+                    + (r.ByStep ? "        가로 단계" : "        칸 폭 " + r.BucketLabel)
                     + "   /   칸 수 " + r.BucketCount
+                    + (r.Warning.Length > 0 ? "   /   " + r.Warning : "")
                     + "        구간 " + from + " ~ " + to
                     + (Align != null && Align.Note.Length > 0 ? "\n" + Align.Note : "")
                     + "        허용 오차 " + RelativeTolerancePercent + "% (이전 값 대비)"

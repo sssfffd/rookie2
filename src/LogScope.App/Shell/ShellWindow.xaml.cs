@@ -175,6 +175,13 @@ namespace LogScope.App.Shell
             }
 
             var ds = (LogDataset)result;
+
+            // 로그가 바뀌면 단계 짝 목록을 버립니다. 안 버리면 새 로그에
+            // 없는 단계가 목록에 남고, 그걸 고르면 옛 로그의 시각으로
+            // 그래프가 움직입니다.
+            _state.ForgetSteps();
+            _state.StepPick = -1;
+
             LogSet set = _state.Settings.ActiveLogSet;
             if (before) { _state.Before = ds; _state.BeforePath = path; set.BeforePath = path; }
             else { _state.After = ds; _state.AfterPath = path; set.AfterPath = path; }

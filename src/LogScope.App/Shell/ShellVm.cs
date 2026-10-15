@@ -274,6 +274,7 @@ namespace LogScope.App.Shell
         {
             Align.Reload();
             Graph.Reload();
+            Heatmap.Reload();
             Dashboard.Refresh();
             Main.Refresh();
             UpdateStatus();

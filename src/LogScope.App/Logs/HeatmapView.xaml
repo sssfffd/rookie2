@@ -19,9 +19,22 @@
                 <Button Content="히트맵 다시 계산" Style="{StaticResource PrimaryButton}"
                         Click="OnRecalculate" />
 
+                <!--
+                  가로를 단계로. 칸 하나가 단계 하나가 됩니다 (시간 폭 대신).
+                  단계가 없으면 눌릴 수 없습니다 — 눌러도 아무 일이 없는
+                  단추는 고장으로 보입니다. 왜 없는지는 옆의 ToolTip 과
+                  아래 안내 줄에 적힙니다.
+                -->
+                <ToggleButton Style="{StaticResource ToolToggle}" Content="가로를 단계로"
+                              Margin="12,3,3,3" Click="OnRecalculate"
+                              IsChecked="{Binding ByStep, Mode=TwoWay}"
+                              IsEnabled="{Binding HasSteps}"
+                              ToolTip="{Binding StepHint}" />
+
                 <TextBlock Text="칸 폭" Style="{StaticResource FieldLabel}" Margin="12,0,8,0" />
                 <ComboBox MinWidth="150" ItemsSource="{Binding BucketChoices}"
-                          SelectedIndex="{Binding BucketIndex, Mode=TwoWay}" />
+                          SelectedIndex="{Binding BucketIndex, Mode=TwoWay}"
+                          IsEnabled="{Binding CanChooseSpan}" />
 
                 <TextBlock Text="허용 오차 (이전 값 대비 %)" Style="{StaticResource FieldLabel}"
                            Margin="12,0,8,0" />

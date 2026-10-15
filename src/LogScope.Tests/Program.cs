@@ -142,6 +142,7 @@ namespace LogScope.Tests
                 DbPathNames();
                 StepsFromChannel();
                 StepPairing();
+                HeatmapByStep();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3476,6 +3477,93 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// 히트맵의 가로를 시간 대신 <b>단계</b>로 놓습니다.
+        ///
+        /// 여기가 틀리는 모양은 늘 같습니다 — 칸이 한 칸 밀립니다. 그러면
+        /// 가열에서 난 차이가 유지 칸에 적히는데, <b>그림은 멀쩡해 보입니다.</b>
+        /// 그래서 어느 칸이 차이 났는지를 번호로 직접 셉니다.
+        ///
+        /// 단계 사이의 빈틈(공정이 멈춘 구간)도 봅니다. 그 구간의 차이를
+        /// 옆 칸으로 밀어 넣으면, 그 단계에서 나지 않은 차이가 그 단계에
+        /// 적힙니다.
+        /// </summary>
+        private static void HeatmapByStep()
+        {
+            Say("히트맵 — 가로를 단계로");
+
+            // 0~9 준비 · 10~19 가열 · 20~29 (빈틈) · 30~39 유지
+            // 차이는 가열 구간(12~15초)과 빈틈(22~25초)에서만 납니다.
+            var a = new StringBuilder("Time,STEP,PV\n");
+            var b = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 40; i++)
+            {
+                string st = i < 10 ? "준비" : i < 20 ? "가열" : i < 30 ? "" : "유지";
+                bool diff = (i >= 12 && i <= 15) || (i >= 22 && i <= 25);
+                a.Append(i).Append(',').Append(st).Append(",100\n");
+                b.Append(i).Append(',').Append(st).Append(',').Append(diff ? 150 : 100).Append('\n');
+            }
+            LogDataset dsA = OpenWithSteps(WriteCsv("hs_a.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("hs_b.csv", b.ToString()), "STEP");
+
+            Check("단계 셋", dsA.Steps.Count == 3, dsA.Steps.Count.ToString());
+
+            var opt = new HeatmapOptions();
+            opt.ByStep = true;
+            opt.Steps = StepPairList.Build(dsA, dsB);
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("단계로 잘림", r.ByStep, r.Warning);
+            Check("칸 셋 (단계 수와 같음)", r.BucketCount == 3, r.BucketCount.ToString());
+            Check("칸 글자가 단계 이름", r.BucketText(1) == "2. 가열", r.BucketText(1));
+            Check("가로축 이름도 단계", r.BucketLabel == "단계", r.BucketLabel);
+
+            Check("차이 난 IO 는 PV 한 줄", r.Rows.Count == 1, r.Rows.Count.ToString());
+            if (r.Rows.Count == 0) return;
+            HeatRow row = r.Rows[0];
+
+            Check("가열 칸만 차이", row.OverBuckets == 1, row.OverBuckets.ToString());
+            Check("차이 난 칸은 가열(1)", HeatmapBuilder.IsOver(row, 1), null);
+            Check("준비 칸은 정상", !HeatmapBuilder.IsOver(row, 0), null);
+            Check("유지 칸은 정상", !HeatmapBuilder.IsOver(row, 2), null);
+
+            // 빈틈의 차이(22~25초)는 어느 칸에도 안 들어갑니다. 유지 칸으로
+            // 밀려 들어갔으면 위의 "유지 칸은 정상" 이 깨집니다.
+            Check("빈틈의 표본은 어느 칸에도 안 셈",
+                  row.Cells[0].Samples + row.Cells[1].Samples + row.Cells[2].Samples == 30,
+                  (row.Cells[0].Samples + row.Cells[1].Samples + row.Cells[2].Samples).ToString());
+
+            // 칸 하나의 폭은 그 단계의 폭입니다 (다 다릅니다).
+            Near("가열 칸 시작", r.BucketStart(1), 10, 1e-9);
+            Near("유지 칸 시작", r.BucketStart(2), 30, 1e-9);
+
+            // 단계가 없는 로그에 단계로 보라고 하면, 시간으로 돌아가되
+            // <b>그렇다고 말해 줍니다.</b> 조용히 돌아가면 가로가 단계인
+            // 줄 알고 읽습니다.
+            LogDataset pA = Open(WriteCsv("hs_c.csv", a.ToString()), Orientation.Auto);
+            LogDataset pB = Open(WriteCsv("hs_d.csv", b.ToString()), Orientation.Auto);
+            var opt2 = new HeatmapOptions();
+            opt2.ByStep = true;
+            opt2.Steps = StepPairList.Build(pA, pB);
+            HeatmapResult r2 = HeatmapBuilder.Build(pA, pB, opt2, null);
+            Check("단계가 없으면 시간으로", !r2.ByStep, null);
+            Check("시간으로 돌아갔다고 말함", r2.Warning.Contains("단계"), r2.Warning);
+            Check("그래도 칸은 있음", r2.BucketCount > 0, r2.BucketCount.ToString());
+
+            // 시간으로 자른 칸도 같은 자리에서 셉니다 (칸 목록이 하나라서).
+            var opt3 = new HeatmapOptions();
+            HeatmapResult r3 = HeatmapBuilder.Build(dsA, dsB, opt3, null);
+            Check("시간 칸도 칸 목록이 있음", r3.Buckets != null, null);
+            Check("시간 칸은 빈틈이 없음", r3.Buckets.Find(r3.End - 1e-9) == r3.BucketCount - 1,
+                  r3.Buckets.Find(r3.End - 1e-9).ToString());
+            // 끝 시각의 표본이 어느 칸에도 안 들면 그 표본은 조용히
+            // 빠집니다 (칸 폭으로 나눈 나머지 때문에 생기던 일입니다).
+            Check("끝 시각의 표본도 칸에 듦", r3.Buckets.Find(r3.End) >= 0,
+                  r3.Buckets.Find(r3.End).ToString());
+            Check("끝 시각은 마지막 칸", r3.Buckets.Find(r3.End) == r3.BucketCount - 1,
+                  r3.Buckets.Find(r3.End).ToString());
         }
 
         /// <summary>
