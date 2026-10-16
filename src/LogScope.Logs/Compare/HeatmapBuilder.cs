@@ -35,20 +35,18 @@ namespace LogScope.Logs.Compare
             }
 
             double shift = opt.Shift;
-            double t0 = Math.Max(before.TimeStart, after.TimeStart + shift);
-            double t1 = Math.Min(before.TimeEnd, after.TimeEnd + shift);
-            if (!(t1 > t0))
-            {
-                res.Warning = "두 로그의 시간 구간이 겹치지 않습니다.";
-                return res;
-            }
 
             // 칸을 어떻게 자를지 먼저 정합니다 — 단계로, 아니면 시간 폭으로.
+            //
+            // 단계로 자를 때는 칸을 <b>이전 로그의 단계 구간</b>으로 잡고,
+            // 겹치는 구간을 밀기 값 하나로 미리 자르지 않습니다. 칸마다
+            // 밀기 값이 따로라서, 하나로 자르면 그 하나에 안 맞는 단계가
+            // 통째로 잘려 나갑니다.
             HeatBuckets cuts = null;
             if (opt.ByStep)
             {
                 string why;
-                cuts = HeatBuckets.Steps(opt.Steps, before, t0, t1, out why);
+                cuts = HeatBuckets.Steps(opt.Steps, before, before.TimeStart, before.TimeEnd, out why);
                 if (cuts != null)
                 {
                     res.BucketLabel = "단계";
@@ -63,15 +61,27 @@ namespace LogScope.Logs.Compare
                 }
             }
 
-            double span;
+            double t0, t1, span;
             int buckets;
+
             if (cuts != null)
             {
+                // 칸들이 덮는 구간이 곧 보는 구간입니다.
+                t0 = cuts.From(0);
+                t1 = cuts.To(cuts.Count - 1);
                 span = double.NaN;
                 buckets = cuts.Count;
             }
             else
             {
+                t0 = Math.Max(before.TimeStart, after.TimeStart + shift);
+                t1 = Math.Min(before.TimeEnd, after.TimeEnd + shift);
+                if (!(t1 > t0))
+                {
+                    res.Warning = "두 로그의 시간 구간이 겹치지 않습니다.";
+                    return res;
+                }
+
                 span = ChooseBucketSpan(before, t0, t1, opt, res);
                 cuts = HeatBuckets.Uniform(t0, t1, span);
                 buckets = cuts.Count;
@@ -241,90 +251,112 @@ namespace LogScope.Logs.Compare
             Array.Clear(sum, 0, buckets);
             Array.Clear(sumSq, 0, buckets);
 
-            int start = before.IndexAtOrBefore(t0);
-            if (start < 0) start = 0;
-            while (start < before.SampleCount && bt[start] < t0) start++;
+            // ---- 칸 하나씩 ----
+            //
+            // 전에는 표본을 쭉 훑으면서 "이 표본은 몇 번 칸" 을 물었습니다.
+            // 그러면 밀기 값이 하나일 때만 맞습니다. <b>칸마다 밀기 값이
+            // 다르면</b> (단계로 자른 경우) 이후 로그를 읽는 자리가 칸이
+            // 바뀔 때 뒤로 갈 수 있어서, 앞으로만 미는 자리표로는 못 찾습니다.
+            //
+            // 그래서 칸 단위로 돕니다. 표본은 여전히 한 번씩만 봅니다
+            // (칸이 차례대로이고 겹치지 않으므로 i 는 앞으로만 갑니다).
+            // 이후 로그의 자리는 <b>밀기 값이 바뀔 때만</b> 다시 찾습니다 —
+            // 시간 폭으로 자르면 한 번뿐입니다.
+            int bn = before.SampleCount;
+            int i = before.IndexAtOrBefore(t0);
+            if (i < 0) i = 0;
 
-            int j = 0;   // 이후 로그에서 지금 보고 있는 자리 (뒤로 가지 않습니다)
-            int walk = 0;   // 지금 보고 있는 칸 (앞으로만 밉니다)
+            int j = 0;              // 이후 로그에서 보고 있는 자리
+            double curShift = double.NaN;
 
-            for (int i = start; i < before.SampleCount && bt[i] <= t1; i++)
+            for (int k = 0; k < buckets; k++)
             {
-                double t = bt[i];
-                double ta = t - shift;
+                double from = cuts.From(k), to = cuts.To(k);
+                double shiftK = cuts.ShiftOf(k, shift);
 
-                while (j + 1 < an && at[j + 1] <= ta) j++;
-                if (j >= an) break;
-                if (at[j] > ta) continue;      // 아직 이후 로그의 기록 구간에 들어오지 않음
+                while (i < bn && bt[i] < from) i++;   // 칸 사이의 빈틈은 건너뜁니다
+                if (i >= bn) break;
+                if (bt[i] >= to) continue;            // 이 칸에는 표본이 없습니다
 
-                float b = bv[i];
-                double a;
-
-                if (stepped) a = av[j];
-                else
+                if (!shiftK.Equals(curShift))
                 {
-                    float a0 = av[j];
-                    if (j + 1 < an)
+                    int seek = after.IndexAtOrBefore(bt[i] - shiftK);
+                    j = seek < 0 ? 0 : seek;
+                    curShift = shiftK;
+                }
+
+                for (; i < bn && bt[i] < to; i++)
+                {
+                    double t = bt[i];
+                    double ta = t - shiftK;
+
+                    while (j + 1 < an && at[j + 1] <= ta) j++;
+                    if (j >= an) break;
+                    if (at[j] > ta) continue;      // 아직 이후 로그의 기록 구간에 들어오지 않음
+
+                    float b = bv[i];
+                    double a;
+
+                    if (stepped) a = av[j];
+                    else
                     {
-                        float a1 = av[j + 1];
-                        double t0a = at[j], t1a = at[j + 1];
-                        if (float.IsNaN(a0)) a = double.NaN;
-                        else if (float.IsNaN(a1) || t1a <= t0a) a = a0;
-                        else a = a0 + (a1 - a0) * (ta - t0a) / (t1a - t0a);
+                        float a0 = av[j];
+                        if (j + 1 < an)
+                        {
+                            float a1 = av[j + 1];
+                            double t0a = at[j], t1a = at[j + 1];
+                            if (float.IsNaN(a0)) a = double.NaN;
+                            else if (float.IsNaN(a1) || t1a <= t0a) a = a0;
+                            else a = a0 + (a1 - a0) * (ta - t0a) / (t1a - t0a);
+                        }
+                        else a = a0;
                     }
-                    else a = a0;
-                }
 
-                // 오차는 그 순간의 값끼리 견줍니다 (ToleranceRule 참고).
-                double diff, pct;
-                bool over;
+                    // 오차는 그 순간의 값끼리 견줍니다 (ToleranceRule 참고).
+                    double diff, pct;
+                    bool over;
 
-                if (byName)
-                {
-                    string bs = StateText(bc, b);
-                    string as_ = StateText(ac, a);
-                    if (bs == null && as_ == null) continue;
-
-                    bool same = string.Equals(bs, as_, StringComparison.Ordinal);
-                    diff = same ? 0.0 : 1.0;
-                    pct = same ? 0.0 : ToleranceRule.NameMismatchPercent;
-                    // 이름이 다르면 허용 오차와 상관없이 차이입니다.
-                    over = !same && ToleranceRule.NameMismatchIsOver;
-                }
-                else
-                {
-                    if (float.IsNaN(b) || double.IsNaN(a)) continue;
-                    diff = Math.Abs(b - a);
-                    pct = ToleranceRule.ErrorPercent(b, a);
-                    over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
-                }
-
-                // 어느 칸인지는 칸 목록이 압니다. 단계로 자르면 칸 사이에
-                // 빈틈(공정이 멈춘 구간)이 있어서, 그 자리의 표본은 어느
-                // 칸에도 넣지 않습니다 — 옆 칸으로 밀어 넣으면 그 단계에서
-                // 나지 않은 차이가 그 단계에 적힙니다.
-                int k = cuts.Walk(t, ref walk);
-                if (k < 0) continue;
-
-                HeatCell cell = row.Cells[k];
-                cell.Samples++;
-                sum[k] += diff;
-                sumSq[k] += diff * diff;
-                if (diff > cell.Max) cell.Max = (float)diff;
-
-                if (over)
-                {
-                    cell.OverSamples++;
-                    // 가장 크게 벌어진 순간을 붙잡습니다. 값과 퍼센트를
-                    // 같은 표본에서 가져와야 둘이 가리키는 순간이
-                    // 어긋나지 않습니다.
-                    if (!double.IsNaN(pct) && pct > cell.PeakPercent)
+                    if (byName)
                     {
-                        cell.PeakPercent = (float)pct;
-                        cell.PeakDiff = (float)diff;
+                        string bs = StateText(bc, b);
+                        string as_ = StateText(ac, a);
+                        if (bs == null && as_ == null) continue;
+
+                        bool same = string.Equals(bs, as_, StringComparison.Ordinal);
+                        diff = same ? 0.0 : 1.0;
+                        pct = same ? 0.0 : ToleranceRule.NameMismatchPercent;
+                        // 이름이 다르면 허용 오차와 상관없이 차이입니다.
+                        over = !same && ToleranceRule.NameMismatchIsOver;
                     }
+                    else
+                    {
+                        if (float.IsNaN(b) || double.IsNaN(a)) continue;
+                        diff = Math.Abs(b - a);
+                        pct = ToleranceRule.ErrorPercent(b, a);
+                        over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
+                    }
+
+
+                    HeatCell cell = row.Cells[k];
+                    cell.Samples++;
+                    sum[k] += diff;
+                    sumSq[k] += diff * diff;
+                    if (diff > cell.Max) cell.Max = (float)diff;
+
+                    if (over)
+                    {
+                        cell.OverSamples++;
+                        // 가장 크게 벌어진 순간을 붙잡습니다. 값과 퍼센트를
+                        // 같은 표본에서 가져와야 둘이 가리키는 순간이
+                        // 어긋나지 않습니다.
+                        if (!double.IsNaN(pct) && pct > cell.PeakPercent)
+                        {
+                            cell.PeakPercent = (float)pct;
+                            cell.PeakDiff = (float)diff;
+                        }
+                    }
+                    row.Cells[k] = cell;
                 }
-                row.Cells[k] = cell;
             }
 
             for (int k = 0; k < buckets; k++)

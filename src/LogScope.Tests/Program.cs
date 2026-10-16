@@ -141,6 +141,7 @@ namespace LogScope.Tests
                 StepPairing();
                 HeatmapByStep();
                 StepBandWidths();
+                HeatmapPerStepShift();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -273,6 +274,15 @@ namespace LogScope.Tests
             o.Orientation = Orientation.Auto;
             o.StepIo = stepIo;
             return LogReader.Open(path, o, null);
+        }
+
+        /// <summary>히트맵 결과에서 그 IO 의 줄. 없으면 null.</summary>
+        private static HeatRow FindRow(HeatmapResult r, string name)
+        {
+            if (r == null) return null;
+            for (int i = 0; i < r.Rows.Count; i++)
+                if (r.Rows[i].Name == name) return r.Rows[i];
+            return null;
         }
 
         private static float[] Values(LogDataset ds, string name)
@@ -3374,6 +3384,102 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// 히트맵을 단계로 자를 때 <b>칸마다 그 단계의 밀기 값으로</b>
+        /// 견주는지.
+        ///
+        /// 이게 틀리면 "오차가 잘 안 잡힌다" 는 모양으로 나옵니다 — 칸은
+        /// 단계로 잘라 놓고 밀기 값은 하나만 쓰면, 그 하나에 맞는 단계만
+        /// 제대로 견주고 나머지 칸은 어긋난 채 견줍니다. 그러면 차이가
+        /// 없는데 있다고 나오거나(여기서 보는 경우), 있는데 묻힙니다.
+        ///
+        /// 공정이 중간에 늘어진 로그가 늘 이 모양입니다 — 뒤 단계가 앞
+        /// 단계보다 더 밀립니다.
+        /// </summary>
+        private static void HeatmapPerStepShift()
+        {
+            Say("히트맵 — 칸마다 그 단계의 밀기 값");
+
+            // 이전: 0~59초. 단계 A(0~19) B(20~39) C(40~59)
+            //       PV 는 단계마다 0 에서 다시 올라가는 톱니입니다.
+            var a = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 60; i++)
+            {
+                string st = i < 20 ? "A" : i < 40 ? "B" : "C";
+                int baseAt = i < 20 ? 0 : i < 40 ? 20 : 40;
+                a.Append(i).Append(',').Append(st).Append(',').Append(i - baseAt).Append('\n');
+            }
+
+            // 이후: 100초부터. 같은 단계지만 <b>단계마다 밀린 만큼이 다릅니다</b>.
+            //       A 는 100 에서, B 는 125 에서, C 는 150 에서 시작 →
+            //       밀기 값이 -100 / -105 / -110 입니다.
+            var b = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 70; i++)
+            {
+                int t = 100 + i;
+                string st = (t >= 100 && t < 120) ? "A"
+                          : (t >= 125 && t < 145) ? "B"
+                          : (t >= 150 && t < 170) ? "C" : "";
+                string val;
+                if (st == "A") val = (t - 100).ToString(CultureInfo.InvariantCulture);
+                else if (st == "B") val = (t - 125).ToString(CultureInfo.InvariantCulture);
+                else if (st == "C") val = (t - 150).ToString(CultureInfo.InvariantCulture);
+                else val = "0";
+                b.Append(t).Append(',').Append(st).Append(',').Append(val).Append('\n');
+            }
+
+            LogDataset dsA = OpenWithSteps(WriteCsv("hps_a.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("hps_b.csv", b.ToString()), "STEP");
+
+            StepPairList pairs = StepPairList.Build(dsA, dsB);
+            Check("짝 셋", pairs.UsableCount == 3, pairs.UsableCount.ToString());
+            Near("A 의 밀기 값", pairs[0].Shift, -100, 1e-9);
+            Near("B 의 밀기 값", pairs[1].Shift, -105, 1e-9);
+            Near("C 의 밀기 값", pairs[2].Shift, -110, 1e-9);
+
+            // ---- 단계로 자르면: 칸마다 그 단계로 맞춰 견줍니다 ----
+            //
+            // PV 는 단계마다 같은 톱니라, 제대로 맞추면 차이가 0 입니다.
+            var opt = new HeatmapOptions();
+            opt.ByStep = true;
+            opt.Steps = pairs;
+            opt.Shift = pairs[0].Shift;          // 화면이 넘기는 값 (첫 단계 기준)
+            opt.IncludeUnchanged = true;
+            HeatmapResult r = HeatmapBuilder.Build(dsA, dsB, opt, null);
+
+            Check("단계로 잘림", r.ByStep, r.Warning);
+            Check("칸 셋", r.BucketCount == 3, r.BucketCount.ToString());
+
+            HeatRow pv = FindRow(r, "PV");
+            Check("PV 줄이 있음", pv != null, null);
+            if (pv == null) return;
+
+            Check("A 칸에 표본이 있음", pv.Cells[0].Samples > 0, pv.Cells[0].Samples.ToString());
+            Check("B 칸에 표본이 있음", pv.Cells[1].Samples > 0, pv.Cells[1].Samples.ToString());
+            Check("C 칸에 표본이 있음", pv.Cells[2].Samples > 0, pv.Cells[2].Samples.ToString());
+
+            Check("A 칸은 차이 없음", !HeatmapBuilder.IsOver(pv, 0), NumberText.Plain(pv.Cells[0].Max));
+            Check("B 칸도 차이 없음", !HeatmapBuilder.IsOver(pv, 1), NumberText.Plain(pv.Cells[1].Max));
+            Check("C 칸도 차이 없음", !HeatmapBuilder.IsOver(pv, 2), NumberText.Plain(pv.Cells[2].Max));
+            Near("B 칸의 최대 차이가 0", pv.Cells[1].Max, 0, 1e-6);
+
+            // ---- 밀기 값 하나로 보면: 뒤 단계가 어긋납니다 ----
+            //
+            // 같은 로그를 -100 하나로만 맞추면 B 는 5 초, C 는 10 초 어긋나서
+            // 톱니가 그만큼 벌어집니다. 이게 0.95 까지 단계로 자른 칸에서
+            // 벌어지던 일입니다.
+            var one = new HeatmapOptions();
+            one.Shift = -100;
+            one.IncludeUnchanged = true;
+            HeatmapResult r2 = HeatmapBuilder.Build(dsA, dsB, one, null);
+
+            HeatRow pv2 = FindRow(r2, "PV");
+            Check("한 밀기 값으로는 PV 가 차이 남", pv2 != null && pv2.HasDifference,
+                  pv2 == null ? "줄 없음" : pv2.OverBuckets.ToString());
+            if (pv2 != null)
+                Check("벌어진 폭이 5 이상", pv2.PeakMax > 0, NumberText.Plain(pv2.PeakMax));
         }
 
         /// <summary>

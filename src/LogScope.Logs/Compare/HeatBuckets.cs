@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using LogScope.Core.Model;
 using LogScope.Logs.Align;
@@ -28,19 +28,45 @@ namespace LogScope.Logs.Compare
         private readonly double[] _to;
         private readonly string[] _labels;   // null 이면 시각으로 적습니다
 
+        /// <summary>
+        /// 칸마다의 밀기 값. null 이면 칸이 다 같은 값을 씁니다.
+        ///
+        /// <b>단계로 자르면 칸마다 다릅니다.</b> 단계마다 두 로그가 어긋난
+        /// 만큼이 다르기 때문입니다 — 공정이 중간에 조금 늘어지면 뒤 단계는
+        /// 앞 단계보다 더 밀립니다. 칸을 단계로 잘라 놓고 밀기 값은 하나만
+        /// 쓰면, <b>그 하나로 맞은 단계만 제대로 견주고 나머지 칸은 어긋난
+        /// 채 견줍니다</b> — 차이가 없는데 있다고 나오거나, 있는데 묻힙니다.
+        /// </summary>
+        private readonly double[] _shifts;
+
         /// <summary>단계로 자른 것인지. 화면의 가로축 글자가 달라집니다.</summary>
         public readonly bool ByStep;
 
         /// <summary>일정 폭으로 잘랐을 때의 그 폭. 단계로 자르면 NaN.</summary>
         public readonly double Span;
 
-        private HeatBuckets(double[] from, double[] to, string[] labels, bool byStep, double span)
+        private HeatBuckets(double[] from, double[] to, string[] labels, double[] shifts,
+                            bool byStep, double span)
         {
             _from = from;
             _to = to;
             _labels = labels;
+            _shifts = shifts;
             ByStep = byStep;
             Span = span;
+        }
+
+        /// <summary>칸마다 밀기 값이 따로인지.</summary>
+        public bool HasShifts { get { return _shifts != null; } }
+
+        /// <summary>
+        /// 그 칸에서 이후 로그를 미는 값. 칸마다의 값이 없으면
+        /// <paramref name="fallback"/> 을 돌려줍니다.
+        /// </summary>
+        public double ShiftOf(int i, double fallback)
+        {
+            if (_shifts == null || i < 0 || i >= _shifts.Length) return fallback;
+            return _shifts[i];
         }
 
         public int Count { get { return _from.Length; } }
@@ -114,7 +140,7 @@ namespace LogScope.Logs.Compare
                 to[i] = i == n - 1 ? Math.Max(t1 + Math.Abs(t1) * 1e-12 + 1e-9, from[i] + span)
                                    : t0 + (i + 1) * span;
             }
-            return new HeatBuckets(from, to, null, false, span);
+            return new HeatBuckets(from, to, null, null, false, span);
         }
 
         /// <summary>
@@ -139,6 +165,7 @@ namespace LogScope.Logs.Compare
             var from = new List<double>();
             var to = new List<double>();
             var labels = new List<string>();
+            var shifts = new List<double>();
 
             int outside = 0, oneSided = 0;
 
@@ -164,6 +191,10 @@ namespace LogScope.Logs.Compare
                 from.Add(a);
                 to.Add(end);
                 labels.Add(p.Label);
+
+                // 그 단계의 밀기 값. 칸마다 다릅니다 — 이것이 단계로
+                // 자르는 뜻의 절반입니다 (나머지 절반은 칸 자리).
+                shifts.Add(p.Shift);
             }
 
             if (from.Count == 0)
@@ -178,7 +209,8 @@ namespace LogScope.Logs.Compare
                 warning = (warning.Length > 0 ? warning + " " : string.Empty)
                         + "견주는 구간 밖의 단계 " + outside + " 개도 뺐습니다.";
 
-            return new HeatBuckets(from.ToArray(), to.ToArray(), labels.ToArray(), true, double.NaN);
+            return new HeatBuckets(from.ToArray(), to.ToArray(), labels.ToArray(),
+                                   shifts.ToArray(), true, double.NaN);
         }
     }
 }

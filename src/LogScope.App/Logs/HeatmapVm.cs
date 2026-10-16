@@ -70,7 +70,8 @@ namespace LogScope.App.Logs
             get
             {
                 if (ByStep && HasSteps)
-                    return "가로가 단계입니다 — 칸 하나가 단계 하나이고, 칸 폭은 쓰지 않습니다.";
+                    return "가로가 단계입니다 — 칸 하나가 단계 하나이고, 칸마다 그 단계의"
+                         + " 밀기 값으로 견줍니다. 칸 폭은 쓰지 않습니다.";
 
                 LogDataset ds = _state.TimeReference;
                 bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
@@ -364,6 +365,29 @@ namespace LogScope.App.Logs
             // 단계로 잘렸는지는 <b>그린 결과</b>에서 읽습니다. 단추 상태로
             // 적으면, 단계가 없어 시간으로 돌아간 날에도 "단계" 라고
             // 적힙니다 (그 경우 r.Warning 이 왜 그런지 말해 줍니다).
+            // 지금 쓰고 있는 밀기 값이 무엇인지 적습니다.
+            //
+            // 그래프에서 단계 하나를 골라 두면 그 단계의 밀기 값이 전체에
+            // 걸립니다. 그러면 <b>다른 단계는 어긋난 채 견줘집니다</b> —
+            // 차이가 없는데 있다고 나옵니다. 그 사실을 적어 두지 않으면
+            // "히트맵이 오차를 잘 못 잡는다" 로 읽힙니다.
+            string how = string.Empty;
+            if (!r.ByStep)
+            {
+                StepPair picked = _state.PickedStep;
+                if (picked != null)
+                {
+                    how = "\n그래프에서 고른 단계(" + picked.Label + ")의 밀기 값으로 전체를"
+                        + " 견줬습니다 — 다른 단계는 어긋나 보일 수 있습니다."
+                        + " [가로를 단계로] 를 켜면 칸마다 그 단계로 맞춰 셉니다.";
+                }
+                else if (_state.HasSteps)
+                {
+                    how = "\n[가로를 단계로] 를 켜면 칸마다 그 단계의 밀기 값으로 견줍니다"
+                        + " (지금은 밀기 값 하나로 전체를 견주고 있습니다).";
+                }
+            }
+
             Summary = "차이가 난 IO " + r.ChangedChannels + "개"
                     + "   /   양쪽에 다 있는 IO " + r.ComparedChannels + "개"
                     + (r.ByStep ? "        가로 단계" : "        칸 폭 " + r.BucketLabel)
@@ -374,7 +398,8 @@ namespace LogScope.App.Logs
                     + "        허용 오차 " + RelativeTolerancePercent + "% (이전 값 대비)"
                     + (_state.Settings.AbsoluteTolerance > 0
                         ? " 또는 절대 " + _state.Settings.AbsoluteTolerance.ToString("0.######") + " 중 큰 쪽"
-                        : "");
+                        : "")
+                    + how;
         }
     }
 }
