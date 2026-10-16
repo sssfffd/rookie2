@@ -70,6 +70,35 @@ namespace LogScope.App.Shell
     /// 누르면 그 그룹의 IO 만 히트맵에 남깁니다 — 어디가 어떻게 어긋났는지는
     /// 그 화면이 제일 잘 보여 줍니다.
     /// </summary>
+    /// <summary>
+    /// 요약 칸의 글 한 줄. 분석 1 은 그룹 줄(<see cref="GroupSummaryVm"/>)을
+    /// 쓰고, <b>분석 2(DB)는 이 줄</b>을 씁니다 — 거기에는 그룹이 없고
+    /// "차이 발생 12개" 처럼 센 수가 들어갑니다.
+    ///
+    /// 그룹 줄과 따로 둔 까닭: 그룹 줄은 누르면 그 그룹의 IO 만 골라
+    /// 그래프로 넘어가는 줄입니다. 거기에 DB 수를 억지로 끼우면 "이
+    /// 줄을 누르면 무엇이 되는지" 가 줄마다 달라집니다.
+    /// </summary>
+    public sealed class CardLineVm
+    {
+        public string Label { get; private set; }
+        public string Value { get; private set; }
+
+        /// <summary>점 색 (<see cref="ScoreBands"/> 의 등급). 빈 글자면 회색.</summary>
+        public string Grade { get; private set; }
+
+        /// <summary>줄 아래에 작게 붙이는 글. 없으면 빈 글자.</summary>
+        public string Detail { get; private set; }
+
+        public CardLineVm(string label, string value, string grade, string detail)
+        {
+            Label = label ?? string.Empty;
+            Value = value ?? string.Empty;
+            Grade = grade ?? ScoreBands.GradeNone;
+            Detail = detail ?? string.Empty;
+        }
+    }
+
     public sealed class GroupSummaryVm
     {
         public string GroupName { get; private set; }
@@ -355,12 +384,36 @@ namespace LogScope.App.Shell
 
         public bool HasGroups { get { return _groups.Count > 0; } }
 
+        // ---- 요약 칸의 글 줄 (분석 2) ----
+        //
+        // 분석 1 은 그룹 줄을 쓰고, 분석 2 는 센 수를 줄로 적습니다.
+        // 칸은 하나라서 둘 중 들어 있는 쪽이 보입니다.
+
+        private List<CardLineVm> _lines = new List<CardLineVm>();
+        private string _lineNote = string.Empty;
+
+        public IList<CardLineVm> Lines { get { return _lines; } }
+        public bool HasLines { get { return _lines.Count > 0; } }
+
+        /// <summary>
+        /// 요약 칸에 적을 줄들. <paramref name="note"/> 는 줄이 없을 때 그
+        /// 자리에 적는 글입니다 — <b>빈 칸으로 두면 "아직 안 봤다" 와
+        /// "봤는데 아무것도 없다" 를 가릴 수 없습니다.</b>
+        /// </summary>
+        public void SetLines(List<CardLineVm> lines, string note)
+        {
+            _lines = lines ?? new List<CardLineVm>();
+            _lineNote = note ?? string.Empty;
+            Raise("Lines"); Raise("HasLines"); Raise("GroupNote");
+        }
+
         /// <summary>요약에 적을 것이 없을 때 그 자리에 적는 글.</summary>
         public string GroupNote
         {
             get
             {
-                if (_groups.Count > 0) return string.Empty;
+                if (_groups.Count > 0 || _lines.Count > 0) return string.Empty;
+                if (_lineNote.Length > 0) return _lineNote;
                 if (!Ready) return "아직 만들지 않았습니다.";
                 return "그룹이 없거나 아직 비교하지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
             }

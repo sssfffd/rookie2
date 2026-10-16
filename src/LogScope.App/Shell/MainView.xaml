@@ -357,6 +357,72 @@
                                                    Visibility="{Binding GroupNote, Converter={StaticResource TextToVisibility}}" />
 
                                         <!--
+                                          ===== 분석 2 의 요약 줄 =====
+
+                                          분석 1 은 아래의 그룹 줄을 쓰고, 분석 2 는
+                                          이 줄을 씁니다 (칸은 하나라서 들어 있는 쪽이
+                                          보입니다). 누르면 그 분석 화면으로 넘어갑니다 —
+                                          그룹 줄과 같은 손놀림입니다.
+                                        -->
+                                        <ItemsControl ItemsSource="{Binding Lines}"
+                                                      Visibility="{Binding HasLines, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:CardLineVm}">
+                                                    <Button Style="{StaticResource RowButton}"
+                                                            Click="OnCardClick"
+                                                            Tag="{Binding DataContext.Number, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            ToolTip="이 분석 화면으로 넘어갑니다."
+                                                            Margin="0,1,0,3">
+                                                        <StackPanel>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <Border x:Name="LineDot" Grid.Column="0"
+                                                                        Width="8" Height="8" CornerRadius="4"
+                                                                        VerticalAlignment="Center" Margin="0,0,7,0"
+                                                                        Background="{DynamicResource Brush.Muted}" />
+
+                                                                <TextBlock Grid.Column="1" Text="{Binding Label}"
+                                                                           VerticalAlignment="Center" FontSize="12"
+                                                                           TextTrimming="CharacterEllipsis" />
+
+                                                                <TextBlock Grid.Column="2" Text="{Binding Value}"
+                                                                           Style="{StaticResource Muted}" FontSize="11"
+                                                                           VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                            </Grid>
+
+                                                            <!-- 줄 아래 작은 글. 없으면 줄 높이만 차지하지 않게
+                                                                 비어 있을 때는 숨깁니다. -->
+                                                            <TextBlock Text="{Binding Detail}"
+                                                                       Style="{StaticResource Muted}" FontSize="10"
+                                                                       TextWrapping="Wrap" Margin="15,2,0,0"
+                                                                       Visibility="{Binding Detail, Converter={StaticResource TextToVisibility}}" />
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeGood}">
+                                                            <Setter TargetName="LineDot" Property="Background"
+                                                                    Value="{DynamicResource Brush.Good}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeWarn}">
+                                                            <Setter TargetName="LineDot" Property="Background"
+                                                                    Value="{DynamicResource Brush.Warn}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeBad}">
+                                                            <Setter TargetName="LineDot" Property="Background"
+                                                                    Value="{DynamicResource Brush.Bad}" />
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!--
                                           그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다.
                                           한 줄이 두 줄짜리가 됐습니다 (이름 17 + 차이 내용 16
                                           + 위아래 여백 5 = 38). 여섯 줄이 230 이고,

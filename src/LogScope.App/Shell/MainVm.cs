@@ -32,7 +32,9 @@ namespace LogScope.App.Shell
             Cards = new List<AnalysisCardVm>
             {
                 new AnalysisCardVm(1, names.Title(1), names.Summary(1), true),
-                new AnalysisCardVm(2, names.Title(2), names.Summary(2), false),
+                // 분석 2 는 만들어져 있습니다 (0.93 까지는 거짓으로 남아
+                // 있었는데, 그러면 요약 칸에 "아직 만들지 않았습니다" 가 떴습니다).
+                new AnalysisCardVm(2, names.Title(2), names.Summary(2), true),
                 new AnalysisCardVm(3, names.Title(3), names.Summary(3), false),
             };
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
@@ -121,7 +123,13 @@ namespace LogScope.App.Shell
             if (Cards.Count < 2) return;
             AnalysisCardVm card = Cards[1];
 
-            if (!_state.HasDbResult) { card.ClearVerdict(); return; }
+            if (!_state.HasDbResult)
+            {
+                card.ClearVerdict();
+                card.SetLines(new List<CardLineVm>(),
+                    "아직 읽지 않았습니다. 위 칸에 견줄 자리를 넣으면 그 자리에서 읽습니다.");
+                return;
+            }
 
             var t = new DbDiffList.Tally();
             t.Changed = _state.DbChanged;
@@ -132,9 +140,48 @@ namespace LogScope.App.Shell
             // 이름까지 넘깁니다 — WARNING 이면 어떤 IO 가 달라졌는지
             // 낱말 아래에 그대로 적힙니다.
             card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t, _state.DbChangedIos));
+            card.SetLines(DbLines(t, word), string.Empty);
         }
 
         /// <summary>판정 낱말에 맞는 색. 칸의 색 이름으로 옮겨 줍니다.</summary>
+        /// <summary>
+        /// 분석 2 칸의 <b>요약</b> 줄들. 센 수 셋과, 달라진 IO 이름입니다.
+        ///
+        /// 낱말 아래의 한 줄(<see cref="DbVerdict.Why"/>)과 겹치지 않습니다 —
+        /// 거기는 "그래서 어떻다" 는 문장이고, 여기는 <b>수</b>입니다.
+        /// 분석 1 의 요약 칸이 그룹별 수를 적는 자리와 같은 자리입니다.
+        ///
+        /// 이름을 FAIL 에서 안 적는 것도 <see cref="DbVerdict"/> 와 같은
+        /// 까닭입니다 — 1200 개 중 여덟 개만 적으면 "이 여덟 개가 문제" 로
+        /// 읽힙니다. 거기서 한 번 가린 것을 여기서 또 가르지 않으려고
+        /// 낱말을 받아서 봅니다.
+        /// </summary>
+        private List<CardLineVm> DbLines(DbDiffList.Tally t, string word)
+        {
+            var lines = new List<CardLineVm>();
+
+            lines.Add(new CardLineVm("차이 발생", t.Changed.ToString("N0") + "개",
+                t.Changed > 0 ? GradeOf(word) : ScoreBands.GradeGood, string.Empty));
+
+            lines.Add(new CardLineVm("없어진 IO", t.Gone.ToString("N0") + "개",
+                t.Gone > 0 ? ScoreBands.GradeWarn : ScoreBands.GradeGood,
+                t.Gone > 0 ? "판정에는 안 넣습니다." : string.Empty));
+
+            lines.Add(new CardLineVm("새로 생긴 IO", t.Added.ToString("N0") + "개",
+                t.Added > 0 ? ScoreBands.GradeWarn : ScoreBands.GradeGood,
+                t.Added > 0 ? "판정에는 안 넣습니다." : string.Empty));
+
+            if (word == DbVerdict.Warning && _state.DbChangedIos != null && _state.DbChangedIos.Count > 0)
+            {
+                int more = t.Changed - _state.DbChangedIos.Count;
+                string names = string.Join(", ", _state.DbChangedIos.ToArray());
+                if (more > 0) names += " 외 " + more.ToString("N0") + "개";
+                lines.Add(new CardLineVm("달라진 IO", string.Empty, ScoreBands.GradeWarn, names));
+            }
+
+            return lines;
+        }
+
         private static string GradeOf(string verdict)
         {
             if (verdict == DbVerdict.Pass) return ScoreBands.GradeGood;
