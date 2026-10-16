@@ -60,14 +60,23 @@ namespace LogScope.App.Shell
             {
                 Cards[0].SetScore(AnalysisCardVm.MaxScore);   // ← 진짜 점수가 들어갈 자리
 
-                // IO 개수는 칸에서 뺐습니다. 세 군데에 같은 수가 적혀 있었습니다
-                // (칸 · 종합 · 대시보드). 칸은 "요약" 을 보는 자리로 비워 두고,
-                // 수는 위의 종합 칸 한 곳에서 셉니다.
+                // 견준 결과를 칸에 적습니다.
                 //
-                // 채우는 길(SetStats)은 남겨 둡니다 — 분석 2(DB)가 "표 12개 중
-                // 3 개 달라짐" 을 적을 자리입니다. 비어 있으면 칸 자체가
-                // 사라지므로 빈 자리가 보이지는 않습니다.
-                Cards[0].SetStats(new List<StatVm>());
+                // 0.85 에 뺐던 것을 0.92 에 되넣었습니다. 뺀 까닭은 같은 수가
+                // 세 군데(칸 · 종합 · 대시보드)에 적혀 있던 것이었는데, 파일을
+                // <b>끌어다 놓자마자</b> 읽고 견주는 흐름에서는 칸이 그대로
+                // 있으면 "넣었는데 아무 일도 안 했다" 로 보입니다. 메인 화면만
+                // 보고도 견줘졌다는 것을 알아야 합니다.
+                //
+                // 종합 칸의 수와 같은 값을 씁니다 (둘 다 CompareResult 를
+                // 그대로 읽습니다) — 따로 셈하면 두 수가 어긋납니다.
+                Cards[0].SetStats(new List<StatVm>
+                {
+                    new StatVm("차이 난 IO",
+                               r.ChangedCount.ToString("N0") + " / " + r.CommonCount.ToString("N0")),
+                    new StatVm("한쪽에만 있는 IO",
+                               (r.OnlyBefore.Count + r.OnlyAfter.Count).ToString("N0") + "개"),
+                });
             }
 
             Cards[0].SetGroups(BuildGroups(r));
@@ -120,7 +129,9 @@ namespace LogScope.App.Shell
             t.Added = _state.DbAdded;
 
             string word = DbVerdict.Of(t.Changed);
-            card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t));
+            // 이름까지 넘깁니다 — WARNING 이면 어떤 IO 가 달라졌는지
+            // 낱말 아래에 그대로 적힙니다.
+            card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t, _state.DbChangedIos));
         }
 
         /// <summary>판정 낱말에 맞는 색. 칸의 색 이름으로 옮겨 줍니다.</summary>
@@ -352,7 +363,6 @@ namespace LogScope.App.Shell
                 rec.AbsoluteTolerance = st.AbsoluteTolerance;
                 rec.ToleranceRuleCount = st.Tolerances != null ? st.Tolerances.Count : 0;
                 rec.AlignIo = st.AlignIo ?? string.Empty;
-                rec.AxisIo = st.AxisIo ?? string.Empty;
                 return rec.BasisText;
             }
         }
@@ -409,14 +419,13 @@ namespace LogScope.App.Shell
             double pct = _state.Settings.RelativeTolerancePercent;
             double abs = _state.Settings.AbsoluteTolerance;
             string align = _state.Settings.AlignIo;
-            string axis = _state.Settings.AxisIo;
             string rules = ToleranceSignature();
 
             for (int i = 0; i < _history.Count; i++)
             {
                 HistoryRowVm row = _history[i];
                 row.Against(live,
-                            live && row.Record.SameBasis(pct, abs, align, axis, rules),
+                            live && row.Record.SameBasis(pct, abs, align, rules),
                             live, AnalysisCardVm.MaxScore,
                             live ? r.ChangedCount : 0);
             }
@@ -456,7 +465,6 @@ namespace LogScope.App.Shell
             rec.ToleranceRules = ToleranceSignature();
             rec.ToleranceRuleCount = Table().OverrideCount;
             rec.AlignIo = _state.Settings.AlignIo;
-            rec.AxisIo = _state.Settings.AxisIo;
             rec.AppliedShift = r.AppliedShift;
 
             string problem;

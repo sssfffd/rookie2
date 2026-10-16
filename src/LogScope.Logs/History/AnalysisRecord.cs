@@ -95,7 +95,6 @@ namespace LogScope.Logs.History
         /// <summary>IO 별 규칙이 몇 개였는지. 화면에 한 줄로 적을 때 씁니다.</summary>
         public int ToleranceRuleCount;
         public string AlignIo = string.Empty;
-        public string AxisIo = string.Empty;
         public double AppliedShift;
 
         /// <summary>화면에 적는 이름. 붙인 이름이 없으면 저장 시각을 씁니다.</summary>
@@ -116,22 +115,20 @@ namespace LogScope.Logs.History
         /// 기준이 다르면 수를 나란히 놓아도 뜻이 없습니다. 화면에서 그렇다고
         /// 알려 주려고 여기서 가립니다.
         /// </summary>
-        public bool SameBasis(double tolerancePercent, double absoluteTolerance,
-                              string alignIo, string axisIo)
+        public bool SameBasis(double tolerancePercent, double absoluteTolerance, string alignIo)
         {
-            return SameBasis(tolerancePercent, absoluteTolerance, alignIo, axisIo, string.Empty);
+            return SameBasis(tolerancePercent, absoluteTolerance, alignIo, string.Empty);
         }
 
         /// <param name="toleranceRules">
         /// 지금의 IO 별 규칙 (ToleranceTable.Signature). 빈 글자면 규칙이 없다는 뜻입니다.
         /// </param>
         public bool SameBasis(double tolerancePercent, double absoluteTolerance,
-                              string alignIo, string axisIo, string toleranceRules)
+                              string alignIo, string toleranceRules)
         {
             return TolerancePercent == tolerancePercent
                 && AbsoluteTolerance == absoluteTolerance
                 && string.Equals(AlignIo ?? string.Empty, alignIo ?? string.Empty, StringComparison.Ordinal)
-                && string.Equals(AxisIo ?? string.Empty, axisIo ?? string.Empty, StringComparison.Ordinal)
                 && string.Equals(ToleranceRules ?? string.Empty, toleranceRules ?? string.Empty,
                                  StringComparison.Ordinal);
         }
@@ -147,7 +144,6 @@ namespace LogScope.Logs.History
                 if (ToleranceRuleCount > 0)
                     s += " (IO 별 " + ToleranceRuleCount.ToString(CultureInfo.InvariantCulture) + "개)";
                 if (AlignIo.Length > 0) s += "   시간 맞추기 \"" + AlignIo + "\"";
-                if (AxisIo.Length > 0) s += "   가로축 \"" + AxisIo + "\"";
                 return s;
             }
         }
@@ -190,7 +186,6 @@ namespace LogScope.Logs.History
             d["toleranceRules"] = ToleranceRules ?? string.Empty;
             d["toleranceRuleCount"] = (double)ToleranceRuleCount;
             d["alignIo"] = AlignIo ?? string.Empty;
-            d["axisIo"] = AxisIo ?? string.Empty;
             d["appliedShift"] = AppliedShift;
             return d;
         }
@@ -237,7 +232,6 @@ namespace LogScope.Logs.History
             r.ToleranceRuleCount = Json.GetInt(d, "toleranceRuleCount", 0);
             if (r.ToleranceRuleCount < 0) r.ToleranceRuleCount = 0;
             r.AlignIo = Json.GetString(d, "alignIo", string.Empty);
-            r.AxisIo = Json.GetString(d, "axisIo", string.Empty);
             r.AppliedShift = Json.GetDouble(d, "appliedShift", 0);
             return r;
         }

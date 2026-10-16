@@ -1101,6 +1101,39 @@ namespace LogScope.Db
         /// 화면 위에 적는 한 줄. <b>글자도 Core 에 둡니다</b> — 화면에서
         /// 만들면 CSV 나 다른 화면이 같은 글을 또 짜게 됩니다.
         /// </summary>
+        /// <summary>
+        /// <b>값이 달라진 IO 이름들</b>. 차례는 목록에 나온 차례입니다.
+        ///
+        /// WARNING 일 때 "어떤 항목이 달라졌나" 를 바로 적어 주려고
+        /// 냅니다 — 개수만 보면 결국 분석 2 화면을 열어 목록을 뒤져야
+        /// 합니다.
+        ///
+        /// <paramref name="max"/> 개까지만 모읍니다. 수백 개를 한 줄에
+        /// 늘어놓으면 칸을 넘기고, 넘긴 글은 아무도 못 읽습니다. 몇 개를
+        /// 더 안 적었는지는 <b>부르는 쪽이 개수(Tally)로 알 수 있습니다</b>.
+        /// </summary>
+        public static List<string> ChangedIos(List<DbDiffLine> lines, int max)
+        {
+            var names = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            if (lines == null || max <= 0) return names;
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DbDiffLine ln = lines[i];
+                if (ln == null || ln.Kind == DbDiffLine.KindNote) continue;
+                if (ln.Mark.Length == 0) continue;
+
+                // 같은 이름이 표마다 있을 수 있어 표 이름까지 보고 가립니다
+                // (세는 쪽 Count 와 같은 잣대라야 개수와 이름이 안 어긋납니다).
+                if (!seen.Add(ln.Table + "\u0001" + ln.Io)) continue;
+
+                names.Add(ln.Io);
+                if (names.Count >= max) break;
+            }
+            return names;
+        }
+
         public static string Headline(List<DbDiffLine> lines)
         {
             Tally t = Count(lines);

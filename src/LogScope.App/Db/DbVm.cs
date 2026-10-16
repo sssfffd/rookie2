@@ -135,6 +135,14 @@ namespace LogScope.App.Db
         /// <summary>마지막으로 센 수 (차이 발생 · 없어진 IO · 새로 생긴 IO).</summary>
         public DbDiffList.Tally Tally { get { return _tally; } }
 
+        private List<string> _changedIos = new List<string>();
+
+        /// <summary>
+        /// 값이 달라진 IO 이름들 (앞 몇 개). WARNING 일 때 "어떤 항목이
+        /// 달라졌나" 를 메인 화면 칸에 그대로 적는 데 씁니다.
+        /// </summary>
+        public IList<string> ChangedIos { get { return _changedIos; } }
+
         /// <summary>읽고 견준 뒤. 메인 화면 칸이 이걸 듣습니다.</summary>
         public event EventHandler ResultChanged;
 
@@ -352,14 +360,19 @@ namespace LogScope.App.Db
 
             // 세는 것은 늘 <b>걸러내지 않은 전체</b>입니다. 걸러 보기를
             // 켰다고 "없어진 IO" 가 0 개로 보이면 안 됩니다.
-            Summary = Overview(before, after, TakeNotes(DbDiffList.Build(_diff, null)));
+            //
+            // 한 번만 짓습니다. 전에는 같은 목록을 세 번 지었는데 (요약 ·
+            // 개수 · 이름), 10M 칸짜리 표에서는 그 자체가 세 배 일입니다.
+            List<DbDiffLine> all = TakeNotes(DbDiffList.Build(_diff, null));
+
+            _tally = DbDiffList.Count(all);
+            _changedIos = DbDiffList.ChangedIos(all, DbVerdict.MaxNames);
+            _hasTally = true;
+
+            Summary = Overview(before, after, all);
 
             Rebuild();
             BuildScript();
-
-            // 센 수는 걸러내지 않은 전체 기준입니다 (위 Summary 와 같습니다).
-            _tally = DbDiffList.Count(TakeNotes(DbDiffList.Build(_diff, null)));
-            _hasTally = true;
 
             EventHandler h = ResultChanged;
             if (h != null) h(this, EventArgs.Empty);
@@ -373,9 +386,13 @@ namespace LogScope.App.Db
         /// 세는 일과 글자는 <see cref="DbDiffList.Headline"/> 에 있습니다.
         /// 여기서 또 세면 걸러 보기를 켰을 때 수가 달라집니다.
         /// </summary>
-        private static string Overview(DbSnapshot b, DbSnapshot a, List<DbDiffLine> all)
+        private string Overview(DbSnapshot b, DbSnapshot a, List<DbDiffLine> all)
         {
-            return DbDiffList.Headline(all)
+            // 판정과 그 까닭을 앞에 둡니다. <b>메인 화면 칸과 같은 글</b>
+            // 입니다 (DbVerdict 한 곳에서 나옵니다) — 두 화면이 다른 말을
+            // 하면 어느 쪽이 참인지 알 수가 없습니다.
+            return DbVerdict.Of(_tally.Changed) + " — " + DbVerdict.Why(_tally, _changedIos)
+                 + "\n" + DbDiffList.Headline(all)
                  + "      (읽은 행 " + b.RowCount.ToString("N0")
                  + " / " + a.RowCount.ToString("N0") + ")";
         }

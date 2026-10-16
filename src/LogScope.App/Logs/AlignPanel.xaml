@@ -6,21 +6,16 @@
              FontFamily="Segoe UI" FontSize="12">
 
     <!--
-      가로축과 시간 맞추기. 그래프 화면과 히트맵 화면이 이 판 하나를 똑같이
-      띄웁니다. 도구 줄에 늘어놓지 않고 접어 둔 이유는 간단합니다 — 한 번
-      정해 놓고 계속 쓰는 값들이라, 늘 펼쳐 두면 도구 줄만 길어집니다.
+      시간 맞추기. 그래프 화면과 히트맵 화면이 이 판 하나를 똑같이 띄웁니다.
+      도구 줄에 늘어놓지 않고 접어 둔 이유는 간단합니다 — 한 번 정해 놓고
+      계속 쓰는 값들이라, 늘 펼쳐 두면 도구 줄만 길어집니다.
+
+      0.92 까지는 위에 "가로축" 칸이 하나 더 있었습니다 (로그의 시간 열
+      대신 다른 IO 를 가로축으로 놓기). 쓰이지 않아 걷어냈습니다.
     -->
     <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
             Background="{DynamicResource Brush.Panel}" Padding="14,12">
         <StackPanel Width="440">
-
-            <TextBlock Text="가로축" Style="{StaticResource H2}" Margin="0,0,0,4" />
-            <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,6"
-                       Text="로그의 시간 열 대신 다른 IO 를 가로축으로 놓습니다. 경과 시간이나 스캔 번호처럼 값이 늘어나기만 하는 IO 만 고를 수 있습니다." />
-            <ComboBox ItemsSource="{Binding AxisChoices}"
-                      SelectedItem="{Binding AxisIo, Mode=TwoWay}" />
-
-            <Border Height="1" Background="{DynamicResource Brush.Border}" Margin="0,14,0,12" />
 
             <TextBlock Text="시간 맞추기" Style="{StaticResource H2}" Margin="0,0,0,4" />
             <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,6"

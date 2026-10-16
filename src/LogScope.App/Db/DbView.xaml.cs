@@ -47,6 +47,9 @@ namespace LogScope.App.Db
         public bool HasTally { get { return _vm.HasTally; } }
         public DbDiffList.Tally Tally { get { return _vm.Tally; } }
 
+        /// <summary>값이 달라진 IO 이름들 (앞 몇 개). 메인 화면 칸이 적습니다.</summary>
+        public IList<string> ChangedIos { get { return _vm.ChangedIos; } }
+
         private void OnVmResultChanged(object sender, EventArgs e)
         {
             EventHandler h = ResultChanged;

@@ -16,7 +16,7 @@ namespace LogScope.App.Logs
     /// 다 되어 있습니다 (<see cref="StepPair.Shift"/>).
     ///
     /// <b>이 뷰모델은 고른 번호만 들고 있습니다.</b> 실제로 다시 견주고
-    /// 구간을 맞추는 일은 창이 합니다 (가로축·시간 맞추기와 같은 방식).
+    /// 구간을 맞추는 일은 창이 합니다 (시간 맞추기와 같은 방식).
     /// </summary>
     public sealed class StepVm : ObservableObject
     {

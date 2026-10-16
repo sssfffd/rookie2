@@ -310,6 +310,32 @@ namespace LogScope.App.Logs
             AfterSelection();
         }
 
+        /// <summary>
+        /// 이 이름들만 고릅니다. <b>몇 개를 찾았는지 돌려줍니다</b> — 그룹에
+        /// 담아 둔 IO 가 지금 열어 둔 로그에 없을 수 있고, 그때 아무 말 없이
+        /// 빈 그래프를 보여 주면 왜 비었는지 알 수가 없습니다.
+        ///
+        /// 메인 화면에서 그룹을 눌러 그래프로 넘어올 때 씁니다.
+        /// </summary>
+        public int SelectOnly(IEnumerable<string> names)
+        {
+            for (int i = 0; i < All.Count; i++) All[i].IsSelected = false;
+
+            int found = 0;
+            if (names != null)
+            {
+                foreach (string n in names)
+                {
+                    IoRowVm vm = Find(n);
+                    if (vm == null) continue;
+                    vm.IsSelected = true;
+                    found++;
+                }
+            }
+            AfterSelection();
+            return found;
+        }
+
         public void ToggleGroup(GroupRowVm head)
         {
             if (head == null) return;

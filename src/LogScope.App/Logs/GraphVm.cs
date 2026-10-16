@@ -273,6 +273,50 @@ namespace LogScope.App.Logs
         // ---------------- 아래 띠의 글자 ----------------
 
         private string _readout = string.Empty;
+        // ---------------- 그룹을 눌러 넘어왔을 때 ----------------
+        //
+        // 메인 화면에서 그룹 줄을 누르면 그 그룹의 IO 만 골라 둔 채로 이
+        // 화면이 열립니다. 무엇을 보고 있는지 적어 주지 않으면, 그래프에
+        // 선이 몇 개뿐인 까닭을 알 수가 없습니다 (왼쪽 목록에서 손으로
+        // 고른 것과 구별되지 않습니다).
+
+        private string _focus = string.Empty;
+
+        /// <summary>아래 줄에 적는 글. 안 눌렀으면 빈 글자라 줄이 사라집니다.</summary>
+        public string FocusText
+        {
+            get { return _focus; }
+            private set { Set(ref _focus, value); }
+        }
+
+        /// <summary>
+        /// 그룹을 눌러 넘어왔을 때. 못 찾은 IO 가 있으면 <b>몇 개를 못
+        /// 찾았는지 같이 적습니다</b> — 그룹은 사람이 손으로 담는 것이라
+        /// 지금 열어 둔 로그에 없는 이름이 들어 있을 수 있습니다.
+        /// </summary>
+        public void TakeGroup(string groupName, int found, int asked)
+        {
+            if (string.IsNullOrEmpty(groupName) || asked <= 0)
+            {
+                FocusText = string.Empty;
+                return;
+            }
+
+            string s = "\"" + groupName + "\" 그룹의 IO " + found + " 개를 골라 두었습니다.";
+            if (found < asked)
+                s += "  담아 둔 " + asked + " 개 중 " + (asked - found)
+                   + " 개는 지금 열어 둔 로그에 없습니다.";
+            if (found == 0)
+                s += "  왼쪽 목록에서 직접 고르거나, 그룹에 담긴 이름을 확인해 주세요.";
+            FocusText = s;
+        }
+
+        /// <summary>손으로 다시 고르면 그 글은 치웁니다 (이제 그룹이 아닙니다).</summary>
+        public void ForgetGroup()
+        {
+            FocusText = string.Empty;
+        }
+
         public string ReadoutText
         {
             get { return _readout; }

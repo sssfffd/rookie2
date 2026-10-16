@@ -109,9 +109,6 @@ namespace LogScope.Tests
                 DifferenceAcrossGrids();
                 DifferenceOfStateChannels();
                 DifferenceOutsideOverlap();
-                AxisChannelSwap();
-                AxisRefusesCoarseValues();
-                AxisWarnsOnFlatRuns();
                 HeatmapNameFilter();
                 HistorySaveAndLoad();
                 HistoryEdgeCases();
@@ -1462,105 +1459,6 @@ namespace LogScope.Tests
                   double.IsNaN(DifferenceSeries.At(dsB, bi, dsA, -1, 0, 7)), null);
         }
 
-        private static void AxisChannelSwap()
-        {
-            Say("가로축 바꿔 끼우기");
-
-            // ELAPSED 는 0 에서 990 까지 10 씩 늘어납니다.
-            // WOBBLE 은 오르내립니다 — 가로축이 될 수 없습니다.
-            var sb = new StringBuilder("Time,ELAPSED,WOBBLE,V\n");
-            for (int i = 0; i < 100; i++)
-                sb.Append(i).Append(',').Append(i * 10)
-                  .Append(',').Append(i % 7)
-                  .Append(',').Append(i * 2).Append('\n');
-            LogDataset ds = Open(WriteCsv("axis.csv", sb.ToString()), Orientation.Auto);
-
-            Check("처음에는 로그의 시간 열", ds.UsesOwnTime, ds.AxisChannel);
-            Near("원래 시간축 끝", ds.TimeEnd, 99, 1e-9);
-
-            string problem;
-            Check("늘어나는 IO 는 가로축이 됨", ds.SetAxisChannel("ELAPSED", out problem), problem);
-            Check("가로축 이름이 바뀜", ds.AxisChannel == "ELAPSED", ds.AxisChannel);
-            Check("이제 로그의 시간 열이 아님", !ds.UsesOwnTime, null);
-            Near("가로축 시작", ds.TimeStart, 0, 1e-9);
-            Near("가로축 끝", ds.TimeEnd, 990, 1e-9);
-
-            // 값 읽기가 새 가로축을 따라가는지. ELAPSED 500 은 i = 50 이고,
-            // 그때 V 는 100 입니다.
-            int v = ds.FindChannel("V");
-            Near("새 가로축으로 값을 읽음", ds.SampleAt(v, 500), 100, 1e-6);
-
-            // 되돌리기
-            ds.ClearAxisChannel();
-            Check("되돌리면 로그의 시간 열", ds.UsesOwnTime, null);
-            Near("원래 시간축이 그대로 살아 있음", ds.TimeEnd, 99, 1e-9);
-            Near("값도 원래대로", ds.SampleAt(v, 50), 100, 1e-6);
-
-            // 오르내리는 IO 는 거부합니다.
-            Check("뒤로 가는 IO 는 거부", !ds.SetAxisChannel("WOBBLE", out problem), null);
-            Check("이유를 알려 줌", problem.Contains("뒤로"), problem);
-            Check("거부했으면 시간축은 그대로", ds.UsesOwnTime, ds.AxisChannel);
-
-            // 후보 추리기
-            Check("늘어나는 IO 는 후보", ds.CanBeAxis(ds.FindChannel("ELAPSED")), null);
-            Check("오르내리는 IO 는 후보 아님", !ds.CanBeAxis(ds.FindChannel("WOBBLE")), null);
-        }
-
-        /// <summary>
-        /// 채널 값은 float 라 유효자리가 약 7 자리입니다. 1970 년부터 센
-        /// 밀리초 같은 큰 수를 가로축으로 놓으면 이웃 표본이 같은 값으로
-        /// 뭉개져 그래프가 계단이 됩니다. 조용히 그리지 말고 막아야 합니다.
-        /// </summary>
-        private static void AxisRefusesCoarseValues()
-        {
-            Say("가로축 — 값이 너무 커서 표본이 뭉개질 때");
-
-            // EPOCH 는 1.7e12 근처에서 100 씩 오릅니다. 그 크기에서 float 눈금은
-            // 약 20 만이라, 100 간격은 아예 담기지 않습니다.
-            // SMALL 은 같은 간격인데 0 에서 시작해서 멀쩡합니다.
-            var sb = new StringBuilder("Time,EPOCH,SMALL,V\n");
-            for (int i = 0; i < 200; i++)
-                sb.Append(i).Append(',').Append(1700000000000L + i * 100L)
-                  .Append(',').Append(i * 100)
-                  .Append(',').Append(i).Append('\n');
-            LogDataset ds = Open(WriteCsv("axis_coarse.csv", sb.ToString()), Orientation.Auto);
-
-            string problem;
-            Check("뭉개지는 IO 는 거부", !ds.SetAxisChannel("EPOCH", out problem), problem);
-            Check("왜 안 되는지 알려 줌", problem.Contains("너무 커서"), problem);
-            Check("거부했으면 시간축은 그대로", ds.UsesOwnTime, ds.AxisChannel);
-            Check("뭉개지는 IO 는 후보도 아님", !ds.CanBeAxis(ds.FindChannel("EPOCH")), null);
-
-            Check("같은 간격이라도 작은 수는 됨", ds.SetAxisChannel("SMALL", out problem), problem);
-            Near("가로축 끝", ds.TimeEnd, 199 * 100, 1e-6);
-            ds.ClearAxisChannel();
-        }
-
-        /// <summary>
-        /// 여러 표본이 같은 값을 갖는 IO(1 초 단위 카운터 같은 것)는 막지
-        /// 않습니다. 대신 왜 가로로 겹쳐 보이는지 말해 줘야 합니다.
-        /// </summary>
-        private static void AxisWarnsOnFlatRuns()
-        {
-            Say("가로축 — 여러 표본이 같은 자리에 겹칠 때");
-
-            // TICK 은 10 표본마다 1 씩 오릅니다. 100 표본 중 90 개가 직전과
-            // 같은 값입니다.
-            var sb = new StringBuilder("Time,TICK,V\n");
-            for (int i = 0; i < 100; i++)
-                sb.Append(i).Append(',').Append(i / 10).Append(',').Append(i).Append('\n');
-            LogDataset ds = Open(WriteCsv("axis_flat.csv", sb.ToString()), Orientation.Auto);
-
-            string problem;
-            Check("겹쳐도 가로축은 됨", ds.SetAxisChannel("TICK", out problem), problem);
-            Check("겹친다고 알려 줌", ds.AxisNote.Length > 0, ds.AxisNote);
-            Check("몇 개가 겹치는지 적음", ds.AxisNote.Contains("90"), ds.AxisNote);
-
-            // 되돌리면 알림도 사라집니다.
-            ds.ClearAxisChannel();
-            Check("되돌리면 알림도 사라짐", ds.AxisNote.Length == 0, ds.AxisNote);
-        }
-
         /// <summary>
         /// 분석 결과를 남기고 다시 읽습니다. 기록 하나에 파일 하나이고,
         /// 최근 것이 앞에 옵니다.
@@ -1643,7 +1541,7 @@ namespace LogScope.Tests
             a.SetScore(3, false, 0);
             a.ComparedCount = 184; a.ChangedCount = 12; a.OneSidedCount = 3;
             a.TolerancePercent = 0.1; a.AbsoluteTolerance = 0.25;
-            a.AlignIo = "START 신호"; a.AxisIo = "경과 시간"; a.AppliedShift = -115;
+            a.AlignIo = "START 신호"; a.AppliedShift = -115;
 
             string problem;
             string id = HistoryStore.Save(folder, a, out problem);
@@ -1655,7 +1553,7 @@ namespace LogScope.Tests
             b.SavedAt = new DateTime(2026, 3, 21, 17, 5, 0);
             b.ComparedCount = 184; b.ChangedCount = 20;
             b.TolerancePercent = 0.1; b.AbsoluteTolerance = 0.25;
-            b.AlignIo = "START 신호"; b.AxisIo = "경과 시간";
+            b.AlignIo = "START 신호";
             HistoryStore.Save(folder, b, out problem);
             Check("둘째도 저장됨", problem.Length == 0, problem);
 
@@ -1683,7 +1581,6 @@ namespace LogScope.Tests
             Near("허용 오차", r.TolerancePercent, 0.1, 1e-9);
             Near("절대 오차", r.AbsoluteTolerance, 0.25, 1e-9);
             Check("맞추기 IO", r.AlignIo == "START 신호", r.AlignIo);
-            Check("가로축 IO", r.AxisIo == "경과 시간", r.AxisIo);
             Near("밀기 값", r.AppliedShift, -115, 1e-9);
             Check("저장 시각", r.SavedAt == new DateTime(2026, 3, 14, 9, 30, 0),
                   r.SavedAt.ToString("s"));
@@ -1724,13 +1621,12 @@ namespace LogScope.Tests
             // 기준 견주기
             var r = new AnalysisRecord();
             r.TolerancePercent = 0.1; r.AbsoluteTolerance = 0;
-            r.AlignIo = "START"; r.AxisIo = string.Empty;
+            r.AlignIo = "START";
 
-            Check("같은 기준", r.SameBasis(0.1, 0, "START", ""), null);
-            Check("허용 오차가 다르면", !r.SameBasis(1.0, 0, "START", ""), null);
-            Check("절대 오차가 다르면", !r.SameBasis(0.1, 0.5, "START", ""), null);
-            Check("맞추기가 다르면", !r.SameBasis(0.1, 0, "RUN", ""), null);
-            Check("가로축이 다르면", !r.SameBasis(0.1, 0, "START", "경과"), null);
+            Check("같은 기준", r.SameBasis(0.1, 0, "START"), null);
+            Check("허용 오차가 다르면", !r.SameBasis(1.0, 0, "START"), null);
+            Check("절대 오차가 다르면", !r.SameBasis(0.1, 0.5, "START"), null);
+            Check("맞추기가 다르면", !r.SameBasis(0.1, 0, "RUN"), null);
 
             // 없는 폴더를 읽으면 빈 목록입니다 (터지지 않습니다).
             Check("없는 폴더는 빈 목록",
@@ -1929,9 +1825,9 @@ namespace LogScope.Tests
             rec.AbsoluteTolerance = 0;
             rec.ToleranceRules = bt.Signature();
             Check("같은 규칙이면 같은 기준",
-                  rec.SameBasis(0.5, 0, "", "", bt.Signature()), null);
+                  rec.SameBasis(0.5, 0, "", bt.Signature()), null);
             Check("규칙이 달라지면 다른 기준",
-                  !rec.SameBasis(0.5, 0, "", "", string.Empty), null);
+                  !rec.SameBasis(0.5, 0, "", string.Empty), null);
         }
 
         // ======================= 분석 2 : DB =======================
@@ -3619,13 +3515,11 @@ namespace LogScope.Tests
             Check("같은 이름의 둘째", t.IndexOfName("가열", 1) == 3,
                   t.IndexOfName("가열", 1).ToString());
 
-            // 가로축을 다른 IO 로 갈아 끼워도 단계는 그 자리입니다.
-            // 시각을 적어 두었다면 여기서 어긋납니다.
-            string problem;
-            Check("가로축 갈아 끼우기", ds.SetAxisChannel("PV", out problem), problem);
-            Check("단계는 그대로", ds.Steps.Count == 4 && ds.Steps[1].First == 10, null);
-            Near("바뀐 축에서의 시작 값", ds.Steps.StartTime(ds, 1), 10, 1e-6);
-            ds.ClearAxisChannel();
+            // 단계는 표본 번호로 적혀 있고, 시각은 그 번호에서 그때그때
+            // 읽습니다. 그래서 시간축을 손대는 어떤 기능이 들어와도
+            // 단계 경계는 어긋나지 않습니다.
+            Check("단계 경계는 표본 번호", t[1].First == 10 && t[1].Last == 29,
+                  t[1].First + "~" + t[1].Last);
 
             // 없는 IO 를 집으면 짐작하지 않고 이유를 돌려줍니다.
             LogDataset none = OpenWithSteps(WriteCsv("steps2.csv", sb.ToString()), "NO_SUCH_IO");
@@ -3887,29 +3781,69 @@ namespace LogScope.Tests
                   && DbVerdict.Pass != DbVerdict.Fail, null);
 
             // ---- 낱말 아래 글 ----
-            var clean = new DbDiffList.Tally();
-            Check("PASS 의 글은 차이 발생 0 개", DbVerdict.Why(clean).Contains("차이 발생 0개"),
-                  DbVerdict.Why(clean));
-            Check("PASS 인데 다른 수가 없으면 덧말 없음",
-                  !DbVerdict.Why(clean).Contains("없어진 IO"), DbVerdict.Why(clean));
+            //
+            // 판정마다 <b>다음에 뭘 해야 하는지</b>가 달라서 글도 다릅니다.
+            // 셋을 한 함수에 둔 까닭은 화면 두 곳(메인 칸 · 분석 2)이 같은
+            // 글을 보여 주기 때문입니다.
 
+            var clean = new DbDiffList.Tally();
+            Check("PASS 는 차이 없다고 말함", DbVerdict.Why(clean) == "차이 없습니다.",
+                  DbVerdict.Why(clean));
+
+            var lots = new DbDiffList.Tally();
+            lots.Changed = 1200;
+            Check("FAIL 은 파일을 다시 보라고 말함",
+                  DbVerdict.Why(lots).Contains("파일을 다시 확인"), DbVerdict.Why(lots));
+            Check("FAIL 은 개수도 적음", DbVerdict.Why(lots).Contains("1,200개"),
+                  DbVerdict.Why(lots));
+
+            // FAIL 에서는 이름을 안 적습니다. 1200 개 중 여덟 개만 적으면
+            // "이 여덟 개가 문제" 로 읽히는데, 그게 아니라 파일이 잘못
+            // 걸렸을 가능성이 먼저입니다.
+            var manyNames = new List<string> { "IO_A", "IO_B" };
+            Check("FAIL 은 이름을 안 적음", !DbVerdict.Why(lots, manyNames).Contains("IO_A"),
+                  DbVerdict.Why(lots, manyNames));
+
+            // WARNING 은 어떤 IO 가 달라졌는지 적습니다 — 개수만 보면
+            // 결국 분석 2 화면을 열어 목록을 뒤져야 합니다.
+            var few = new DbDiffList.Tally();
+            few.Changed = 3;
+            var three = new List<string> { "TEMP_MAX", "PRES_SET", "VALVE_1" };
+            string w = DbVerdict.Why(few, three);
+            Check("WARNING 은 이름을 적음",
+                  w.Contains("TEMP_MAX") && w.Contains("PRES_SET") && w.Contains("VALVE_1"), w);
+            Check("WARNING 은 개수도 적음", w.Contains("3개"), w);
+            Check("다 적었으면 \"외 N개\" 는 없음", !w.Contains("외 "), w);
+
+            // 이름을 다 못 적었으면 몇 개를 안 적었는지 말해 줍니다.
+            var lots2 = new DbDiffList.Tally();
+            lots2.Changed = 30;
+            string w2 = DbVerdict.Why(lots2, three);
+            Check("못 적은 개수를 알려 줌", w2.Contains("외 27개"), w2);
+
+            // 이름을 모으지 않은 자리에서는 FAIL 기준을 알려 줍니다.
+            Check("이름이 없으면 FAIL 기준을 알려 줌",
+                  DbVerdict.Why(few).Contains("100개부터 FAIL"), DbVerdict.Why(few));
+
+            // ---- 판정에 안 들어간 수 ----
+            //
+            // 없어진 IO 가 스무 개인데 "차이 없습니다" 만 보이면 거짓말입니다.
             var hidden = new DbDiffList.Tally();
             hidden.Gone = 20;
-            Check("차이 발생 0 이라도 없어진 IO 는 글에 남음",
+            Check("차이 0 이라도 없어진 IO 는 글에 남음",
                   DbVerdict.Why(hidden).Contains("없어진 IO 20개"), DbVerdict.Why(hidden));
             Check("판정에 안 넣는다고 적음",
-                  DbVerdict.Why(hidden).Contains("판정에 안 넣습니다"), DbVerdict.Why(hidden));
+                  DbVerdict.Why(hidden).Contains("판정에 안 넣음"), DbVerdict.Why(hidden));
             Check("그래도 판정은 PASS", DbVerdict.Of(hidden.Changed) == DbVerdict.Pass, null);
 
-            var mid = new DbDiffList.Tally();
-            mid.Changed = 7;
-            Check("WARNING 이면 FAIL 기준을 알려 줌",
-                  DbVerdict.Why(mid).Contains("100개부터 FAIL"), DbVerdict.Why(mid));
+            var both = new DbDiffList.Tally();
+            both.Changed = 2; both.Added = 5;
+            Check("WARNING 에도 덧붙음", DbVerdict.Why(both, three).Contains("새로 생긴 IO 5개"),
+                  DbVerdict.Why(both, three));
+            Check("FAIL 에도 덧붙음", DbVerdict.Why(lots).Length > 0, null);
 
-            var many = new DbDiffList.Tally();
-            many.Changed = 100;
-            Check("FAIL 이면 기준을 다시 안 적음",
-                  !DbVerdict.Why(many).Contains("부터 FAIL"), DbVerdict.Why(many));
+            Check("아무것도 없으면 덧말 없음", !DbVerdict.Why(clean).Contains("판정에 안 넣음"),
+                  DbVerdict.Why(clean));
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>
@@ -4163,7 +4097,6 @@ namespace LogScope.Tests
             s.AlignEdge = 1;
             s.AlignOccurrence = 3;
             s.AlignLevel = 5;
-            s.AxisIo = "경과 시간";
             s.RelativeTolerancePercent = 0.25;
             s.SortMetric = DiffMetric.TimeRatio;
 
@@ -4242,7 +4175,6 @@ namespace LogScope.Tests
             s.SeparateTraces = true;
             AppSettings sep = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
             Check("파형 분리만 켠 것은 그대로", sep.SeparateTraces && !sep.ShadeDifference, null);
-            Check("가로축 IO", back.AxisIo == "경과 시간", back.AxisIo);
             Near("비율 허용 오차(%)", back.RelativeTolerancePercent, 0.25, 1e-9);
             Check("정렬 기준", back.SortMetric == DiffMetric.TimeRatio, back.SortMetric.ToString());
 

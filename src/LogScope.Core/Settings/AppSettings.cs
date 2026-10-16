@@ -108,11 +108,6 @@ namespace LogScope.Core.Settings
         /// </summary>
         public double AlignLevel = double.NaN;
 
-        /// <summary>
-        /// 가로축으로 쓸 IO 이름. 빈 글자면 로그의 시간 열을 씁니다.
-        /// 역시 이름으로 저장합니다.
-        /// </summary>
-        public string AxisIo = string.Empty;
 
         /// <summary>
         /// <b>단계를 담은 IO 이름.</b> 빈 글자면 단계를 찾지 않습니다.
@@ -279,7 +274,6 @@ namespace LogScope.Core.Settings
             root["alignOccurrence"] = (double)AlignOccurrence;
             // NaN 은 JSON 에 담을 수 없어서 "알아서 고름" 은 아예 안 적습니다.
             if (!double.IsNaN(AlignLevel)) root["alignLevel"] = AlignLevel;
-            root["axisIo"] = AxisIo;
             root["stepIo"] = StepIo;
             root["stepZero"] = StepZeroAtStart;
             root["dbBefore"] = DbBeforePath;
@@ -400,7 +394,6 @@ namespace LogScope.Core.Settings
             s.AlignLevel = root.ContainsKey("alignLevel")
                 ? Json.GetDouble(root, "alignLevel", double.NaN)
                 : double.NaN;
-            s.AxisIo = Json.GetString(root, "axisIo", string.Empty);
             s.StepIo = Json.GetString(root, "stepIo", string.Empty);
             s.StepZeroAtStart = Json.GetBool(root, "stepZero", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);

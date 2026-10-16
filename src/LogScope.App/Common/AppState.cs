@@ -36,6 +36,13 @@ namespace LogScope.App.Common
         public int DbGone;
         public int DbAdded;
 
+        /// <summary>
+        /// 값이 달라진 IO 이름들 (앞 몇 개). WARNING 일 때 메인 화면 칸에
+        /// 그대로 적습니다 — 개수만 보면 결국 분석 2 를 열어 목록을
+        /// 뒤져야 합니다.
+        /// </summary>
+        public List<string> DbChangedIos = new List<string>();
+
         public bool HasAny { get { return Before != null || After != null; } }
         public bool HasBoth { get { return Before != null && After != null; } }
 
@@ -114,89 +121,6 @@ namespace LogScope.App.Common
         }
 
         /// <summary>
-        /// 설정에 적힌 IO 를 가로축으로 끼웁니다. 두 로그 모두에 겁니다.
-        /// 한쪽이라도 못 쓰면 <b>양쪽 다 원래 시간축으로 되돌립니다</b> —
-        /// 한쪽만 다른 축으로 그리면 두 로그가 아예 다른 이야기가 됩니다.
-        /// </summary>
-        public string ApplyAxisChannel()
-        {
-            // 축이 바뀌면 단계의 시각도 달라집니다. 짝 목록은 시각을 들고
-            // 있으므로 여기서 버려야 합니다.
-            ForgetSteps();
-
-            string name = Settings.AxisIo;
-            if (string.IsNullOrEmpty(name))
-            {
-                if (Before != null) Before.ClearAxisChannel();
-                if (After != null) After.ClearAxisChannel();
-                return string.Empty;
-            }
-
-            string problem;
-            if (Before != null && !Before.SetAxisChannel(name, out problem))
-            {
-                ResetAxis();
-                return "이전 로그: " + problem;
-            }
-            if (After != null && !After.SetAxisChannel(name, out problem))
-            {
-                ResetAxis();
-                return "이후 로그: " + problem;
-            }
-            return string.Empty;
-        }
-
-        private void ResetAxis()
-        {
-            Settings.AxisIo = string.Empty;
-            if (Before != null) Before.ClearAxisChannel();
-            if (After != null) After.ClearAxisChannel();
-        }
-
-        /// <summary>가로축을 그 IO 로 놓았을 때 알아 둘 점. 없으면 빈 글자.</summary>
-        public string AxisNote
-        {
-            get
-            {
-                if (Before != null && Before.AxisNote.Length > 0) return Before.AxisNote;
-                if (After != null && After.AxisNote.Length > 0) return After.AxisNote;
-                return string.Empty;
-            }
-        }
-
-        /// <summary>
-        /// 가로축으로 쓸 수 있는 IO 이름들. 양쪽 로그에 다 있고 양쪽 모두
-        /// 오름차순이어야 합니다.
-        /// </summary>
-        public List<string> AxisCandidates()
-        {
-            var list = new List<string>();
-            LogDataset baseDs = Before ?? After;
-            if (baseDs == null) return list;
-
-            for (int i = 0; i < baseDs.ChannelCount; i++)
-            {
-                if (!baseDs.CanBeAxis(i)) continue;
-                string name = baseDs.Channels[i].Name;
-                LogDataset other = ReferenceEquals(baseDs, Before) ? After : Before;
-                if (other != null)
-                {
-                    int j = other.FindChannel(name);
-                    if (j < 0 || !other.CanBeAxis(j)) continue;
-                }
-                list.Add(name);
-            }
-            return list;
-        }
-
-        /// <summary>
-        /// 시간 맞추기 기준으로 쓸 수 있는 IO 이름들.
-        ///
-        /// 양쪽 로그에 다 있고, <b>한쪽에서라도</b> 값이 바뀌면 후보입니다.
-        /// 반대쪽이 처음부터 그 값이면 거기서는 시작 지점이 그 순간이라,
-        /// 그래도 맞춰집니다 — 기록을 늦게 건 로그에서 흔한 모양입니다.
-        /// </summary>
-        /// <summary>
         /// 열어 둔 로그의 IO 이름 (이전 + 이후, 겹치는 것은 한 번만).
         /// 설정 창에서 IO 별 허용 오차를 걸 때 고르라고 내어 줍니다.
         ///
@@ -224,6 +148,13 @@ namespace LogScope.App.Common
             return list;
         }
 
+        /// <summary>
+        /// 시간 맞추기 기준으로 쓸 수 있는 IO 이름들.
+        ///
+        /// 양쪽 로그에 다 있고, <b>한쪽에서라도</b> 값이 바뀌면 후보입니다.
+        /// 반대쪽이 처음부터 그 값이면 거기서는 시작 지점이 그 순간이라,
+        /// 그래도 맞춰집니다 — 기록을 늦게 건 로그에서 흔한 모양입니다.
+        /// </summary>
         public List<string> AlignCandidates()
         {
             var list = new List<string>();

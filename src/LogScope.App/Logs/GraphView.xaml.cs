@@ -83,6 +83,12 @@ namespace LogScope.App.Logs
 
         private void OnSelectionChanged(object sender, EventArgs e)
         {
+            // 손으로 다시 고르면 "그룹을 눌러 왔다" 는 글을 치웁니다.
+            // 그대로 두면 지금 보고 있는 것이 그 그룹인 줄 읽힙니다.
+            //
+            // 그룹을 눌러 넘어오는 길(FocusOnGroup)은 이 알림이 먼저 오고
+            // 글을 그 뒤에 적으므로 지워지지 않습니다.
+            if (_vm != null) _vm.ForgetGroup();
             PushChannels();
         }
 
@@ -113,6 +119,37 @@ namespace LogScope.App.Logs
             Plot.ResetTime();
             Plot.ResetValueZoom();
             _lastClickedRow = -1;
+        }
+
+        /// <summary>
+        /// 메인 화면에서 <b>그룹</b>을 눌러 넘어왔을 때. 그 그룹의 IO 만
+        /// 골라 둡니다.
+        ///
+        /// 검색 글자를 비웁니다. 검색이 걸려 있으면 고른 IO 가 목록에
+        /// 안 보여서, 골라 놓고도 "아무 일도 안 일어났다" 로 보입니다.
+        /// </summary>
+        public void FocusOnGroup(string groupName, List<string> members)
+        {
+            if (_vm == null) return;
+
+            _vm.List.Search = string.Empty;
+            int found = _vm.List.SelectOnly(members);
+            _vm.TakeGroup(groupName, found, members != null ? members.Count : 0);
+
+            // 고른 것이 목록 아래쪽에 있으면 보이게 굴려 줍니다.
+            if (found > 0 && members != null)
+            {
+                foreach (string n in members)
+                {
+                    IoRowVm row = _vm.List.Find(n);
+                    if (row == null) continue;
+                    if (RowList.Items.IndexOf(row) >= 0) RowList.ScrollIntoView(row);
+                    break;
+                }
+            }
+
+            Plot.ResetValueZoom();
+            PushChannels();
         }
 
         /// <summary>대시보드에서 IO 하나를 눌러 넘어왔을 때.</summary>
@@ -424,7 +461,7 @@ namespace LogScope.App.Logs
         // AlignVm.Changed 를 셸 창이 직접 받습니다. 그래프와 히트맵이 같은 판
         // 하나를 쓰기 때문에, 한쪽 화면이 중간에서 전달해 주는 모양이면
         // 다른 화면에서 바꿨을 때 새 나갑니다.
-        // ---- 가로축 · 시간 맞추기 판 --------------------------------
+        // ---- 시간 맞추기 판 --------------------------------
         //
         // 팝업은 바깥을 누르면 닫힙니다(StaysOpen="False"). 그런데 그 "바깥"
         // 에는 팝업을 연 단추도 들어갑니다. 팝업이 먼저 그 누름을 받아 닫고,

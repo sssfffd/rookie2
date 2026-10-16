@@ -9,8 +9,11 @@ using LogScope.App.Settings;
 namespace LogScope.App.Logs
 {
     /// <summary>
-    /// 가로축과 시간 맞추기. <b>그래프 화면과 히트맵 화면이 같은 것 하나를
-    /// 나눠 씁니다.</b>
+    /// 시간 맞추기. <b>그래프 화면과 히트맵 화면이 같은 것 하나를 나눠
+    /// 씁니다.</b>
+    ///
+    /// 0.92 까지는 가로축을 다른 IO 로 바꿔 끼우는 것도 여기 있었습니다.
+    /// 쓰이지 않아 걷어냈습니다.
     ///
     /// 두 화면이 각자 따로 들고 있으면 한쪽에서 맞춰 놓고 다른 쪽으로 가면
     /// 그 설정이 안 보이거나, 더 나쁘게는 서로 다른 값으로 그려집니다.
@@ -27,14 +30,13 @@ namespace LogScope.App.Logs
 
         // ---- 목록 갈무리 --------------------------------------------------
         //
-        // 후보를 뽑으려면 채널을 전부 훑어야 합니다. 가로축 후보는
-        // 오름차순인지 보려고, 맞추기 후보는 한 번이라도 바뀌는지 보려고요.
+        // 후보를 뽑으려면 채널을 전부 훑어야 합니다 (한 번이라도 값이
+        // 바뀌는지 봐야 합니다).
         // 채널 200 개에 표본 5 만이면 그것만으로 천만 번입니다.
         //
         // 그런데 ItemsSource 로 묶인 속성은 화면이 다시 그려질 때마다 불립니다.
         // 갈무리해 두지 않으면 콤보를 한 번 펼 때마다 로그를 통째로 훑습니다.
         // 로그가 바뀔 때만(Reload) 버립니다.
-        private List<string> _axisCache;
         private List<string> _alignCache;
         private LevelSet _levelCache;
 
@@ -57,42 +59,6 @@ namespace LogScope.App.Logs
         {
             EventHandler h = Changed;
             if (h != null) h(this, EventArgs.Empty);
-        }
-
-        // ---------------- 가로축 ----------------
-
-        /// <summary>가로축 목록에서 "로그의 시간 열" 을 나타내는 줄.</summary>
-        public const string OwnTimeItem = "(로그의 시간)";
-
-        public IEnumerable<string> AxisChoices
-        {
-            get
-            {
-                if (_axisCache == null)
-                {
-                    _axisCache = new List<string> { OwnTimeItem };
-                    _axisCache.AddRange(_state.AxisCandidates());
-                }
-                return _axisCache;
-            }
-        }
-
-        public string AxisIo
-        {
-            get { return S.AxisIo.Length == 0 ? OwnTimeItem : S.AxisIo; }
-            set
-            {
-                // null 은 고른 게 아닙니다. 목록을 다시 채우면 WPF 가 잠깐
-                // SelectedItem 을 null 로 밀어 넣는데, 그걸 "안 씀" 으로
-                // 받아들이면 목록을 새로 고칠 때마다 사용자의 선택이
-                // 조용히 지워집니다.
-                if (value == null) return;
-                string v = value == OwnTimeItem ? string.Empty : value;
-                if (S.AxisIo == v) return;
-                S.AxisIo = v;
-                Raise("AxisIo"); Raise("Summary");
-                Fire();
-            }
         }
 
         // ---------------- 시간 맞추기 ----------------
@@ -122,7 +88,9 @@ namespace LogScope.App.Logs
             get { return S.AlignIo.Length == 0 ? NoneItem : S.AlignIo; }
             set
             {
-                if (value == null) return;    // 위 AxisIo 와 같은 이유입니다.
+                // null 은 고른 게 아닙니다 — 목록을 다시 채우면 WPF 가 잠깐
+                // SelectedItem 을 null 로 밀어 넣습니다.
+                if (value == null) return;
                 string v = value == NoneItem ? string.Empty : value;
                 if (S.AlignIo == v) return;
                 S.AlignIo = v;
@@ -219,18 +187,10 @@ namespace LogScope.App.Logs
 
         /// <summary>
         /// 지금 무엇으로 맞춰져 있는지 한 줄로. 못 맞췄으면 그 이유입니다.
-        /// 가로축에 딸린 주의도 여기 붙습니다.
         /// </summary>
         public string Note
         {
-            get
-            {
-                string a = _state.AlignNote;
-                string b = _state.AxisNote;
-                if (a.Length == 0) return b;
-                if (b.Length == 0) return a;
-                return a + "   /   " + b;
-            }
+            get { return _state.AlignNote; }
         }
 
         /// <summary>도구 줄 단추에 적는 짧은 상태. 폭이 변하지 않게 짧게 둡니다.</summary>
@@ -238,10 +198,7 @@ namespace LogScope.App.Logs
         {
             get
             {
-                if (S.AlignIo.Length > 0 && S.AxisIo.Length > 0) return "축·맞추기 켜짐";
-                if (S.AlignIo.Length > 0) return "맞추기 켜짐";
-                if (S.AxisIo.Length > 0) return "가로축 바꿈";
-                return "가로축 · 시간 맞추기";
+                return S.AlignIo.Length > 0 ? "맞추기 켜짐" : "시간 맞추기";
             }
         }
 
@@ -249,11 +206,9 @@ namespace LogScope.App.Logs
         public void Reload()
         {
             // 로그가 바뀌었을 수 있으니 갈무리를 버립니다.
-            _axisCache = null;
             _alignCache = null;
             _levelCache = null;
 
-            Raise("AxisChoices"); Raise("AxisIo");
             Raise("AlignChoices"); Raise("AlignIo");
             Raise("EdgeIndex"); Raise("OccurrenceText");
             RaiseLevels();

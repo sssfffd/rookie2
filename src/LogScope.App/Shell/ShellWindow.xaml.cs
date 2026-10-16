@@ -57,7 +57,7 @@ namespace LogScope.App.Shell
 
             Dashboard.IoActivated += OnDashboardIoActivated;
             Heatmap.CellOpened += OnHeatmapCellOpened;
-            // 가로축·시간 맞추기는 그래프와 히트맵이 같은 것 하나를 씁니다.
+            // 시간 맞추기는 그래프와 히트맵이 같은 것 하나를 씁니다.
             // 그래서 어느 화면을 거치지 않고 여기서 바로 받습니다.
             _vm.Align.Changed += OnAlignmentChanged;
             _vm.Step.Changed += OnStepChanged;
@@ -351,16 +351,8 @@ namespace LogScope.App.Shell
         /// 그럴 때는 조용히 넘어가지 않고 왜 안 됐는지 알립니다 — 어긋난
         /// 그래프를 맞는 줄 알고 보는 것보다 낫습니다.
         /// </summary>
-        private void ReapplyAxisAndAlign()
+        private void ReapplyAlign()
         {
-            string axisProblem = _state.ApplyAxisChannel();
-            if (axisProblem.Length > 0)
-            {
-                MessageBox.Show(this,
-                    "가로축을 그 IO 로 둘 수 없어 로그의 시간축으로 되돌렸습니다.\n\n" + axisProblem,
-                    "가로축", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-
             // 기준 IO 를 안 골랐어도 반드시 부릅니다. 그래야 예전에 맞춰
             // 뒀던 밀기 값이 지워지고 시작 시각 자동 맞춤이 돌아옵니다.
             AlignResult r = _state.ApplyTriggerAlign();
@@ -374,7 +366,6 @@ namespace LogScope.App.Shell
             _vm.Align.Reload();
         }
 
-        /// <summary>도구 줄에서 가로축이나 맞추기 기준을 바꿨을 때.</summary>
         /// <summary>
         /// 그룹이 바뀌었을 때. 설정만 저장하고 화면은 건드리지 않습니다 —
         /// 목록은 이미 제 손으로 바꿔 놓았고, 저장은 임시 파일에 쓰고
@@ -409,12 +400,13 @@ namespace LogScope.App.Shell
             _state.DbChanged = Db.Tally.Changed;
             _state.DbGone = Db.Tally.Gone;
             _state.DbAdded = Db.Tally.Added;
+            _state.DbChangedIos = new List<string>(Db.ChangedIos);
             _vm.Main.Refresh();
         }
 
         private void OnAlignmentChanged(object sender, EventArgs e)
         {
-            ReapplyAxisAndAlign();
+            ReapplyAlign();
             Recompare();
             _vm.ReloadAll();
             Graph.OnDataChanged();
@@ -462,7 +454,7 @@ namespace LogScope.App.Shell
 
         private void AfterLoad()
         {
-            ReapplyAxisAndAlign();
+            ReapplyAlign();
             Recompare();
             _vm.ReloadAll();
             Graph.OnDataChanged();
@@ -521,9 +513,13 @@ namespace LogScope.App.Shell
         {
             if (!_state.HasBoth) return;
 
+            // 그래프로 갑니다 (0.92 에 히트맵에서 바꿨습니다). 그룹을 누르는
+            // 뜻은 "이 IO 들이 어떻게 달라졌나" 를 보는 것인데, 히트맵은
+            // 어느 시간대가 심한지를 보는 화면입니다. 값이 어떻게 달라졌는지는
+            // 그래프에서 봐야 합니다.
             _vm.Screen = ShellVm.ScreenAnalysis1;
-            _vm.GoHeatmap();
-            Heatmap.FocusGroup(e.GroupName, e.Members);
+            _vm.GoGraph();
+            Graph.FocusOnGroup(e.GroupName, e.Members);
         }
 
         private void OnDashboardIoActivated(object sender, DashboardView.IoEventArgs e)
