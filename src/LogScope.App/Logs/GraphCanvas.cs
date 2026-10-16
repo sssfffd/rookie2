@@ -8,6 +8,7 @@ using System.Windows.Media;
 using LogScope.App.Themes;
 using LogScope.Logs.Compare;
 using LogScope.Core.Model;
+using LogScope.Logs.Align;
 using LogScope.Logs.Render;
 
 using LogScope.App.Common;
@@ -234,8 +235,20 @@ namespace LogScope.App.Logs
 
         public double CursorA { get { return _cursorA; } }
         public double CursorB { get { return _cursorB; } }
-        public double VisibleStart { get { return _t0; } }
-        public double VisibleEnd { get { return _t1; } }
+        /// <summary>
+        /// 지금 보이는 구간. <b>단계별로 나눠 보는 중이면 첫 칸부터 마지막
+        /// 칸까지</b>입니다 — 그 사이에 안 보이는 빈틈이 있지만, 아래 줄에
+        /// 적는 "보이는 구간" 으로는 그게 맞습니다.
+        /// </summary>
+        public double VisibleStart
+        {
+            get { return StepMode ? _stepBands[0].T0 : _t0; }
+        }
+
+        public double VisibleEnd
+        {
+            get { return StepMode ? _stepBands[_stepBands.Count - 1].T1 : _t1; }
+        }
 
         // ---------------- 세로 스크롤 (레인이 많을 때) ----------------
 
@@ -468,15 +481,156 @@ namespace LogScope.App.Logs
         {
             Rect p = PlotArea;
             if (p.Width <= 0) return _t0;
+
+            // 단계별로 나눠 보는 중이면 칸마다 시간이 따로 흐릅니다.
+            if (StepMode)
+            {
+                double left, width;
+                int k = StepAt(x, p, out left, out width);
+                if (k < 0) return double.NaN;     // 칸 사이의 금
+                StepBand band = _stepBands[k];
+                return band.T0 + (x - left) * band.Length / Math.Max(1e-9, width);
+            }
+
             return _t0 + (x - p.Left) * (_t1 - _t0) / p.Width;
         }
 
+        /// <summary>
+        /// 그 시각이 그려지는 자리. <b>단계별로 나눠 보는 중에는 칸 밖의
+        /// 시각이 있습니다</b> (단계 사이의 빈틈) — 그때는 NaN 입니다.
+        /// 부르는 쪽이 그리지 않고 넘겨야 합니다.
+        /// </summary>
         private double TimeToX(double t)
         {
             Rect p = PlotArea;
+
+            if (StepMode)
+            {
+                double[] w = StepWidths(p.Width);
+                double x = p.Left;
+                for (int i = 0; i < _stepBands.Count; i++)
+                {
+                    StepBand band = _stepBands[i];
+                    if (t >= band.T0 && t <= band.T1)
+                        return x + (t - band.T0) * w[i] / Math.Max(1e-9, band.Length);
+                    x += w[i];
+                }
+                return double.NaN;
+            }
+
             double span = _t1 - _t0;
             if (span <= 0) return p.Left;
             return p.Left + (t - _t0) * p.Width / span;
+        }
+
+        // ---------------- 단계별로 나눠 보기 ----------------
+        //
+        // 가로를 한 줄 시간으로 쭉 늘어놓는 대신, <b>단계마다 칸을 하나씩</b>
+        // 두고 나란히 놓습니다. 칸마다 밀기 값이 따로라서 이전·이후 로그가
+        // 그 단계 안에서 맞춰집니다 — 공정이 중간에 늘어진 로그는 한 줄
+        // 시간으로 보면 뒤로 갈수록 어긋나는데, 칸으로 끊으면 그 어긋남이
+        // 칸 안에서 끝납니다.
+        //
+        // 그리는 코드는 그대로 씁니다. 칸마다 _t0·_t1 과 밀기 값만 바꿔
+        // 끼우고, 레인 자리를 칸만큼 좁혀서 같은 함수를 다시 부릅니다.
+        // 그리는 함수들이 보이는 구간과 자리를 <b>인자로</b> 받고 있어서
+        // 가능했습니다.
+
+        private StepBands _stepBands;
+
+        /// <summary>
+        /// 칸 목록. null 이거나 비어 있으면 평소대로 한 줄 시간으로 그립니다.
+        /// </summary>
+        public StepBands StepBands
+        {
+            get { return _stepBands; }
+            set
+            {
+                _stepBands = value;
+                _stepW = null;
+
+                // 밀기 값이 칸마다 달라지므로 값 범위 갈무리를 버립니다.
+                // 안 버리면 한 줄 시간으로 재 둔 범위로 칸을 그립니다.
+                _diffRange.Clear();
+                _diffRangeShift = double.NaN;
+
+                InvalidateVisual();
+                RaiseViewChanged();
+            }
+        }
+
+        private bool StepMode { get { return _stepBands != null && !_stepBands.IsEmpty; } }
+
+        /// <summary>
+        /// 칸 하나의 최소 폭. 짧은 단계가 <b>선 한 줄</b>로 찌그러지면 그
+        /// 단계는 아예 못 봅니다.
+        /// </summary>
+        private const double StepMinWidth = 44;
+
+        // 나눠 둔 폭. 마우스도 같은 폭을 봐야 해서 (그릴 때 한 번 나누고
+        // 그 값을 그대로 씁니다) 들고 있습니다. 창 너비가 바뀌면 다시 나눕니다.
+        private double[] _stepW;
+        private double _stepWFor = -1;
+
+        private double[] StepWidths(double width)
+        {
+            if (_stepW == null || _stepW.Length != _stepBands.Count || _stepWFor != width)
+            {
+                _stepW = _stepBands.Widths(width, StepMinWidth);
+                _stepWFor = width;
+            }
+            return _stepW;
+        }
+
+        /// <summary>그 x 가 몇 번 칸인지. 칸 사이의 금이면 -1.</summary>
+        private int StepAt(double x, Rect plot, out double left, out double width)
+        {
+            left = plot.Left; width = 0;
+            if (!StepMode) return -1;
+
+            double[] w = StepWidths(plot.Width);
+            double at = plot.Left;
+            for (int i = 0; i < w.Length; i++)
+            {
+                if (x >= at && x <= at + w[i]) { left = at; width = w[i]; return i; }
+                at += w[i];
+            }
+            return -1;
+        }
+
+        // ---- 밀기 값 ----
+        //
+        // 지금 그리고 있는 칸의 밀기 값입니다. 칸을 그리는 동안만 값이 들어
+        // 있고, 칸 밖에서는 NaN 이라 설정의 밀기 값을 씁니다.
+
+        private double _stepShift = double.NaN;
+
+        /// <summary>지금 그리는 자리의 밀기 값.</summary>
+        private double ShiftNow
+        {
+            get
+            {
+                if (!double.IsNaN(_stepShift)) return _stepShift;
+                return _state != null ? _state.AppliedShift : 0.0;
+            }
+        }
+
+        /// <summary>
+        /// 그 시각 자리의 밀기 값. 커서 값을 읽을 때 씁니다 — 커서는 칸
+        /// 밖(레인 머리글)에서 읽는데, 그 값은 커서가 <b>든 칸</b>의 밀기
+        /// 값으로 읽어야 맞습니다.
+        /// </summary>
+        private double ShiftAt(double t)
+        {
+            if (StepMode && !double.IsNaN(t))
+            {
+                for (int i = 0; i < _stepBands.Count; i++)
+                {
+                    StepBand band = _stepBands[i];
+                    if (t >= band.T0 && t <= band.T1) return band.Shift;
+                }
+            }
+            return _state != null ? _state.AppliedShift : 0.0;
         }
 
         private static double ValueToY(double v, Rect inner, double vlo, double vhi)

@@ -53,7 +53,7 @@ namespace LogScope.App.Logs
 
         public IEnumerable<string> Choices { get { Fill(); return _choices; } }
 
-        /// <summary>고를 수 있는 단계가 있는지. 없으면 도구 줄을 숨깁니다.</summary>
+        /// <summary>고를 수 있는 단계가 있는지 (양쪽에 다 있는 단계).</summary>
         public bool HasSteps { get { return _state.HasSteps; } }
 
         /// <summary>목록에서 고른 자리. 0 은 전체 구간입니다.</summary>
@@ -94,6 +94,83 @@ namespace LogScope.App.Logs
             PickIndex = at;
         }
 
+        // ---- 단계별로 나눠 보기 ----
+        //
+        // 한 줄 시간으로 쭉 보는 대신, 단계마다 칸을 하나씩 두고 나란히
+        // 놓습니다. 칸마다 밀기 값이 따로라서 <b>모든 단계가 한 화면에서
+        // 저마다 맞춰진 채로</b> 보입니다.
+
+        private StepBands _bands;
+
+        /// <summary>참이면 가로가 단계 칸 여러 개가 됩니다.</summary>
+        public bool SplitByStep
+        {
+            get { return _state.Settings.StepSplit; }
+            set
+            {
+                if (_state.Settings.StepSplit == value) return;
+                _state.Settings.StepSplit = value;
+                _bands = null;
+
+                // 나눠 보는 중에는 한 단계만 고르는 것이 뜻이 없습니다
+                // (모든 칸이 다 보입니다). 고른 것을 풀어 둬야 밀기 값도
+                // 칸이 정하는 대로 갑니다.
+                if (value) _state.StepPick = -1;
+
+                Raise("SplitByStep"); Raise("CanPick"); Raise("CanZero");
+                Raise("CanPickNow"); Raise("CanZeroNow"); Raise("NoStepText");
+                Raise("PickIndex"); Raise("Picked"); Raise("Note"); Raise("Summary");
+                Fire();
+            }
+        }
+
+        /// <summary>
+        /// 그래프에 넘길 칸 목록. 나눠 보기를 껐으면 null 입니다 (평소대로
+        /// 한 줄 시간).
+        /// </summary>
+        public StepBands Bands
+        {
+            get
+            {
+                if (!SplitByStep) return null;
+                if (_bands == null) _bands = StepBands.Build(_state.StepPairs());
+                return _bands;
+            }
+        }
+
+        /// <summary>단계를 하나 고를 수 있는지 (나눠 보는 중에는 못 고릅니다).</summary>
+        public bool CanPick { get { return !SplitByStep; } }
+
+        /// <summary>지금 고르기 단추를 켤지 (단계가 있고, 나눠 보기가 꺼져 있고).</summary>
+        public bool CanPickNow { get { return HasSteps && CanPick; } }
+
+        /// <summary>지금 [시작을 0 으로] 를 켤지.</summary>
+        public bool CanZeroNow { get { return HasSteps && CanZero; } }
+
+        /// <summary>
+        /// 단계가 없을 때 도구 줄에 적는 한 줄. 있으면 빈 글자라 사라집니다.
+        ///
+        /// <b>묶음을 숨기지 않고 이 글을 띄웁니다.</b> 0.91 에는 단계가
+        /// 없으면 묶음째 숨겼는데, 그러면 이 기능이 있다는 것 자체를 알
+        /// 수가 없습니다 — "단계 묶는 기능이 UI 에 없는 것 같다" 는 말을
+        /// 들은 까닭입니다.
+        /// </summary>
+        public string NoStepText
+        {
+            get
+            {
+                if (_state.HasSteps) return string.Empty;
+                if (!_state.HasBoth) return "두 로그를 열면 켜집니다";
+                return "설정 [비교] 의 \"단계 IO\" 를 적으면 켜집니다";
+            }
+        }
+
+        /// <summary>
+        /// [시작을 0 으로] 를 쓸 수 있는지. 나눠 보는 중에는 칸마다 그
+        /// 단계 시작에서 시작하므로 이미 그 모양입니다.
+        /// </summary>
+        public bool CanZero { get { return !SplitByStep; } }
+
         // ---- 가로축을 단계 시작부터 세기 ----
 
         /// <summary>
@@ -120,6 +197,9 @@ namespace LogScope.App.Logs
         {
             get
             {
+                // 나눠 보는 중에는 눈금이 단계 이름이라 0 자리가 없습니다.
+                if (SplitByStep) return double.NaN;
+
                 StepPair p = _state.PickedStep;
                 if (p == null || !ZeroAtStart) return double.NaN;
                 return p.BeforeStart;
@@ -144,6 +224,7 @@ namespace LogScope.App.Logs
         {
             get
             {
+                if (SplitByStep) return "단계별로 나눠 보기";
                 StepPair p = _state.PickedStep;
                 if (p == null) return "단계";
                 return "단계 " + p.Label;
@@ -175,6 +256,25 @@ namespace LogScope.App.Logs
                         parts.Add("사건 맞추기는 비켜섰습니다 — [전체 구간] 으로 돌리면 돌아옵니다.");
                 }
 
+                if (SplitByStep)
+                {
+                    StepBands b = Bands;
+                    if (b == null || b.IsEmpty) parts.Add("나눠 그릴 단계가 없습니다.");
+                    else
+                    {
+                        parts.Add("단계 " + b.Count + " 칸으로 나눠 그립니다 — 칸마다 그 단계의"
+                                  + " 시작끼리 맞췄습니다.");
+                        if (b.Skipped > 0)
+                            parts.Add("짝이 없는 단계 " + b.Skipped + " 개는 칸으로 안 만들었습니다.");
+
+                        // 그래프만 칸으로 나눠 그립니다. 견준 수는 밀기 값
+                        // 하나로 센 것이라, 그 말을 안 해 두면 그래프에서
+                        // 맞은 것이 수에도 반영된 줄 압니다.
+                        parts.Add("견준 수(대시보드 · 히트맵 · 점수)는 밀기 값 하나로 센 것입니다.");
+                    }
+                    parts.Add("가로로 확대·이동은 잠깁니다 (칸의 구간은 그 단계로 정해져 있습니다).");
+                }
+
                 StepPairList l = _state.StepPairs();
                 if (l.Note.Length > 0) parts.Add(l.Note);
                 if (p == null && l.Source.Length > 0) parts.Add("단계는 " + l.Source + " 에서 왔습니다.");
@@ -197,8 +297,12 @@ namespace LogScope.App.Logs
         {
             _choices = null;
             _map = null;
+            _bands = null;
+
             Raise("Choices"); Raise("PickIndex"); Raise("HasSteps");
             Raise("Picked"); Raise("Note"); Raise("Summary"); Raise("ZeroAtStart");
+            Raise("SplitByStep"); Raise("CanPick"); Raise("CanZero");
+            Raise("CanPickNow"); Raise("CanZeroNow"); Raise("NoStepText");
         }
     }
 }

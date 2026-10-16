@@ -140,6 +140,7 @@ namespace LogScope.Tests
                 StepsFromChannel();
                 StepPairing();
                 HeatmapByStep();
+                StepBandWidths();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3373,6 +3374,80 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// <b>단계별로 나눠 보기</b> — 가로를 단계 칸 여러 개로 쪼갤 때의
+        /// 폭 나누기.
+        ///
+        /// 폭이 틀리면 그래프가 거짓말을 합니다. 똑같은 폭으로 나누면 짧은
+        /// 단계가 늘어나고 긴 단계가 눌려서, <b>같은 기울기가 칸마다 다른
+        /// 기울기로 보입니다.</b> 그래서 길이에 비례해야 하고, 그러면서도
+        /// 짧은 단계가 선 한 줄로 찌그러지지 않아야 합니다.
+        ///
+        /// 폭의 합이 전체와 어긋나면 칸 사이에 틈이 생기는데, 그 자리는
+        /// "기록 없음" 으로 보입니다.
+        /// </summary>
+        private static void StepBandWidths()
+        {
+            Say("단계 — 나눠 보기 칸 폭");
+
+            // 이전: 준비(0~9) 가열(10~49) 유지(50~59)
+            // 이후: 같은 이름, 시작만 100 늦음 → 칸마다 밀기 값 -100
+            var a = new StringBuilder("Time,STEP\n");
+            var b = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 60; i++)
+            {
+                string st = i < 10 ? "준비" : i < 50 ? "가열" : "유지";
+                a.Append(i).Append(',').Append(st).Append('\n');
+                b.Append(100 + i).Append(',').Append(st).Append('\n');
+            }
+            LogDataset dsA = OpenWithSteps(WriteCsv("band_a.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("band_b.csv", b.ToString()), "STEP");
+
+            StepBands bands = StepBands.Build(StepPairList.Build(dsA, dsB));
+            Check("칸 셋", bands.Count == 3, bands.Count.ToString());
+            Check("칸 글자가 단계 이름", bands[1].Label == "2. 가열", bands[1].Label);
+            Near("가열 칸의 시작", bands[1].T0, 10, 1e-9);
+            Near("가열 칸의 밀기 값", bands[1].Shift, -100, 1e-9);
+            Check("뺀 단계 없음", bands.Skipped == 0, bands.Skipped.ToString());
+
+            // 길이 9 / 39 / 9 (마지막 표본까지) → 폭도 그 비례
+            double[] w = bands.Widths(1000, 0);
+            Near("폭의 합은 전체", w[0] + w[1] + w[2], 1000, 1e-6);
+            Check("긴 단계가 더 넓음", w[1] > w[0] && w[1] > w[2], null);
+            Near("비례가 맞음", w[1] / w[0], bands[1].Length / bands[0].Length, 1e-6);
+
+            // 최소 폭 — 짧은 칸이 선 한 줄이 되면 그 단계는 못 봅니다.
+            double[] m = bands.Widths(1000, 200);
+            Near("폭의 합은 그대로", m[0] + m[1] + m[2], 1000, 1e-6);
+            Check("짧은 칸도 최소 폭", m[0] >= 199.9 && m[2] >= 199.9,
+                  m[0].ToString("0.#", CultureInfo.InvariantCulture));
+            Check("긴 칸이 그만큼 줄어듦", m[1] < w[1], null);
+            Check("긴 칸이 여전히 제일 넓음", m[1] > m[0], null);
+
+            // 최소 폭조차 안 들어가면 똑같이 나눕니다 (비례를 지킬 자리가 없음).
+            double[] tight = bands.Widths(300, 500);
+            Near("똑같이 나눔", tight[0], 100, 1e-6);
+            Near("합은 그대로", tight[0] + tight[1] + tight[2], 300, 1e-6);
+
+            // 폭이 0 이면 0 을 돌려줍니다 (창을 아직 안 그린 상태).
+            double[] none = bands.Widths(0, 10);
+            Check("폭 0 이면 0", none.Length == 3 && none[0] == 0, null);
+
+            // 짝 없는 단계는 칸이 안 됩니다 — 이전 로그만 덜렁 그려지면
+            // "이후가 없다" 로 읽힙니다. 몇 개를 뺐는지는 말해 줍니다.
+            var c = new StringBuilder("Time,STEP\n");
+            for (int i = 0; i < 30; i++)
+                c.Append(i).Append(',').Append(i < 10 ? "준비" : i < 20 ? "가열" : "나만있음").Append('\n');
+            LogDataset dsC = OpenWithSteps(WriteCsv("band_c.csv", c.ToString()), "STEP");
+
+            StepBands part = StepBands.Build(StepPairList.Build(dsC, dsA));
+            Check("짝 있는 둘만 칸", part.Count == 2, part.Count.ToString());
+            Check("뺀 단계를 셈", part.Skipped >= 1, part.Skipped.ToString());
+
+            Check("단계가 없으면 빈 칸 목록",
+                  StepBands.Build(StepPairList.None).IsEmpty, null);
         }
 
         /// <summary>

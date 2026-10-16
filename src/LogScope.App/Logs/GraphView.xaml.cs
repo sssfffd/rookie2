@@ -202,7 +202,14 @@ namespace LogScope.App.Logs
         {
             if (_vm == null) return;
 
+            // 칸으로 나눠 그릴지. null 이면 평소대로 한 줄 시간입니다.
+            Plot.StepBands = _vm.Step.Bands;
             Plot.ZeroAt = _vm.Step.ZeroTime;
+
+            // 나눠 그리는 중에는 보이는 구간을 칸이 정합니다. 여기서
+            // 또 정하면 안 쓰는 값을 적어 두는 셈이고, 나눠 보기를 끄는
+            // 순간 그 값이 되살아나 엉뚱한 구간이 열립니다.
+            if (_vm.Step.SplitByStep) { Plot.ResetValueZoom(); return; }
 
             double t0, t1;
             if (_vm.Step.TryWindow(out t0, out t1)) SetTimeRange(t0, t1);

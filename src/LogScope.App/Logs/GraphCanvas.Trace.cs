@@ -32,7 +32,7 @@ namespace LogScope.App.Logs
             bool haveB = ShownB && vm.InBefore && _state.Before != null;
             bool haveA = ShownA && vm.InAfter && _state.After != null;
 
-            double shift = _state.AppliedShift;
+            double shift = ShiftNow;   // 단계 칸을 그리는 중이면 그 칸의 값
             double bt0 = _t0, bt1 = _t1;                  // 이전 로그의 시간 기준
             double at0 = _t0 - shift, at1 = _t1 - shift;  // 이후 로그의 시간 기준
 

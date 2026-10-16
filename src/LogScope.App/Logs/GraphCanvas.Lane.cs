@@ -8,6 +8,7 @@ using System.Windows.Media;
 using LogScope.App.Themes;
 using LogScope.Logs.Compare;
 using LogScope.Core.Model;
+using LogScope.Logs.Align;
 using LogScope.Logs.Render;
 using LogScope.App.Common;
 using LogScope.App.Settings;
@@ -44,14 +45,75 @@ namespace LogScope.App.Logs
 
             DrawValueAxis(dc, p, rect, inner, vlo, vhi, ios);
 
-            for (int k = 0; k < ios.Length; k++)
+            if (StepMode) DrawLaneInBands(dc, p, inner, ios, vlo, vhi);
+            else
             {
-                Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
-                Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
-                DrawChannel(dc, p, inner, ios[k], vlo, vhi, before, after, columns);
+                for (int k = 0; k < ios.Length; k++)
+                {
+                    Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
+                    Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
+                    DrawChannel(dc, p, inner, ios[k], vlo, vhi, before, after, columns);
+                }
             }
 
             DrawLaneHeader(dc, p, rect, ios);
+        }
+
+        /// <summary>
+        /// 레인 하나를 <b>단계 칸으로 나눠</b> 그립니다.
+        ///
+        /// 칸마다 보이는 구간(_t0·_t1)과 밀기 값(_stepShift)을 바꿔 끼우고,
+        /// 자리를 그 칸만큼 좁혀서 평소에 쓰는 그리기 함수를 그대로 부릅니다.
+        /// 세로 눈금은 레인에 하나뿐이라 <b>칸끼리 높이를 그대로 견줄 수
+        /// 있습니다</b> (칸마다 세로를 다시 맞추면 같은 값이 칸마다 다른
+        /// 높이로 그려집니다).
+        ///
+        /// 칸 사이에는 금을 하나 긋습니다. 금이 없으면 두 칸의 선이 이어진
+        /// 하나로 보이는데, 칸 사이는 시간이 <b>건너뛴</b> 자리입니다.
+        /// </summary>
+        private void DrawLaneInBands(DrawingContext dc, Palette p, Rect inner, IoRowVm[] ios,
+                                     double vlo, double vhi)
+        {
+            double[] w = StepWidths(inner.Width);
+            double saveT0 = _t0, saveT1 = _t1;
+            double x = inner.X;
+
+            for (int bi = 0; bi < _stepBands.Count; bi++)
+            {
+                StepBand band = _stepBands[bi];
+                double width = w[bi];
+                var sub = new Rect(x, inner.Y, Math.Max(1, width), inner.Height);
+                x += width;
+
+                // 칸이 선 한 줄만큼도 안 되면 그리지 않습니다 (그려도 안
+                // 보이는데 셈은 다 합니다).
+                if (sub.Width < 2) continue;
+
+                _t0 = band.T0;
+                _t1 = band.T1;
+                _stepShift = band.Shift;
+
+                int cols = (int)Math.Max(1, Math.Floor(sub.Width * _pixelsPerDip));
+
+                dc.PushClip(new RectangleGeometry(sub));
+                for (int k = 0; k < ios.Length; k++)
+                {
+                    Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
+                    Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
+                    DrawChannel(dc, p, sub, ios[k], vlo, vhi, before, after, cols);
+                }
+                dc.Pop();
+
+                if (bi > 0)
+                {
+                    dc.DrawLine(p.BorderPen, new Point(Snap(sub.X), inner.Top),
+                                             new Point(Snap(sub.X), inner.Bottom));
+                }
+            }
+
+            _t0 = saveT0;
+            _t1 = saveT1;
+            _stepShift = double.NaN;
         }
 
         /// <summary>
@@ -186,7 +248,9 @@ namespace LogScope.App.Logs
             {
                 if (s.Length > 0) s += "    ";
                 Channel c = _state.After.Channels[vm.AfterIndex];
-                double t = _cursorA - _state.AppliedShift;
+                // 커서가 든 칸의 밀기 값으로 읽습니다 (단계별로 나눠
+                // 보는 중이면 칸마다 다릅니다).
+                double t = _cursorA - ShiftAt(_cursorA);
                 s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t));
             }
             return s + DiffNote(vm);
@@ -205,7 +269,7 @@ namespace LogScope.App.Logs
 
             double d = DifferenceSeries.At(_state.Before, vm.BeforeIndex,
                                            _state.After, vm.AfterIndex,
-                                           _state.AppliedShift, _cursorA);
+                                           ShiftAt(_cursorA), _cursorA);
             if (double.IsNaN(d)) return string.Empty;
 
             // 상태 채널은 0/1 이 "같다/다르다" 라는 뜻이라 숫자로 적으면 헷갈립니다.
@@ -280,27 +344,38 @@ namespace LogScope.App.Logs
             if (Diffing)
             {
                 if (!CanDiff(vm)) return false;
-                double shift = _state.AppliedShift;
                 if (_fitVisible)
                 {
-                    if (!DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
-                                                  _state.After, vm.AfterIndex,
-                                                  shift, _t0, _t1, out x0, out x1)) return false;
-                    lo = x0; hi = x1;
-                    return true;
+                    // 단계별로 나눠 보는 중이면 <b>칸들만</b> 모아 봅니다.
+                    // 칸 사이의 빈틈은 그리지 않는 자리라, 거기 값까지
+                    // 넣으면 보이지도 않는 값이 눈금을 벌려 놓습니다.
+                    bool got = false;
+                    foreach (Span sp in Spans())
+                    {
+                        if (!DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
+                                                      _state.After, vm.AfterIndex,
+                                                      sp.Shift, sp.T0, sp.T1, out x0, out x1)) continue;
+                        lo = got ? Math.Min(lo, x0) : x0;
+                        hi = got ? Math.Max(hi, x1) : x1;
+                        got = true;
+                    }
+                    return got;
                 }
                 return CachedDiffRange(vm, out lo, out hi);
             }
 
             if (_fitVisible)
             {
-                if (ShownB && vm.InBefore && _state.Before != null
-                    && Decimator.RangeIn(_state.Before, vm.BeforeIndex, _t0, _t1, out x0, out x1))
-                { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
-                if (ShownA && vm.InAfter && _state.After != null
-                    && Decimator.RangeIn(_state.After, vm.AfterIndex,
-                        _t0 - _state.AppliedShift, _t1 - _state.AppliedShift, out x0, out x1))
-                { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
+                foreach (Span sp in Spans())
+                {
+                    if (ShownB && vm.InBefore && _state.Before != null
+                        && Decimator.RangeIn(_state.Before, vm.BeforeIndex, sp.T0, sp.T1, out x0, out x1))
+                    { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
+                    if (ShownA && vm.InAfter && _state.After != null
+                        && Decimator.RangeIn(_state.After, vm.AfterIndex,
+                            sp.T0 - sp.Shift, sp.T1 - sp.Shift, out x0, out x1))
+                    { lo = Math.Min(lo, x0); hi = Math.Max(hi, x1); any = true; }
+                }
                 if (any) return true;
             }
 
@@ -317,6 +392,43 @@ namespace LogScope.App.Logs
             return any;
         }
 
+        /// <summary>
+        /// 값 범위를 잴 구간 하나. 평소에는 보이는 구간 하나뿐이고,
+        /// 단계별로 나눠 보는 중에는 칸마다 하나씩입니다 (밀기 값도 칸마다
+        /// 다릅니다).
+        /// </summary>
+        private struct Span
+        {
+            public double T0;
+            public double T1;
+            public double Shift;
+        }
+
+        /// <summary>
+        /// 지금 화면이 실제로 보여 주는 구간들. <b>값 범위를 재는 코드가
+        /// 한 줄 시간이든 단계 칸이든 같은 모양으로 돌게</b> 하려고 냅니다 —
+        /// 두 갈래로 적어 두면 한쪽만 고치는 날이 옵니다.
+        /// </summary>
+        private IEnumerable<Span> Spans()
+        {
+            if (StepMode)
+            {
+                for (int i = 0; i < _stepBands.Count; i++)
+                {
+                    StepBand b = _stepBands[i];
+                    var sp = new Span();
+                    sp.T0 = b.T0; sp.T1 = b.T1; sp.Shift = b.Shift;
+                    yield return sp;
+                }
+                yield break;
+            }
+
+            var one = new Span();
+            one.T0 = _t0; one.T1 = _t1;
+            one.Shift = _state != null ? _state.AppliedShift : 0.0;
+            yield return one;
+        }
+
         // 겹치는 구간 전체의 차이 폭. IO 마다 한 번만 재고 들고 있습니다.
         private readonly Dictionary<string, double[]> _diffRange =
             new Dictionary<string, double[]>(StringComparer.Ordinal);
@@ -325,23 +437,41 @@ namespace LogScope.App.Logs
         private bool CachedDiffRange(IoRowVm vm, out double lo, out double hi)
         {
             lo = 0; hi = 1;
-            double shift = _state.AppliedShift;
+
+            // 단계별로 나눠 보는 중이면 밀기 값이 칸마다 다릅니다. 갈무리를
+            // 가르는 열쇠로 NaN 을 씁니다 (칸 목록이 바뀌면 StepBands 가
+            // 갈무리를 버립니다).
+            double shift = StepMode ? double.NaN : _state.AppliedShift;
 
             // 밀기 값이 바뀌면 겹치는 자리가 통째로 달라집니다. 옛 값을 그대로
             // 쓰면 맞추기를 바꿔도 세로 눈금이 안 따라옵니다.
-            if (_diffRangeShift != shift) { _diffRange.Clear(); _diffRangeShift = shift; }
+            bool same = double.IsNaN(shift) ? double.IsNaN(_diffRangeShift) : _diffRangeShift == shift;
+            if (!same) { _diffRange.Clear(); _diffRangeShift = shift; }
 
             double[] got;
             if (!_diffRange.TryGetValue(vm.Name, out got))
             {
-                double t0 = Math.Max(_state.Before.TimeStart, _state.After.TimeStart + shift);
-                double t1 = Math.Min(_state.Before.TimeEnd, _state.After.TimeEnd + shift);
-                double a, b;
-                got = DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
-                                               _state.After, vm.AfterIndex,
-                                               shift, t0, t1, out a, out b)
-                    ? new double[] { a, b }
-                    : null;
+                double a = 0, b = 1;
+                bool any2 = false;
+                foreach (Span sp in Spans())
+                {
+                    // 평소에는 보이는 구간이 아니라 <b>겹치는 구간 전체</b>를
+                    // 봅니다 (시간축을 밀어도 세로 배율이 안 흔들리게).
+                    // 단계 칸은 그 칸이 곧 보는 구간입니다.
+                    double t0 = StepMode ? sp.T0
+                        : Math.Max(_state.Before.TimeStart, _state.After.TimeStart + sp.Shift);
+                    double t1 = StepMode ? sp.T1
+                        : Math.Min(_state.Before.TimeEnd, _state.After.TimeEnd + sp.Shift);
+
+                    double x0, x1;
+                    if (!DifferenceSeries.RangeIn(_state.Before, vm.BeforeIndex,
+                                                  _state.After, vm.AfterIndex,
+                                                  sp.Shift, t0, t1, out x0, out x1)) continue;
+                    a = any2 ? Math.Min(a, x0) : x0;
+                    b = any2 ? Math.Max(b, x1) : x1;
+                    any2 = true;
+                }
+                got = any2 ? new double[] { a, b } : null;
                 _diffRange[vm.Name] = got;
             }
             if (got == null) return false;

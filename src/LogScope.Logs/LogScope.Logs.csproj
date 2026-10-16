@@ -48,6 +48,7 @@
     <Compile Include="Compare\HeatmapBuilder.cs" />
     <Compile Include="Align\TriggerAlign.cs" />
     <Compile Include="Align\StepPairs.cs" />
+    <Compile Include="Align\StepBands.cs" />
     <Compile Include="Render\Decimator.cs" />
     <Compile Include="Render\DifferenceSeries.cs" />
     <Compile Include="Render\TraceColors.cs" />

@@ -38,8 +38,11 @@ namespace LogScope.App.Logs
             double factor = Math.Pow(1.14, notches);
             Point at = e.GetPosition(this);
 
+            // 단계별로 나눠 보는 중에는 시간 확대를 막습니다. 칸의 구간은
+            // 그 단계로 정해져 있어서, 늘리거나 줄이면 칸이 가리키는 단계와
+            // 어긋납니다. 값 확대(Shift+휠)는 그대로 됩니다.
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) ZoomValueAt(at, factor);
-            else ZoomTimeAround(XToTime(at.X), factor);
+            else if (!StepMode) ZoomTimeAround(XToTime(at.X), factor);
 
             InvalidateVisual();
             RaiseViewChanged();
@@ -151,8 +154,11 @@ namespace LogScope.App.Logs
             if (!_moved && Math.Abs(dx) < 3 && Math.Abs(dy) < 3) return;
             _moved = true;
 
+            // 가로로 끌어 옮기기는 단계별로 나눠 보는 중에는 막습니다
+            // (칸의 구간이 그 단계로 정해져 있습니다). 세로로 끌어 옮기기는
+            // 그대로 됩니다.
             Rect plot = PlotArea;
-            if (plot.Width > 0)
+            if (plot.Width > 0 && !StepMode)
             {
                 double span = _dragT1 - _dragT0;
                 double shift = -dx * span / plot.Width;
@@ -191,6 +197,9 @@ namespace LogScope.App.Logs
 
             // 끌지 않고 그냥 눌렀으면 커서를 놓습니다.
             double t = XToTime(e.GetPosition(this).X);
+            // 칸 사이의 금을 누르면 가리키는 시각이 없습니다 (NaN).
+            // 커서를 거기 두면 값이 전부 "-" 로 나오니 그냥 둡니다.
+            if (double.IsNaN(t)) return;
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) _cursorB = t; else _cursorA = t;
             InvalidateVisual();
             RaiseViewChanged();
@@ -248,7 +257,9 @@ namespace LogScope.App.Logs
             // 세로 먼저. 시간을 바꾸면 BaseRange(보이는 구간 맞춤)가 달라져
             // 값 범위 계산이 어긋납니다.
             if (r.Height >= 6) ZoomBandValue(r);
-            if (r.Width >= 6) ZoomBandTime(r);
+            // 가로(시간) 확대는 단계별로 나눠 보는 중에는 막습니다 — 위
+            // 휠과 같은 까닭입니다.
+            if (r.Width >= 6 && !StepMode) ZoomBandTime(r);
 
             InvalidateVisual();
             RaiseViewChanged();
@@ -335,10 +346,17 @@ namespace LogScope.App.Logs
         {
             base.OnKeyDown(e);
             double span = _t1 - _t0;
+
+            // 단계별로 나눠 보는 중에는 가로로 움직이는 키를 안 받습니다
+            // (휠·끌기와 같은 까닭). 세로 확대 키는 그대로입니다.
             switch (e.Key)
             {
-                case Key.Left: _t0 -= span * 0.1; _t1 -= span * 0.1; break;
-                case Key.Right: _t0 += span * 0.1; _t1 += span * 0.1; break;
+                case Key.Left:
+                    if (StepMode) return;
+                    _t0 -= span * 0.1; _t1 -= span * 0.1; break;
+                case Key.Right:
+                    if (StepMode) return;
+                    _t0 += span * 0.1; _t1 += span * 0.1; break;
                 case Key.Home: ResetTime(); e.Handled = true; return;
                 case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;
                 case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.3); e.Handled = true; return;

@@ -131,6 +131,16 @@ namespace LogScope.Core.Settings
         /// </summary>
         public bool StepZeroAtStart;
 
+        /// <summary>
+        /// 그래프를 <b>단계별로 나눠</b> 그릴지. 참이면 가로가 한 줄 시간이
+        /// 아니라 단계 칸 여러 개가 되고, 칸마다 그 단계의 밀기 값으로
+        /// 이전·이후를 맞춥니다.
+        ///
+        /// 그래프만 그렇게 그립니다 — 견준 수(대시보드·히트맵·점수)는
+        /// 밀기 값 하나로 셉니다.
+        /// </summary>
+        public bool StepSplit;
+
         // ---- 분석 2 (DB) 에서 견줄 자리 ----
         //
         // 자리는 DB 화면에서 정하고 여기 저장됩니다 (config.txt 에는 없습니다).
@@ -276,6 +286,7 @@ namespace LogScope.Core.Settings
             if (!double.IsNaN(AlignLevel)) root["alignLevel"] = AlignLevel;
             root["stepIo"] = StepIo;
             root["stepZero"] = StepZeroAtStart;
+            root["stepSplit"] = StepSplit;
             root["dbBefore"] = DbBeforePath;
             root["dbAfter"] = DbAfterPath;
             root["dbMysqlDump"] = MysqlDumpPath ?? string.Empty;
@@ -396,6 +407,7 @@ namespace LogScope.Core.Settings
                 : double.NaN;
             s.StepIo = Json.GetString(root, "stepIo", string.Empty);
             s.StepZeroAtStart = Json.GetBool(root, "stepZero", false);
+            s.StepSplit = Json.GetBool(root, "stepSplit", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);
             s.DbAfterPath = Json.GetString(root, "dbAfter", string.Empty);
             s.MysqlDumpPath = Json.GetString(root, "dbMysqlDump", string.Empty);

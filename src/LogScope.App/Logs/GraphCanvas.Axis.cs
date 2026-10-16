@@ -8,6 +8,7 @@ using System.Windows.Media;
 using LogScope.App.Themes;
 using LogScope.Logs.Compare;
 using LogScope.Core.Model;
+using LogScope.Logs.Align;
 using LogScope.Logs.Render;
 using LogScope.App.Common;
 using LogScope.App.Settings;
@@ -213,6 +214,8 @@ namespace LogScope.App.Logs
             dc.DrawRectangle(p.AxisStripBrush, null, strip);
             dc.DrawLine(p.BorderPen, new Point(0, strip.Top), new Point(strip.Right, strip.Top));
 
+            if (StepMode) { DrawStepAxis(dc, p, plot, strip); return; }
+
             LogDataset refDs = _state != null ? _state.TimeReference : null;
             double span = _t1 - _t0;
             if (!(span > 0)) return;
@@ -237,10 +240,71 @@ namespace LogScope.App.Logs
             }
         }
 
+        /// <summary>
+        /// 단계별로 나눠 볼 때의 가로 눈금. 칸마다 <b>단계 이름</b>을 적고,
+        /// 칸이 넓으면 그 아래에 구간도 적습니다.
+        ///
+        /// 시각 눈금을 칸마다 몇 개씩 적으면 글자가 서로 붙어 버립니다.
+        /// 단계로 나눠 본다는 것은 "몇 시 몇 분" 이 아니라 "어느 단계" 로
+        /// 보겠다는 뜻이라, 이름이 먼저입니다.
+        /// </summary>
+        private void DrawStepAxis(DrawingContext dc, Palette p, Rect plot, Rect strip)
+        {
+            double[] w = StepWidths(plot.Width);
+            LogDataset refDs = _state != null ? _state.TimeReference : null;
+            double x = plot.Left;
+
+            dc.PushClip(new RectangleGeometry(strip));
+            for (int i = 0; i < _stepBands.Count; i++)
+            {
+                StepBand band = _stepBands[i];
+                double width = w[i];
+
+                // 칸 사이의 금 (그림 쪽의 금과 같은 자리).
+                dc.DrawLine(p.BorderPen, new Point(Snap(x), strip.Top),
+                                         new Point(Snap(x), strip.Bottom));
+
+                FormattedText name = Text(band.Label, FontSmall, p.TextBrush);
+                if (name.Width + 6 <= width)
+                {
+                    dc.DrawText(name, new Point(x + (width - name.Width) * 0.5, strip.Top + 2));
+
+                    // 칸이 넉넉하면 시작~끝도 적습니다. 단계 이름만 있으면
+                    // 그 단계가 언제였는지 알 수 없습니다.
+                    string when = refDs != null
+                        ? refDs.FormatTime(band.T0) + " ~ " + refDs.FormatTime(band.T1)
+                        : NumberText.Plain(band.T0) + " ~ " + NumberText.Plain(band.T1);
+                    FormattedText ft = Text(when, FontSmall, p.MutedBrush);
+                    if (ft.Width + 6 <= width && name.Height + ft.Height + 2 <= strip.Height)
+                        dc.DrawText(ft, new Point(x + (width - ft.Width) * 0.5,
+                                                  strip.Top + name.Height + 1));
+                }
+                else
+                {
+                    // 칸이 좁으면 번호만 적습니다. 아무것도 안 적으면 어느
+                    // 칸인지 알 수 없고, 이름을 잘라 적으면 옆 칸 글자와
+                    // 붙어 한 낱말처럼 읽힙니다.
+                    FormattedText num = Text((i + 1).ToString(CultureInfo.InvariantCulture),
+                                             FontSmall, p.MutedBrush);
+                    if (num.Width + 2 <= width)
+                        dc.DrawText(num, new Point(x + (width - num.Width) * 0.5, strip.Top + 2));
+                }
+
+                x += width;
+            }
+            dc.Pop();
+        }
+
         private void DrawCursor(DrawingContext dc, Palette p, Rect plot, double t, Pen pen, Color color, string tag)
         {
-            if (double.IsNaN(t) || t < _t0 || t > _t1) return;
-            double x = Snap(TimeToX(t));
+            if (double.IsNaN(t)) return;
+            if (!StepMode && (t < _t0 || t > _t1)) return;
+
+            double xx = TimeToX(t);
+            // 단계별로 나눠 보는 중에는 칸 밖의 시각이 있습니다 (빈틈).
+            // 그 커서는 그릴 자리가 없습니다.
+            if (double.IsNaN(xx)) return;
+            double x = Snap(xx);
             dc.DrawLine(pen, new Point(x, plot.Top), new Point(x, plot.Bottom));
 
             var box = new Rect(x - 9, plot.Top + 1, 18, 15);
