@@ -82,3 +82,4 @@
 | `73-axis-out-group-to-graph.md` | 가로축 바꾸기 걷어냄 · 그룹은 그래프로 · DB 판정 글귀 |
 | `74-step-split.md` | 그래프를 단계 칸으로 나눠 그리기 (칸마다 제 밀기 값) |
 | `75-db-summary-on-main.md` | 분석 2 요약을 메인 화면 요약 칸에 · 단계 나눠 보기 확인 |
+| `76-step-bands-gap-zoom.md` | 칸 띄우기 · 칸마다 확대 · 단추 이름과 설명 줄 |

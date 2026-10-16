@@ -8,6 +8,7 @@ using System.Windows.Media;
 using LogScope.App.Themes;
 using LogScope.Logs.Compare;
 using LogScope.Core.Model;
+using LogScope.Logs.Align;
 using LogScope.Logs.Render;
 using LogScope.App.Common;
 using LogScope.App.Settings;
@@ -38,11 +39,17 @@ namespace LogScope.App.Logs
             double factor = Math.Pow(1.14, notches);
             Point at = e.GetPosition(this);
 
-            // 단계별로 나눠 보는 중에는 시간 확대를 막습니다. 칸의 구간은
-            // 그 단계로 정해져 있어서, 늘리거나 줄이면 칸이 가리키는 단계와
-            // 어긋납니다. 값 확대(Shift+휠)는 그대로 됩니다.
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) ZoomValueAt(at, factor);
-            else if (!StepMode) ZoomTimeAround(XToTime(at.X), factor);
+            else if (StepMode)
+            {
+                // 커서를 올려 둔 <b>그 칸만</b> 확대합니다. 다른 칸은 그대로
+                // 남아야 견줄 바탕이 됩니다. 칸 사이의 틈에서는 아무 일도
+                // 일어나지 않습니다 (어느 칸을 확대할지 알 수 없습니다).
+                double left, width;
+                int k = StepAt(at.X, PlotArea, out left, out width);
+                if (k >= 0) ZoomStep(k, XToTime(at.X), factor);
+            }
+            else ZoomTimeAround(XToTime(at.X), factor);
 
             InvalidateVisual();
             RaiseViewChanged();
@@ -116,6 +123,7 @@ namespace LogScope.App.Logs
             _dragging = true;
             _moved = false;
             _dragPoint = e.GetPosition(this);
+            _dragLast = _dragPoint;
             _dragT0 = _t0; _dragT1 = _t1;
 
             string key; Rect inner; IoRowVm[] ios;
@@ -154,17 +162,29 @@ namespace LogScope.App.Logs
             if (!_moved && Math.Abs(dx) < 3 && Math.Abs(dy) < 3) return;
             _moved = true;
 
-            // 가로로 끌어 옮기기는 단계별로 나눠 보는 중에는 막습니다
-            // (칸의 구간이 그 단계로 정해져 있습니다). 세로로 끌어 옮기기는
-            // 그대로 됩니다.
             Rect plot = PlotArea;
-            if (plot.Width > 0 && !StepMode)
+            if (plot.Width > 0 && StepMode)
+            {
+                // 누른 칸만 옮깁니다. 끌기는 조금씩 여러 번 오므로 <b>이번에
+                // 움직인 만큼</b>만 밀어야 합니다 (누를 때의 자리에서 센
+                // 값을 쓰면 가속이 붙습니다).
+                double left, width;
+                int k = StepAt(_dragPoint.X, plot, out left, out width);
+                if (k >= 0 && width > 0)
+                {
+                    double moved = e.GetPosition(this).X - _dragLast.X;
+                    PanStep(k, -moved / width);
+                }
+            }
+            else if (plot.Width > 0)
             {
                 double span = _dragT1 - _dragT0;
                 double shift = -dx * span / plot.Width;
                 _t0 = _dragT0 + shift;
                 _t1 = _dragT1 + shift;
             }
+
+            _dragLast = e.GetPosition(this);
 
             if (_dragLane != null)
             {
@@ -257,12 +277,45 @@ namespace LogScope.App.Logs
             // 세로 먼저. 시간을 바꾸면 BaseRange(보이는 구간 맞춤)가 달라져
             // 값 범위 계산이 어긋납니다.
             if (r.Height >= 6) ZoomBandValue(r);
-            // 가로(시간) 확대는 단계별로 나눠 보는 중에는 막습니다 — 위
-            // 휠과 같은 까닭입니다.
-            if (r.Width >= 6 && !StepMode) ZoomBandTime(r);
+            if (r.Width >= 6)
+            {
+                if (StepMode) ZoomStepToBox(r);
+                else ZoomBandTime(r);
+            }
 
             InvalidateVisual();
             RaiseViewChanged();
+        }
+
+        /// <summary>
+        /// 네모로 자른 구간으로 그 칸을 확대합니다. 네모가 칸 하나 안에
+        /// 있을 때만 — 여러 칸에 걸쳐 그었으면 어느 칸을 확대할지 알 수
+        /// 없으므로 아무 일도 하지 않습니다 (세로 확대는 그대로 걸립니다).
+        /// </summary>
+        private void ZoomStepToBox(Rect r)
+        {
+            Rect plot = PlotArea;
+            double left, width;
+            int k = StepAt(r.Left, plot, out left, out width);
+            double rightLeft, rightWidth;
+            int k2 = StepAt(r.Right, plot, out rightLeft, out rightWidth);
+            if (k < 0 || k != k2) return;
+
+            double a = XToTime(r.Left), b = XToTime(r.Right);
+            if (double.IsNaN(a) || double.IsNaN(b) || !(b > a)) return;
+
+            StepBand band = _stepBands[k];
+            double min = band.Length * 1e-7;
+            if (min <= 0) min = 1e-9;
+            if (b - a < min) { double mid = (a + b) * 0.5; a = mid - min * 0.5; b = mid + min * 0.5; }
+
+            EnsureStepViews();
+            if (a < band.T0) a = band.T0;
+            if (b > band.T1) b = band.T1;
+            if (!(b > a)) return;
+
+            _stepT0[k] = a;
+            _stepT1[k] = b;
         }
 
         private void ZoomBandTime(Rect r)
@@ -351,11 +404,14 @@ namespace LogScope.App.Logs
             // (휠·끌기와 같은 까닭). 세로 확대 키는 그대로입니다.
             switch (e.Key)
             {
+                // 키보드는 <b>모든 칸을 같이</b> 움직입니다 — 단계마다
+                // 같은 자리를 보게 해서 서로 견주려는 것입니다. 휠과 끌기는
+                // 커서를 올려 둔 칸 하나만 움직입니다.
                 case Key.Left:
-                    if (StepMode) return;
+                    if (StepMode) { PanAllSteps(-0.1); break; }
                     _t0 -= span * 0.1; _t1 -= span * 0.1; break;
                 case Key.Right:
-                    if (StepMode) return;
+                    if (StepMode) { PanAllSteps(+0.1); break; }
                     _t0 += span * 0.1; _t1 += span * 0.1; break;
                 case Key.Home: ResetTime(); e.Handled = true; return;
                 case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;

@@ -250,30 +250,39 @@ namespace LogScope.App.Logs
         /// </summary>
         private void DrawStepAxis(DrawingContext dc, Palette p, Rect plot, Rect strip)
         {
-            double[] w = StepWidths(plot.Width);
+            double[] xs, ws;
+            StepLayout(plot, out xs, out ws);
             LogDataset refDs = _state != null ? _state.TimeReference : null;
-            double x = plot.Left;
 
             dc.PushClip(new RectangleGeometry(strip));
             for (int i = 0; i < _stepBands.Count; i++)
             {
                 StepBand band = _stepBands[i];
-                double width = w[i];
+                double x = xs[i];
+                double width = ws[i];
 
-                // 칸 사이의 금 (그림 쪽의 금과 같은 자리).
+                // 칸 밑에 테두리를 둘러 그림 쪽 칸과 같은 자리로 보이게 합니다.
                 dc.DrawLine(p.BorderPen, new Point(Snap(x), strip.Top),
-                                         new Point(Snap(x), strip.Bottom));
+                                         new Point(Snap(x), strip.Top + 4));
+                dc.DrawLine(p.BorderPen, new Point(Snap(x + width), strip.Top),
+                                         new Point(Snap(x + width), strip.Top + 4));
 
                 FormattedText name = Text(band.Label, FontSmall, p.TextBrush);
                 if (name.Width + 6 <= width)
                 {
                     dc.DrawText(name, new Point(x + (width - name.Width) * 0.5, strip.Top + 2));
 
-                    // 칸이 넉넉하면 시작~끝도 적습니다. 단계 이름만 있으면
+                    // 칸이 넉넉하면 구간도 적습니다. 단계 이름만 있으면
                     // 그 단계가 언제였는지 알 수 없습니다.
+                    //
+                    // <b>지금 보고 있는 구간</b>을 적습니다 — 칸을 확대하면
+                    // 단계 전체가 아니라 그 일부를 보고 있으니, 단계 구간을
+                    // 적어 두면 거짓이 됩니다.
+                    double a0, a1;
+                    StepView(i, out a0, out a1);
                     string when = refDs != null
-                        ? refDs.FormatTime(band.T0) + " ~ " + refDs.FormatTime(band.T1)
-                        : NumberText.Plain(band.T0) + " ~ " + NumberText.Plain(band.T1);
+                        ? refDs.FormatTime(a0) + " ~ " + refDs.FormatTime(a1)
+                        : NumberText.Plain(a0) + " ~ " + NumberText.Plain(a1);
                     FormattedText ft = Text(when, FontSmall, p.MutedBrush);
                     if (ft.Width + 6 <= width && name.Height + ft.Height + 2 <= strip.Height)
                         dc.DrawText(ft, new Point(x + (width - ft.Width) * 0.5,
@@ -290,7 +299,6 @@ namespace LogScope.App.Logs
                         dc.DrawText(num, new Point(x + (width - num.Width) * 0.5, strip.Top + 2));
                 }
 
-                x += width;
             }
             dc.Pop();
         }

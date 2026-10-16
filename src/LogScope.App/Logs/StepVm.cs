@@ -241,21 +241,7 @@ namespace LogScope.App.Logs
             {
                 var parts = new List<string>();
 
-                StepPair p = _state.PickedStep;
-                if (p != null)
-                {
-                    parts.Add("이후 로그를 " + NumberText.Plain(p.Shift)
-                              + " 만큼 밀어 단계 시작을 맞췄습니다.");
-                    if (p.Note.Length > 0) parts.Add(p.Note);
-                    if (ZeroAtStart) parts.Add("가로축은 이 단계 시작부터 셉니다.");
-
-                    // 사건 맞추기가 걸려 있으면 그건 비켜섭니다 (단계가
-                    // 이깁니다). 말 안 하면 팝업에 "맞추기 켜짐" 이 떠
-                    // 있는데 실제로는 안 먹는 상태가 됩니다.
-                    if (_state.UsesTriggerAlign)
-                        parts.Add("사건 맞추기는 비켜섰습니다 — [전체 구간] 으로 돌리면 돌아옵니다.");
-                }
-
+                // ---- 칸으로 나눠 보는 중 ----
                 if (SplitByStep)
                 {
                     StepBands b = Bands;
@@ -267,17 +253,49 @@ namespace LogScope.App.Logs
                         if (b.Skipped > 0)
                             parts.Add("짝이 없는 단계 " + b.Skipped + " 개는 칸으로 안 만들었습니다.");
 
+                        // 확대하는 법을 적어 둡니다. 칸마다 따로 확대된다는
+                        // 것은 해 보지 않으면 알 수 없습니다.
+                        parts.Add("휠을 칸 위에 올리면 그 칸만 확대됩니다 (끌기도 그 칸만)."
+                                  + "  +/- 와 ←/→ 는 모든 칸을 같이, Home 은 되돌리기.");
+
                         // 그래프만 칸으로 나눠 그립니다. 견준 수는 밀기 값
                         // 하나로 센 것이라, 그 말을 안 해 두면 그래프에서
                         // 맞은 것이 수에도 반영된 줄 압니다.
                         parts.Add("견준 수(대시보드 · 히트맵 · 점수)는 밀기 값 하나로 센 것입니다.");
                     }
-                    parts.Add("가로로 확대·이동은 잠깁니다 (칸의 구간은 그 단계로 정해져 있습니다).");
+                }
+                else
+                {
+                    // ---- 한 단계를 골랐을 때 ----
+                    StepPair p = _state.PickedStep;
+                    if (p != null)
+                    {
+                        parts.Add("이후 로그를 " + NumberText.Plain(p.Shift)
+                                  + " 만큼 밀어 단계 시작을 맞췄습니다.");
+                        if (p.Note.Length > 0) parts.Add(p.Note);
+                        if (ZeroAtStart) parts.Add("가로축 눈금은 이 단계 시작부터 셉니다.");
+
+                        if (_state.UsesTriggerAlign)
+                            parts.Add("사건 맞추기는 비켜섰습니다 — [전체 구간] 으로 돌리면 돌아옵니다.");
+                    }
+                    else if (HasSteps)
+                    {
+                        // ---- 단계는 있는데 아무것도 안 켠 상태 ----
+                        //
+                        // 이 줄이 이 묶음의 설명서입니다. 단추 이름만으로는
+                        // 무엇을 하는 것인지 알 수 없다는 말을 들었습니다.
+                        StepPairList l = _state.StepPairs();
+                        parts.Add("단계 " + l.UsableCount + " 개를 읽었습니다.");
+                        parts.Add("[단계마다 칸으로] 를 켜면 단계마다 칸으로 쪼개 나란히 견줍니다"
+                                  + " (칸마다 그 단계 시작끼리 맞춤).");
+                        parts.Add("목록에서 한 단계만 골라 그 구간만 볼 수도 있습니다.");
+                    }
                 }
 
-                StepPairList l = _state.StepPairs();
-                if (l.Note.Length > 0) parts.Add(l.Note);
-                if (p == null && l.Source.Length > 0) parts.Add("단계는 " + l.Source + " 에서 왔습니다.");
+                StepPairList all = _state.StepPairs();
+                if (all.Note.Length > 0) parts.Add(all.Note);
+                if (!SplitByStep && _state.PickedStep == null && all.Source.Length > 0)
+                    parts.Add("단계는 " + all.Source + " 에서 왔습니다.");
 
                 return string.Join("   ", parts.ToArray());
             }

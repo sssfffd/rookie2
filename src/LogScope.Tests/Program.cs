@@ -3426,6 +3426,30 @@ namespace LogScope.Tests
             Check("긴 칸이 그만큼 줄어듦", m[1] < w[1], null);
             Check("긴 칸이 여전히 제일 넓음", m[1] > m[0], null);
 
+            // ---- 칸 사이 틈 ----
+            //
+            // 금 한 줄로만 가르면 두 칸의 선이 이어진 하나로 읽힙니다.
+            // 자리를 내는 곳은 한 곳이어야 합니다 — 그리는 쪽·눈금 글자·
+            // 마우스가 각자 셈하면, 눈금은 2 번 칸을 가리키는데 눌러 보면
+            // 3 번 칸이 잡힙니다.
+            double[] gx, gw;
+            bands.Layout(100, 1000, 10, 0, out gx, out gw);
+            Near("첫 칸은 왼쪽 그대로", gx[0], 100, 1e-9);
+            Near("칸과 칸 사이가 틈만큼 떨어짐", gx[1] - (gx[0] + gw[0]), 10, 1e-6);
+            Near("둘째 틈도 같음", gx[2] - (gx[1] + gw[1]), 10, 1e-6);
+            Near("칸 폭 + 틈 = 전체", gw[0] + gw[1] + gw[2] + 20, 1000, 1e-6);
+            Near("마지막 칸의 오른쪽 끝", gx[2] + gw[2], 1100, 1e-6);
+            Check("틈이 있어도 비례는 그대로", gw[1] > gw[0] && gw[1] > gw[2], null);
+
+            // 틈이 너비를 다 먹으면 틈을 줄입니다 — 칸이 하나도 안 보이는
+            // 것보다 낫습니다.
+            double[] tx, tw;
+            bands.Layout(0, 30, 100, 0, out tx, out tw);
+            Check("틈이 너무 크면 줄임", tw[0] > 0 && tw[1] > 0 && tw[2] > 0,
+                  tw[0].ToString("0.##", CultureInfo.InvariantCulture));
+            Check("그래도 전체를 안 넘음", tx[2] + tw[2] <= 30.001,
+                  (tx[2] + tw[2]).ToString("0.##", CultureInfo.InvariantCulture));
+
             // 최소 폭조차 안 들어가면 똑같이 나눕니다 (비례를 지킬 자리가 없음).
             double[] tight = bands.Widths(300, 500);
             Near("똑같이 나눔", tight[0], 100, 1e-6);

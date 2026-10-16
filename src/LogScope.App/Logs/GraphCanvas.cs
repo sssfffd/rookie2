@@ -78,6 +78,13 @@ namespace LogScope.App.Logs
 
         private bool _dragging, _moved;
         private Point _dragPoint;
+
+        /// <summary>
+        /// 지난 끌기 알림에서의 자리. 칸을 끌어 옮길 때 <b>이번에 움직인
+        /// 만큼</b>만 밀려면 필요합니다 — 누른 자리에서 센 값을 쓰면 알림이
+        /// 올 때마다 같은 거리를 또 밀어 가속이 붙습니다.
+        /// </summary>
+        private Point _dragLast;
         private double _dragT0, _dragT1, _dragCenter;
         private string _dragLane;
 
@@ -242,12 +249,22 @@ namespace LogScope.App.Logs
         /// </summary>
         public double VisibleStart
         {
-            get { return StepMode ? _stepBands[0].T0 : _t0; }
+            get
+            {
+                if (!StepMode) return _t0;
+                double a, b; StepView(0, out a, out b);
+                return a;
+            }
         }
 
         public double VisibleEnd
         {
-            get { return StepMode ? _stepBands[_stepBands.Count - 1].T1 : _t1; }
+            get
+            {
+                if (!StepMode) return _t1;
+                double a, b; StepView(_stepBands.Count - 1, out a, out b);
+                return b;
+            }
         }
 
         // ---------------- 세로 스크롤 (레인이 많을 때) ----------------
@@ -286,6 +303,10 @@ namespace LogScope.App.Logs
 
         public void ResetTime()
         {
+            // 칸으로 나눠 보는 중이면 칸들을 단계 전체로 되돌립니다
+            // (그게 이 모드의 "전체" 입니다).
+            ResetStepViews();
+
             if (_state == null) { _t0 = 0; _t1 = 1; }
             else _state.FullTimeRange(out _t0, out _t1);
             _timeInit = true;
@@ -408,7 +429,11 @@ namespace LogScope.App.Logs
 
         public void ZoomTime(double factor)
         {
-            ZoomTimeAround((_t0 + _t1) * 0.5, factor);
+            // 칸으로 나눠 보는 중이면 모든 칸을 같은 배율로 — 단계마다
+            // 같은 자리를 보게 해서 서로 견주려는 것입니다.
+            if (StepMode) ZoomAllSteps(factor);
+            else ZoomTimeAround((_t0 + _t1) * 0.5, factor);
+
             InvalidateVisual();
             RaiseViewChanged();
         }
@@ -487,9 +512,10 @@ namespace LogScope.App.Logs
             {
                 double left, width;
                 int k = StepAt(x, p, out left, out width);
-                if (k < 0) return double.NaN;     // 칸 사이의 금
-                StepBand band = _stepBands[k];
-                return band.T0 + (x - left) * band.Length / Math.Max(1e-9, width);
+                if (k < 0) return double.NaN;     // 칸 사이의 틈
+                double a, b;
+                StepView(k, out a, out b);
+                return a + (x - left) * (b - a) / Math.Max(1e-9, width);
             }
 
             return _t0 + (x - p.Left) * (_t1 - _t0) / p.Width;
@@ -506,14 +532,14 @@ namespace LogScope.App.Logs
 
             if (StepMode)
             {
-                double[] w = StepWidths(p.Width);
-                double x = p.Left;
-                for (int i = 0; i < _stepBands.Count; i++)
+                double[] xs, ws;
+                StepLayout(p, out xs, out ws);
+                for (int i = 0; i < xs.Length; i++)
                 {
-                    StepBand band = _stepBands[i];
-                    if (t >= band.T0 && t <= band.T1)
-                        return x + (t - band.T0) * w[i] / Math.Max(1e-9, band.Length);
-                    x += w[i];
+                    double a, b;
+                    StepView(i, out a, out b);
+                    if (t >= a && t <= b)
+                        return xs[i] + (t - a) * ws[i] / Math.Max(1e-9, b - a);
                 }
                 return double.NaN;
             }
@@ -547,7 +573,10 @@ namespace LogScope.App.Logs
             set
             {
                 _stepBands = value;
+                _stepX = null;
                 _stepW = null;
+                _stepT0 = null;
+                _stepT1 = null;
 
                 // 밀기 값이 칸마다 달라지므로 값 범위 갈무리를 버립니다.
                 // 안 버리면 한 줄 시간으로 재 둔 범위로 칸을 그립니다.
@@ -567,35 +596,157 @@ namespace LogScope.App.Logs
         /// </summary>
         private const double StepMinWidth = 44;
 
-        // 나눠 둔 폭. 마우스도 같은 폭을 봐야 해서 (그릴 때 한 번 나누고
-        // 그 값을 그대로 씁니다) 들고 있습니다. 창 너비가 바뀌면 다시 나눕니다.
-        private double[] _stepW;
-        private double _stepWFor = -1;
+        /// <summary>
+        /// 칸 사이의 틈. 금 한 줄만 긋는 것보다 띄우는 쪽이 낫습니다 —
+        /// 칸 사이는 시간이 <b>건너뛴</b> 자리인데, 선 하나로만 가르면
+        /// 두 칸의 선이 이어진 하나로 읽힙니다.
+        /// </summary>
+        private const double StepGap = 10;
 
-        private double[] StepWidths(double width)
+        // 나눠 둔 자리. 그리는 쪽·눈금 글자·마우스가 <b>같은 자리</b>를
+        // 봐야 해서 한 번 나누고 그 값을 모두가 씁니다. 창 너비가 바뀌면
+        // 다시 나눕니다.
+        private double[] _stepX;
+        private double[] _stepW;
+        private double _stepLayoutFor = double.NaN;
+        private double _stepLayoutLeft = double.NaN;
+
+        private void StepLayout(Rect plot, out double[] xs, out double[] ws)
         {
-            if (_stepW == null || _stepW.Length != _stepBands.Count || _stepWFor != width)
+            if (_stepX == null || _stepX.Length != _stepBands.Count
+                || _stepLayoutFor != plot.Width || _stepLayoutLeft != plot.Left)
             {
-                _stepW = _stepBands.Widths(width, StepMinWidth);
-                _stepWFor = width;
+                _stepBands.Layout(plot.Left, plot.Width, StepGap, StepMinWidth, out _stepX, out _stepW);
+                _stepLayoutFor = plot.Width;
+                _stepLayoutLeft = plot.Left;
             }
-            return _stepW;
+            xs = _stepX;
+            ws = _stepW;
         }
 
-        /// <summary>그 x 가 몇 번 칸인지. 칸 사이의 금이면 -1.</summary>
+        /// <summary>그 x 가 몇 번 칸인지. 칸 사이의 틈이면 -1.</summary>
         private int StepAt(double x, Rect plot, out double left, out double width)
         {
             left = plot.Left; width = 0;
             if (!StepMode) return -1;
 
-            double[] w = StepWidths(plot.Width);
-            double at = plot.Left;
-            for (int i = 0; i < w.Length; i++)
+            double[] xs, ws;
+            StepLayout(plot, out xs, out ws);
+            for (int i = 0; i < xs.Length; i++)
             {
-                if (x >= at && x <= at + w[i]) { left = at; width = w[i]; return i; }
-                at += w[i];
+                if (x >= xs[i] && x <= xs[i] + ws[i]) { left = xs[i]; width = ws[i]; return i; }
             }
             return -1;
+        }
+
+        // ---- 칸마다 보는 구간 ----
+        //
+        // 칸도 확대·이동이 됩니다. <b>칸마다 따로</b>입니다 — 커서를 올려
+        // 둔 칸만 움직입니다. 그래야 한 단계를 들여다보는 동안 다른 칸은
+        // 그대로 남아 견줄 바탕이 됩니다.
+        //
+        // 칸의 단계 구간 밖으로는 나가지 않습니다. 나가면 그 칸에 옆 단계의
+        // 그림이 들어오는데, 그러면 "이 칸 = 이 단계" 가 깨집니다.
+
+        private double[] _stepT0;
+        private double[] _stepT1;
+
+        private void EnsureStepViews()
+        {
+            int n = _stepBands.Count;
+            if (_stepT0 != null && _stepT0.Length == n) return;
+
+            _stepT0 = new double[n];
+            _stepT1 = new double[n];
+            for (int i = 0; i < n; i++) { _stepT0[i] = _stepBands[i].T0; _stepT1[i] = _stepBands[i].T1; }
+        }
+
+        /// <summary>칸들의 보는 구간을 단계 전체로 되돌립니다.</summary>
+        private void ResetStepViews()
+        {
+            _stepT0 = null;
+            _stepT1 = null;
+            if (StepMode) EnsureStepViews();
+        }
+
+        /// <summary>
+        /// 칸 하나를 확대·축소합니다. <paramref name="at"/> 가 가리키던
+        /// 시각이 그 자리에 그대로 남습니다 (휠 확대와 같은 약속).
+        /// </summary>
+        private void ZoomStep(int k, double at, double factor)
+        {
+            EnsureStepViews();
+            if (k < 0 || k >= _stepT0.Length) return;
+
+            StepBand band = _stepBands[k];
+            double t0 = _stepT0[k], t1 = _stepT1[k];
+            double span = t1 - t0;
+            if (!(span > 0) || !(factor > 0)) return;
+
+            if (double.IsNaN(at)) at = (t0 + t1) * 0.5;
+
+            double f = (at - t0) / span;
+            double next = span / factor;
+
+            // 아래로는 단계 길이의 천만분의 일까지 (휠 확대와 같은 한계),
+            // 위로는 단계 전체까지.
+            double full = band.Length;
+            double min = full * 1e-7;
+            if (min <= 0) min = 1e-9;
+            if (next < min) next = min;
+            if (next > full) next = full;
+
+            double a = at - f * next;
+            double b = a + next;
+
+            // 단계 밖으로 밀려 나가면 안으로 당겨 옵니다.
+            if (a < band.T0) { a = band.T0; b = a + next; }
+            if (b > band.T1) { b = band.T1; a = b - next; }
+            if (a < band.T0) a = band.T0;
+
+            _stepT0[k] = a;
+            _stepT1[k] = b;
+        }
+
+        /// <summary>칸 하나를 좌우로 옮깁니다 (단계 안에서만).</summary>
+        private void PanStep(int k, double fraction)
+        {
+            EnsureStepViews();
+            if (k < 0 || k >= _stepT0.Length) return;
+
+            StepBand band = _stepBands[k];
+            double span = _stepT1[k] - _stepT0[k];
+            if (!(span > 0)) return;
+
+            double d = span * fraction;
+            double a = _stepT0[k] + d, b = _stepT1[k] + d;
+            if (a < band.T0) { a = band.T0; b = a + span; }
+            if (b > band.T1) { b = band.T1; a = b - span; }
+
+            _stepT0[k] = a;
+            _stepT1[k] = b;
+        }
+
+        /// <summary>모든 칸을 같은 배율로. 키보드 +/- 와 좌우 키가 씁니다.</summary>
+        private void ZoomAllSteps(double factor)
+        {
+            EnsureStepViews();
+            for (int i = 0; i < _stepT0.Length; i++)
+                ZoomStep(i, (_stepT0[i] + _stepT1[i]) * 0.5, factor);
+        }
+
+        private void PanAllSteps(double fraction)
+        {
+            EnsureStepViews();
+            for (int i = 0; i < _stepT0.Length; i++) PanStep(i, fraction);
+        }
+
+        /// <summary>칸 하나가 지금 보여 주는 구간.</summary>
+        private void StepView(int k, out double t0, out double t1)
+        {
+            EnsureStepViews();
+            if (k >= 0 && k < _stepT0.Length) { t0 = _stepT0[k]; t1 = _stepT1[k]; return; }
+            t0 = 0; t1 = 1;
         }
 
         // ---- 밀기 값 ----

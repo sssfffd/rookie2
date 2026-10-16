@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace LogScope.Logs.Align
@@ -113,6 +113,45 @@ namespace LogScope.Logs.Align
         /// 칸이 많아 최소 폭조차 안 되면 <b>똑같이 나눕니다</b> (그 경우엔
         /// 비례를 지킬 자리가 없습니다).
         /// </summary>
+        /// <summary>
+        /// 칸들의 왼쪽 자리와 폭을 한꺼번에 냅니다 — <b>칸 사이를 띄워서</b>.
+        ///
+        /// 금 한 줄만 긋는 것보다 띄우는 쪽이 낫습니다. 칸 사이는 시간이
+        /// <b>건너뛴</b> 자리인데, 선 하나로만 가르면 두 칸의 선이 이어진
+        /// 하나로 읽힙니다.
+        ///
+        /// 자리를 내는 곳이 여기 하나여야 합니다 — 그리는 쪽·눈금 글자·
+        /// 마우스가 모두 같은 자리를 봐야 하기 때문입니다. 각자 셈하면
+        /// 눈금은 2 번 칸을 가리키는데 눌러 보면 3 번 칸이 잡힙니다.
+        /// </summary>
+        /// <param name="left">첫 칸의 왼쪽 자리.</param>
+        /// <param name="total">칸들이 다 들어갈 너비 (틈까지 포함).</param>
+        /// <param name="gap">칸 사이의 틈.</param>
+        public void Layout(double left, double total, double gap, double min,
+                           out double[] xs, out double[] widths)
+        {
+            int n = _bands.Count;
+            xs = new double[n];
+            widths = new double[n];
+            if (n == 0) return;
+
+            if (gap < 0) gap = 0;
+
+            // 틈을 먼저 떼어 내고 남은 너비를 나눕니다. 틈이 너비를 다
+            // 먹으면 틈을 줄입니다 — 칸이 하나도 안 보이는 것보다 낫습니다.
+            double gaps = gap * (n - 1);
+            if (gaps >= total * 0.5) { gap = n > 1 ? total * 0.5 / (n - 1) : 0; gaps = gap * (n - 1); }
+
+            widths = Widths(total - gaps, min);
+
+            double at = left;
+            for (int i = 0; i < n; i++)
+            {
+                xs[i] = at;
+                at += widths[i] + gap;
+            }
+        }
+
         public double[] Widths(double total, double min)
         {
             int n = _bands.Count;

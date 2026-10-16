@@ -28,7 +28,10 @@ namespace LogScope.App.Logs
         /// <summary>레인 하나(겹쳐보기면 전체)를 그립니다.</summary>
         private void DrawLane(DrawingContext dc, Palette p, Rect rect, IoRowVm[] ios, string laneKey, int columns)
         {
-            dc.DrawRectangle(p.PlotBrush, p.BorderPen, rect);
+            // 칸으로 나눠 그릴 때는 레인 바탕을 <b>창 색</b>으로 둡니다.
+            // 그러면 칸 사이의 틈이 그 색으로 비어서 칸이 따로따로 보입니다.
+            // 그림 색으로 두면 틈과 칸이 같은 색이라 띄운 뜻이 사라집니다.
+            dc.DrawRectangle(StepMode ? Frozen(p.Window) : p.PlotBrush, p.BorderPen, rect);
 
             var inner = new Rect(rect.X, rect.Y + HeaderH, rect.Width,
                                  Math.Max(8, rect.Height - HeaderH - 4));
@@ -74,24 +77,26 @@ namespace LogScope.App.Logs
         private void DrawLaneInBands(DrawingContext dc, Palette p, Rect inner, IoRowVm[] ios,
                                      double vlo, double vhi)
         {
-            double[] w = StepWidths(inner.Width);
+            double[] xs, ws;
+            StepLayout(new Rect(inner.X, inner.Y, inner.Width, inner.Height), out xs, out ws);
+
             double saveT0 = _t0, saveT1 = _t1;
-            double x = inner.X;
 
             for (int bi = 0; bi < _stepBands.Count; bi++)
             {
-                StepBand band = _stepBands[bi];
-                double width = w[bi];
-                var sub = new Rect(x, inner.Y, Math.Max(1, width), inner.Height);
-                x += width;
+                var sub = new Rect(xs[bi], inner.Y, Math.Max(1, ws[bi]), inner.Height);
 
                 // 칸이 선 한 줄만큼도 안 되면 그리지 않습니다 (그려도 안
                 // 보이는데 셈은 다 합니다).
                 if (sub.Width < 2) continue;
 
-                _t0 = band.T0;
-                _t1 = band.T1;
-                _stepShift = band.Shift;
+                // 칸을 하나의 판처럼 그립니다 — 바탕을 칠하고 테두리를
+                // 두릅니다. 칸 사이의 틈은 레인 바탕이 그대로 보여서
+                // "여기는 시간이 건너뛴 자리" 가 눈에 들어옵니다.
+                dc.DrawRectangle(p.PlotBrush, p.BorderPen, sub);
+
+                StepView(bi, out _t0, out _t1);
+                _stepShift = _stepBands[bi].Shift;
 
                 int cols = (int)Math.Max(1, Math.Floor(sub.Width * _pixelsPerDip));
 
@@ -103,12 +108,6 @@ namespace LogScope.App.Logs
                     DrawChannel(dc, p, sub, ios[k], vlo, vhi, before, after, cols);
                 }
                 dc.Pop();
-
-                if (bi > 0)
-                {
-                    dc.DrawLine(p.BorderPen, new Point(Snap(sub.X), inner.Top),
-                                             new Point(Snap(sub.X), inner.Bottom));
-                }
             }
 
             _t0 = saveT0;
