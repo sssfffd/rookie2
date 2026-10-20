@@ -50,6 +50,30 @@ namespace LogScope.App.Db
         /// <summary>값이 달라진 IO 이름들 (앞 몇 개). 메인 화면 칸이 적습니다.</summary>
         public IList<string> ChangedIos { get { return _vm.ChangedIos; } }
 
+        /// <summary>
+        /// 그 IO 의 줄을 목록에서 찾아 골라 줍니다 (메인 화면 요약에서
+        /// 눌러 넘어왔을 때).
+        ///
+        /// 못 찾으면 <b>조용히 넘깁니다</b> — 읽기 전이거나 걸러 보는 중일
+        /// 수 있습니다. 창을 띄워 "없습니다" 라고 할 일은 아닙니다 (목록이
+        /// 그 자리에 있고, 위의 보기 단추로 넓혀 보면 됩니다).
+        /// </summary>
+        public void FocusIo(string io)
+        {
+            if (string.IsNullOrEmpty(io)) return;
+
+            IList<DbDiffLine> lines = _vm.Lines;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DbDiffLine ln = lines[i];
+                if (ln == null || ln.Io != io) continue;
+
+                DiffList.SelectedItem = ln;
+                DiffList.ScrollIntoView(ln);
+                return;
+            }
+        }
+
         private void OnVmResultChanged(object sender, EventArgs e)
         {
             EventHandler h = ResultChanged;

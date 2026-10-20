@@ -135,6 +135,7 @@ namespace LogScope.Tests
                 DbTallyAndMarks();
                 DbPairByShape();
                 CsvKeyAndValue();
+                DbShowAllIos();
                 DbVerdictRule();
                 DbPathNames();
                 StepsFromChannel();
@@ -3384,6 +3385,118 @@ namespace LogScope.Tests
             Check("열이 모자라면 통째로 읽음", thin.Columns.Count == 2, thin.Note);
             Check("열쇠를 두지 않음", !thin.Columns[0].IsKey && !thin.Columns[1].IsKey, null);
             Check("왜 그런지 적음", thin.Note.Contains("쓸 수 없습니다"), thin.Note);
+        }
+
+        /// <summary>
+        /// <b>모든 IO 보기</b> — 두 쪽이 같은 IO 도 목록에 나오는지.
+        ///
+        /// 0.97 까지는 나올 수가 없었습니다. 견주는 쪽이 <b>차이만</b>
+        /// 담았기 때문입니다 (같은 행은 아예 기록하지 않았습니다). 그래서
+        /// 화면에서 무엇을 어떻게 걸러도 차이 난 IO 만 나왔습니다 — 걸러
+        /// 보기 단추를 꺼도 똑같았습니다.
+        ///
+        /// 같은 IO 가 목록에 없으면 "이 IO 는 봤는데 괜찮았다" 를 확인할
+        /// 길이 없습니다. 안 본 것과 보고 같았던 것이 똑같이 안 보입니다.
+        /// </summary>
+        private static void DbShowAllIos()
+        {
+            Say("DB — 모든 IO 보기");
+
+            string head = "no,addr,io,value,unit\n";
+            string before = head
+                + "1,%M0,TEMP_MAX,180,C\n"
+                + "2,%M1,FLOW_SET,12.0,L\n"
+                + "3,%M2,PRES_SET,5,bar\n";
+            string after = head
+                + "1,%M0,TEMP_MAX,185,C\n"      // 달라짐
+                + "2,%M1,FLOW_SET,12.0,L\n"     // 같음
+                + "3,%M2,PRES_SET,5,bar\n";     // 같음
+
+            DbTable tb = CsvTableReader.Read(WriteText("all_b.csv", before), 0);
+            DbTable ta = CsvTableReader.Read(WriteText("all_a.csv", after), 0);
+            var b = new DbSnapshot(); b.Tables.Add(tb);
+            var a2 = new DbSnapshot(); a2.Tables.Add(ta);
+
+            DbDiffResult d = DbDiff.Compare(b, a2);
+            Check("같은 행을 세어 둠", d.Tables[0].RowsSame == 2,
+                  d.Tables[0].RowsSame.ToString(CultureInfo.InvariantCulture));
+            Check("같은 행을 담아 둠", d.Tables[0].SameRows.Count == 2,
+                  d.Tables[0].SameRows.Count.ToString(CultureInfo.InvariantCulture));
+
+            // ---- 평소(차이만) ----
+            List<DbDiffLine> diffs = DbDiffList.Build(d, null);
+            Check("차이만 보면 한 줄", CountRows(diffs) == 1,
+                  CountRows(diffs).ToString(CultureInfo.InvariantCulture));
+
+            // ---- 모든 IO ----
+            var opt = new DbDiffList.Options();
+            opt.IncludeSame = true;
+            List<DbDiffLine> all = DbDiffList.Build(d, opt);
+
+            Check("모든 IO 를 보면 세 줄", CountRows(all) == 3,
+                  CountRows(all).ToString(CultureInfo.InvariantCulture));
+
+            DbDiffLine same = FindLine(all, "FLOW_SET");
+            Check("같은 IO 도 줄이 있음", same != null, null);
+            if (same != null)
+            {
+                Check("같음이라고 적힘", same.Change == DbDiffLine.ChangeSame, same.Change);
+                Check("칠하지 않음", same.Mark.Length == 0, same.Mark);
+                Check("값이 적힘", same.Before == "12.0" && same.After == "12.0",
+                      same.Before + " / " + same.After);
+                Check("값 열 이름이 적힘", same.Column == "value", same.Column);
+            }
+
+            // 차이 난 줄은 그대로 있고, 색도 그대로입니다.
+            DbDiffLine hot = FindLine(all, "TEMP_MAX");
+            Check("차이 난 줄은 그대로", hot != null && hot.Mark == DbDiffLine.MarkValue,
+                  hot == null ? "없음" : hot.Mark);
+
+            // 같은 줄은 차이 <b>뒤에</b> 옵니다 (섞이면 차이를 눈으로 찾아야 합니다).
+            Check("차이가 먼저", all.IndexOf(hot) < all.IndexOf(same),
+                  all.IndexOf(hot) + " / " + all.IndexOf(same));
+
+            // ---- 센 수는 보기와 무관해야 합니다 ----
+            //
+            // 같은 줄을 목록에 넣었다고 "차이 발생" 이 늘어나면, 보기를
+            // 바꿀 때마다 판정(PASS/WARNING/FAIL)이 흔들립니다.
+            DbDiffList.Tally t1 = DbDiffList.Count(diffs);
+            DbDiffList.Tally t2 = DbDiffList.Count(all);
+            Check("차이 발생 수가 같음", t1.Changed == t2.Changed && t1.Changed == 1,
+                  t1.Changed + " / " + t2.Changed);
+            Check("없어진 IO 수가 같음", t1.Gone == t2.Gone, t1.Gone + " / " + t2.Gone);
+
+            // 걸러 보기를 켜면 같은 줄은 빠집니다 (값이 달라진 줄만 남습니다).
+            List<DbDiffLine> onlyChanged = DbDiffList.OnlyChanged(all);
+            Check("값이 달라진 줄만 걸러도 한 줄", onlyChanged.Count == 1,
+                  onlyChanged.Count.ToString(CultureInfo.InvariantCulture));
+
+            // 차이가 하나도 없는 표도 "모든 IO" 에서는 보여야 합니다.
+            DbTable t3 = CsvTableReader.Read(WriteText("all_c.csv", before), 0);
+            var c1 = new DbSnapshot(); c1.Tables.Add(t3);
+            var c2 = new DbSnapshot(); c2.Tables.Add(CsvTableReader.Read(WriteText("all_d.csv", before), 0));
+            DbDiffResult sameAll = DbDiff.Compare(c1, c2);
+
+            Check("같은 표는 차이 목록이 빔", CountRows(DbDiffList.Build(sameAll, null)) == 0, null);
+            Check("같은 표도 모든 IO 에서는 보임", CountRows(DbDiffList.Build(sameAll, opt)) == 3,
+                  CountRows(DbDiffList.Build(sameAll, opt)).ToString(CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>알림을 뺀 줄 수 (목록의 "줄" 은 알림도 한 줄입니다).</summary>
+        private static int CountRows(List<DbDiffLine> lines)
+        {
+            int n = 0;
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Kind != DbDiffLine.KindNote) n++;
+            return n;
+        }
+
+        /// <summary>그 IO 의 첫 줄. 없으면 null.</summary>
+        private static DbDiffLine FindLine(List<DbDiffLine> lines, string io)
+        {
+            for (int i = 0; i < lines.Count; i++)
+                if (lines[i].Io == io && lines[i].Kind != DbDiffLine.KindNote) return lines[i];
+            return null;
         }
 
         /// <summary>

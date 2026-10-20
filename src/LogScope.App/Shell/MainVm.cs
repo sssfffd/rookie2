@@ -140,46 +140,61 @@ namespace LogScope.App.Shell
             // 이름까지 넘깁니다 — WARNING 이면 어떤 IO 가 달라졌는지
             // 낱말 아래에 그대로 적힙니다.
             card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t, _state.DbChangedIos));
-            card.SetLines(DbLines(t, word), string.Empty);
+            List<CardLineVm> lines = DbLines(t);
+            card.SetLines(lines, lines.Count == 0 ? NoDbLines(t) : string.Empty);
         }
 
         /// <summary>판정 낱말에 맞는 색. 칸의 색 이름으로 옮겨 줍니다.</summary>
         /// <summary>
-        /// 분석 2 칸의 <b>요약</b> 줄들. 센 수 셋과, 달라진 IO 이름입니다.
+        /// 분석 2 칸의 <b>요약</b> — <b>차이 난 IO 를 한 줄씩</b>.
         ///
-        /// 낱말 아래의 한 줄(<see cref="DbVerdict.Why"/>)과 겹치지 않습니다 —
-        /// 거기는 "그래서 어떻다" 는 문장이고, 여기는 <b>수</b>입니다.
-        /// 분석 1 의 요약 칸이 그룹별 수를 적는 자리와 같은 자리입니다.
+        /// 분석 1 처럼 여러 묶음으로 가르지 않습니다. 분석 2 에는 그룹이
+        /// 없고, 보는 사람이 찾는 것은 "어느 IO 가 달라졌나" 하나입니다.
+        /// 수는 낱말 아래 한 줄(<see cref="DbVerdict.Why"/>)이 이미 적습니다.
         ///
-        /// 이름을 FAIL 에서 안 적는 것도 <see cref="DbVerdict"/> 와 같은
-        /// 까닭입니다 — 1200 개 중 여덟 개만 적으면 "이 여덟 개가 문제" 로
-        /// 읽힙니다. 거기서 한 번 가린 것을 여기서 또 가르지 않으려고
-        /// 낱말을 받아서 봅니다.
+        /// <b>줄을 누르면 분석 2 화면에서 그 IO 를 찾아 줍니다.</b>
+        ///
+        /// FAIL 이어도 이름을 적습니다 — 여기는 굴러가는 목록이라 "이 몇
+        /// 개가 문제" 로 읽힐 자리가 아닙니다 (한 줄에 늘어놓는 쪽은
+        /// DbVerdict 가 여덟 개로 끊습니다).
         /// </summary>
-        private List<CardLineVm> DbLines(DbDiffList.Tally t, string word)
+        private List<CardLineVm> DbLines(DbDiffList.Tally t)
         {
             var lines = new List<CardLineVm>();
+            IList<string> names = _state.DbChangedIos;
+            if (names == null) return lines;
 
-            lines.Add(new CardLineVm("차이 발생", t.Changed.ToString("N0") + "개",
-                t.Changed > 0 ? GradeOf(word) : ScoreBands.GradeGood, string.Empty));
-
-            lines.Add(new CardLineVm("없어진 IO", t.Gone.ToString("N0") + "개",
-                t.Gone > 0 ? ScoreBands.GradeWarn : ScoreBands.GradeGood,
-                t.Gone > 0 ? "판정에는 안 넣습니다." : string.Empty));
-
-            lines.Add(new CardLineVm("새로 생긴 IO", t.Added.ToString("N0") + "개",
-                t.Added > 0 ? ScoreBands.GradeWarn : ScoreBands.GradeGood,
-                t.Added > 0 ? "판정에는 안 넣습니다." : string.Empty));
-
-            if (word == DbVerdict.Warning && _state.DbChangedIos != null && _state.DbChangedIos.Count > 0)
+            for (int i = 0; i < names.Count; i++)
             {
-                int more = t.Changed - _state.DbChangedIos.Count;
-                string names = string.Join(", ", _state.DbChangedIos.ToArray());
-                if (more > 0) names += " 외 " + more.ToString("N0") + "개";
-                lines.Add(new CardLineVm("달라진 IO", string.Empty, ScoreBands.GradeWarn, names));
+                lines.Add(new CardLineVm(names[i], string.Empty, ScoreBands.GradeBad,
+                                         string.Empty, names[i]));
             }
 
+            // 다 못 적었으면 몇 개가 더 있는지 적습니다. 이 줄은 누를 것이
+            // 없으므로 Target 을 비웁니다.
+            int more = t.Changed - names.Count;
+            if (more > 0)
+            {
+                lines.Add(new CardLineVm("외 " + more.ToString("N0") + "개 더",
+                                         string.Empty, ScoreBands.GradeNone,
+                                         "분석 2 화면에서 다 볼 수 있습니다."));
+            }
             return lines;
+        }
+
+        /// <summary>
+        /// 차이 난 IO 가 없을 때 요약 칸에 적는 글. <b>빈 칸으로 두면
+        /// "아직 안 봄" 과 가릴 수 없습니다.</b>
+        /// </summary>
+        private static string NoDbLines(DbDiffList.Tally t)
+        {
+            string s = "값이 달라진 IO 가 없습니다.";
+            if (t.Gone > 0 || t.Added > 0)
+            {
+                s += "  없어진 IO " + t.Gone.ToString("N0") + "개 · 새로 생긴 IO "
+                   + t.Added.ToString("N0") + "개는 분석 2 화면에서 볼 수 있습니다.";
+            }
+            return s;
         }
 
         private static string GradeOf(string verdict)

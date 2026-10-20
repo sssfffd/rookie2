@@ -364,14 +364,16 @@
                                           보입니다). 누르면 그 분석 화면으로 넘어갑니다 —
                                           그룹 줄과 같은 손놀림입니다.
                                         -->
-                                        <ItemsControl ItemsSource="{Binding Lines}"
+                                        <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto"
+                                                      HorizontalScrollBarVisibility="Disabled"
                                                       Visibility="{Binding HasLines, Converter={StaticResource BoolToVisibility}}">
+                                        <ItemsControl ItemsSource="{Binding Lines}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:CardLineVm}">
                                                     <Button Style="{StaticResource RowButton}"
-                                                            Click="OnCardClick"
-                                                            Tag="{Binding DataContext.Number, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            ToolTip="이 분석 화면으로 넘어갑니다."
+                                                            Click="OnCardIoClick" Tag="{Binding Target}"
+                                                            IsEnabled="{Binding CanOpen}"
+                                                            ToolTip="분석 2 화면에서 이 IO 를 찾아 줍니다."
                                                             Margin="0,1,0,3">
                                                         <StackPanel>
                                                             <Grid>
@@ -421,6 +423,7 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
+                                        </ScrollViewer>
 
                                         <!--
                                           그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다.

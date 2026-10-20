@@ -287,29 +287,65 @@ namespace LogScope.App.Db
             // 화면에서 걸러 낸 알림 줄까지 다시 넣습니다. 내보낸 파일에서
             // "이 표는 상한에 걸렸다" 가 빠지면, 그 파일을 나중에 보는 사람은
             // 그게 차이의 전부인 줄 압니다.
-            return DbDiffList.ToCsv(_diff == null ? _lines : DbDiffList.Build(_diff, null));
+            //
+            // <b>보고 있는 것과 같은 범위</b>로 내보냅니다 — [모든 IO] 로
+            // 보고 있으면 같은 IO 도 들어갑니다. 화면과 파일이 다르면
+            // 어느 쪽이 참인지 알 수가 없습니다.
+            if (_diff == null) return DbDiffList.ToCsv(_lines);
+
+            var opt = new DbDiffList.Options();
+            opt.IncludeSame = _view == ViewAll;
+            return DbDiffList.ToCsv(DbDiffList.Build(_diff, opt));
         }
 
-        private bool _onlyChanged;
+
+        // ---------------- 무엇을 보여 줄지 ----------------
+        //
+        // 셋 중 하나입니다. 0.97 까지는 "차이가 발생한 IO만 보기" 켜고 끄기
+        // 둘뿐이었는데, <b>끈 상태가 "모든 IO" 가 아니었습니다</b> — 끄면
+        // 차이 전체(값 차이 + 생김/없어짐 + 열 차이)가 보일 뿐, 두 쪽이 같은
+        // IO 는 어느 쪽에서도 안 보였습니다. 견주는 쪽이 차이만 담았기
+        // 때문입니다 (0.98 에 같은 줄도 담게 고쳤습니다).
+
+        /// <summary>값이 달라진 줄만 (빨강).</summary>
+        public const int ViewChanged = 0;
+
+        /// <summary>차이 전체 — 값 차이 · 생김 · 없어짐 · 열 차이.</summary>
+        public const int ViewDiffs = 1;
+
+        /// <summary>모든 IO — 위에 더해 두 쪽이 같은 IO 까지.</summary>
+        public const int ViewAll = 2;
+
+        private int _view = ViewDiffs;
 
         /// <summary>
-        /// <b>차이가 발생한 IO만 보기.</b> 값이 달라진 줄(빨강 · 노랑)만
-        /// 남기고, 생기거나 없어진 줄과 표·열 줄을 감춥니다.
-        ///
-        /// 감춘 것이 "없는 것" 으로 읽히면 안 되므로, 켜 둔 동안에도
-        /// <b>위의 세 숫자는 전체 기준 그대로</b>이고 줄 수 옆에 "걸러 보는
-        /// 중" 이라고 적습니다.
+        /// 라디오 셋을 위한 쌍. WPF 라디오는 bool 로 묶는 쪽이 간단합니다
+        /// (히트맵의 [값 그대로]·[%] 와 같은 방식입니다).
         /// </summary>
-        public bool OnlyChanged
+        public bool ViewChangedOnly
         {
-            get { return _onlyChanged; }
-            set
-            {
-                if (_onlyChanged == value) return;
-                _onlyChanged = value;
-                Raise("OnlyChanged");
-                Rebuild();
-            }
+            get { return _view == ViewChanged; }
+            set { if (value) SetView(ViewChanged); }
+        }
+
+        public bool ViewAllDiffs
+        {
+            get { return _view == ViewDiffs; }
+            set { if (value) SetView(ViewDiffs); }
+        }
+
+        public bool ViewEveryIo
+        {
+            get { return _view == ViewAll; }
+            set { if (value) SetView(ViewAll); }
+        }
+
+        private void SetView(int v)
+        {
+            if (_view == v) return;
+            _view = v;
+            Raise("ViewChangedOnly"); Raise("ViewAllDiffs"); Raise("ViewEveryIo");
+            Rebuild();
         }
 
         private void Rebuild()
@@ -323,23 +359,31 @@ namespace LogScope.App.Db
             }
             else
             {
-                _lines = TakeNotes(DbDiffList.Build(_diff, null));
+                var opt = new DbDiffList.Options();
+                opt.IncludeSame = _view == ViewAll;
+
+                _lines = TakeNotes(DbDiffList.Build(_diff, opt));
                 all = _lines.Count;
-                if (_onlyChanged) _lines = DbDiffList.OnlyChanged(_lines);
+                if (_view == ViewChanged) _lines = DbDiffList.OnlyChanged(_lines);
 
                 EmptyText = _diff.Tables.Count == 0
                     ? "읽은 표가 없습니다. 위 두 자리를 봐 주세요."
-                    : _onlyChanged && all > 0
-                        ? "값이 달라진 줄이 없습니다. [차이가 발생한 IO만 보기] 를 끄면 "
-                          + "생기거나 없어진 줄도 보입니다."
-                        : "두 DB 가 같습니다 — 다른 데가 없습니다.";
+                    : _view == ViewChanged && all > 0
+                        ? "값이 달라진 줄이 없습니다. [차이 전체] 로 보면 생기거나 "
+                          + "없어진 줄도 보입니다."
+                        : "두 DB 가 같습니다 — 다른 데가 없습니다. [모든 IO] 로 보면 "
+                          + "같은 IO 도 줄로 보입니다.";
             }
 
+            // 지금 무엇을 보고 있는지 적습니다. <b>걸러 보는 중이면 전체
+            // 줄 수도 같이</b> — 걸러 둔 것이 "없는 것" 으로 읽히면 안 됩니다.
             LineText = _lines.Count == 0 ? string.Empty
-                     : _onlyChanged
-                         ? _lines.Count.ToString("N0") + " 줄  (걸러 보는 중 · 전체 "
+                     : _view == ViewChanged
+                         ? _lines.Count.ToString("N0") + " 줄  (값이 달라진 줄만 · 차이 전체 "
                            + all.ToString("N0") + " 줄)"
-                         : _lines.Count.ToString("N0") + " 줄";
+                         : _view == ViewAll
+                             ? _lines.Count.ToString("N0") + " 줄  (같은 IO 까지)"
+                             : _lines.Count.ToString("N0") + " 줄  (차이 전체)";
             Raise("Lines");
             Raise("LinesIsEmpty");
             Raise("Notes");
@@ -366,7 +410,9 @@ namespace LogScope.App.Db
             List<DbDiffLine> all = TakeNotes(DbDiffList.Build(_diff, null));
 
             _tally = DbDiffList.Count(all);
-            _changedIos = DbDiffList.ChangedIos(all, DbVerdict.MaxNames);
+            // 메인 화면 요약 칸이 줄로 적을 만큼 모읍니다. 낱말 아래
+            // 한 줄은 DbVerdict 가 알아서 여덟 개까지만 씁니다.
+            _changedIos = DbDiffList.ChangedIos(all, DbVerdict.MaxListIos);
             _hasTally = true;
 
             Summary = Overview(before, after, all);

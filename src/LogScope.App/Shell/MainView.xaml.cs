@@ -152,6 +152,33 @@ namespace LogScope.App.Shell
             return e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop);
         }
 
+        /// <summary>
+        /// 분석 2 칸의 요약에서 IO 한 줄을 눌렀을 때. 그 화면으로 넘어가
+        /// <b>그 IO 를 찾아 줍니다</b> — 화면만 열면 수백 줄 가운데서 다시
+        /// 찾아야 하고, 그러면 누른 뜻이 없습니다.
+        /// </summary>
+        public event EventHandler<IoEventArgs> IoOpened;
+
+        public sealed class IoEventArgs : EventArgs
+        {
+            public readonly string Io;
+            public IoEventArgs(string io) { Io = io ?? string.Empty; }
+        }
+
+        private void OnCardIoClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+
+            var b = sender as Button;
+            if (b == null) return;
+
+            string io = b.Tag as string;
+            if (string.IsNullOrEmpty(io)) return;
+
+            EventHandler<IoEventArgs> h = IoOpened;
+            if (h != null) h(this, new IoEventArgs(io));
+        }
+
         /// <summary>요약에서 그룹 한 줄을 눌렀을 때.</summary>
         public event EventHandler<GroupEventArgs> GroupOpened;
 

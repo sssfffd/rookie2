@@ -49,6 +49,7 @@ namespace LogScope.App.Shell
             _vm.ScreenChanged += OnScreenChanged;
             Main.AnalysisOpened += OnAnalysisOpened;
             Main.GroupOpened += OnGroupOpened;
+            Main.IoOpened += OnMainIoOpened;
             Main.LogDropped += OnLogDropped;
             Main.DbDropped += OnMainDbDropped;
 
@@ -509,6 +510,16 @@ namespace LogScope.App.Shell
         /// 추리기 전의 조건으로 한 번 계산해 버려서, 전체를 그렸다가 곧바로
         /// 다시 그리게 됩니다.
         /// </summary>
+        /// <summary>
+        /// 메인 화면 분석 2 칸의 요약에서 IO 한 줄을 눌렀을 때.
+        /// 그 화면으로 넘어가 그 줄을 골라 줍니다.
+        /// </summary>
+        private void OnMainIoOpened(object sender, MainView.IoEventArgs e)
+        {
+            _vm.Screen = ShellVm.ScreenAnalysis2;
+            Db.FocusIo(e.Io);
+        }
+
         private void OnGroupOpened(object sender, MainView.GroupEventArgs e)
         {
             if (!_state.HasBoth) return;

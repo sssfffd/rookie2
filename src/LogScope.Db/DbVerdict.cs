@@ -48,6 +48,13 @@ namespace LogScope.Db
         public const int MaxNames = 8;
 
         /// <summary>
+        /// 메인 화면 <b>요약 칸</b>에 줄로 적을 IO 수. 한 줄에 늘어놓는
+        /// 이름(<see cref="MaxNames"/>)보다 넉넉합니다 — 요약 칸은 굴러
+        /// 가니까요. 넘으면 "외 N 개" 한 줄을 붙입니다.
+        /// </summary>
+        public const int MaxListIos = 60;
+
+        /// <summary>
         /// 낱말 아래에 적는 요약. 판정마다 <b>다음에 뭘 해야 하는지</b>를
         /// 적습니다.
         ///
@@ -97,8 +104,12 @@ namespace LogScope.Db
             if (names == null || names.Count == 0)
                 return head + " (" + FailFrom.ToString("N0") + "개부터 FAIL)";
 
-            head += " — " + Join(names);
-            int more = t.Changed - names.Count;
+            // 여기서 적는 것은 <b>한 줄</b>이라 여덟 개까지입니다. 넘겨받은
+            // 목록이 더 길 수 있어서 (요약 칸은 더 많이 적습니다) 여기서
+            // 자릅니다 — 자르는 자리가 한 곳이어야 "외 N 개" 가 안 어긋납니다.
+            int used = names.Count < MaxNames ? names.Count : MaxNames;
+            head += " — " + Join(names, used);
+            int more = t.Changed - used;
             if (more > 0) head += " 외 " + more.ToString("N0") + "개";
             return head;
         }
@@ -112,10 +123,10 @@ namespace LogScope.Db
                  + "개 · 새로 생긴 IO " + t.Added.ToString("N0") + "개)";
         }
 
-        private static string Join(IList<string> names)
+        private static string Join(IList<string> names, int count)
         {
             var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < names.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 if (i > 0) sb.Append(", ");
                 sb.Append(names[i]);

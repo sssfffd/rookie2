@@ -90,12 +90,25 @@ namespace LogScope.App.Shell
         /// <summary>줄 아래에 작게 붙이는 글. 없으면 빈 글자.</summary>
         public string Detail { get; private set; }
 
+        /// <summary>
+        /// 누르면 그 분석 화면에서 찾아 줄 것. IO 이름입니다. 빈 글자면
+        /// 화면만 열고 아무것도 안 찾습니다.
+        /// </summary>
+        public string Target { get; private set; }
+
+        /// <summary>누를 수 있는 줄인지 (찾아 줄 것이 있는지).</summary>
+        public bool CanOpen { get { return Target.Length > 0; } }
+
         public CardLineVm(string label, string value, string grade, string detail)
+            : this(label, value, grade, detail, string.Empty) { }
+
+        public CardLineVm(string label, string value, string grade, string detail, string target)
         {
             Label = label ?? string.Empty;
             Value = value ?? string.Empty;
             Grade = grade ?? ScoreBands.GradeNone;
             Detail = detail ?? string.Empty;
+            Target = target ?? string.Empty;
         }
     }
 

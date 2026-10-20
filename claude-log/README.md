@@ -84,3 +84,4 @@
 | `75-db-summary-on-main.md` | 분석 2 요약을 메인 화면 요약 칸에 · 단계 나눠 보기 확인 |
 | `76-step-bands-gap-zoom.md` | 칸 띄우기 · 칸마다 확대 · 단추 이름과 설명 줄 |
 | `77-heatmap-per-step-shift.md` | 히트맵이 칸마다 그 단계의 밀기 값으로 견주게 (오차 못 잡던 것) |
+| `78-db-show-all-ios.md` | "모든 IO 보기" 가 되게 (같은 행도 담기) · 요약 칸은 달라진 IO 목록 |

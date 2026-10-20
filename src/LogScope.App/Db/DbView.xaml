@@ -200,10 +200,30 @@
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBlock Text="{Binding LineText}" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="12,0,12,0" />
-                            <CheckBox Content="차이가 발생한 IO만 보기"
-                                      IsChecked="{Binding OnlyChanged, Mode=TwoWay}"
-                                      VerticalAlignment="Center" Margin="0,0,14,0"
-                                      ToolTip="값이 달라진 줄(빨강 · 노랑)만 남깁니다. 생기거나 없어진 줄과 표·열 줄은 감춥니다 — 위의 세 숫자는 감춘 것까지 센 그대로입니다." />
+                            <!--
+                              무엇을 보여 줄지. 셋 중 하나입니다.
+
+                              0.97 까지는 [차이가 발생한 IO만 보기] 켜고 끄기
+                              둘뿐이었는데, 끈 상태가 "모든 IO" 가 아니었습니다 —
+                              두 쪽이 같은 IO 는 어느 쪽에서도 안 보였습니다.
+                              이름이 그렇게 읽혀서 "모든 IO 가 안 보인다" 는
+                              말을 들었습니다. 이제 셋을 글자로 적어 둡니다.
+                            -->
+                            <TextBlock Text="보기" Style="{StaticResource FieldLabel}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <RadioButton GroupName="dbview" Style="{StaticResource SegmentButton}"
+                                         Content="값이 달라진 것만"
+                                         IsChecked="{Binding ViewChangedOnly, Mode=TwoWay}"
+                                         ToolTip="값이 달라진 줄(빨강)만 남깁니다.&#x0a;생기거나 없어진 줄과 열 줄은 감춥니다 — 위의 세 숫자는 감춘 것까지 센 그대로입니다." />
+                            <RadioButton GroupName="dbview" Style="{StaticResource SegmentButton}"
+                                         Content="차이 전체"
+                                         IsChecked="{Binding ViewAllDiffs, Mode=TwoWay}"
+                                         ToolTip="값 차이 · 생김 · 없어짐 · 열 차이를 다 보여 줍니다 (같은 IO 는 뺍니다)." />
+                            <RadioButton GroupName="dbview" Style="{StaticResource SegmentButton}"
+                                         Content="모든 IO"
+                                         IsChecked="{Binding ViewEveryIo, Mode=TwoWay}"
+                                         Margin="0,0,14,0"
+                                         ToolTip="두 쪽이 같은 IO 까지 모두 보여 줍니다 — &quot;이 IO 는 봤고 괜찮았다&quot; 를 확인하는 자리입니다.&#x0a;같은 줄은 차이 뒤에 옵니다. 표 하나에서 2 만 개까지 담습니다 (넘으면 그렇다고 적습니다)." />
 
                             <!-- 색이 무슨 뜻인지. 색만 칠해 두고 말을 안 하면 못 읽습니다. -->
                             <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"

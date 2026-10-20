@@ -109,6 +109,19 @@ namespace LogScope.Db
         public List<ColumnDiff> Columns = new List<ColumnDiff>();
         public List<RowDiff> Rows = new List<RowDiff>();
 
+        /// <summary>
+        /// <b>두 쪽이 같은 줄들.</b> 차이 목록과 따로 담습니다.
+        ///
+        /// 0.97 까지는 아예 안 담았습니다 (차이만 담으면 되니까요). 그러면
+        /// 화면에서 "모든 IO 보기" 를 할 수가 없습니다 — 같은 IO 는 어디에도
+        /// 없으니 무엇을 어떻게 걸러도 차이 난 IO 만 나옵니다. 견준 IO 가
+        /// 목록에 없으면 "이 IO 는 봤는데 괜찮았다" 를 확인할 길이 없습니다.
+        ///
+        /// 차이 목록과 <b>따로</b> 담는 까닭: 같은 줄이 훨씬 많아서, 한
+        /// 통에 담으면 상한을 같은 줄이 다 먹고 차이가 밀려 나갑니다.
+        /// </summary>
+        public List<RowDiff> SameRows = new List<RowDiff>();
+
         /// <summary>행을 못 읽었거나 키가 없어 짐작으로 짝지을 수 없을 때의 설명.</summary>
         public string RowNote = string.Empty;
 
@@ -123,6 +136,9 @@ namespace LogScope.Db
 
         public int ColumnsChanged;
         public int RowsAdded, RowsRemoved, RowsChanged;
+
+        /// <summary>두 쪽이 같았던 행 수. 담은 것(SameRows)보다 많을 수 있습니다 (상한).</summary>
+        public int RowsSame;
 
         public bool SchemaChanged { get { return ColumnsChanged > 0; } }
         public bool RowsDiffer { get { return RowsAdded + RowsRemoved + RowsChanged > 0; } }
@@ -178,6 +194,13 @@ namespace LogScope.Db
     {
         /// <summary>표 하나에서 적어 둘 행 차이의 상한. 넘으면 세기만 합니다.</summary>
         public const int MaxRowDiffsPerTable = 5000;
+
+        /// <summary>
+        /// 표 하나에서 <b>같은 줄</b>을 몇 개까지 담을지. "모든 IO 보기" 를
+        /// 위한 것이라 차이보다 넉넉히 둡니다 — IO 표는 보통 수백~수천
+        /// 줄입니다. 넘으면 담기를 그치고 <b>그렇다고 적습니다</b>.
+        /// </summary>
+        public const int MaxSameRowsPerTable = 20000;
 
         public static DbDiffResult Compare(DbSnapshot before, DbSnapshot after)
         {
@@ -542,7 +565,13 @@ namespace LogScope.Db
                     changed.Add(c);
                 }
 
-                if (changed.Count == 0) continue;
+                if (changed.Count == 0)
+                {
+                    // 같은 줄도 담습니다 ("모든 IO 보기" 가 쓸 자리).
+                    td.RowsSame++;
+                    AddSame(td, new RowDiff { Key = key, Change = DbChange.Same, Before = br, After = ar });
+                    continue;
+                }
 
                 td.RowsChanged++;
                 var d = new RowDiff { Key = key, Change = DbChange.Changed, Before = br, After = ar };
@@ -580,6 +609,25 @@ namespace LogScope.Db
                 return;
             }
             td.Rows.Add(d);
+        }
+
+        /// <summary>
+        /// 같은 줄을 담습니다. 상한을 넘으면 세기만 하고 <b>적어 둡니다</b> —
+        /// 조용히 그치면 "모든 IO" 가 전부인 줄 알게 됩니다.
+        /// </summary>
+        private static void AddSame(TableDiff td, RowDiff d)
+        {
+            if (td.SameRows.Count >= MaxSameRowsPerTable)
+            {
+                if (!td.RowNote.Contains("같은 줄"))
+                {
+                    td.RowNote = (td.RowNote.Length > 0 ? td.RowNote + " " : "")
+                               + "같은 줄은 " + MaxSameRowsPerTable.ToString("N0")
+                               + " 개까지만 목록에 담았습니다 (상한). 그 뒤는 세기만 했습니다.";
+                }
+                return;
+            }
+            td.SameRows.Add(d);
         }
     }
 
@@ -624,6 +672,12 @@ namespace LogScope.Db
         public const string ChangeGone = "없어짐";
         public const string ChangeDiff = "달라짐";
         public const string ChangeMoved = "자리";   // 값은 같고 열 자리만 바뀜
+
+        /// <summary>
+        /// 두 쪽이 <b>같은</b> 줄. "모든 IO 보기" 에서만 목록에 들어옵니다.
+        /// 칠하지 않습니다 (Mark 가 빈 글자).
+        /// </summary>
+        public const string ChangeSame = "같음";
 
         /// <summary>
         /// <b>줄 색을 정하는 값.</b> 화면이 이 글자를 보고 줄을 칠합니다.
@@ -747,6 +801,15 @@ namespace LogScope.Db
 
             /// <summary>생기거나 없어진 행을 열마다 펼칠지. 거짓이면 행 한 줄로 묶습니다.</summary>
             public bool ExpandWholeRows = true;
+
+            /// <summary>
+            /// <b>두 쪽이 같은 줄도 목록에 넣을지</b> ("모든 IO 보기").
+            ///
+            /// 기본은 거짓입니다 — 차이를 보려고 여는 화면이고, 같은 줄이
+            /// 훨씬 많아서 켜 두면 차이가 그 안에 묻힙니다. 화면에서 고르면
+            /// 참이 됩니다.
+            /// </summary>
+            public bool IncludeSame;
         }
 
         /// <summary>DB 한 벌 전체. "같음" 인 표는 줄을 만들지 않습니다.</summary>
@@ -826,7 +889,11 @@ namespace LogScope.Db
 
         private static void OneTable(TableDiff td, Sink s)
         {
-            if (td == null || td.Change == DbChange.Same) return;
+            if (td == null) return;
+
+            // 같은 표는 넘깁니다 — 단, "모든 IO 보기" 면 그 표의 IO 들도
+            // 적어야 합니다 (차이가 없는 표의 IO 도 견준 IO 입니다).
+            if (td.Change == DbChange.Same && !s.Opt.IncludeSame) return;
             s.Start();
 
             if (td.Change == DbChange.OnlyBefore || td.Change == DbChange.OnlyAfter)
@@ -853,6 +920,66 @@ namespace LogScope.Db
             {
                 if (!OneRow(td, td.Rows[i], s)) { Cut(td, s); return; }
             }
+
+            // 같은 줄은 <b>차이 뒤에</b> 적습니다. 섞어 놓으면 차이를 눈으로
+            // 찾아야 합니다 (목록을 열쇠 순으로 정렬하지 않는 까닭입니다).
+            if (!s.Opt.IncludeSame) return;
+            for (int i = 0; i < td.SameRows.Count; i++)
+            {
+                if (!SameRowLine(td, td.SameRows[i], s)) { Cut(td, s); return; }
+            }
+        }
+
+        /// <summary>
+        /// 두 쪽이 같은 줄 하나. <b>행 하나에 한 줄</b>입니다 (열마다 펼치지
+        /// 않습니다) — 같은 값을 열 수만큼 적으면 목록이 그것만으로 찹니다.
+        ///
+        /// 값 열이 하나뿐인 표(IO 표가 그렇습니다)는 그 값을 적습니다.
+        /// 여러 열이면 행 전체를 한 칸에 적습니다.
+        /// </summary>
+        private static bool SameRowLine(TableDiff td, RowDiff rd, Sink s)
+        {
+            string key = KeyText(td, rd);
+            string io = IoText(td, rd);
+
+            var ln = new DbDiffLine
+            {
+                Table = td.Name, Kind = DbDiffLine.KindRow, Change = DbDiffLine.ChangeSame,
+                Where = key, Io = io,
+            };
+
+            int one = SingleValueColumn(td.Before);
+            if (one >= 0 && rd.Before != null)
+            {
+                ln.Column = td.Before.Columns[one].Name;
+                ln.Before = DbRow.Show(rd.Before.Get(one));
+                ln.After = ln.Before;      // 같은 줄이라 두 쪽이 같은 값입니다
+            }
+            else
+            {
+                ln.Column = "(행 전체)";
+                ln.Before = RowText(td.Before, rd.Before);
+                ln.After = ln.Before;
+            }
+            return s.Add(ln);
+        }
+
+        /// <summary>
+        /// 값 열이 하나뿐이면 그 자리, 아니면 -1. (열쇠 하나 + 값 하나로 된
+        /// IO 표를 가립니다 — .csv 로 읽은 표가 그 모양입니다.)
+        /// </summary>
+        private static int SingleValueColumn(DbTable t)
+        {
+            if (t == null) return -1;
+
+            int found = -1;
+            for (int i = 0; i < t.Columns.Count; i++)
+            {
+                if (t.Columns[i].IsKey) continue;
+                if (found >= 0) return -1;      // 값 열이 둘 이상
+                found = i;
+            }
+            return found;
         }
 
         private static void Cut(TableDiff td, Sink s)
