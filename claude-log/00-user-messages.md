@@ -1212,3 +1212,11 @@
 > log파일 여는 곳들이 저기 있는게 맞나? 뭔가 안예쁘네
 
 → 답변: [82-card-footer-and-big-count.md](82-card-footer-and-big-count.md)
+
+---
+
+## 요청 109 — 개수는 FAIL 오른쪽 · 파일 칸은 위로, 열기 전엔 예전 모양
+
+> 일단 분석2에서 차이발생 갯수가 fail판정 오른쪽에 있으면 좋겠고 메인화면 이전 이후 로그 여는거 칸은 열고 난 후는 지금이 나은데 열기전엔 이전게 이쁘네 타협점 잘 찾아보고 열고난 후 아래가아니라 위에 있어야할득
+
+→ 답변: [83-count-beside-and-two-look-slots.md](83-count-beside-and-two-look-slots.md)

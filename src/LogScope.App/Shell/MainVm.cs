@@ -104,6 +104,7 @@ namespace LogScope.App.Shell
             Raise("DbBeforeName"); Raise("DbAfterName");
             Raise("DbBeforeNote"); Raise("DbAfterNote");
             Raise("BeforeHint"); Raise("AfterHint");
+            Raise("BeforeShown"); Raise("AfterShown");
             Raise("BeforeDetail"); Raise("AfterDetail");
             Raise("DbBeforeHint"); Raise("DbAfterHint");
             Raise("DbBeforeKind"); Raise("DbAfterKind");
@@ -348,6 +349,18 @@ namespace LogScope.App.Shell
         /// <summary>안 열었을 때 이름 자리에 흐리게 적는 말. 열었으면 빈 글자.</summary>
         public string BeforeHint { get { return _state.Before == null ? LogHint : string.Empty; } }
         public string AfterHint { get { return _state.After == null ? LogHint : string.Empty; } }
+
+        /// <summary>
+        /// 연 뒤의 파일 이름. <b>안 열었으면 빈 글자</b> — 위 Hint 와 정확히
+        /// 엇갈립니다 (하나가 차면 하나가 빕니다).
+        ///
+        /// 화면이 이 둘로 "열기 전 상자" 와 "연 뒤 한 줄" 중 하나를 고릅니다.
+        /// BeforeFileName 으로 고르면 안 됩니다 — 그쪽은 경로(_state.BeforePath)
+        /// 에서 나오고 Hint 는 데이터셋에서 나와서, 둘이 어긋나는 순간
+        /// 두 모양이 겹치거나 둘 다 사라집니다.
+        /// </summary>
+        public string BeforeShown { get { return _state.Before == null ? string.Empty : BeforeFileName; } }
+        public string AfterShown { get { return _state.After == null ? string.Empty : AfterFileName; } }
 
         /// <summary>오른쪽 작은 덧글 — IO 수와 표본 수. 안 열었으면 빈 글자.</summary>
         public string BeforeDetail { get { return Detail(_state.Before); } }

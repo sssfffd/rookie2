@@ -142,6 +142,241 @@
                                             ToolTip="이 분석 화면으로 넘어갑니다." />
                                 </Grid>
 
+                                <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 제목 바로 아래 (1.03) =====
+
+                                     <b>모양이 둘</b>입니다. 한 자리에 두 Border 를 겹쳐
+                                     두고 하나만 보입니다.
+
+                                       열기 전 : 테두리 친 상자 — "여기 놓으라" 는 자리로
+                                                 보여야 합니다 (0.99 의 모양)
+                                       연 뒤   : 납작한 한 줄 — 이름만 읽히면 됩니다
+                                                 (1.02 의 모양)
+
+                                     두 모양을 Border 하나에 바인딩으로 바꿔 끼우지
+                                     않은 까닭: 끌기가 끝나면 CardTag 가 Tag 에 적힌
+                                     색으로 되돌리는데, Tag 와 색이 바인딩으로 함께
+                                     바뀌면 그 둘이 어긋나는 순간이 생깁니다
+                                     (0.59 · 1.02 에 겪은 모양). 둘로 두면 저마다 Tag 와
+                                     색이 고정이라 검사기가 그 짝을 볼 수 있습니다.
+
+                                     위·아래 어느 쪽을 보일지는 Hint / Shown 이 정확히
+                                     엇갈리게 만들어 둬서 겹치거나 둘 다 사라지지
+                                     않습니다. -->
+                                <Grid Margin="0,0,0,12"
+                                      Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="4" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Tag="before|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Visibility="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이전" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Visibility="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.Before}" />
+                                            <TextBlock Grid.Column="1" Text="이전" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.BeforeDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Visibility="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이후" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Visibility="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.After}" />
+                                            <TextBlock Grid.Column="1" Text="이후" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.AfterDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- ===== 이 분석이 견줄 자리 (분석 2) — 분석 1 과 같은 두 모양 =====
+                                     폴더도 파일도 됩니다. 누르면 파일 고르는 창
+                                     (폴더는 끌어다 놓기). 둘 다 차면 바로 읽습니다. -->
+                                <Grid Margin="0,0,0,12"
+                                      Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="4" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Tag="before|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Visibility="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이전" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.DbBeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Visibility="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.Before}" />
+                                            <TextBlock Grid.Column="1" Text="이전" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.DbBeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Visibility="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                <TextBlock Text="이후" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.DbAfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Visibility="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.After}" />
+                                            <TextBlock Grid.Column="1" Text="이후" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.DbAfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
                                 <!-- 점수 (또는 판정 낱말).
                                      적을 것이 없으면 줄째 사라집니다 — 분석 2 는
                                      DB 를 읽기 전에 아무것도 안 적습니다. -->
@@ -159,27 +394,28 @@
                                     <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,7"
                                                Foreground="{DynamicResource Brush.Muted}"
                                                VerticalAlignment="Bottom" />
+
+                                    <!--
+                                      분석 2: 차이 발생 개수를 <b>낱말 오른쪽에</b> (1.03).
+                                      FAIL 을 보는 눈이 바로 옆의 수로 이어집니다 —
+                                      아래 줄로 내려 두면 "왜 FAIL 인가" 를 찾으러
+                                      눈이 한 번 더 내려가야 합니다.
+                                    -->
+                                    <StackPanel Orientation="Horizontal" Margin="18,0,0,0"
+                                                VerticalAlignment="Bottom"
+                                                Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
+                                        <TextBlock Text="차이 발생" FontSize="13" VerticalAlignment="Bottom"
+                                                   Margin="0,0,8,4" Foreground="{DynamicResource Brush.Muted}" />
+                                        <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
+                                                   FontSize="24" FontWeight="Bold" VerticalAlignment="Bottom"
+                                                   Foreground="{DynamicResource Brush.Text}" />
+                                        <TextBlock Text="개" FontSize="13" VerticalAlignment="Bottom"
+                                                   Margin="4,0,0,4" Foreground="{DynamicResource Brush.Muted}" />
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
                                            FontSize="11" Margin="0,1,0,0" TextWrapping="Wrap"
                                            Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
-
-                                <!--
-                                  분석 2: 차이 발생 <b>개수</b>를 크게 (1.02).
-                                  전에는 작은 글 한 줄에 IO 이름들과 섞여 있어서
-                                  제일 먼저 찾는 수가 제일 안 보였습니다. 이름은
-                                  아래 요약 칸이 한 줄씩 적습니다.
-                                -->
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                                            Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
-                                    <TextBlock Text="차이 발생" FontSize="13" VerticalAlignment="Bottom"
-                                               Margin="0,0,8,5" Foreground="{DynamicResource Brush.Muted}" />
-                                    <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
-                                               FontSize="30" FontWeight="Bold" VerticalAlignment="Bottom"
-                                               Foreground="{DynamicResource Brush.Text}" />
-                                    <TextBlock Text="개" FontSize="13" VerticalAlignment="Bottom"
-                                               Margin="4,0,0,5" Foreground="{DynamicResource Brush.Muted}" />
-                                </StackPanel>
 
                                 <!-- 그 분석이 실제로 센 숫자들 -->
                                 <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
@@ -360,176 +596,6 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 카드 맨 아래 한 줄씩 (1.02) =====
-
-                                     0.99 까지는 테두리 친 상자 둘을 카드 가운데에
-                                     쌓아 두었습니다. 상자 안에 상자라 무거웠고,
-                                     결과(점수 · 요약)보다 파일 칸이 먼저 눈에
-                                     들어왔습니다. 메인 화면이 먼저 답할 것은
-                                     "결과가 어떤가" 라서 파일은 <b>바닥글</b>로
-                                     내렸습니다 — 한 줄에 이전/이후 · 이름 · 덧글.
-
-                                     줄 전체가 놓을 자리이고, 누르면 파일 고르는
-                                     창이 뜹니다. 평소에는 카드와 같은 색이라
-                                     안 보이다가, 끌어 올리면 밝아집니다. -->
-                                <Grid Margin="0,10,0,0"
-                                      Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="2" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Border Grid.Row="0" Height="1" Margin="0,0,0,6"
-                                            Background="{DynamicResource Brush.Border}" />
-                                        <Border Grid.Row="1" Tag="before|Brush.Panel|Brush.Panel"
-                                                Background="{DynamicResource Brush.Panel}"
-                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                                CornerRadius="3" Padding="6,4" Cursor="Hand"
-                                                ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                AllowDrop="True" DragOver="OnDropCardDragOver"
-                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                                MouseLeftButtonUp="OnLogCardClick">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                        VerticalAlignment="Center" Margin="0,0,6,0"
-                                                        Background="{DynamicResource Brush.Before}" />
-                                                <TextBlock Grid.Column="1" Text="이전" FontWeight="Bold" FontSize="12"
-                                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.BeforeFileName, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.BeforeFileName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="2" FontSize="11" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                           Text="{Binding DataContext.BeforeDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            </Grid>
-                                        </Border>
-                                        <Border Grid.Row="3" Tag="after|Brush.Panel|Brush.Panel"
-                                                Background="{DynamicResource Brush.Panel}"
-                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                                CornerRadius="3" Padding="6,4" Cursor="Hand"
-                                                ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                AllowDrop="True" DragOver="OnDropCardDragOver"
-                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                                MouseLeftButtonUp="OnLogCardClick">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                        VerticalAlignment="Center" Margin="0,0,6,0"
-                                                        Background="{DynamicResource Brush.After}" />
-                                                <TextBlock Grid.Column="1" Text="이후" FontWeight="Bold" FontSize="12"
-                                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.AfterFileName, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.AfterFileName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="2" FontSize="11" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                           Text="{Binding DataContext.AfterDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            </Grid>
-                                        </Border>
-                                </Grid>
-
-                                <!-- ===== 이 분석이 견줄 자리 (분석 2) — 분석 1 과 같은 바닥글 =====
-                                     폴더도 파일도 됩니다. 누르면 파일 고르는 창
-                                     (폴더는 끌어다 놓기). 둘 다 차면 바로 읽습니다. -->
-                                <Grid Margin="0,10,0,0"
-                                      Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="2" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Border Grid.Row="0" Height="1" Margin="0,0,0,6"
-                                            Background="{DynamicResource Brush.Border}" />
-                                        <Border Grid.Row="1" Tag="before|Brush.Panel|Brush.Panel"
-                                                Background="{DynamicResource Brush.Panel}"
-                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                                CornerRadius="3" Padding="6,4" Cursor="Hand"
-                                                ToolTip="{Binding DataContext.DbBeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                AllowDrop="True" DragOver="OnDropCardDragOver"
-                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                                MouseLeftButtonUp="OnDbCardClick">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                        VerticalAlignment="Center" Margin="0,0,6,0"
-                                                        Background="{DynamicResource Brush.Before}" />
-                                                <TextBlock Grid.Column="1" Text="이전" FontWeight="Bold" FontSize="12"
-                                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="2" FontSize="11" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                           Text="{Binding DataContext.DbBeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            </Grid>
-                                        </Border>
-                                        <Border Grid.Row="3" Tag="after|Brush.Panel|Brush.Panel"
-                                                Background="{DynamicResource Brush.Panel}"
-                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                                CornerRadius="3" Padding="6,4" Cursor="Hand"
-                                                ToolTip="{Binding DataContext.DbAfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                AllowDrop="True" DragOver="OnDropCardDragOver"
-                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                                MouseLeftButtonUp="OnDbCardClick">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="34" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                        VerticalAlignment="Center" Margin="0,0,6,0"
-                                                        Background="{DynamicResource Brush.After}" />
-                                                <TextBlock Grid.Column="1" Text="이후" FontWeight="Bold" FontSize="12"
-                                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="2" FontSize="11" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Visibility="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}" />
-                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                           Text="{Binding DataContext.DbAfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            </Grid>
-                                        </Border>
-                                </Grid>
                             </StackPanel>
                         </Border>
 
