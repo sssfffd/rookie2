@@ -150,16 +150,21 @@ namespace LogScope.Core.Model
         /// ("가열", … "가열 (2)"). 안 붙이면 단계 목록에 같은 글이 둘 떠서
         /// 어느 쪽인지 고를 수가 없습니다. 이름이 비었으면 순번만 적습니다
         /// (빈 칸 머리는 무엇인지 알 수 없습니다).
+        ///
+        /// 앞뒤에 붙는 글(<see cref="StepText.LabelBefore"/> ·
+        /// <see cref="StepText.LabelAfter"/>)은 StepText.cs 에서 고칩니다 (1.15).
         /// </summary>
         public string Label(int i)
         {
             if (i < 0 || i >= _steps.Count) return string.Empty;
             string name = _steps[i].Name;
-            if (name.Length == 0) return (i + 1).ToString();
+            if (name.Length == 0)
+                return StepText.LabelBefore + (i + 1).ToString() + StepText.LabelAfter;
 
+            string text = StepText.LabelBefore + name + StepText.LabelAfter;
             int nth = 1;
             for (int k = 0; k < i; k++) if (Same(_steps[k].Name, name)) nth++;
-            return nth > 1 ? name + " (" + nth + ")" : name;
+            return nth > 1 ? text + " (" + nth + ")" : text;
         }
 
         // ================= 짓는 길 =================

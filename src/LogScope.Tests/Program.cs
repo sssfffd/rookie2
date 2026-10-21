@@ -3515,6 +3515,15 @@ namespace LogScope.Tests
         /// 단계보다 더 밀립니다.
         /// </summary>
         /// <summary>
+        /// 단계 이름에 StepText 의 앞뒤 글을 붙인 꼴 (1.15). 시험이 이걸 거쳐
+        /// 견주므로 StepText.cs 에서 글을 바꿔도 시험이 깨지지 않습니다.
+        /// </summary>
+        private static string Lb(string name)
+        {
+            return StepText.LabelBefore + name + StepText.LabelAfter;
+        }
+
+        /// <summary>
         /// 히트맵 줄을 그래프 화면과 같은 그룹으로 나누고 검색으로 거르기 (1.07).
         /// </summary>
         private static void HeatmapGroupsAndSearch()
@@ -3687,7 +3696,7 @@ namespace LogScope.Tests
 
             StepBands bands = StepBands.Build(StepPairList.Build(dsA, dsB));
             Check("칸 셋", bands.Count == 3, bands.Count.ToString());
-            Check("칸 글자가 단계 이름", bands[1].Label == "가열", bands[1].Label);
+            Check("칸 글자가 단계 이름", bands[1].Label == Lb("가열"), bands[1].Label);
             Near("가열 칸의 시작", bands[1].T0, 10, 1e-9);
             Near("가열 칸의 밀기 값", bands[1].Shift, -100, 1e-9);
             Check("뺀 단계 없음", bands.Skipped == 0, bands.Skipped.ToString());
@@ -3746,7 +3755,7 @@ namespace LogScope.Tests
             // 여야 뜻이 안 바뀝니다 (그 단계의 밀기 값, 단계 이름 눈금).
             StepBands one = StepBands.Build(StepPairList.Build(dsA, dsB), 1);
             Check("칸 하나만", one.Count == 1, one.Count.ToString(CultureInfo.InvariantCulture));
-            Check("고른 그 단계", one[0].Label == "가열", one[0].Label);
+            Check("고른 그 단계", one[0].Label == Lb("가열"), one[0].Label);
             Near("밀기 값도 그 단계 것", one[0].Shift, bands[1].Shift, 1e-9);
 
             double[] ox, ow;
@@ -3814,7 +3823,7 @@ namespace LogScope.Tests
 
             Check("단계로 잘림", r.ByStep, r.Warning);
             Check("칸 셋 (단계 수와 같음)", r.BucketCount == 3, r.BucketCount.ToString());
-            Check("칸 글자가 단계 이름", r.BucketText(1) == "가열", r.BucketText(1));
+            Check("칸 글자가 단계 이름", r.BucketText(1) == Lb("가열"), r.BucketText(1));
             Check("가로축 이름도 단계", r.BucketLabel == "단계", r.BucketLabel);
 
             Check("차이 난 IO 는 PV 한 줄", r.Rows.Count == 1, r.Rows.Count.ToString());
@@ -3910,8 +3919,8 @@ namespace LogScope.Tests
 
             // 목록 글은 이름 그대로 (1.13, 전에는 "4. 가열"). 같은 이름이
             // 두 번째부터는 몇 번째인지 붙여 가립니다.
-            Check("목록 글은 이름 그대로", t.Label(1) == "가열", t.Label(1));
-            Check("같은 이름 둘째는 (2)", t.Label(3) == "가열 (2)", t.Label(3));
+            Check("목록 글은 이름 그대로", t.Label(1) == Lb("가열"), t.Label(1));
+            Check("같은 이름 둘째는 (2)", t.Label(3) == Lb("가열") + " (2)", t.Label(3));
             Check("순번 \"1. \" 이 안 붙음", !t.Label(0).StartsWith("1."), t.Label(0));
             Check("같은 이름의 첫째", t.IndexOfName("가열", 0) == 1,
                   t.IndexOfName("가열", 0).ToString());

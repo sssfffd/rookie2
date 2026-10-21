@@ -131,6 +131,28 @@ namespace LogScope.App.Logs
             }
         }
 
+        // ---- 도구 줄의 두 단추 (1.15) ----
+        //
+        // [정렬] [단계마다] [전체 구간] — 둘 중 하나입니다. 1.14 까지 있던
+        // [?] · [◀] [목록] [▶] · [눈금 0 = 단계 시작] 은 화면에서 뺐습니다.
+        // 그래서 두 단추는 <b>한 단계만 고른 상태를 늘 풉니다</b> — 고르는
+        // 목록이 안 보이는데 고른 것이 남아 있으면 왜 한 칸만 보이는지
+        // 알 수 없습니다. 단추 글자는 Core/Model/StepText.cs 에 있습니다.
+
+        /// <summary>[단계마다] — 단계 칸을 나란히.</summary>
+        public bool ViewEach
+        {
+            get { return SplitByStep; }
+            set { if (value) { PickIndex = 0; SplitByStep = true; Raise("ViewEach"); Raise("ViewWhole"); } }
+        }
+
+        /// <summary>[전체 구간] — 시간 한 줄로 전체.</summary>
+        public bool ViewWhole
+        {
+            get { return !SplitByStep; }
+            set { if (value) { PickIndex = 0; SplitByStep = false; Raise("ViewEach"); Raise("ViewWhole"); } }
+        }
+
         /// <summary>
         /// 그래프에 넘길 칸 목록. 나눠 보기를 껐으면 null 입니다 (평소대로
         /// 한 줄 시간).

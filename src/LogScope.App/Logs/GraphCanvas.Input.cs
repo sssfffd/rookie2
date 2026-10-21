@@ -419,6 +419,15 @@ namespace LogScope.App.Logs
                     if (StepMode) { PanAllSteps(+0.1); break; }
                     _t0 += span * 0.1; _t1 += span * 0.1; break;
                 case Key.Home: ResetTime(); e.Handled = true; return;
+                // Delete = 커서 A · B 를 둘 다 지웁니다 (1.15). 그래프를
+                // 한 번 누르면 이 판이 키를 받습니다 (누를 때 Focus()).
+                case Key.Delete:
+                    if (double.IsNaN(_cursorA) && double.IsNaN(_cursorB)) return;
+                    _cursorA = double.NaN; _cursorB = double.NaN;
+                    e.Handled = true;
+                    InvalidateVisual();
+                    RaiseViewChanged();
+                    return;
                 case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;
                 case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.3); e.Handled = true; return;
                 default: return;

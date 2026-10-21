@@ -101,3 +101,4 @@
 | `92-db-same-rows-green.md` | 분석 2 [전체] 에서 두 쪽이 같은 줄은 옅은 초록 |
 | `93-step-label-no-number.md` | 단계 이름 앞 순번 "1." 빼기 (같은 이름 둘째부터 "(2)") |
 | `94-db-list-card.md` | 분석 2 목록을 카드로 띄우고 칸 폭을 창에 맞춰 40 · 30 · 30 으로 |
+| `95-graph-cleanup-step-buttons.md` | Delete 로 커서 지우기 · 그래프 아래 설명 · 맨 아래 파일 줄 빼기 · [정렬][단계마다][전체 구간] · StepText.cs |

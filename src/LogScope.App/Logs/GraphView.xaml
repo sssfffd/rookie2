@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:logs="clr-namespace:LogScope.App.Logs"
+             xmlns:model="clr-namespace:LogScope.Core.Model;assembly=LogScope.Core"
              Background="{DynamicResource Brush.Window}"
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
@@ -371,68 +372,39 @@
                     </Border>
 
                     <!--
-                      ================= 단계 =================
+                      ================= 정렬 (단계) — 단추 둘 (1.15) =================
 
-                      단계를 고르면 그 단계만 보이고, 두 로그는 그 단계의
-                      <b>시작끼리</b> 맞춰집니다. 단계마다 기준 IO·값·몇 번째
-                      사건을 손으로 맞출 일이 없습니다.
+                      [단계마다]   가로를 단계 칸 여러 개로 나눠 나란히 놓습니다.
+                                   칸마다 그 단계의 시작끼리 맞춥니다.
+                      [전체 구간]  나누지 않고 시간 한 줄로 전체를 봅니다.
 
-                      단계가 없으면 이 묶음은 아예 사라집니다 (Collapsed) —
-                      눌러도 아무 일이 없는 칸이 떠 있으면 고장으로 보입니다.
-                      단계를 넣는 법은 설정 [비교] 의 "단계 IO" 칸입니다.
+                      1.14 까지 있던 [?] · [◀][목록][▶] (한 단계만 고르기) ·
+                      [눈금 0 = 단계 시작] 은 뺐습니다. 뷰모델(StepVm)의 그 기능은
+                      남아 있어서 단추만 다시 달면 됩니다.
 
-                      [◀] [▶] 는 단계를 훑어볼 때 씁니다. 끝에서 멈춥니다 —
-                      돌아가면 마지막 단계에서 [▶] 를 누른 사람이 첫 단계를
-                      보게 됩니다.
+                      <b>글자는 여기 적지 않습니다.</b> src/LogScope.Core/Model/
+                      StepText.cs 한 곳에 있고, 단계 이름 앞뒤에 붙는 글도 거기서
+                      고칩니다.
+
+                      단계가 없으면 단추가 잠기고, 마우스를 올리면 왜 잠겼는지
+                      나옵니다 (ShowOnDisabled).
                     -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolGroupCaption}" Text="단계" />
-
-                            <!--
-                              [?]. 단추 이름만으로는 무엇을 하는 것인지 알 수
-                              없다는 말을 두 번 들었습니다. 설명이 대화나
-                              README 에만 있으면 쓰는 자리에서는 못 봅니다 —
-                              이 단추가 그 자리에서 답합니다.
-                            -->
-                            <Button Content="?" Width="22" Margin="0,0,6,0"
-                                    Click="OnStepHelp"
-                                    ToolTip="이 칸의 단추들이 무엇을 하는지 설명합니다." />
-
-                            <!--
-                              단계가 없어도 묶음을 숨기지 않습니다. 숨기면 이
-                              기능이 있다는 것 자체를 알 수 없습니다 — 0.92 에
-                              "단계 묶는 기능이 UI 에 없는 것 같다" 는 말을
-                              들은 까닭입니다. 대신 단추를 잠그고 무엇을 하면
-                              켜지는지 적습니다.
-                            -->
-                            <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center"
-                                       Margin="0,0,6,0" Text="{Binding Step.NoStepText}"
-                                       Visibility="{Binding Step.NoStepText, Converter={StaticResource TextToVisibility}}" />
-                            <!--
-                              나눠 보기. 가로가 한 줄 시간이 아니라 단계 칸
-                              여러 개가 됩니다. 켜면 아래 "한 단계만 고르기"
-                              는 뜻이 없어져서 잠깁니다 (모든 칸이 다 보입니다).
-                            -->
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="단계마다 칸으로"
-                                          IsChecked="{Binding Step.SplitByStep, Mode=TwoWay}"
-                                          IsEnabled="{Binding Step.HasSteps}"
-                                          ToolTip="가로를 단계 칸 여러 개로 쪼개 나란히 놓습니다 — 1 단계로 맞춘 칸, 2 단계로 맞춘 칸 … 이렇게.&#x0a;칸마다 그 단계의 시작끼리 맞추므로, 공정이 중간에 늘어진 로그도 단계마다 맞아 보입니다.&#x0a;칸 폭은 단계 길이에 비례합니다. 휠을 칸 위에 올리면 그 칸만 확대됩니다.&#x0a;옆 목록에서 한 단계를 고르면 그 칸 하나만 크게 볼 수 있습니다." />
-
-                            <Button Content="◀" Width="26" Click="OnStepPrev"
-                                    IsEnabled="{Binding Step.CanPickNow}" ToolTip="앞 단계" />
-                            <ComboBox MinWidth="150" Margin="3,0,3,0"
-                                      ItemsSource="{Binding Step.Choices}"
-                                      SelectedIndex="{Binding Step.PickIndex, Mode=TwoWay}"
-                                      IsEnabled="{Binding Step.CanPickNow}"
-                                      ToolTip="한 단계만 골라 봅니다. 두 로그는 그 단계의 시작끼리 맞춥니다.&#x0a;[단계마다 칸으로] 가 꺼져 있으면 그 단계 구간만, 켜져 있으면 그 칸 하나만 보입니다.&#x0a;[전체 구간] 으로 돌리면 다시 전체(또는 모든 칸)입니다.&#x0a;짝이 없는 단계(한쪽 로그에만 있는 단계)는 목록에 없습니다." />
-                            <Button Content="▶" Width="26" Click="OnStepNext"
-                                    IsEnabled="{Binding Step.CanPickNow}" ToolTip="다음 단계" />
-                            <ToggleButton Style="{StaticResource ToolToggle}" Content="눈금 0 = 단계 시작"
-                                          Margin="6,0,0,0"
-                                          IsChecked="{Binding Step.ZeroAtStart, Mode=TwoWay}"
-                                          IsEnabled="{Binding Step.CanZeroNow}"
-                                          ToolTip="한 단계를 골라 볼 때, 가로축 눈금을 그 단계 시작부터 셉니다 (0, +1초 …).&#x0a;단계를 바꿔 가며 봐도 눈금이 늘 0 에서 시작해 서로 견주기 쉽습니다.&#x0a;그림은 안 옮기고 눈금 글자만 바뀝니다.&#x0a;[단계마다 칸으로] 에서는 칸마다 이미 그 단계 시작에서 시작합니다." />
+                            <TextBlock Style="{StaticResource ToolGroupCaption}"
+                                       Text="{x:Static model:StepText.Caption}" />
+                            <RadioButton GroupName="stepview" Style="{StaticResource SegmentButton}"
+                                         Content="{x:Static model:StepText.Each}"
+                                         IsChecked="{Binding Step.ViewEach, Mode=TwoWay}"
+                                         IsEnabled="{Binding Step.HasSteps}"
+                                         ToolTipService.ShowOnDisabled="True"
+                                         ToolTip="가로를 단계 칸 여러 개로 나눠 나란히 놓습니다. 칸마다 그 단계의 시작끼리 맞춥니다.&#x0a;휠을 칸 위에 올리면 그 칸만 확대됩니다.&#x0a;(잠겨 있으면: 두 로그를 열고 설정 [비교] 의 &quot;단계 IO&quot; 를 적으면 켜집니다)" />
+                            <RadioButton GroupName="stepview" Style="{StaticResource SegmentButton}"
+                                         Content="{x:Static model:StepText.Whole}"
+                                         IsChecked="{Binding Step.ViewWhole, Mode=TwoWay}"
+                                         IsEnabled="{Binding Step.HasSteps}"
+                                         ToolTipService.ShowOnDisabled="True"
+                                         ToolTip="나누지 않고 시간 한 줄로 전체를 봅니다." />
                         </StackPanel>
                     </Border>
 
@@ -477,22 +449,9 @@
                 <StackPanel>
                     <TextBlock Text="{Binding ReadoutText}" TextWrapping="Wrap"
                                Foreground="{DynamicResource Brush.Text}" />
-                    <!-- 시간 맞추기 결과. 안 쓰면 줄 자체가 사라집니다. -->
-                    <TextBlock Text="{Binding Align.Note}" TextWrapping="Wrap"
-                               Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding Align.Note, Converter={StaticResource TextToVisibility}}" />
-                    <!-- 메인 화면에서 그룹을 눌러 넘어왔을 때. 안 눌렀으면 줄이 사라집니다. -->
-                    <TextBlock Text="{Binding FocusText}" TextWrapping="Wrap"
-                               Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding FocusText, Converter={StaticResource TextToVisibility}}" />
-                    <!-- 단계로 맞춘 결과. 안 고르면 줄 자체가 사라집니다. -->
-                    <TextBlock Text="{Binding Step.Note}" TextWrapping="Wrap"
-                               Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding Step.Note, Converter={StaticResource TextToVisibility}}" />
-                    <!-- 마우스 쓰는 법. 도구 줄에 있던 것을 여기로 내렸습니다 —
-                         거기 두면 도구 줄 한 줄을 통째로 먹었습니다. -->
-                    <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
-                               Text="휠 = 시간 확대,  Shift+휠 = 값 확대,  끌기 = 이동,  오른쪽 끌기 = 그 네모만큼 확대,  누르기 = 커서 A,  Shift+누르기 = 커서 B&#x0a;두 선이 겹쳐 보이면 왼쪽 IO 칸의 [그릴 로그] 에서 한쪽을 끄고 보세요." />
+                    <!-- 커서 값 아래에 있던 설명 줄들(시간 맞추기 결과 · 그룹만
+                         보는 중 · 단계 맞춘 결과 · 마우스 쓰는 법)은 1.15 에서
+                         뺐습니다. 쓰는 법은 README 단축키 표에 있습니다. -->
                 </StackPanel>
             </Border>
 

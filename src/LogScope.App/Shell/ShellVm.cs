@@ -42,8 +42,6 @@ namespace LogScope.App.Shell
             Dashboard = new DashboardVm(state);
             Graph = new GraphVm(state, Align, Step);
             Heatmap = new HeatmapVm(state, Align);
-
-            UpdateStatus();
         }
 
         public string VersionText { get { return "v" + BuildInfo.Version; } }
@@ -238,43 +236,8 @@ namespace LogScope.App.Shell
         // 위 줄에서 자리를 제일 많이 차지했습니다. 기억된 경로와 기본 폴더는
         // 그대로 쓰므로(AppSettings 의 첫 세트) 설정은 그대로 살아 있습니다.
 
-        // ---------------- 아래쪽 알림 줄 ----------------
-
-        private string _status = string.Empty;
-        public string StatusText
-        {
-            get { return _status; }
-            private set { Set(ref _status, value); }
-        }
-
-        public void UpdateStatus()
-        {
-            string s = string.Empty;
-            if (_state.Before != null) s += "이전: " + Describe(_state.Before);
-            if (_state.After != null) s += (s.Length > 0 ? "        |        " : "") + "이후: " + Describe(_state.After);
-
-            if (s.Length == 0)
-            {
-                StatusText = "로그를 열어 주세요.  설정 창에서 세트마다 처음 열 폴더를 정할 수 있습니다.";
-                return;
-            }
-
-            string notes = string.Empty;
-            if (_state.Before != null) notes += _state.Before.NotesText;
-            if (_state.After != null) notes += " " + _state.After.NotesText;
-            notes = notes.Trim();
-            if (notes.Length > 0) s += "        |        " + notes;
-            StatusText = s;
-        }
-
-        private static string Describe(LogDataset ds)
-        {
-            return Path.GetFileName(ds.SourcePath)
-                 + " · 채널 " + ds.ChannelCount.ToString("N0")
-                 + " · 표본 " + ds.SampleCount.ToString("N0")
-                 + " · " + (ds.Orientation == Orientation.Cols ? "열이 IO" : "행이 IO")
-                 + " · " + ds.LoadSeconds.ToString("0.0") + "초";
-        }
+        // 아래쪽 알림 줄(StatusText · UpdateStatus)은 1.15 에서 지웠습니다 —
+        // 화면에서 그 줄을 뺐습니다.
 
         /// <summary>로그가 바뀐 뒤 화면 전체를 새로 고칩니다.</summary>
         public void ReloadAll()
@@ -285,7 +248,6 @@ namespace LogScope.App.Shell
             Heatmap.Reload();
             Dashboard.Refresh();
             Main.Refresh();
-            UpdateStatus();
         }
     }
 }

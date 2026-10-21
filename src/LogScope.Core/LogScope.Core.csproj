@@ -48,6 +48,7 @@
     <Compile Include="Model\Channel.cs" />
     <Compile Include="Model\LogDataset.cs" />
     <Compile Include="Model\LogSteps.cs" />
+    <Compile Include="Model\StepText.cs" />
     <Compile Include="Model\TimeText.cs" />
     <Compile Include="Model\NumberText.cs" />
     <Compile Include="Io\Cell.cs" />
