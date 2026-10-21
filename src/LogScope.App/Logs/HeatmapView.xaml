@@ -20,6 +20,17 @@
                         Click="OnRecalculate" />
 
                 <!--
+                  검색 (1.07). 그래프 화면의 IO 목록 검색과 같습니다 — 이름에
+                  그 글자가 든 IO 만 남깁니다. 다시 계산하지 않아서 치는 대로
+                  바로 바뀝니다. 줄은 그래프 화면과 <b>같은 그룹</b>으로
+                  나뉘어 있고, 그룹 이름 줄을 누르면 접혔다 펴집니다.
+                -->
+                <TextBox Width="160" Margin="12,3,0,3" VerticalContentAlignment="Center"
+                         Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=120}"
+                         ToolTip="IO 이름으로 찾습니다 (그래프 화면의 검색과 같습니다)." />
+                <Button Content="검색 지우기" Margin="4,3,3,3" Click="OnClearSearch" />
+
+                <!--
                   가로를 단계로. 칸 하나가 단계 하나가 됩니다 (시간 폭 대신).
                   단계가 없으면 눌릴 수 없습니다 — 눌러도 아무 일이 없는
                   단추는 고장으로 보입니다. 왜 없는지는 옆의 ToolTip 과
@@ -131,7 +142,7 @@
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
                     <TextBlock Text="기록 없음" Style="{StaticResource Muted}" Margin="0,0,18,0" />
 
-                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. 칸에 마우스를 올리면 그 칸의 값·%·기준을 나란히 보여 줍니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
+                    <TextBlock Text="칸을 누르면 그 IO 와 그 시간대로 그래프 화면이 열립니다. 그룹 이름 줄을 누르면 접혔다 펴집니다. 칸에 마우스를 올리면 그 칸의 값·%·기준을 나란히 보여 줍니다. Ctrl+휠 = 칸 너비, Shift+휠 = 옆으로"
                                Style="{StaticResource Muted}" FontSize="11" />
                 </WrapPanel>
             </StackPanel>

@@ -52,9 +52,51 @@ namespace LogScope.App.Logs
             _result = result;
             HorizontalOffset = 0;
             VerticalOffset = 0;
+            Relayout();
+        }
+
+        // ---------------- 그룹으로 나누기 · 검색 (1.07) ----------------
+        //
+        // 그리는 단위는 결과의 줄(Rows)이 아니라 <b>늘어놓은 줄(_lines)</b>
+        // 입니다. 그룹 이름 줄이 사이사이 끼고, 검색에 안 맞는 IO 는
+        // 빠집니다. 나누는 규칙은 HeatLayout 한 곳에 있습니다 (그래프 화면의
+        // IO 목록과 같은 규칙).
+
+        private List<HeatLine> _lines = new List<HeatLine>();
+        private IList<GroupDef> _groups;
+        private string _search = string.Empty;
+
+        /// <summary>
+        /// 접은 그룹 이름. 그래프 화면의 접기(GroupDef.Expanded)와는
+        /// <b>따로</b>입니다 — 히트맵에서 접었다고 그래프 목록까지 접히면
+        /// 거기서는 왜 접혔는지 모릅니다.
+        /// </summary>
+        private readonly HashSet<string> _collapsed = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>그룹(설정의 것 그대로)과 검색 글을 받아 줄을 다시 늘어놓습니다.</summary>
+        public void SetLayout(IList<GroupDef> groups, string search)
+        {
+            _groups = groups;
+            _search = search ?? string.Empty;
+            VerticalOffset = 0;
+            Relayout();
+        }
+
+        private void Relayout()
+        {
+            _lines = _result == null
+                ? new List<HeatLine>()
+                : HeatLayout.Build(_result.Rows, _groups, _search, _collapsed);
             _hoverRow = -1;
             _hoverCol = -1;
             InvalidateVisual();
+        }
+
+        /// <summary>그룹 줄을 누르면 접었다 폅니다.</summary>
+        private void Toggle(string group)
+        {
+            if (!_collapsed.Remove(group)) _collapsed.Add(group);
+            Relayout();
         }
 
         public HeatmapResult Result { get { return _result; } }
@@ -224,7 +266,17 @@ namespace LogScope.App.Logs
                 return;
             }
 
-            int rows = _result.Rows.Count;
+            if (_lines.Count == 0)
+            {
+                FormattedText none = Text("\"" + _search.Trim() + "\" 이(가) 이름에 든 IO 가 없습니다.",
+                                          FontNormal, p.MutedBrush);
+                none.MaxTextWidth = Math.Max(120, ActualWidth - 48);
+                dc.DrawText(none, new Point(24, 24));
+                UpdateScroll(0, 1, 0, 1);
+                return;
+            }
+
+            int rows = _lines.Count;
             int cols = _result.BucketCount;
 
             double extentY = rows * _rowH;
@@ -245,9 +297,19 @@ namespace LogScope.App.Logs
             dc.PushClip(new RectangleGeometry(new Rect(NameW, HeaderH, GridWidth, GridHeight)));
             for (int r = firstRow; r <= lastRow; r++)
             {
-                HeatRow row = _result.Rows[r];
+                HeatLine line = _lines[r];
                 double y = HeaderH + r * _rowH - offY;
 
+                // 그룹 이름 줄은 칸 자리를 띠 하나로 칠합니다 (칸이 없습니다).
+                if (line.IsGroup)
+                {
+                    dc.DrawRectangle(p.AxisStripBrush, null, new Rect(NameW, y, GridWidth, _rowH));
+                    dc.DrawLine(p.BorderPen, new Point(NameW, y + _rowH - 0.5),
+                                new Point(NameW + GridWidth, y + _rowH - 0.5));
+                    continue;
+                }
+
+                HeatRow row = line.Row;
                 if ((r & 1) == 1)
                     dc.DrawRectangle(p.HeatStripeBrush, null, new Rect(NameW, y, GridWidth, _rowH));
 
@@ -339,7 +401,8 @@ namespace LogScope.App.Logs
             dc.DrawRectangle(p.AxisStripBrush, null, col);
             dc.DrawLine(p.BorderPen, new Point(NameW, 0), new Point(NameW, ActualHeight));
 
-            FormattedText caption = Text("차이가 난 IO", FontNormal, p.TextBrush);
+            FormattedText caption = Text("차이가 난 IO  " + HeatLayout.IoCount(_lines) + "개",
+                                         FontNormal, p.TextBrush);
             caption.SetFontWeight(FontWeights.SemiBold);
             dc.DrawText(caption, new Point(10, (HeaderH - caption.Height) * 0.5));
             dc.DrawLine(p.BorderPen, new Point(0, HeaderH), new Point(NameW, HeaderH));
@@ -347,22 +410,52 @@ namespace LogScope.App.Logs
             dc.PushClip(new RectangleGeometry(new Rect(0, HeaderH, NameW, GridHeight)));
             for (int r = firstRow; r <= lastRow; r++)
             {
-                HeatRow row = _result.Rows[r];
+                HeatLine line = _lines[r];
                 double y = HeaderH + r * _rowH - offY;
 
+                if (line.IsGroup)
+                {
+                    DrawGroupName(dc, p, line, y);
+                    continue;
+                }
+
+                HeatRow row = line.Row;
                 if (r == _hoverRow)
                     dc.DrawRectangle(Frozen(p.HeatStripe), null, new Rect(0, y, NameW, _rowH));
 
                 FormattedText ft = Text(row.Name, FontNormal, p.TextBrush);
-                ft.MaxTextWidth = NameW - 62;
+                ft.MaxTextWidth = NameW - 70;
                 ft.MaxLineCount = 1;
                 ft.Trimming = TextTrimming.CharacterEllipsis;
-                dc.DrawText(ft, new Point(10, y + (_rowH - ft.Height) * 0.5));
+                dc.DrawText(ft, new Point(18, y + (_rowH - ft.Height) * 0.5));
 
                 FormattedText count = Text(row.OverBuckets + "칸", FontSmall, p.MutedBrush);
                 dc.DrawText(count, new Point(NameW - count.Width - 8, y + (_rowH - count.Height) * 0.5));
             }
             dc.Pop();
+        }
+
+        /// <summary>
+        /// 그룹 이름 줄. 그래프 화면의 그룹 줄처럼 ▼/▶ · 이름 · 수입니다.
+        /// IO 줄보다 왼쪽에서 시작해 어디부터 그 그룹인지가 보입니다.
+        /// </summary>
+        private void DrawGroupName(DrawingContext dc, Palette p, HeatLine line, double y)
+        {
+            dc.DrawRectangle(Frozen(p.HeatStripe), null, new Rect(0, y, NameW, _rowH));
+            dc.DrawLine(p.BorderPen, new Point(0, y + _rowH - 0.5), new Point(NameW, y + _rowH - 0.5));
+
+            FormattedText arrow = Text(line.Collapsed ? "▶" : "▼", FontSmall - 2, p.MutedBrush);
+            dc.DrawText(arrow, new Point(4, y + (_rowH - arrow.Height) * 0.5));
+
+            FormattedText name = Text(line.Group, FontNormal, p.TextBrush);
+            name.SetFontWeight(FontWeights.SemiBold);
+            name.MaxTextWidth = NameW - 62;
+            name.MaxLineCount = 1;
+            name.Trimming = TextTrimming.CharacterEllipsis;
+            dc.DrawText(name, new Point(16, y + (_rowH - name.Height) * 0.5));
+
+            FormattedText count = Text(line.Count + "개", FontSmall, p.MutedBrush);
+            dc.DrawText(count, new Point(NameW - count.Width - 8, y + (_rowH - count.Height) * 0.5));
         }
 
         private void UpdateScroll(double extentY, double viewY, double extentX, double viewX)
@@ -438,13 +531,23 @@ namespace LogScope.App.Logs
 
         // ---------------- 마우스 ----------------
 
+        /// <summary>그 자리의 줄 번호 (_lines 의). 없으면 -1. 이름 칸이어도 됩니다.</summary>
+        private int HitLine(Point at)
+        {
+            if (_result == null || _lines.Count == 0 || at.Y < HeaderH) return -1;
+            double extentY = _lines.Count * _rowH;
+            double offY = extentY > GridHeight ? VerticalOffset : 0;
+            int r = (int)((at.Y - HeaderH + offY) / _rowH);
+            return r >= 0 && r < _lines.Count ? r : -1;
+        }
+
         private bool HitCell(Point at, out int row, out int col)
         {
             row = -1; col = -1;
-            if (_result == null || _result.Rows.Count == 0) return false;
+            if (_result == null || _lines.Count == 0) return false;
             if (at.X < NameW || at.Y < HeaderH) return false;
 
-            double extentY = _result.Rows.Count * _rowH;
+            double extentY = _lines.Count * _rowH;
             double extentX = _result.BucketCount * _cellW;
             double offY = extentY > GridHeight ? VerticalOffset : 0;
             double offX = extentX > GridWidth ? HorizontalOffset : 0;
@@ -452,7 +555,7 @@ namespace LogScope.App.Logs
             row = (int)((at.Y - HeaderH + offY) / _rowH);
             col = (int)((at.X - NameW + offX) / _cellW);
 
-            if (row < 0 || row >= _result.Rows.Count) { row = -1; return false; }
+            if (row < 0 || row >= _lines.Count || _lines[row].IsGroup) { row = -1; return false; }
             if (col < 0 || col >= _result.BucketCount) { col = -1; return false; }
             return true;
         }
@@ -484,7 +587,7 @@ namespace LogScope.App.Logs
 
         private string Describe(int r, int c)
         {
-            HeatRow row = _result.Rows[r];
+            HeatRow row = _lines[r].Row;
             HeatCell cell = row.Cells[c];
             LogDataset refDs = _result.TimeReference;
 
@@ -528,10 +631,20 @@ namespace LogScope.App.Logs
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
         {
             base.OnMouseLeftButtonUp(e);
-            int r, c;
-            if (!HitCell(e.GetPosition(this), out r, out c)) return;
+            Point at = e.GetPosition(this);
 
-            HeatRow row = _result.Rows[r];
+            // 그룹 이름 줄은 어디를 눌러도 접었다 폅니다.
+            int line = HitLine(at);
+            if (line >= 0 && _lines[line].IsGroup)
+            {
+                Toggle(_lines[line].Group);
+                return;
+            }
+
+            int r, c;
+            if (!HitCell(at, out r, out c)) return;
+
+            HeatRow row = _lines[r].Row;
             EventHandler<CellEventArgs> h = CellActivated;
             if (h != null) h(this, new CellEventArgs(row.Name,
                 _result.BucketStart(c), _result.BucketEnd(c)));

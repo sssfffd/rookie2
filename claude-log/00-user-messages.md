@@ -1256,3 +1256,12 @@
 > 목록 csv 저장 대신에 .CSV로 저장으로 바꿔줘
 
 → 답변: [86-main-align-and-db-labels.md](86-main-align-and-db-labels.md)
+
+---
+
+## 요청 113 — 히트맵에 검색 · 그룹으로 나누기
+
+> 그리고 히트맵에서 그래프처럼 검색으로 볼 수 있게 해주고
+> 그룹을 똑같이 사용해서 나눠주셈
+
+→ 답변: [87-heatmap-groups-and-search.md](87-heatmap-groups-and-search.md)

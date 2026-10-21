@@ -396,6 +396,10 @@ namespace LogScope.App.Shell
         private void OnGroupsChanged(object sender, EventArgs e)
         {
             SaveSettings();
+
+            // 히트맵도 같은 그룹으로 나눕니다 (1.07). 다시 계산하지는 않고
+            // 이미 센 줄을 새 그룹으로 늘어놓기만 합니다.
+            Heatmap.RefreshGroups();
         }
 
         /// <summary>

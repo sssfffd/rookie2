@@ -144,6 +144,7 @@ namespace LogScope.Tests
                 HeatmapByStep();
                 StepBandWidths();
                 HeatmapPerStepShift();
+                HeatmapGroupsAndSearch();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3512,6 +3513,64 @@ namespace LogScope.Tests
         /// 공정이 중간에 늘어진 로그가 늘 이 모양입니다 — 뒤 단계가 앞
         /// 단계보다 더 밀립니다.
         /// </summary>
+        /// <summary>
+        /// 히트맵 줄을 그래프 화면과 같은 그룹으로 나누고 검색으로 거르기 (1.07).
+        /// </summary>
+        private static void HeatmapGroupsAndSearch()
+        {
+            Say("히트맵 — 그룹으로 나누기 · 검색");
+
+            // 히트맵 차례 (많이 벌어진 것이 위): C, A, X, B
+            var rows = new List<HeatRow>();
+            foreach (string n in new[] { "TEMP_C", "TEMP_A", "X_LONE", "PRES_B" })
+                rows.Add(new HeatRow { Name = n });
+
+            var groups = new List<GroupDef>
+            {
+                new GroupDef("온도") { Members = new List<string> { "TEMP_A", "TEMP_C" } },
+                new GroupDef("빈 그룹") { Members = new List<string> { "NOT_CHANGED" } },
+                // PRES_B 가 둘에 들어 있으면 앞 그룹이 이깁니다 (그래프 목록과 같음).
+                new GroupDef("압력") { Members = new List<string> { "PRES_B" } },
+                new GroupDef("또 압력") { Members = new List<string> { "PRES_B" } },
+            };
+
+            List<HeatLine> all = HeatLayout.Build(rows, groups, "", null);
+            string shape = Shape(all);
+            Check("그룹 차례대로, 그룹에 없는 IO 는 맨 아래",
+                  shape == "[온도:2] TEMP_C TEMP_A [압력:1] PRES_B [그룹에 없는 IO:1] X_LONE", shape);
+            Check("그룹 안은 히트맵 차례 그대로 (C 가 A 보다 위)",
+                  all[1].Row.Name == "TEMP_C", all[1].Row.Name);
+            Check("남은 IO 가 없는 그룹은 이름 줄도 없음", !shape.Contains("빈 그룹"), shape);
+            Check("IO 수는 그룹 줄 빼고", HeatLayout.IoCount(all) == 4,
+                  HeatLayout.IoCount(all).ToString(CultureInfo.InvariantCulture));
+
+            List<HeatLine> temp = HeatLayout.Build(rows, groups, "temp", null);
+            Check("검색은 대소문자 안 가림 · 안 맞는 그룹은 사라짐",
+                  Shape(temp) == "[온도:2] TEMP_C TEMP_A", Shape(temp));
+
+            List<HeatLine> none = HeatLayout.Build(rows, groups, "없는이름", null);
+            Check("아무것도 안 맞으면 빈 목록", none.Count == 0, null);
+
+            var shut = new HashSet<string> { "온도" };
+            List<HeatLine> folded = HeatLayout.Build(rows, groups, "", shut);
+            Check("접은 그룹은 이름 줄만 (수는 그대로)",
+                  Shape(folded) == "[온도:2>] [압력:1] PRES_B [그룹에 없는 IO:1] X_LONE", Shape(folded));
+            Check("접어도 IO 수는 셈", HeatLayout.IoCount(folded) == 4, null);
+
+            List<HeatLine> noGroups = HeatLayout.Build(rows, null, "", null);
+            Check("그룹이 없으면 전부 \"그룹에 없는 IO\" 하나",
+                  noGroups.Count == 5 && noGroups[0].Group == HeatLayout.Ungrouped, Shape(noGroups));
+        }
+
+        private static string Shape(List<HeatLine> lines)
+        {
+            var parts = new List<string>();
+            foreach (HeatLine l in lines)
+                parts.Add(l.IsGroup ? "[" + l.Group + ":" + l.Count + (l.Collapsed ? ">" : "") + "]"
+                                    : l.Row.Name);
+            return string.Join(" ", parts.ToArray());
+        }
+
         private static void HeatmapPerStepShift()
         {
             Say("히트맵 — 칸마다 그 단계의 밀기 값");

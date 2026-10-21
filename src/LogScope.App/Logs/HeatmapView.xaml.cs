@@ -30,7 +30,11 @@ namespace LogScope.App.Logs
             Map.CellActivated += OnCellActivated;
         }
 
-        public void Attach(AppState state) { _state = state; }
+        public void Attach(AppState state)
+        {
+            _state = state;
+            SyncLayout();
+        }
 
         /// <summary>칸을 눌렀을 때. 창이 받아 그래프 화면으로 넘어갑니다.</summary>
         public event EventHandler<CellEventArgs> CellOpened;
@@ -48,8 +52,40 @@ namespace LogScope.App.Logs
 
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
+            if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
             _vm = DataContext as HeatmapVm;
+            if (_vm != null) _vm.PropertyChanged += OnVmChanged;
             SyncUnit();
+            SyncLayout();
+        }
+
+        private void OnVmChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "Search") SyncLayout();
+        }
+
+        // ---------------- 그룹 · 검색 (1.07) ----------------
+
+        /// <summary>
+        /// 판에 그룹과 검색 글을 넘깁니다. 그룹은 <b>설정에 든 그것</b>
+        /// (그래프 화면이 고치는 것)을 그대로 넘깁니다 — 사본을 들고 있으면
+        /// 그래프에서 그룹을 고쳐도 히트맵은 옛 그룹으로 남습니다.
+        /// </summary>
+        private void SyncLayout()
+        {
+            if (_state == null || _vm == null) return;
+            Map.SetLayout(_state.Settings.Groups, _vm.Search);
+        }
+
+        /// <summary>그래프 화면에서 그룹을 고쳤을 때 (창이 부릅니다).</summary>
+        public void RefreshGroups()
+        {
+            SyncLayout();
+        }
+
+        private void OnClearSearch(object sender, RoutedEventArgs e)
+        {
+            if (_vm != null) _vm.Search = string.Empty;
         }
 
         /// <summary>
@@ -173,6 +209,9 @@ namespace LogScope.App.Logs
 
             var map = result as HeatmapResult;
             Map.TolerancePercent = options.RelativePercent;
+            // 그룹 목록이 통째로 바뀌었을 수 있어서 (기본 그룹을 새로 만든
+            // 날 등) 결과를 넘기기 전에 한 번 더 받아 둡니다.
+            SyncLayout();
             Map.SetResult(map);
             _vm.Describe(map);
         }

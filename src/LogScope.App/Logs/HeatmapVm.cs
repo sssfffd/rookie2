@@ -258,6 +258,20 @@ namespace LogScope.App.Logs
             }
         }
 
+        // ---------------- 검색 (1.07) ----------------
+        //
+        // 그래프 화면의 검색 칸과 같습니다 — 이름에 그 글자가 든 IO 만
+        // 남깁니다 (대소문자 안 가림). 다시 계산하지 않고 이미 센 줄을
+        // 거르기만 해서 치는 대로 바로 바뀝니다. 거르는 일은 판
+        // (HeatmapCanvas → HeatLayout)이 합니다.
+
+        private string _search = string.Empty;
+        public string Search
+        {
+            get { return _search; }
+            set { Set(ref _search, value ?? string.Empty); }
+        }
+
         // ---------------- 한 그룹만 보기 ----------------
         //
         // 메인 화면에서 그룹을 눌러 넘어오면 그 그룹의 IO 만 남깁니다.

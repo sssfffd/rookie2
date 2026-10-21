@@ -46,6 +46,7 @@
     <Compile Include="Compare\HeatBuckets.cs" />
     <Compile Include="Compare\HeatTypes.cs" />
     <Compile Include="Compare\HeatmapBuilder.cs" />
+    <Compile Include="Compare\HeatLayout.cs" />
     <Compile Include="Align\TriggerAlign.cs" />
     <Compile Include="Align\StepPairs.cs" />
     <Compile Include="Align\StepBands.cs" />
