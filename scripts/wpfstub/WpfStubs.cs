@@ -67,6 +67,7 @@ namespace System.Windows
         public static double MinimumVerticalDragDistance { get { return 4; } }
         public static double PrimaryScreenWidth { get { return 1920; } }
         public static double PrimaryScreenHeight { get { return 1080; } }
+        public static double VerticalScrollBarWidth { get { return 17; } }
     }
 
     public class DependencyObject

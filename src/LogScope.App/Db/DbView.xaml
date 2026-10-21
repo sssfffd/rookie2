@@ -198,10 +198,21 @@
                   바뀐 열마다 한 줄이라, 같은 열이 몇 군데서 바뀌었는지가
                   보입니다.
                 -->
+                <!--
+                  <b>카드</b>로 띄웁니다 (1.14). 전에는 목록이 창 왼쪽 끝부터
+                  오른쪽 끝까지 붙어 있었습니다. 바깥 여백(12)은 위쪽 칸의
+                  안쪽 여백(12)과 같아서 [데이터 읽기] 줄 · 두 칸 · 목록의 왼쪽
+                  끝이 한 줄로 맞습니다. 모양은 메인 화면 카드와 같습니다
+                  (둥근 모서리 5 · 테두리 1).
+                -->
+                <Border Background="{DynamicResource Brush.Panel}" Padding="12,10,12,12">
+                <Border Background="{DynamicResource Brush.Window}"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        CornerRadius="5">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.PanelAlt}"
                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
-                            Padding="10,5">
+                            CornerRadius="4,4,0,0" Padding="10,5">
                         <WrapPanel>
                             <TextBlock Text="차이 목록" Style="{StaticResource FieldLabel}"
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
@@ -263,7 +274,13 @@
                     </Border>
 
                     <Grid>
+                        <!--
+                          칸 폭은 <b>목록 폭에 맞춰</b> 코드가 정합니다 (1.14,
+                          DbView.FitColumns): IO명 40% · 이전 30% · 이후 30%.
+                          아래 Width 는 처음 그려질 때만 쓰입니다.
+                        -->
                         <ListView x:Name="DiffList" ItemsSource="{Binding Lines}"
+                                  Background="Transparent"
                                   ItemContainerStyle="{StaticResource DiffRow}"
                                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                   ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -330,6 +347,8 @@
                         </TextBlock>
                     </Grid>
                 </DockPanel>
+                </Border>
+                </Border>
 
     </DockPanel>
 </UserControl>

@@ -26,6 +26,37 @@ namespace LogScope.App.Db
         {
             InitializeComponent();
             DataContext = _vm;
+
+            // 칸 폭을 목록 폭에 맞춥니다 (1.14). 매개변수 없는 delegate 라
+            // 이벤트 꼴(SizeChangedEventHandler)을 따로 적지 않아도 붙습니다.
+            DiffList.SizeChanged += delegate { FitColumns(); };
+        }
+
+        // ---------------- 칸 폭 (1.14) ----------------
+        //
+        // 칸 폭이 고정(360 · 220 · 300)이라 넓은 화면에서는 오른쪽이 비고,
+        // 좁은 화면에서는 이후 칸이 잘렸습니다. 이제 목록 폭을 나눠 줍니다.
+        //
+        // 손으로 칸 폭을 끌어 바꿔도 창 크기가 바뀌면 다시 이 비율로
+        // 돌아갑니다 — 비율을 고치려면 아래 Share 만 고치면 됩니다.
+
+        /// <summary>칸마다 몫 — IO명 · 이전 value · 이후 value. 합이 1 입니다.</summary>
+        private static readonly double[] Share = { 0.40, 0.30, 0.30 };
+
+        /// <summary>이 폭보다 좁아지면 더 줄이지 않고 가로 스크롤로 봅니다.</summary>
+        private const double MinListWidth = 420;
+
+        private void FitColumns()
+        {
+            var grid = DiffList.View as GridView;
+            if (grid == null || grid.Columns.Count < Share.Length) return;
+
+            // 세로 스크롤 막대 자리와 테두리·여백만큼 뺍니다. 안 빼면 마지막
+            // 칸이 막대 밑으로 들어가 가로 스크롤 막대가 생깁니다.
+            double w = DiffList.ActualWidth - SystemParameters.VerticalScrollBarWidth - 8;
+            if (w < MinListWidth) w = MinListWidth;
+
+            for (int i = 0; i < Share.Length; i++) grid.Columns[i].Width = Math.Floor(w * Share[i]);
         }
 
         /// <summary>설정을 붙입니다. 창이 만든 뒤에 불러 줍니다.</summary>
