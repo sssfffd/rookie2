@@ -18,7 +18,20 @@ namespace LogScope.Db
     public static class DbPathText
     {
         /// <summary>아직 자리를 안 정했을 때 아래에 적는 말.</summary>
+        /// <summary>
+        /// 아직 자리를 안 정했을 때 아래에 적는 말 — <b>분석 2 화면</b>용.
+        /// 거기에는 칸 안에 타 넣는 자리와 [폴더]·[파일] 단추가 있습니다.
+        /// </summary>
         public const string None = "끌어다 놓거나, 타 넣거나, 단추로 고르세요";
+
+        /// <summary>
+        /// 같은 자리의 말 — <b>메인 화면 칸</b>용. 거기에는 단추도 타 넣는
+        /// 자리도 없고, 칸을 누르면 파일 고르는 창이 뜹니다.
+        ///
+        /// 두 화면이 같은 글을 쓰면 한쪽이 거짓이 됩니다 — 그래서 글은
+        /// 둘이지만 <b>자리는 여기 한 곳</b>입니다.
+        /// </summary>
+        public const string NoneOnCard = "누르면 파일 고르기 · 폴더는 끌어다 놓기";
 
         /// <summary>
         /// 경로의 <b>마지막 조각</b>. 칸이 좁아서 전체 경로는 들어가지
@@ -56,7 +69,13 @@ namespace LogScope.Db
         /// </summary>
         public static string Note(string path)
         {
-            if (string.IsNullOrEmpty(path)) return None;
+            return Note(path, None);
+        }
+
+        /// <summary>아직 안 정했을 때의 말을 부르는 쪽이 고릅니다.</summary>
+        public static string Note(string path, string none)
+        {
+            if (string.IsNullOrEmpty(path)) return none;
 
             try
             {

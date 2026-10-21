@@ -133,10 +133,27 @@ namespace LogScope.App.Db
             _vm.SetPath(before, dir);   // SetPath 가 PathsChanged 를 알립니다
         }
 
+        /// <summary>
+        /// 파일 고르는 창을 띄웁니다. <b>메인 화면 칸을 눌렀을 때</b>도
+        /// 이 길로 옵니다 — 고르는 규칙이 두 군데에 있으면 한쪽만 고치는
+        /// 날이 옵니다.
+        ///
+        /// 폴더는 여기서 못 고릅니다 (창이 파일용입니다). 메인 화면에서는
+        /// 폴더를 끌어다 놓으면 되고, 분석 2 화면에는 [폴더] 단추가 있습니다.
+        /// 칸 아래 작은 글이 그 말을 합니다.
+        /// </summary>
+        public void PickFileFor(bool before)
+        {
+            PickFile(before);
+        }
+
         private void OnPickFile(object sender, RoutedEventArgs e)
         {
-            bool before = Before(sender);
+            PickFile(Before(sender));
+        }
 
+        private void PickFile(bool before)
+        {
             var dlg = new Microsoft.Win32.OpenFileDialog();
             dlg.Title = (before ? "이전" : "이후") + " DB 파일";
             dlg.Filter = "DB 파일 (*.sql;*.csv;*.frm)|*.sql;*.csv;*.frm|모든 파일 (*.*)|*.*";

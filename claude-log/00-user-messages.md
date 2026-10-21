@@ -1179,3 +1179,14 @@
 > 단계별로 할 때 클릭해서 뜨는 정보로 각 단계 시작에서 몇초 지났는지 뜨게
 
 → 답변: [79-step-now-and-vertical-cards.md](79-step-now-and-vertical-cards.md)
+
+---
+
+## 요청 106 — 분석 2 칸 군글자 빼기 · 칸을 누르면 파일 고르기
+
+> 그리고 메인화면 분석 2에 견줄자리, log파딜을 비교한 후 점수 이런 글자들
+> 다 빼주셈
+> 그리고 파일 드래그로 넣는 칸 클릭하면 폴더 열려서 파일 선택할 수 있게도
+> 해주고
+
+→ 답변: [80-card-cleanup-and-click.md](80-card-cleanup-and-click.md)

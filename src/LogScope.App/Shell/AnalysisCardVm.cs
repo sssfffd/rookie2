@@ -220,6 +220,16 @@ namespace LogScope.App.Shell
         /// </summary>
         public bool HasDbBox { get; private set; }
 
+        /// <summary>
+        /// 점수(0~100) 자리를 <b>쓰지 않는</b> 칸인지. 분석 2 가 그렇습니다 —
+        /// 점수가 아니라 PASS·WARNING·FAIL 을 적습니다.
+        ///
+        /// 이 깃발이 없던 0.99 까지, 분석 2 칸은 DB 를 읽기 전에
+        /// <c>?? / 100</c> 과 "Log 파일을 비교한 후 점수가 나옵니다" 를
+        /// 띄웠습니다. <b>DB 칸에 로그 이야기가 적혀 있었습니다.</b>
+        /// </summary>
+        public bool UsesVerdict { get; private set; }
+
         public AnalysisCardVm(int number, string title, string summary, bool ready)
         {
             Number = number;
@@ -228,6 +238,7 @@ namespace LogScope.App.Shell
             Ready = ready;
             HasLogBox = number == 1;
             HasDbBox = number == 2;
+            UsesVerdict = number == 2;
             _stats = new List<StatVm>();
         }
 
@@ -310,7 +321,7 @@ namespace LogScope.App.Shell
         {
             Raise("HasScore"); Raise("Score");
             Raise("ScoreText"); Raise("ScoreNote"); Raise("Grade");
-            Raise("ScoreOutOf"); Raise("ScoreSize");
+            Raise("ScoreOutOf"); Raise("ScoreSize"); Raise("HasScoreText");
         }
 
         /// <summary>
@@ -332,14 +343,34 @@ namespace LogScope.App.Shell
             get
             {
                 if (HasVerdict) return _word;
+
+                // 판정 칸은 점수를 안 씁니다. 아직 읽기 전이면 <b>아무것도</b>
+                // 적지 않습니다 — "??" 는 "점수가 있을 자리인데 아직 안
+                // 나왔다" 는 뜻이고, 이 칸에는 점수가 올 자리가 없습니다.
+                // 읽기 전이라는 말은 아래 요약 칸이 합니다.
+                if (UsesVerdict) return string.Empty;
+
                 return _has ? _score.ToString("0.#") : "??";
             }
         }
 
+        /// <summary>
+        /// 크게 적는 글이 있는지 (없으면 그 줄을 아예 숨깁니다).
+        ///
+        /// 위의 <see cref="HasScore"/> 와 다릅니다 — 그쪽은 "점수를 재
+        /// 봤는지" 이고, 이쪽은 "적을 글자가 있는지" 입니다. 분석 2 는
+        /// 점수를 아예 안 쓰므로 읽기 전에는 적을 글자가 없습니다.
+        /// </summary>
+        public bool HasScoreText { get { return ScoreText.Length > 0; } }
+
         /// <summary>점수 뒤에 붙는 "/ 100". 낱말 칸에는 안 붙습니다.</summary>
         public string ScoreOutOf
         {
-            get { return HasVerdict ? string.Empty : "/ " + MaxScore.ToString("0"); }
+            get
+            {
+                if (HasVerdict || UsesVerdict) return string.Empty;
+                return "/ " + MaxScore.ToString("0");
+            }
         }
 
         /// <summary>
@@ -355,6 +386,10 @@ namespace LogScope.App.Shell
             {
                 if (HasVerdict) return _wordNote;
                 if (!Ready) return "아직 만들지 않았습니다";
+
+                // 판정 칸은 점수 이야기를 적지 않습니다 (위 ScoreText 참고).
+                if (UsesVerdict) return string.Empty;
+
                 if (!_has) return "Log 파일을 비교한 후 점수가 나옵니다";
                 switch (ScoreBands.GradeOf(_score))
                 {

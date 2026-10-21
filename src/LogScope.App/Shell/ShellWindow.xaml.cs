@@ -50,6 +50,8 @@ namespace LogScope.App.Shell
             Main.AnalysisOpened += OnAnalysisOpened;
             Main.GroupOpened += OnGroupOpened;
             Main.IoOpened += OnMainIoOpened;
+            Main.LogPickRequested += OnMainLogPick;
+            Main.DbPickRequested += OnMainDbPick;
             Main.LogDropped += OnLogDropped;
             Main.DbDropped += OnMainDbDropped;
 
@@ -290,6 +292,24 @@ namespace LogScope.App.Shell
             if (!any) return;
             AfterLoad();
             SaveSettings();
+        }
+
+        /// <summary>
+        /// 메인 화면의 로그 칸을 <b>눌렀을</b> 때. 파일 고르는 창을 띄웁니다
+        /// — 위쪽 [이전 로그 열기] 와 같은 길입니다 (고르는 규칙이 한 곳).
+        /// </summary>
+        private void OnMainLogPick(object sender, MainView.PickEventArgs e)
+        {
+            OpenLog(e.Before);
+        }
+
+        /// <summary>
+        /// 메인 화면의 견줄 자리를 눌렀을 때. 분석 2 화면의 [파일] 과 같은
+        /// 길입니다. 폴더는 끌어다 놓거나 분석 2 의 [폴더] 로 고릅니다.
+        /// </summary>
+        private void OnMainDbPick(object sender, MainView.PickEventArgs e)
+        {
+            Db.PickFileFor(e.Before);
         }
 
         /// <summary>메인 화면의 이전/이후 줄에 놓았을 때.</summary>

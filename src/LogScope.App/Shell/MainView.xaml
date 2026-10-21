@@ -142,8 +142,11 @@
                                             ToolTip="이 분석 화면으로 넘어갑니다." />
                                 </Grid>
 
-                                <!-- 점수 -->
-                                <StackPanel Orientation="Horizontal">
+                                <!-- 점수 (또는 판정 낱말).
+                                     적을 것이 없으면 줄째 사라집니다 — 분석 2 는
+                                     DB 를 읽기 전에 아무것도 안 적습니다. -->
+                                <StackPanel Orientation="Horizontal"
+                                            Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
                                     <!--
                                       글자 크기를 뷰모델이 정합니다. 점수는
                                       두세 자인데 "WARNING" 은 일곱 자라,
@@ -158,7 +161,8 @@
                                                VerticalAlignment="Bottom" />
                                 </StackPanel>
                                 <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
-                                           FontSize="11" Margin="0,1,0,0" />
+                                           FontSize="11" Margin="0,1,0,0" TextWrapping="Wrap"
+                                           Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
 
                                 <!-- 그 분석이 실제로 센 숫자들 -->
                                 <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
@@ -212,7 +216,7 @@
 
                                     <TextBlock Grid.Row="0"
                                                Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
-                                               Text="로그    (칸에 끌어다 놓으면 열립니다)" />
+                                               Text="로그    (칸을 누르거나 끌어다 놓으면 열립니다)" />
 
                                     <Border Grid.Row="1" Tag="before|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
@@ -220,7 +224,9 @@
                                             CornerRadius="4" Padding="9,7"
                                             ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop">
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Cursor="Hand">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
@@ -248,7 +254,9 @@
                                             CornerRadius="4" Padding="9,7"
                                             ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop">
+                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                            MouseLeftButtonUp="OnLogCardClick"
+                                            Cursor="Hand">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
@@ -295,22 +303,20 @@
                                     -->
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="5" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0"
-                                               Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
-                                               Text="견줄 자리    (끌어다 놓기 · 둘 다 차면 바로 읽습니다)" />
 
-                                    <Border Grid.Row="1" Tag="before|Brush.Window"
+                                    <Border Grid.Row="0" Tag="before|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"
                                             ToolTip="{Binding DataContext.DbBeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop">
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Cursor="Hand">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
@@ -328,13 +334,15 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Grid.Row="3" Tag="after|Brush.Window"
+                                    <Border Grid.Row="2" Tag="after|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"
                                             ToolTip="{Binding DataContext.DbAfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop">
+                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                            MouseLeftButtonUp="OnDbCardClick"
+                                            Cursor="Hand">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"

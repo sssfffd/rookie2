@@ -346,8 +346,18 @@ namespace LogScope.App.Shell
         public string DbBeforeName { get { return DbPathText.Name(DbPath(true)); } }
         public string DbAfterName { get { return DbPathText.Name(DbPath(false)); } }
 
-        public string DbBeforeNote { get { return DbPathText.Note(DbPath(true)); } }
-        public string DbAfterNote { get { return DbPathText.Note(DbPath(false)); } }
+        // 메인 화면 칸에는 단추도 타 넣는 자리도 없습니다 — 누르면 파일
+        // 고르는 창이 뜹니다. 그래서 아직 안 정했을 때의 말이 분석 2
+        // 화면과 다릅니다 (고르는 자리는 DbPathText 한 곳입니다).
+        public string DbBeforeNote
+        {
+            get { return DbPathText.Note(DbPath(true), DbPathText.NoneOnCard); }
+        }
+
+        public string DbAfterNote
+        {
+            get { return DbPathText.Note(DbPath(false), DbPathText.NoneOnCard); }
+        }
 
         private string DbPath(bool before)
         {

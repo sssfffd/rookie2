@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 using LogScope.App.Common;
 using LogScope.App.Settings;
@@ -150,6 +151,47 @@ namespace LogScope.App.Shell
         private static bool HasFiles(DragEventArgs e)
         {
             return e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop);
+        }
+
+        /// <summary>
+        /// 칸을 <b>눌렀을 때</b> — 파일 고르는 창을 띄웁니다.
+        ///
+        /// 끌어다 놓기만 되면 탐색기를 띄워 놓고 끌어와야 합니다. 누르는
+        /// 쪽이 손이 덜 가는 때도 많고, 무엇보다 <b>끌어다 놓기가 된다는
+        /// 것을 모르는 사람</b>에게는 그 칸이 그림일 뿐입니다.
+        ///
+        /// 어느 쪽 자리인지는 칸의 Tag 가 압니다 (끌어다 놓기와 같은 자리).
+        /// </summary>
+        public event EventHandler<PickEventArgs> LogPickRequested;
+
+        /// <summary>분석 2 의 견줄 자리를 눌렀을 때.</summary>
+        public event EventHandler<PickEventArgs> DbPickRequested;
+
+        public sealed class PickEventArgs : EventArgs
+        {
+            /// <summary>참이면 이전 자리, 거짓이면 이후 자리입니다.</summary>
+            public readonly bool Before;
+            public PickEventArgs(bool before) { Before = before; }
+        }
+
+        private void OnLogCardClick(object sender, MouseButtonEventArgs e)
+        {
+            Pick(sender, e, LogPickRequested);
+        }
+
+        private void OnDbCardClick(object sender, MouseButtonEventArgs e)
+        {
+            Pick(sender, e, DbPickRequested);
+        }
+
+        private void Pick(object sender, MouseButtonEventArgs e, EventHandler<PickEventArgs> h)
+        {
+            e.Handled = true;
+
+            var g = sender as FrameworkElement;
+            if (g == null || h == null) return;
+
+            h(this, new PickEventArgs(CardTag.IsBefore(g)));
         }
 
         /// <summary>
