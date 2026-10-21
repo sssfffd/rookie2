@@ -17,7 +17,7 @@ namespace LogScope.Logs.Align
         /// <summary>단계 이름. 한쪽에만 있어도 그 쪽 이름이 들어갑니다.</summary>
         public string Name = string.Empty;
 
-        /// <summary>목록에 적는 글 ("3. 가열"). 번호는 이전 로그 차례입니다.</summary>
+        /// <summary>목록에 적는 글 ("가열", 둘째부터 "가열 (2)"). 몇 번째인지는 이전 로그 차례입니다.</summary>
         public string Label = string.Empty;
 
         /// <summary>이전 로그에서 몇 번째 단계인지. 이전 로그에 없으면 -1.</summary>

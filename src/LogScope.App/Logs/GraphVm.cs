@@ -329,7 +329,7 @@ namespace LogScope.App.Logs
         }
 
         /// <param name="stepA">
-        /// 커서 A 가 든 단계와 그 시작에서 지난 시간 ("2. 가열 시작 +12.300").
+        /// 커서 A 가 든 단계와 그 시작에서 지난 시간 ("가열 시작 +12.300").
         /// 칸으로 나눠 보는 중이 아니면 빈 글자입니다.
         /// </param>
         public void UpdateReadout(double cursorA, double cursorB, double visibleStart, double visibleEnd,

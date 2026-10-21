@@ -99,3 +99,4 @@
 | `90-heatmap-search-above-list.md` | 히트맵 검색 칸을 IO 이름 칸 바로 위로 · 색 설명 옆 쓰는 법 글 빼기 |
 | `91-db-view-two-buttons.md` | 분석 2 보기 단추를 [차이 발생] · [전체] 둘로 ([값이 달라진 것만] 뺌) |
 | `92-db-same-rows-green.md` | 분석 2 [전체] 에서 두 쪽이 같은 줄은 옅은 초록 |
+| `93-step-label-no-number.md` | 단계 이름 앞 순번 "1." 빼기 (같은 이름 둘째부터 "(2)") |

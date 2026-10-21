@@ -12,7 +12,7 @@ namespace LogScope.Logs.Align
     /// </summary>
     public sealed class StepBand
     {
-        /// <summary>칸 위에 적는 글 ("3. 가열").</summary>
+        /// <summary>칸 위에 적는 글 ("가열", 같은 이름 둘째부터 "가열 (2)").</summary>
         public string Label = string.Empty;
 
         /// <summary>이 칸이 보여 주는 구간 (이전 로그 시간 기준).</summary>

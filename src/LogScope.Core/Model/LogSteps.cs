@@ -141,15 +141,25 @@ namespace LogScope.Core.Model
         }
 
         /// <summary>
-        /// 목록에 적는 글. <b>번호를 앞에 붙입니다</b> — 같은 이름이 두 번
-        /// 나오는 공정에서 이름만 적으면 어느 쪽인지 고를 수가 없습니다.
+        /// 목록 · 칸 머리에 적는 글. <b>단계 이름 그대로</b>입니다 (1.13).
+        ///
+        /// 1.12 까지는 앞에 순번을 붙였습니다 ("1. 가열"). 단계 IO 값이 숫자면
+        /// "1. 1" 처럼 같은 수가 두 번 찍혀서 뺐습니다.
+        ///
+        /// 같은 이름이 <b>두 번째부터</b>는 뒤에 몇 번째인지 붙입니다
+        /// ("가열", … "가열 (2)"). 안 붙이면 단계 목록에 같은 글이 둘 떠서
+        /// 어느 쪽인지 고를 수가 없습니다. 이름이 비었으면 순번만 적습니다
+        /// (빈 칸 머리는 무엇인지 알 수 없습니다).
         /// </summary>
         public string Label(int i)
         {
             if (i < 0 || i >= _steps.Count) return string.Empty;
             string name = _steps[i].Name;
-            string head = (i + 1).ToString();
-            return name.Length > 0 ? head + ". " + name : head;
+            if (name.Length == 0) return (i + 1).ToString();
+
+            int nth = 1;
+            for (int k = 0; k < i; k++) if (Same(_steps[k].Name, name)) nth++;
+            return nth > 1 ? name + " (" + nth + ")" : name;
         }
 
         // ================= 짓는 길 =================

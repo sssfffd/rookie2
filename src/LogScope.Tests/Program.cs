@@ -3687,7 +3687,7 @@ namespace LogScope.Tests
 
             StepBands bands = StepBands.Build(StepPairList.Build(dsA, dsB));
             Check("칸 셋", bands.Count == 3, bands.Count.ToString());
-            Check("칸 글자가 단계 이름", bands[1].Label == "2. 가열", bands[1].Label);
+            Check("칸 글자가 단계 이름", bands[1].Label == "가열", bands[1].Label);
             Near("가열 칸의 시작", bands[1].T0, 10, 1e-9);
             Near("가열 칸의 밀기 값", bands[1].Shift, -100, 1e-9);
             Check("뺀 단계 없음", bands.Skipped == 0, bands.Skipped.ToString());
@@ -3746,7 +3746,7 @@ namespace LogScope.Tests
             // 여야 뜻이 안 바뀝니다 (그 단계의 밀기 값, 단계 이름 눈금).
             StepBands one = StepBands.Build(StepPairList.Build(dsA, dsB), 1);
             Check("칸 하나만", one.Count == 1, one.Count.ToString(CultureInfo.InvariantCulture));
-            Check("고른 그 단계", one[0].Label == "2. 가열", one[0].Label);
+            Check("고른 그 단계", one[0].Label == "가열", one[0].Label);
             Near("밀기 값도 그 단계 것", one[0].Shift, bands[1].Shift, 1e-9);
 
             double[] ox, ow;
@@ -3814,7 +3814,7 @@ namespace LogScope.Tests
 
             Check("단계로 잘림", r.ByStep, r.Warning);
             Check("칸 셋 (단계 수와 같음)", r.BucketCount == 3, r.BucketCount.ToString());
-            Check("칸 글자가 단계 이름", r.BucketText(1) == "2. 가열", r.BucketText(1));
+            Check("칸 글자가 단계 이름", r.BucketText(1) == "가열", r.BucketText(1));
             Check("가로축 이름도 단계", r.BucketLabel == "단계", r.BucketLabel);
 
             Check("차이 난 IO 는 PV 한 줄", r.Rows.Count == 1, r.Rows.Count.ToString());
@@ -3908,9 +3908,11 @@ namespace LogScope.Tests
             Near("둘째 단계 시작 시각", t.StartTime(ds, 1), 10, 1e-9);
             Near("둘째 단계 끝 시각", t.EndTime(ds, 1), 29, 1e-9);
 
-            // 같은 이름이 두 번 나오면 번호로 가립니다. 이름만 적으면
-            // 목록에서 어느 쪽인지 고를 수가 없습니다.
-            Check("목록 글에 번호가 붙음", t.Label(3) == "4. 가열", t.Label(3));
+            // 목록 글은 이름 그대로 (1.13, 전에는 "4. 가열"). 같은 이름이
+            // 두 번째부터는 몇 번째인지 붙여 가립니다.
+            Check("목록 글은 이름 그대로", t.Label(1) == "가열", t.Label(1));
+            Check("같은 이름 둘째는 (2)", t.Label(3) == "가열 (2)", t.Label(3));
+            Check("순번 \"1. \" 이 안 붙음", !t.Label(0).StartsWith("1."), t.Label(0));
             Check("같은 이름의 첫째", t.IndexOfName("가열", 0) == 1,
                   t.IndexOfName("가열", 0).ToString());
             Check("같은 이름의 둘째", t.IndexOfName("가열", 1) == 3,
