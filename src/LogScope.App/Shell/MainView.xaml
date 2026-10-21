@@ -502,7 +502,7 @@
                                                                 <!-- 분석 2 는 여기에 "1 → 2" (1.04). 값이 길면
                                                                      이름을 밀어내지 않게 자릅니다 — 다 보려면 아래
                                                                      작은 글이나 분석 2 화면. -->
-                                                                <TextBlock Grid.Column="2" Text="{Binding Value}"
+                                                                <TextBlock x:Name="LineValue" Grid.Column="2" Text="{Binding Value}"
                                                                            Style="{StaticResource Muted}" FontSize="11"
                                                                            MaxWidth="240" TextTrimming="CharacterEllipsis"
                                                                            VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -528,6 +528,12 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Grade}" Value="{x:Static vm:ScoreBands.GradeBad}">
                                                             <Setter TargetName="LineDot" Property="Background"
+                                                                    Value="{DynamicResource Brush.Bad}" />
+                                                        </DataTrigger>
+                                                        <!-- 분석 2 의 "1 → 2" 는 빨간 글씨로 (1.08). 칸이 좁아
+                                                             "(+1)" 은 안 붙이고 색만 칠합니다. -->
+                                                        <DataTrigger Binding="{Binding ValueIsChange}" Value="True">
+                                                            <Setter TargetName="LineValue" Property="Foreground"
                                                                     Value="{DynamicResource Brush.Bad}" />
                                                         </DataTrigger>
                                                     </DataTemplate.Triggers>

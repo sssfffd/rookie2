@@ -138,6 +138,7 @@ namespace LogScope.Tests
                 DbShowAllIos();
                 DbVerdictRule();
                 DbChangedValuesRule();
+                DbDeltaText();
                 DbPathNames();
                 StepsFromChannel();
                 StepPairing();
@@ -4313,6 +4314,38 @@ namespace LogScope.Tests
             for (int i = 0; i < 5; i++) many.Others.Add(ChangedLine("t", "X", "C" + i, "0", "1"));
             Check("덧말이 넘치면 \"외 N칸\"", many.OthersText(3).EndsWith("외 2칸"),
                   many.OthersText(3));
+        }
+
+        /// <summary>분석 2 목록의 빨간 "(+3)" · "(a → b)" (1.08).</summary>
+        private static void DbDeltaText()
+        {
+            Say("DB — 얼마나 달라졌나 (+N / a → b)");
+
+            Check("숫자는 이후 − 이전, + 붙임",
+                  ChangedLine("t", "A", "v", "1", "4").Delta == "(+3)", ChangedLine("t", "A", "v", "1", "4").Delta);
+            Check("줄면 −",
+                  ChangedLine("t", "A", "v", "2.5", "2.25").Delta == "(-0.25)",
+                  ChangedLine("t", "A", "v", "2.5", "2.25").Delta);
+            Check("소수 빼기에 찌꺼기 없음 (0.3 − 0.1)",
+                  ChangedLine("t", "A", "v", "0.1", "0.3").Delta == "(+0.2)",
+                  ChangedLine("t", "A", "v", "0.1", "0.3").Delta);
+            Check("음수끼리", ChangedLine("t", "A", "v", "-5", "-7").Delta == "(-2)",
+                  ChangedLine("t", "A", "v", "-5", "-7").Delta);
+            Check("글자는 a → b",
+                  ChangedLine("t", "A", "v", "OPEN", "CLOSE").Delta == "(OPEN → CLOSE)",
+                  ChangedLine("t", "A", "v", "OPEN", "CLOSE").Delta);
+            Check("한쪽만 숫자면 글자 꼴",
+                  ChangedLine("t", "A", "v", "NULL", "3").Delta == "(NULL → 3)",
+                  ChangedLine("t", "A", "v", "NULL", "3").Delta);
+            Check("숫자로 같고 글자만 다르면 글자 꼴 (+0 이 아님)",
+                  ChangedLine("t", "A", "v", "1.0", "1").Delta == "(1.0 → 1)",
+                  ChangedLine("t", "A", "v", "1.0", "1").Delta);
+            Check("빈 값은 (빈 값)",
+                  ChangedLine("t", "A", "v", "", "x").Delta == "((빈 값) → x)",
+                  ChangedLine("t", "A", "v", "", "x").Delta);
+
+            var same = new DbDiffLine { Before = "1", After = "1", Change = DbDiffLine.ChangeSame };
+            Check("칠하지 않은 줄은 빈 글자", same.Delta.Length == 0, same.Delta);
         }
 
         private static DbDiffLine ChangedLine(string table, string io, string column,

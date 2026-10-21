@@ -99,6 +99,13 @@ namespace LogScope.App.Shell
         /// <summary>누를 수 있는 줄인지 (찾아 줄 것이 있는지).</summary>
         public bool CanOpen { get { return Target.Length > 0; } }
 
+        /// <summary>
+        /// 참이면 오른쪽 값(<see cref="Value"/>)을 <b>빨간 글씨</b>로 (1.08).
+        /// 분석 2 의 "1 → 2" 처럼 값이 달라졌다는 뜻의 값에만 씁니다 —
+        /// 분석 1 의 "3/20" 같은 수까지 빨개지면 빨강의 뜻이 흐려집니다.
+        /// </summary>
+        public bool ValueIsChange { get; set; }
+
         public CardLineVm(string label, string value, string grade, string detail)
             : this(label, value, grade, detail, string.Empty) { }
 

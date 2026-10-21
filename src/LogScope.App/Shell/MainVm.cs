@@ -183,8 +183,12 @@ namespace LogScope.App.Shell
             for (int i = 0; i < ios.Count; i++)
             {
                 DbChangedIo io = ios[i];
-                lines.Add(new CardLineVm(io.Io, io.Change, ScoreBands.GradeBad,
-                                         io.OthersText(MaxOtherColumns), io.Io));
+                // 메인 칸은 좁아서 "(+1)" 같은 차이는 안 붙이고 값만 빨갛게
+                // 칠합니다 (1.08). 차이는 분석 2 목록에 적힙니다.
+                var line = new CardLineVm(io.Io, io.Change, ScoreBands.GradeBad,
+                                          io.OthersText(MaxOtherColumns), io.Io);
+                line.ValueIsChange = true;
+                lines.Add(line);
             }
 
             // 다 못 적었으면 몇 개가 더 있는지 적습니다. 이 줄은 누를 것이

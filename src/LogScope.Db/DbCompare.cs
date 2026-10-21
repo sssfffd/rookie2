@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 // ==========================================================
@@ -727,6 +728,47 @@ namespace LogScope.Db
 
         /// <summary>짐작·상한·키 없음 같은 덧말.</summary>
         public string Note { get; set; }
+
+        /// <summary>
+        /// <b>얼마나 달라졌나</b> — 값이 달라진 줄(<see cref="MarkValue"/>)에서만
+        /// 채워지고, 나머지는 빈 글자입니다 (1.08). 분석 2 목록이 이후 값
+        /// 옆에 빨간 글씨로 붙입니다.
+        ///
+        ///   둘 다 숫자    "(+3)"  "(-0.25)"   이후 − 이전
+        ///   그 밖         "(OPEN → CLOSE)"
+        ///
+        /// 숫자는 <c>decimal</c> 로 뺍니다. <c>double</c> 로 빼면 0.3 − 0.1 이
+        /// 0.19999999999999998 로 적힙니다. 숫자로는 같은데 글자가 다른 경우
+        /// ("1.0" 과 "1")는 "(+0)" 이 아니라 글자 꼴로 적습니다 — 0 이라고 적으면
+        /// 왜 칠해졌는지 알 수 없습니다.
+        ///
+        /// 저장해 두지 않고 읽을 때 셉니다. 목록은 보이는 줄만 만들어서
+        /// (가상화) 수만 줄이어도 실제로 세는 것은 화면에 보이는 몇십 줄입니다.
+        /// </summary>
+        public string Delta
+        {
+            get
+            {
+                if (Mark != MarkValue) return string.Empty;
+
+                decimal b, a;
+                if (Number(Before, out b) && Number(After, out a) && a != b)
+                {
+                    decimal d = a - b;
+                    string n = (d < 0 ? -d : d).ToString("0.############################",
+                                                        CultureInfo.InvariantCulture);
+                    return "(" + (d < 0 ? "-" : "+") + n + ")";
+                }
+                return "(" + DbChangedIo.Pair(Before, After) + ")";
+            }
+        }
+
+        private static bool Number(string s, out decimal v)
+        {
+            v = 0;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            return decimal.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out v);
+        }
 
         public DbDiffLine()
         {
