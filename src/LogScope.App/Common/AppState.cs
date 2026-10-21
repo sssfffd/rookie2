@@ -5,6 +5,7 @@ using LogScope.Logs.Compare;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
+using LogScope.Db;
 
 namespace LogScope.App.Common
 {
@@ -37,11 +38,11 @@ namespace LogScope.App.Common
         public int DbAdded;
 
         /// <summary>
-        /// 값이 달라진 IO 이름들 (앞 몇 개). WARNING 일 때 메인 화면 칸에
-        /// 그대로 적습니다 — 개수만 보면 결국 분석 2 를 열어 목록을
-        /// 뒤져야 합니다.
+        /// 값이 달라진 IO 와 그 값 (앞 몇 개). 메인 화면 칸의 요약이
+        /// "TEMP_MAX   1 → 2" 로 한 줄씩 적습니다 — 개수만 보면 결국
+        /// 분석 2 를 열어 목록을 뒤져야 합니다.
         /// </summary>
-        public List<string> DbChangedIos = new List<string>();
+        public List<DbChangedIo> DbChangedIos = new List<DbChangedIo>();
 
         public bool HasAny { get { return Before != null || After != null; } }
         public bool HasBoth { get { return Before != null && After != null; } }

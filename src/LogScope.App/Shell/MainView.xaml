@@ -142,7 +142,47 @@
                                             ToolTip="이 분석 화면으로 넘어갑니다." />
                                 </Grid>
 
-                                <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 제목 바로 아래 (1.03) =====
+                                <!-- 점수 (또는 판정 낱말).
+                                     적을 것이 없으면 줄째 사라집니다 — 분석 2 는
+                                     DB 를 읽기 전에 아무것도 안 적습니다. -->
+                                <StackPanel Orientation="Horizontal"
+                                            Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
+                                    <!--
+                                      글자 크기를 뷰모델이 정합니다. 점수는
+                                      두세 자인데 "WARNING" 은 일곱 자라,
+                                      34 로 고정하면 칸을 넘깁니다.
+                                    -->
+                                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
+                                               FontSize="{Binding ScoreSize}" FontWeight="Bold"
+                                               Foreground="{DynamicResource Brush.Muted}"
+                                               VerticalAlignment="Bottom" />
+                                    <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,7"
+                                               Foreground="{DynamicResource Brush.Muted}"
+                                               VerticalAlignment="Bottom" />
+
+                                    <!--
+                                      분석 2: 차이 발생 개수를 <b>낱말 오른쪽에</b> (1.03).
+                                      FAIL 을 보는 눈이 바로 옆의 수로 이어집니다 —
+                                      아래 줄로 내려 두면 "왜 FAIL 인가" 를 찾으러
+                                      눈이 한 번 더 내려가야 합니다.
+                                    -->
+                                    <StackPanel Orientation="Horizontal" Margin="18,0,0,0"
+                                                VerticalAlignment="Bottom"
+                                                Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
+                                        <TextBlock Text="차이 발생" FontSize="13" VerticalAlignment="Bottom"
+                                                   Margin="0,0,8,4" Foreground="{DynamicResource Brush.Muted}" />
+                                        <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
+                                                   FontSize="24" FontWeight="Bold" VerticalAlignment="Bottom"
+                                                   Foreground="{DynamicResource Brush.Text}" />
+                                        <TextBlock Text="개" FontSize="13" VerticalAlignment="Bottom"
+                                                   Margin="4,0,0,4" Foreground="{DynamicResource Brush.Muted}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
+                                           FontSize="11" Margin="0,1,0,0" TextWrapping="Wrap"
+                                           Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
+
+                                <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 점수 바로 아래 (1.04) =====
 
                                      <b>모양이 둘</b>입니다. 한 자리에 두 Border 를 겹쳐
                                      두고 하나만 보입니다.
@@ -159,10 +199,15 @@
                                      (0.59 · 1.02 에 겪은 모양). 둘로 두면 저마다 Tag 와
                                      색이 고정이라 검사기가 그 짝을 볼 수 있습니다.
 
+                                     자리: 제목 → <b>점수</b> → 파일 → 숫자·요약 (1.04).
+                                     결과가 맨 먼저, 무엇과 무엇을 견줬는지가 바로
+                                     그 아래입니다. 1.02 에는 바닥, 1.03 에는 점수
+                                     위였습니다.
+
                                      위·아래 어느 쪽을 보일지는 Hint / Shown 이 정확히
                                      엇갈리게 만들어 둬서 겹치거나 둘 다 사라지지
                                      않습니다. -->
-                                <Grid Margin="0,0,0,12"
+                                <Grid Margin="0,10,0,0"
                                       Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -271,7 +316,7 @@
                                 <!-- ===== 이 분석이 견줄 자리 (분석 2) — 분석 1 과 같은 두 모양 =====
                                      폴더도 파일도 됩니다. 누르면 파일 고르는 창
                                      (폴더는 끌어다 놓기). 둘 다 차면 바로 읽습니다. -->
-                                <Grid Margin="0,0,0,12"
+                                <Grid Margin="0,10,0,0"
                                       Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -377,46 +422,6 @@
                                     </Border>
                                 </Grid>
 
-                                <!-- 점수 (또는 판정 낱말).
-                                     적을 것이 없으면 줄째 사라집니다 — 분석 2 는
-                                     DB 를 읽기 전에 아무것도 안 적습니다. -->
-                                <StackPanel Orientation="Horizontal"
-                                            Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
-                                    <!--
-                                      글자 크기를 뷰모델이 정합니다. 점수는
-                                      두세 자인데 "WARNING" 은 일곱 자라,
-                                      34 로 고정하면 칸을 넘깁니다.
-                                    -->
-                                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
-                                               FontSize="{Binding ScoreSize}" FontWeight="Bold"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Bottom" />
-                                    <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,7"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Bottom" />
-
-                                    <!--
-                                      분석 2: 차이 발생 개수를 <b>낱말 오른쪽에</b> (1.03).
-                                      FAIL 을 보는 눈이 바로 옆의 수로 이어집니다 —
-                                      아래 줄로 내려 두면 "왜 FAIL 인가" 를 찾으러
-                                      눈이 한 번 더 내려가야 합니다.
-                                    -->
-                                    <StackPanel Orientation="Horizontal" Margin="18,0,0,0"
-                                                VerticalAlignment="Bottom"
-                                                Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
-                                        <TextBlock Text="차이 발생" FontSize="13" VerticalAlignment="Bottom"
-                                                   Margin="0,0,8,4" Foreground="{DynamicResource Brush.Muted}" />
-                                        <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
-                                                   FontSize="24" FontWeight="Bold" VerticalAlignment="Bottom"
-                                                   Foreground="{DynamicResource Brush.Text}" />
-                                        <TextBlock Text="개" FontSize="13" VerticalAlignment="Bottom"
-                                                   Margin="4,0,0,4" Foreground="{DynamicResource Brush.Muted}" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
-                                           FontSize="11" Margin="0,1,0,0" TextWrapping="Wrap"
-                                           Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
-
                                 <!-- 그 분석이 실제로 센 숫자들 -->
                                 <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
                                               Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
@@ -487,8 +492,12 @@
                                                                            VerticalAlignment="Center" FontSize="12"
                                                                            TextTrimming="CharacterEllipsis" />
 
+                                                                <!-- 분석 2 는 여기에 "1 → 2" (1.04). 값이 길면
+                                                                     이름을 밀어내지 않게 자릅니다 — 다 보려면 아래
+                                                                     작은 글이나 분석 2 화면. -->
                                                                 <TextBlock Grid.Column="2" Text="{Binding Value}"
                                                                            Style="{StaticResource Muted}" FontSize="11"
+                                                                           MaxWidth="240" TextTrimming="CharacterEllipsis"
                                                                            VerticalAlignment="Center" Margin="8,0,0,0" />
                                                             </Grid>
 

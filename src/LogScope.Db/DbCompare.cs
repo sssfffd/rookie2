@@ -773,6 +773,69 @@ namespace LogScope.Db
     }
 
     /// <summary>
+    /// 값이 달라진 IO 하나 — 대표 열의 <b>이전 → 이후</b> 와 더 달라진 열들.
+    /// <see cref="DbDiffList.ChangedValues"/> 가 만듭니다.
+    /// </summary>
+    public sealed class DbChangedIo
+    {
+        public const string Arrow = " → ";
+
+        /// <summary>값이 빈 글자일 때 적는 말. 안 적으면 "1 → " 가 되어 잘린 줄로 보입니다.</summary>
+        public const string EmptyValue = "(빈 값)";
+
+        public string Table { get; private set; }
+        public string Io { get; private set; }
+
+        /// <summary>대표 열. 목록에 먼저 나온 열입니다.</summary>
+        public string Column { get; private set; }
+        public string Before { get; private set; }
+        public string After { get; private set; }
+
+        /// <summary>같은 IO 에서 더 달라진 열들 (대표 열은 뺀 것).</summary>
+        public List<DbDiffLine> Others { get; private set; }
+
+        public DbChangedIo(DbDiffLine first)
+        {
+            Table = first.Table; Io = first.Io; Column = first.Column;
+            Before = first.Before; After = first.After;
+            Others = new List<DbDiffLine>();
+        }
+
+        /// <summary>"1 → 2". 대표 열만.</summary>
+        public string Change { get { return Pair(Before, After); } }
+
+        /// <summary>
+        /// 더 달라진 열들을 "MAX: 5 → 6 · MIN: 0 → 1" 로. <paramref name="max"/>
+        /// 개를 넘으면 "외 N칸" 을 붙입니다. 없으면 빈 글자.
+        /// </summary>
+        public string OthersText(int max)
+        {
+            if (Others.Count == 0) return string.Empty;
+            var sb = new StringBuilder();
+            sb.Append(Column).Append(": ").Append(Change);
+            int shown = Math.Min(Others.Count, Math.Max(0, max));
+            for (int i = 0; i < shown; i++)
+            {
+                DbDiffLine o = Others[i];
+                sb.Append("  ·  ").Append(o.Column).Append(": ").Append(Pair(o.Before, o.After));
+            }
+            int more = Others.Count - shown;
+            if (more > 0) sb.Append("  외 ").Append(more.ToString("N0")).Append("칸");
+            return sb.ToString();
+        }
+
+        public static string Pair(string before, string after)
+        {
+            return Show(before) + Arrow + Show(after);
+        }
+
+        private static string Show(string v)
+        {
+            return string.IsNullOrEmpty(v) ? EmptyValue : v;
+        }
+    }
+
+    /// <summary>
     /// 표 단위 차이(<see cref="DbDiffResult"/>)를 <b>한 줄에 한 칸씩</b> 펼칩니다.
     ///
     /// 값이 바뀐 행은 <b>바뀐 열마다 한 줄</b>입니다. 한 행을 한 줄로 묶으면
@@ -1238,27 +1301,58 @@ namespace LogScope.Db
         /// <paramref name="max"/> 개까지만 모읍니다. 수백 개를 한 줄에
         /// 늘어놓으면 칸을 넘기고, 넘긴 글은 아무도 못 읽습니다. 몇 개를
         /// 더 안 적었는지는 <b>부르는 쪽이 개수(Tally)로 알 수 있습니다</b>.
+        ///
+        /// 이름만 뽑는 길을 따로 두지 않고 <see cref="ChangedValues"/> 에서
+        /// 꺼냅니다 — 두 군데서 고르면 메인 칸의 이름과 값이 어긋납니다.
         /// </summary>
         public static List<string> ChangedIos(List<DbDiffLine> lines, int max)
         {
             var names = new List<string>();
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            if (lines == null || max <= 0) return names;
+            List<DbChangedIo> ios = ChangedValues(lines, max);
+            for (int i = 0; i < ios.Count; i++) names.Add(ios[i].Io);
+            return names;
+        }
 
+        /// <summary>
+        /// <b>값이 달라진 IO 와 그 값</b> (1.04). 메인 화면 분석 2 칸의
+        /// 요약이 "TEMP_MAX   1 → 2" 처럼 적는 데 씁니다.
+        ///
+        /// IO 하나에서 열이 여럿 달라졌을 수 있습니다. 목록에 <b>먼저
+        /// 나온 열</b>을 대표로 두고 나머지는 <see cref="DbChangedIo.Others"/>
+        /// 에 모읍니다. 대표만 적고 나머지를 버리면 "1 → 2 만 바뀌었다" 로
+        /// 읽힙니다.
+        ///
+        /// 고르는 잣대는 개수를 세는 <see cref="Count"/> 와 같습니다 (표 +
+        /// IO 이름, 칠한 줄만). 다르면 "차이 발생 3개" 옆에 넷이 적힙니다.
+        /// </summary>
+        public static List<DbChangedIo> ChangedValues(List<DbDiffLine> lines, int max)
+        {
+            var ios = new List<DbChangedIo>();
+            if (lines == null || max <= 0) return ios;
+
+            var at = new Dictionary<string, DbChangedIo>(StringComparer.Ordinal);
             for (int i = 0; i < lines.Count; i++)
             {
                 DbDiffLine ln = lines[i];
                 if (ln == null || ln.Kind == DbDiffLine.KindNote) continue;
                 if (ln.Mark.Length == 0) continue;
 
-                // 같은 이름이 표마다 있을 수 있어 표 이름까지 보고 가립니다
-                // (세는 쪽 Count 와 같은 잣대라야 개수와 이름이 안 어긋납니다).
-                if (!seen.Add(ln.Table + "\u0001" + ln.Io)) continue;
+                string who = ln.Table + "\u0001" + ln.Io;
+                DbChangedIo io;
+                if (at.TryGetValue(who, out io))
+                {
+                    // 이미 적은 IO 의 다른 열. 다 찼어도 이것은 모읍니다 —
+                    // 적은 IO 의 값은 빠짐없이 있어야 합니다.
+                    io.Others.Add(ln);
+                    continue;
+                }
+                if (ios.Count >= max) continue;
 
-                names.Add(ln.Io);
-                if (names.Count >= max) break;
+                io = new DbChangedIo(ln);
+                at.Add(who, io);
+                ios.Add(io);
             }
-            return names;
+            return ios;
         }
 
         public static string Headline(List<DbDiffLine> lines)

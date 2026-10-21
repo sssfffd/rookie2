@@ -50,6 +50,9 @@ namespace LogScope.App.Db
         /// <summary>값이 달라진 IO 이름들 (앞 몇 개). 메인 화면 칸이 적습니다.</summary>
         public IList<string> ChangedIos { get { return _vm.ChangedIos; } }
 
+        /// <summary>같은 IO 들의 이전 → 이후 값. 메인 화면 요약이 적습니다.</summary>
+        public IList<DbChangedIo> ChangedValues { get { return _vm.ChangedValues; } }
+
         /// <summary>
         /// 그 IO 의 줄을 목록에서 찾아 골라 줍니다 (메인 화면 요약에서
         /// 눌러 넘어왔을 때).
@@ -144,7 +147,11 @@ namespace LogScope.App.Db
         /// </summary>
         public void PickFileFor(bool before)
         {
-            PickFile(before);
+            // 둘 다 차면 <b>바로 읽습니다</b> (1.04) — 끌어다 놓을 때
+            // (TakePaths) 와 같습니다. 1.03 까지는 눌러서 고르면 자리만
+            // 적고 안 읽어서, 메인 칸에 두 파일 이름이 다 보이는데
+            // 결과는 "아직 읽지 않았습니다" 였습니다.
+            if (PickFile(before) && _vm.HasPaths) Read();
         }
 
         private void OnPickFile(object sender, RoutedEventArgs e)
@@ -152,7 +159,8 @@ namespace LogScope.App.Db
             PickFile(Before(sender));
         }
 
-        private void PickFile(bool before)
+        /// <summary>파일 고르는 창. 골랐으면 true.</summary>
+        private bool PickFile(bool before)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
             dlg.Title = (before ? "이전" : "이후") + " DB 파일";
@@ -170,8 +178,9 @@ namespace LogScope.App.Db
             }
             catch (ArgumentException) { }
 
-            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+            if (dlg.ShowDialog(Window.GetWindow(this)) != true) return false;
             _vm.SetPath(before, dlg.FileName);   // SetPath 가 PathsChanged 를 알립니다
+            return true;
         }
 
         // ---------------- 끌어다 놓기 ----------------

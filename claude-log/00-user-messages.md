@@ -1220,3 +1220,13 @@
 > 일단 분석2에서 차이발생 갯수가 fail판정 오른쪽에 있으면 좋겠고 메인화면 이전 이후 로그 여는거 칸은 열고 난 후는 지금이 나은데 열기전엔 이전게 이쁘네 타협점 잘 찾아보고 열고난 후 아래가아니라 위에 있어야할득
 
 → 답변: [83-count-beside-and-two-look-slots.md](83-count-beside-and-two-look-slots.md)
+
+---
+
+## 요청 110 — 점수가 위 · 열면 바로 비교 · 요약에 1 -> 2
+
+> 아니 그래도 점수가 파일 연것보단 위에있어야지 그리고 열었으면 바로 비교되게 해주고
+> 분석 2 요약에서 이전 이후 값도나타나게
+> 1 -> 2이런 형식으로
+
+→ 답변: [84-score-first-read-on-pick-db-values.md](84-score-first-read-on-pick-db-values.md)

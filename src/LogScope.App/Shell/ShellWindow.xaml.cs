@@ -7,6 +7,7 @@ using LogScope.Logs.Align;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
+using LogScope.Db;
 
 using LogScope.App.Common;
 using LogScope.App.Logs;
@@ -421,7 +422,7 @@ namespace LogScope.App.Shell
             _state.DbChanged = Db.Tally.Changed;
             _state.DbGone = Db.Tally.Gone;
             _state.DbAdded = Db.Tally.Added;
-            _state.DbChangedIos = new List<string>(Db.ChangedIos);
+            _state.DbChangedIos = new List<DbChangedIo>(Db.ChangedValues);
             _vm.Main.Refresh();
         }
 

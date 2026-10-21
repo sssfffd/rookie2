@@ -163,25 +163,33 @@ namespace LogScope.App.Shell
         ///
         /// <b>줄을 누르면 분석 2 화면에서 그 IO 를 찾아 줍니다.</b>
         ///
+        /// 줄 오른쪽에 <b>이전 → 이후</b> 값을 적습니다 (1.04). 이름만 있으면
+        /// "얼마나 달라졌나" 를 보러 결국 분석 2 로 가야 합니다. 열이 여럿
+        /// 달라진 IO 는 줄 아래 작은 글에 열마다 적습니다.
+        ///
         /// FAIL 이어도 이름을 적습니다 — 여기는 굴러가는 목록이라 "이 몇
         /// 개가 문제" 로 읽힐 자리가 아닙니다 (한 줄에 늘어놓는 쪽은
         /// DbVerdict 가 여덟 개로 끊습니다).
         /// </summary>
+        /// <summary>한 IO 에서 더 달라진 열을 줄 아래에 몇 개까지 적나.</summary>
+        private const int MaxOtherColumns = 3;
+
         private List<CardLineVm> DbLines(DbDiffList.Tally t)
         {
             var lines = new List<CardLineVm>();
-            IList<string> names = _state.DbChangedIos;
-            if (names == null) return lines;
+            IList<DbChangedIo> ios = _state.DbChangedIos;
+            if (ios == null) return lines;
 
-            for (int i = 0; i < names.Count; i++)
+            for (int i = 0; i < ios.Count; i++)
             {
-                lines.Add(new CardLineVm(names[i], string.Empty, ScoreBands.GradeBad,
-                                         string.Empty, names[i]));
+                DbChangedIo io = ios[i];
+                lines.Add(new CardLineVm(io.Io, io.Change, ScoreBands.GradeBad,
+                                         io.OthersText(MaxOtherColumns), io.Io));
             }
 
             // 다 못 적었으면 몇 개가 더 있는지 적습니다. 이 줄은 누를 것이
             // 없으므로 Target 을 비웁니다.
-            int more = t.Changed - names.Count;
+            int more = t.Changed - ios.Count;
             if (more > 0)
             {
                 lines.Add(new CardLineVm("외 " + more.ToString("N0") + "개 더",

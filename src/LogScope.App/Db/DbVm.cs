@@ -136,12 +136,16 @@ namespace LogScope.App.Db
         public DbDiffList.Tally Tally { get { return _tally; } }
 
         private List<string> _changedIos = new List<string>();
+        private List<DbChangedIo> _changedValues = new List<DbChangedIo>();
 
         /// <summary>
         /// 값이 달라진 IO 이름들 (앞 몇 개). WARNING 일 때 "어떤 항목이
         /// 달라졌나" 를 메인 화면 칸에 그대로 적는 데 씁니다.
         /// </summary>
         public IList<string> ChangedIos { get { return _changedIos; } }
+
+        /// <summary>같은 IO 들의 <b>이전 → 이후</b> 값. 메인 화면 요약이 적습니다.</summary>
+        public IList<DbChangedIo> ChangedValues { get { return _changedValues; } }
 
         /// <summary>읽고 견준 뒤. 메인 화면 칸이 이걸 듣습니다.</summary>
         public event EventHandler ResultChanged;
@@ -412,7 +416,12 @@ namespace LogScope.App.Db
             _tally = DbDiffList.Count(all);
             // 메인 화면 요약 칸이 줄로 적을 만큼 모읍니다. 낱말 아래
             // 한 줄은 DbVerdict 가 알아서 여덟 개까지만 씁니다.
-            _changedIos = DbDiffList.ChangedIos(all, DbVerdict.MaxListIos);
+            //
+            // 이름과 값은 한 번에 모읍니다 — 따로 모으면 이름 목록과 값
+            // 목록의 차례가 어긋날 수 있습니다.
+            _changedValues = DbDiffList.ChangedValues(all, DbVerdict.MaxListIos);
+            _changedIos = new List<string>();
+            for (int i = 0; i < _changedValues.Count; i++) _changedIos.Add(_changedValues[i].Io);
             _hasTally = true;
 
             Summary = Overview(before, after, all);

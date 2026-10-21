@@ -137,6 +137,7 @@ namespace LogScope.Tests
                 CsvKeyAndValue();
                 DbShowAllIos();
                 DbVerdictRule();
+                DbChangedValuesRule();
                 DbPathNames();
                 StepsFromChannel();
                 StepPairing();
@@ -4209,6 +4210,61 @@ namespace LogScope.Tests
 
             Check("아무것도 없으면 덧말 없음", !DbVerdict.Why(clean).Contains("판정에 안 넣음"),
                   DbVerdict.Why(clean));
+        }
+
+        /// <summary>
+        /// 메인 화면 분석 2 요약의 "이전 → 이후" (1.04). 이름 목록과 값
+        /// 목록이 같은 잣대로 골라져야 "차이 발생 N개" 와 줄 수가 맞습니다.
+        /// </summary>
+        private static void DbChangedValuesRule()
+        {
+            Say("DB — 달라진 IO 의 이전 → 이후 값");
+
+            var lines = new List<DbDiffLine>
+            {
+                ChangedLine("io", "TEMP_MAX", "VALUE", "1", "2"),
+                ChangedLine("io", "TEMP_MAX", "MAX", "5", "6"),
+                ChangedLine("io", "PRES_SET", "VALUE", "", "3"),
+                new DbDiffLine { Table = "io", Io = "SAME", Kind = DbDiffLine.KindRow,
+                                 Change = DbDiffLine.ChangeSame, Before = "7", After = "7" },
+                ChangedLine("other", "TEMP_MAX", "VALUE", "a", "b"),
+            };
+
+            List<DbChangedIo> v = DbDiffList.ChangedValues(lines, 10);
+            Check("칠한 줄의 IO 만, 표+이름으로 셈", v.Count == 3,
+                  v.Count.ToString(CultureInfo.InvariantCulture));
+            Check("개수(Count) 와 같은 수", v.Count == DbDiffList.Count(lines).Changed, null);
+            Check("대표 값은 먼저 나온 열", v[0].Change == "1 → 2", v[0].Change);
+            Check("나머지 열은 Others 로", v[0].Others.Count == 1 && v[0].Others[0].Column == "MAX", null);
+            Check("열이 여럿이면 덧말에 열마다",
+                  v[0].OthersText(3) == "VALUE: 1 → 2  ·  MAX: 5 → 6", v[0].OthersText(3));
+            Check("열이 하나면 덧말 없음", v[1].OthersText(3).Length == 0, v[1].OthersText(3));
+            Check("빈 값은 (빈 값) 으로", v[1].Change == "(빈 값) → 3", v[1].Change);
+
+            List<DbChangedIo> one = DbDiffList.ChangedValues(lines, 1);
+            Check("상한까지만 IO 를 모음", one.Count == 1, null);
+            Check("상한이 차도 적은 IO 의 열은 다 모음", one[0].Others.Count == 1, null);
+
+            List<string> names = DbDiffList.ChangedIos(lines, 10);
+            Check("이름 목록과 값 목록의 차례가 같음",
+                  names.Count == v.Count && names[1] == v[1].Io && names[2] == v[2].Io,
+                  string.Join(",", names.ToArray()));
+
+            var many = new DbChangedIo(ChangedLine("t", "X", "A", "1", "2"));
+            for (int i = 0; i < 5; i++) many.Others.Add(ChangedLine("t", "X", "C" + i, "0", "1"));
+            Check("덧말이 넘치면 \"외 N칸\"", many.OthersText(3).EndsWith("외 2칸"),
+                  many.OthersText(3));
+        }
+
+        private static DbDiffLine ChangedLine(string table, string io, string column,
+                                              string before, string after)
+        {
+            return new DbDiffLine
+            {
+                Table = table, Io = io, Column = column, Kind = DbDiffLine.KindRow,
+                Change = DbDiffLine.ChangeDiff, Mark = DbDiffLine.MarkValue,
+                Before = before, After = after,
+            };
         }
 
         /// <summary>목록에서 표·갈래·열 이름으로 한 줄 찾기.</summary>
