@@ -1293,3 +1293,13 @@
 > 빨강 초록 이런 설명 외에 칸을 누르면 어쩌구 글자들 지워주셈
 
 → 답변: [90-heatmap-search-above-list.md](90-heatmap-search-above-list.md)
+
+---
+
+## 요청 117 — 분석 2 보기 단추를 차이 발생 / 전체 로
+
+> 분석 2안에 값이 달라진것만 버튼 없애고
+> 차이 전체 대신
+> 차이 발생 / 전체 로 버튼 나눠주셈
+
+→ 답변: [91-db-view-two-buttons.md](91-db-view-two-buttons.md)
