@@ -219,7 +219,7 @@ namespace LogScope.App.Db
         ///
         /// 자리가 둘 다 차면 <b>바로 읽습니다.</b> 분석 1 이 그렇게
         /// 동작하기 때문입니다 — 로그를 놓으면 묻지 않고 읽고 견줘서 메인
-        /// 칸의 점수가 바뀝니다. DB 만 "이제 분석 2 로 가서 [DB 읽기] 를
+        /// 칸의 점수가 바뀝니다. DB 만 "이제 분석 2 로 가서 [데이터 읽기] 를
         /// 누르세요" 가 되면, 놓고 나서 메인 칸이 그대로인 까닭을 알 수가
         /// 없습니다. 오래 걸리는 동안은 진행 창이 뜨고, 거기서 멈출 수
         /// 있습니다.
@@ -476,7 +476,7 @@ namespace LogScope.App.Db
         {
             if (_vm.ScriptText.Length == 0)
             {
-                MessageBox.Show(Window.GetWindow(this), "먼저 [DB 읽기] 를 눌러 주세요.",
+                MessageBox.Show(Window.GetWindow(this), "먼저 [데이터 읽기] 를 눌러 주세요.",
                     _vm.ScreenTitle, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }

@@ -102,7 +102,7 @@ namespace LogScope.App.Db
         /// 폴더인지 파일인지, 그리고 <b>있기는 한지</b>.
         ///
         /// 없는 자리를 말해 주는 것이 중요합니다. 경로를 손으로 타 넣다가
-        /// 한 글자 틀리면 [DB 읽기] 를 눌러야 알게 되는데, 그때 나오는 말은
+        /// 한 글자 틀리면 [데이터 읽기] 를 눌러야 알게 되는데, 그때 나오는 말은
         /// "읽은 표가 없습니다" 라서 왜인지 알 수가 없습니다.
         /// </summary>
         public string BeforeNote { get { return Note(BeforePath); } }
@@ -225,7 +225,7 @@ namespace LogScope.App.Db
 
         public bool LinesIsEmpty { get { return _lines.Count == 0; } }
 
-        private string _emptyText = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
+        private string _emptyText = "아직 읽지 않았습니다. [데이터 읽기] 를 눌러 주세요.";
         /// <summary>목록이 비었을 때 가운데 적는 글. 왜 비었는지가 매번 다릅니다.</summary>
         public string EmptyText
         {
@@ -330,7 +330,7 @@ namespace LogScope.App.Db
             if (_diff == null)
             {
                 _lines = new List<DbDiffLine>();
-                EmptyText = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
+                EmptyText = "아직 읽지 않았습니다. [데이터 읽기] 를 눌러 주세요.";
             }
             else
             {

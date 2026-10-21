@@ -43,8 +43,8 @@
                 <WrapPanel>
                     <TextBlock Text="{Binding ScreenTitle}" Style="{StaticResource H2}"
                                VerticalAlignment="Center" Margin="0,0,14,0" />
-                    <Button Content="DB 읽기" Click="OnRead" Margin="0,0,6,0"
-                            ToolTip="위 두 자리를 읽어 견줍니다." />
+                    <Button Content="데이터 읽기" Click="OnRead" Margin="0,0,6,0"
+                            ToolTip="아래 두 칸을 읽어 견줍니다." />
                     <Button Content="SQL 문 출력" Click="OnShowScript" Margin="0,0,14,0"
                             ToolTip="지금 차이로 맞추는 SQL 을 만들어 창에 띄웁니다. 그 창에서 복사하거나 파일로 저장할 수 있습니다. 이 프로그램이 돌리지는 않습니다." />
 
@@ -66,6 +66,10 @@
                   됩니다 (0.80 에서 겪었습니다). 메인 화면 칸은 안에 TextBox 가
                   없어서 처음부터 됐던 것입니다.
                 -->
+                <!-- "견줄 DB (칸에 끌어다 놓으면 …)" 머리글을 1.06 에서 뺐습니다.
+                     칸 자체가 테두리 상자라 놓을 자리로 보이고, [폴더] [파일]
+                     단추 풍선말이 같은 말을 합니다. 줄 번호는 그대로 둡니다
+                     (0 번 줄이 비어 높이 0). -->
                 <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -76,10 +80,6 @@
                         <ColumnDefinition Width="8" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
-                               Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
-                               Text="견줄 DB    (칸에 끌어다 놓으면 들어갑니다. 폴더도 파일도 됩니다)" />
 
                     <Border Grid.Row="1" Grid.Column="0" Tag="before|Brush.Window"
                             Background="{DynamicResource Brush.Window}"
@@ -239,7 +239,7 @@
                             <TextBlock Text="값이 달라진 줄" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="0,0,14,0" />
 
-                            <Button Content="목록 CSV 저장" Click="OnSaveList"
+                            <Button Content=".CSV로 저장" Click="OnSaveList"
                                     ToolTip="차이 목록 전체를 칸 그대로 저장합니다 — 걸러 보는 중이어도 감춘 줄과 알림까지 다 나갑니다. 거르고 정렬하는 일은 엑셀이 이 화면보다 훨씬 잘합니다." />
                         </WrapPanel>
                     </Border>

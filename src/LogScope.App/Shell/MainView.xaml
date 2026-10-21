@@ -143,8 +143,14 @@
                                 </Grid>
 
                                 <!-- 점수 (또는 판정 낱말).
-                                     적을 것이 없으면 줄째 사라집니다 — 분석 2 는
-                                     DB 를 읽기 전에 아무것도 안 적습니다. -->
+
+                                     <b>높이가 고정</b>입니다 (1.06). 칸 셋이 나란히
+                                     있어서, 점수 자리 높이가 칸마다 다르면 그 아래
+                                     이전/이후 줄이 칸마다 다른 높이에 놓입니다
+                                     (분석 1 의 34pt 점수 + 아래 글 vs 분석 2 의 24pt
+                                     낱말). 적을 것이 없어도 자리는 남깁니다 —
+                                     분석 2 는 DB 를 읽기 전에 아무것도 안 적습니다. -->
+                                <StackPanel Height="54">
                                 <StackPanel Orientation="Horizontal"
                                             Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
                                     <!--
@@ -179,8 +185,9 @@
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
-                                           FontSize="11" Margin="0,1,0,0" TextWrapping="Wrap"
+                                           FontSize="11" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"
                                            Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
+                                </StackPanel>
 
                                 <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 점수 바로 아래 (1.04) =====
 

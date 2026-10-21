@@ -397,10 +397,12 @@ namespace LogScope.App.Shell
         }
 
         /// <summary>
-        /// 크게 적는 글의 글자 크기. 숫자는 두세 자인데 "WARNING" 은 일곱
-        /// 자라, 같은 크기로 두면 칸을 넘깁니다.
+        /// 크게 적는 글의 글자 크기. <b>점수와 판정 낱말이 같은 크기</b>
+        /// 입니다 (1.06) — 34 와 24 로 다르면 칸마다 점수 줄 높이가 달라져,
+        /// 그 아래 이전/이후 줄이 나란히 안 놓입니다. 24 는 "WARNING" 일곱
+        /// 자가 칸을 안 넘는 크기입니다.
         /// </summary>
-        public double ScoreSize { get { return HasVerdict ? 24.0 : 34.0; } }
+        public double ScoreSize { get { return 24.0; } }
 
         /// <summary>점수 아래의 작은 글.</summary>
         public string ScoreNote
@@ -414,12 +416,11 @@ namespace LogScope.App.Shell
                 if (UsesVerdict) return string.Empty;
 
                 if (!_has) return "Log 파일을 비교한 후 점수가 나옵니다";
-                switch (ScoreBands.GradeOf(_score))
-                {
-                    case ScoreBands.GradeGood: return "이상 없음";
-                    case ScoreBands.GradeWarn: return "확인 필요";
-                    default: return "점검 필요";
-                }
+
+                // 점수가 나온 뒤에는 아무것도 안 적습니다 (1.06). "이상 없음 ·
+                // 확인 필요 · 점검 필요" 를 적었는데, 점수 색과 화면 아래 색
+                // 설명이 이미 같은 말을 합니다.
+                return string.Empty;
             }
         }
 
