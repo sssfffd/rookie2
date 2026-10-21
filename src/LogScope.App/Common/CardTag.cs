@@ -53,10 +53,23 @@ namespace LogScope.App.Common
         /// <summary>밝히기를 끝낸 뒤 되돌릴 배경. XAML 이 정합니다.</summary>
         public static string OffBrush(object sender)
         {
-            string tag = Tag(sender);
-            int bar = tag.IndexOf('|');
-            if (bar < 0 || bar + 1 >= tag.Length) return DefaultOffBrush;
-            return tag.Substring(bar + 1);
+            string[] parts = Tag(sender).Split('|');
+            return parts.Length >= 2 && parts[1].Length > 0 ? parts[1] : DefaultOffBrush;
+        }
+
+        /// <summary>
+        /// 되돌릴 <b>테두리</b>. Tag 의 세 번째 칸입니다
+        /// (<c>"before|Brush.Panel|Brush.Panel"</c>). 없으면 <see cref="OffBorder"/>.
+        ///
+        /// 1.02 에 테두리가 안 보이는 납작한 줄(카드 바닥의 파일 줄)을
+        /// 만들면서 생긴 칸입니다. 테두리를 코드에 박아 두면, <b>한 번 끌어다
+        /// 놓은 줄만 테두리가 생긴 채</b> 남습니다 — 배경으로 0.59 에 겪은
+        /// 것과 같은 모양입니다.
+        /// </summary>
+        public static string OffBorderOf(object sender)
+        {
+            string[] parts = Tag(sender).Split('|');
+            return parts.Length >= 3 && parts[2].Length > 0 ? parts[2] : OffBorder;
         }
 
         /// <summary>
@@ -76,7 +89,7 @@ namespace LogScope.App.Common
             card.SetResourceReference(Border.BackgroundProperty,
                 on ? LitBrush : OffBrush(card));
             card.SetResourceReference(Border.BorderBrushProperty,
-                on ? (before ? LitBorderBefore : LitBorderAfter) : OffBorder);
+                on ? (before ? LitBorderBefore : LitBorderAfter) : OffBorderOf(card));
             card.BorderThickness = new Thickness(on ? 2 : 1);
         }
 

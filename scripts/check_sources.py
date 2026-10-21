@@ -115,10 +115,26 @@ for x in xamls:
         want = back.group(1)
         got = 'Brush.Panel'             # Tag 에 안 적으면 코드가 쓰는 기본값
         if tag and '|' in tag.group(1):
-            got = tag.group(1).split('|', 1)[1]
+            # 둘째 칸만 봅니다 — 1.02 에 셋째 칸(되돌릴 테두리)이 생겼습니다.
+            got = tag.group(1).split('|')[1]
         if got != want:
             bad('%s 의 놓는 칸: 배경은 %s 인데 되돌릴 열쇠는 %s <- %s'
                 % (el, want, got, os.path.relpath(x, ROOT)))
+
+        # 테두리도 같은 일을 겪습니다 (1.02). 되돌릴 테두리는 Tag 의 셋째
+        # 칸이고, 없으면 코드의 기본값(Brush.Border)입니다. 테두리가 안
+        # 보이는 납작한 줄을 만들면서 셋째 칸을 안 적으면, 한 번 끌어다
+        # 놓은 줄만 테두리가 생긴 채 남습니다.
+        border = re.search(r'\bBorderBrush="\{DynamicResource\s+([\w\.]+)\}"', attrs)
+        if border is not None:
+            bwant = border.group(1)
+            bgot = 'Brush.Border'
+            if tag:
+                parts = tag.group(1).split('|')
+                if len(parts) >= 3 and parts[2]: bgot = parts[2]
+            if bgot != bwant:
+                bad('%s 의 놓는 칸: 테두리는 %s 인데 되돌릴 테두리는 %s <- %s'
+                    % (el, bwant, bgot, os.path.relpath(x, ROOT)))
 
 # 5) 괄호 균형 — 문서 주석 안의 문자 상수 때문에 절대 개수는 원래 어긋납니다.
 #    그래서 HEAD 와 견줘 "이번에 새로 어긋난 것" 만 잡습니다.

@@ -279,12 +279,34 @@ namespace LogScope.App.Shell
         /// </summary>
         public void SetVerdict(string word, string grade, string note)
         {
+            SetVerdict(word, grade, note, string.Empty);
+        }
+
+        /// <param name="count">
+        /// 낱말 아래 <b>크게</b> 적을 수 ("12"). 분석 2 의 차이 발생 개수입니다.
+        /// 빈 글자면 그 줄을 숨깁니다.
+        /// </param>
+        public void SetVerdict(string word, string grade, string note, string count)
+        {
             _word = word ?? string.Empty;
             _wordGrade = grade ?? ScoreBands.GradeNone;
             _wordNote = note ?? string.Empty;
+            _verdictCount = count ?? string.Empty;
             RaiseScore();
-            Raise("HasVerdict");
+            Raise("HasVerdict"); Raise("VerdictCount");
         }
+
+        private string _verdictCount = string.Empty;
+
+        /// <summary>
+        /// 낱말 아래 크게 적는 수 — 분석 2 의 <b>차이 발생 개수</b>.
+        ///
+        /// 1.02 까지는 이 수가 작은 글 한 줄 안에 IO 이름들과 섞여 있었습니다
+        /// ("차이 발생 3개 — TEMP_MAX, PRES_SET …"). 보는 사람이 제일 먼저
+        /// 찾는 수가 그 줄에서 제일 안 보였습니다. 이름은 아래 요약 칸이
+        /// 한 줄씩 적으므로 여기서는 수만 크게 적습니다.
+        /// </summary>
+        public string VerdictCount { get { return _verdictCount; } }
 
         public void ClearVerdict()
         {
@@ -292,8 +314,9 @@ namespace LogScope.App.Shell
             _word = string.Empty;
             _wordGrade = ScoreBands.GradeNone;
             _wordNote = string.Empty;
+            _verdictCount = string.Empty;
             RaiseScore();
-            Raise("HasVerdict");
+            Raise("HasVerdict"); Raise("VerdictCount");
         }
 
         /// <summary>점수가 있는지. 아직 안 재 봤으면 거짓입니다.</summary>

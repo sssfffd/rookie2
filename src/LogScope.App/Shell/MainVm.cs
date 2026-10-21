@@ -103,6 +103,10 @@ namespace LogScope.App.Shell
             Raise("DbBeforePath"); Raise("DbAfterPath");
             Raise("DbBeforeName"); Raise("DbAfterName");
             Raise("DbBeforeNote"); Raise("DbAfterNote");
+            Raise("BeforeHint"); Raise("AfterHint");
+            Raise("BeforeDetail"); Raise("AfterDetail");
+            Raise("DbBeforeHint"); Raise("DbAfterHint");
+            Raise("DbBeforeKind"); Raise("DbAfterKind");
             Raise("ComparedText");
             Raise("OverallHeadline"); Raise("OverallGrade");
             Raise("OverallBasis");
@@ -139,7 +143,11 @@ namespace LogScope.App.Shell
             string word = DbVerdict.Of(t.Changed);
             // 이름까지 넘깁니다 — WARNING 이면 어떤 IO 가 달라졌는지
             // 낱말 아래에 그대로 적힙니다.
-            card.SetVerdict(word, GradeOf(word), DbVerdict.Why(t, _state.DbChangedIos));
+            // 낱말 아래에는 <b>차이 발생 개수만</b> 크게 적습니다 (1.02).
+            // 전에는 이 자리에 문장과 IO 이름이 섞여 있어서 수가 안 보였습니다.
+            // 이름은 아래 요약 칸이 한 줄씩 적고, 없어진·새로 생긴 IO 는
+            // 분석 2 화면 위쪽에 셋 다 적혀 있습니다.
+            card.SetVerdict(word, GradeOf(word), string.Empty, t.Changed.ToString("N0"));
             List<CardLineVm> lines = DbLines(t);
             card.SetLines(lines, lines.Count == 0 ? NoDbLines(t) : string.Empty);
         }
@@ -331,6 +339,28 @@ namespace LogScope.App.Shell
         public string BeforePath { get { return _state.BeforePath; } }
         public string AfterPath { get { return _state.AfterPath; } }
 
+        // ---- 카드 아래 파일 줄 (1.02) ----
+        //
+        // 한 줄에 셋을 적습니다: 이전/이후 · 파일 이름 · 작은 덧글.
+        // 아직 안 열었으면 이름 자리에 무엇을 하면 되는지를 흐리게 적습니다
+        // (빈 줄로 두면 "열었는데 이름이 없다" 와 가릴 수 없습니다).
+
+        /// <summary>안 열었을 때 이름 자리에 흐리게 적는 말. 열었으면 빈 글자.</summary>
+        public string BeforeHint { get { return _state.Before == null ? LogHint : string.Empty; } }
+        public string AfterHint { get { return _state.After == null ? LogHint : string.Empty; } }
+
+        /// <summary>오른쪽 작은 덧글 — IO 수와 표본 수. 안 열었으면 빈 글자.</summary>
+        public string BeforeDetail { get { return Detail(_state.Before); } }
+        public string AfterDetail { get { return Detail(_state.After); } }
+
+        private const string LogHint = "누르거나 끌어다 놓아 여세요";
+
+        private static string Detail(LogDataset ds)
+        {
+            if (ds == null) return string.Empty;
+            return "IO " + ds.ChannelCount.ToString("N0") + " · 표본 " + ds.SampleCount.ToString("N0");
+        }
+
         // ---------------- 분석 2 가 견줄 자리 (DB) ----------------
         //
         // 분석 1 의 로그 칸과 같은 모양으로 메인 화면에 둡니다. 여기 있는
@@ -353,6 +383,14 @@ namespace LogScope.App.Shell
         {
             get { return DbPathText.Note(DbPath(true), DbPathText.NoneOnCard); }
         }
+
+        /// <summary>안 정했을 때 이름 자리에 흐리게 적는 말. 정했으면 빈 글자.</summary>
+        public string DbBeforeHint { get { return DbPath(true).Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
+        public string DbAfterHint { get { return DbPath(false).Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
+
+        /// <summary>오른쪽 작은 덧글 — 폴더 · 파일 · 없는 자리. 안 정했으면 빈 글자.</summary>
+        public string DbBeforeKind { get { return DbPath(true).Length == 0 ? string.Empty : DbPathText.Note(DbPath(true)); } }
+        public string DbAfterKind { get { return DbPath(false).Length == 0 ? string.Empty : DbPathText.Note(DbPath(false)); } }
 
         public string DbAfterNote
         {
