@@ -158,10 +158,15 @@
             </Grid>
         </Border>
 
-        <!-- ================= 아래쪽 알림 줄 ================= -->
+        <!-- ================= 아래쪽 알림 줄 =================
+             <b>분석 1 에서만</b> 보입니다 (1.05). 적는 것이 로그 두 개
+             ("이전: … | 이후: …" · 채널 · 표본 · 읽기 알림)라서, 분석 2 (DB)
+             에서는 엉뚱한 파일 이야기였습니다. 메인 화면은 칸마다 파일이
+             이미 적혀 있습니다. -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource Brush.Panel}"
                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
-                Padding="12,4" MinHeight="26">
+                Padding="12,4" MinHeight="26"
+                Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource Brush.Muted}" FontSize="11"
                        VerticalAlignment="Center" />

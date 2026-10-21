@@ -1230,3 +1230,15 @@
 > 1 -> 2이런 형식으로
 
 → 답변: [84-score-first-read-on-pick-db-values.md](84-score-first-read-on-pick-db-values.md)
+
+---
+
+## 요청 111 — 분석 2 화면의 글자들 · 맨 아래 이전/이후 없애기
+
+> 그리고 분석 2 안에 들어갔을 때
+> 이전 이후 창 밑이랑 차이 목록창 위에
+> 글자들 여러개 뜨잖아
+> 차이 몇개 발생 이런거 싹다 없애줘
+> 그리고 창들 맨 밑에 이전 이후 뜨는 것도 없애주고
+
+→ 답변: [85-db-screen-quiet.md](85-db-screen-quiet.md)

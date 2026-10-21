@@ -209,7 +209,7 @@ namespace LogScope.App.Shell
             if (t.Gone > 0 || t.Added > 0)
             {
                 s += "  없어진 IO " + t.Gone.ToString("N0") + "개 · 새로 생긴 IO "
-                   + t.Added.ToString("N0") + "개는 분석 2 화면에서 볼 수 있습니다.";
+                   + t.Added.ToString("N0") + "개는 분석 2 화면 [차이 전체] 에서 볼 수 있습니다.";
             }
             return s;
         }

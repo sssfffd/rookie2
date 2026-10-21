@@ -54,7 +54,7 @@ namespace LogScope.App.Db
             Raise("BeforePath"); Raise("AfterPath");
             Raise("BeforeChosen"); Raise("AfterChosen");
             Raise("BeforeNote"); Raise("AfterNote");
-            Raise("HasPaths"); Raise("PathText");
+            Raise("HasPaths");
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ namespace LogScope.App.Db
             Raise("BeforePath"); Raise("AfterPath");
             Raise("BeforeChosen"); Raise("AfterChosen");
             Raise("BeforeNote"); Raise("AfterNote");
-            Raise("HasPaths"); Raise("PathText");
+            Raise("HasPaths");
 
             EventHandler h = PathsChanged;
             if (h != null) h(this, EventArgs.Empty);
@@ -185,29 +185,8 @@ namespace LogScope.App.Db
             get { return BeforePath.Length > 0 && AfterPath.Length > 0; }
         }
 
-        public string PathText
-        {
-            get
-            {
-                if (!HasPaths)
-                {
-                    return "폴더를 넣으면 그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽고, "
-                         + "파일 하나를 넣으면 그 파일만 읽습니다. "
-                         + "한 번 정하면 다음에 켤 때도 그 자리입니다.";
-                }
-                return string.Empty;
-            }
-        }
-
         private DbDiffResult _diff;
         public DbDiffResult Diff { get { return _diff; } }
-
-        private string _summary = "아직 읽지 않았습니다. [DB 읽기] 를 눌러 주세요.";
-        public string Summary
-        {
-            get { return _summary; }
-            private set { Set(ref _summary, value); }
-        }
 
         private string _fileNotes = string.Empty;   // 읽으면서 생긴 일 (못 읽은 파일 등)
         private string _listNotes = string.Empty;   // 목록에서 올라온 알림
@@ -243,14 +222,6 @@ namespace LogScope.App.Db
         /// 통째로 바꾸고 한 번만 알립니다.
         /// </summary>
         public IList<DbDiffLine> Lines { get { return _lines; } }
-
-        private string _lineText = string.Empty;
-        /// <summary>"1,234 줄" 처럼. 목록 위에 적힙니다.</summary>
-        public string LineText
-        {
-            get { return _lineText; }
-            private set { Set(ref _lineText, value); }
-        }
 
         public bool LinesIsEmpty { get { return _lines.Count == 0; } }
 
@@ -379,15 +350,8 @@ namespace LogScope.App.Db
                           + "같은 IO 도 줄로 보입니다.";
             }
 
-            // 지금 무엇을 보고 있는지 적습니다. <b>걸러 보는 중이면 전체
-            // 줄 수도 같이</b> — 걸러 둔 것이 "없는 것" 으로 읽히면 안 됩니다.
-            LineText = _lines.Count == 0 ? string.Empty
-                     : _view == ViewChanged
-                         ? _lines.Count.ToString("N0") + " 줄  (값이 달라진 줄만 · 차이 전체 "
-                           + all.ToString("N0") + " 줄)"
-                         : _view == ViewAll
-                             ? _lines.Count.ToString("N0") + " 줄  (같은 IO 까지)"
-                             : _lines.Count.ToString("N0") + " 줄  (차이 전체)";
+            // 줄 수 · 판정 · 차이 개수 글은 이 화면에 적지 않습니다 (1.05).
+            // 판정과 개수는 메인 화면 분석 2 칸에 있습니다.
             Raise("Lines");
             Raise("LinesIsEmpty");
             Raise("Notes");
@@ -424,32 +388,11 @@ namespace LogScope.App.Db
             for (int i = 0; i < _changedValues.Count; i++) _changedIos.Add(_changedValues[i].Io);
             _hasTally = true;
 
-            Summary = Overview(before, after, all);
-
             Rebuild();
             BuildScript();
 
             EventHandler h = ResultChanged;
             if (h != null) h(this, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// 화면 위 한 줄. <b>IO 를 셉니다</b> — 표를 세던 것("표 12 개 중 …")을
-        /// 0.82 에서 뺐습니다. 보는 사람이 찾는 것은 "어느 IO 가 달라졌나"
-        /// 라서, 표 수는 그 답으로 가는 길에 없습니다.
-        ///
-        /// 세는 일과 글자는 <see cref="DbDiffList.Headline"/> 에 있습니다.
-        /// 여기서 또 세면 걸러 보기를 켰을 때 수가 달라집니다.
-        /// </summary>
-        private string Overview(DbSnapshot b, DbSnapshot a, List<DbDiffLine> all)
-        {
-            // 판정과 그 까닭을 앞에 둡니다. <b>메인 화면 칸과 같은 글</b>
-            // 입니다 (DbVerdict 한 곳에서 나옵니다) — 두 화면이 다른 말을
-            // 하면 어느 쪽이 참인지 알 수가 없습니다.
-            return DbVerdict.Of(_tally.Changed) + " — " + DbVerdict.Why(_tally, _changedIos)
-                 + "\n" + DbDiffList.Headline(all)
-                 + "      (읽은 행 " + b.RowCount.ToString("N0")
-                 + " / " + a.RowCount.ToString("N0") + ")";
         }
 
         public void BuildScript()

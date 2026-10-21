@@ -91,3 +91,4 @@
 | `82-card-footer-and-big-count.md` | 파일은 카드 바닥글로 · 분석 2 차이 개수를 크게 · 테두리가 남는 고장 막기 |
 | `83-count-beside-and-two-look-slots.md` | 차이 개수는 판정 오른쪽 · 파일 칸은 제목 아래, 열기 전 상자 / 연 뒤 한 줄 |
 | `84-score-first-read-on-pick-db-values.md` | 점수가 파일 칸 위 · 분석 2 칸을 눌러 골라도 바로 읽기 · 요약에 이전 → 이후 값 |
+| `85-db-screen-quiet.md` | 분석 2 화면의 판정·개수·줄 수 글 걷어 내기 (알림은 ⚠ 하나) · 맨 아래 이전/이후 줄은 분석 1 에서만 |

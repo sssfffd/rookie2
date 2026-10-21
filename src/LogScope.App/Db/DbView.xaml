@@ -160,15 +160,12 @@
                     </Border>
                 </Grid>
 
-                <TextBlock Text="{Binding PathText}" Style="{StaticResource Muted}"
-                           FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                           Visibility="{Binding PathText, Converter={StaticResource TextToVisibility}}" />
-                <TextBlock Text="{Binding Summary}" Margin="0,6,0,0" TextWrapping="Wrap" />
-
-                <!-- 못 읽은 파일 같은 것. 없으면 줄 자체가 사라집니다. -->
-                <TextBlock Text="{Binding Notes}" Style="{StaticResource Muted}" FontSize="11"
-                           Margin="0,6,0,0" TextWrapping="Wrap"
-                           Visibility="{Binding Notes, Converter={StaticResource TextToVisibility}}" />
+                <!--
+                  두 칸과 차이 목록 사이에 있던 글(자리 설명 · 판정 · "차이 발생
+                  N개 · 없어진 IO …" · 읽기 알림)을 1.05 에서 뺐습니다. 판정과
+                  개수는 메인 화면 분석 2 칸에 있고, 읽기 알림은 목록 머리의
+                  ⚠ 에 마우스를 올리면 보입니다.
+                -->
             </StackPanel>
         </Border>
 
@@ -198,8 +195,17 @@
                         <WrapPanel>
                             <TextBlock Text="차이 목록" Style="{StaticResource FieldLabel}"
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBlock Text="{Binding LineText}" Style="{StaticResource Muted}"
-                                       VerticalAlignment="Center" Margin="12,0,12,0" />
+                            <!--
+                              읽으면서 생긴 일(못 읽은 파일 · 키 없는 표 등). 있을
+                              때만 ⚠ 하나가 뜨고, 마우스를 올리면 다 보입니다.
+                              아예 빼면 파일 하나를 못 읽어도 모르고 지나갑니다 —
+                              그러면 그 파일의 IO 가 "없어진 IO" 로 잡힙니다.
+                            -->
+                            <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center"
+                                       Margin="0,0,12,0" Cursor="Help"
+                                       Foreground="{DynamicResource Brush.Warn}"
+                                       ToolTip="{Binding Notes}"
+                                       Visibility="{Binding Notes, Converter={StaticResource TextToVisibility}}" />
                             <!--
                               무엇을 보여 줄지. 셋 중 하나입니다.
 
@@ -214,7 +220,7 @@
                             <RadioButton GroupName="dbview" Style="{StaticResource SegmentButton}"
                                          Content="값이 달라진 것만"
                                          IsChecked="{Binding ViewChangedOnly, Mode=TwoWay}"
-                                         ToolTip="값이 달라진 줄(빨강)만 남깁니다.&#x0a;생기거나 없어진 줄과 열 줄은 감춥니다 — 위의 세 숫자는 감춘 것까지 센 그대로입니다." />
+                                         ToolTip="값이 달라진 줄(빨강)만 남깁니다.&#x0a;생기거나 없어진 줄과 열 줄은 감춥니다 — 메인 화면의 개수는 감춘 것까지 센 그대로입니다." />
                             <RadioButton GroupName="dbview" Style="{StaticResource SegmentButton}"
                                          Content="차이 전체"
                                          IsChecked="{Binding ViewAllDiffs, Mode=TwoWay}"
