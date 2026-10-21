@@ -3678,6 +3678,28 @@ namespace LogScope.Tests
             double[] none = bands.Widths(0, 10);
             Check("폭 0 이면 0", none.Length == 3 && none[0] == 0, null);
 
+            // ---- 하나만 보기 ----
+            //
+            // 칸이 여섯이면 한 칸이 화면 폭의 육분의 일입니다. 하나를
+            // 들여다볼 길이 있어야 합니다 — 그때도 <b>칸 모드 그대로</b>
+            // 여야 뜻이 안 바뀝니다 (그 단계의 밀기 값, 단계 이름 눈금).
+            StepBands one = StepBands.Build(StepPairList.Build(dsA, dsB), 1);
+            Check("칸 하나만", one.Count == 1, one.Count.ToString(CultureInfo.InvariantCulture));
+            Check("고른 그 단계", one[0].Label == "2. 가열", one[0].Label);
+            Near("밀기 값도 그 단계 것", one[0].Shift, bands[1].Shift, 1e-9);
+
+            double[] ox, ow;
+            one.Layout(0, 500, 10, 0, out ox, out ow);
+            Near("하나면 폭을 다 씁니다", ow[0], 500, 1e-6);
+            Near("틈도 없습니다", ox[0], 0, 1e-9);
+
+            // -1 은 전부입니다 (평소).
+            Check("-1 은 전부", StepBands.Build(StepPairList.Build(dsA, dsB), -1).Count == 3, null);
+
+            // 없는 번호를 주면 빈 목록입니다 (짐작해서 아무 칸이나 고르지 않습니다).
+            Check("없는 번호면 빈 목록",
+                  StepBands.Build(StepPairList.Build(dsA, dsB), 9).IsEmpty, null);
+
             // 짝 없는 단계는 칸이 안 됩니다 — 이전 로그만 덜렁 그려지면
             // "이후가 없다" 로 읽힙니다. 몇 개를 뺐는지는 말해 줍니다.
             var c = new StringBuilder("Time,STEP\n");

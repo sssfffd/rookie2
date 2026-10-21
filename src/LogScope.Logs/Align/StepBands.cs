@@ -78,12 +78,29 @@ namespace LogScope.Logs.Align
         /// </summary>
         public static StepBands Build(StepPairList pairs)
         {
+            return Build(pairs, -1);
+        }
+
+        /// <summary>
+        /// 칸을 만듭니다. <paramref name="only"/> 가 0 이상이면 <b>그 단계
+        /// 하나만</b> 칸으로 만듭니다 — 여러 칸으로 나눠 보다가 하나를
+        /// 들여다볼 때 씁니다 (칸 하나가 화면 폭을 다 씁니다).
+        ///
+        /// 하나만 볼 때도 <b>칸 모드 그대로</b>입니다: 그 단계의 밀기 값으로
+        /// 맞추고, 눈금에 단계 이름이 적히고, 확대도 칸 안에서 됩니다.
+        /// 그래서 "하나만 보기" 와 "여러 개 보기" 를 오가도 보이는 뜻이
+        /// 달라지지 않습니다.
+        /// </summary>
+        public static StepBands Build(StepPairList pairs, int only)
+        {
             var list = new List<StepBand>();
             int skipped = 0;
             if (pairs == null) return new StepBands(list, 0);
 
             for (int i = 0; i < pairs.Count; i++)
             {
+                if (only >= 0 && i != only) continue;
+
                 StepPair p = pairs[i];
                 if (!p.HasBoth || double.IsNaN(p.Shift)) { skipped++; continue; }
 

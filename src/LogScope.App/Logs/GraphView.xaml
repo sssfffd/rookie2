@@ -417,7 +417,7 @@
                             <ToggleButton Style="{StaticResource ToolToggle}" Content="단계마다 칸으로"
                                           IsChecked="{Binding Step.SplitByStep, Mode=TwoWay}"
                                           IsEnabled="{Binding Step.HasSteps}"
-                                          ToolTip="가로를 단계 칸 여러 개로 쪼개 나란히 놓습니다 — 1 단계로 맞춘 칸, 2 단계로 맞춘 칸 … 이렇게.&#x0a;칸마다 그 단계의 시작끼리 맞추므로, 공정이 중간에 늘어진 로그도 단계마다 맞아 보입니다.&#x0a;칸 폭은 단계 길이에 비례합니다. 휠을 칸 위에 올리면 그 칸만 확대됩니다." />
+                                          ToolTip="가로를 단계 칸 여러 개로 쪼개 나란히 놓습니다 — 1 단계로 맞춘 칸, 2 단계로 맞춘 칸 … 이렇게.&#x0a;칸마다 그 단계의 시작끼리 맞추므로, 공정이 중간에 늘어진 로그도 단계마다 맞아 보입니다.&#x0a;칸 폭은 단계 길이에 비례합니다. 휠을 칸 위에 올리면 그 칸만 확대됩니다.&#x0a;옆 목록에서 한 단계를 고르면 그 칸 하나만 크게 볼 수 있습니다." />
 
                             <Button Content="◀" Width="26" Click="OnStepPrev"
                                     IsEnabled="{Binding Step.CanPickNow}" ToolTip="앞 단계" />
@@ -425,7 +425,7 @@
                                       ItemsSource="{Binding Step.Choices}"
                                       SelectedIndex="{Binding Step.PickIndex, Mode=TwoWay}"
                                       IsEnabled="{Binding Step.CanPickNow}"
-                                      ToolTip="한 단계만 골라 그 구간만 봅니다. 두 로그는 그 단계의 시작끼리 맞춥니다.&#x0a;짝이 없는 단계(한쪽 로그에만 있는 단계)는 목록에 없습니다.&#x0a;[단계마다 칸으로] 를 켜면 모든 칸이 다 보이므로 잠깁니다." />
+                                      ToolTip="한 단계만 골라 봅니다. 두 로그는 그 단계의 시작끼리 맞춥니다.&#x0a;[단계마다 칸으로] 가 꺼져 있으면 그 단계 구간만, 켜져 있으면 그 칸 하나만 보입니다.&#x0a;[전체 구간] 으로 돌리면 다시 전체(또는 모든 칸)입니다.&#x0a;짝이 없는 단계(한쪽 로그에만 있는 단계)는 목록에 없습니다." />
                             <Button Content="▶" Width="26" Click="OnStepNext"
                                     IsEnabled="{Binding Step.CanPickNow}" ToolTip="다음 단계" />
                             <ToggleButton Style="{StaticResource ToolToggle}" Content="눈금 0 = 단계 시작"

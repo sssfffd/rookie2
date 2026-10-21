@@ -87,3 +87,4 @@
 | `78-db-show-all-ios.md` | "모든 IO 보기" 가 되게 (같은 행도 담기) · 요약 칸은 달라진 IO 목록 |
 | `79-step-now-and-vertical-cards.md` | 단계 IO 바로 적용 · 로그 칸 위아래로 · 칸 밖 휠 · 커서에 단계 경과 |
 | `80-card-cleanup-and-click.md` | 분석 2 칸의 군글자 빼기 · 칸을 누르면 파일 고르기 |
+| `81-one-band-only.md` | 나눠 보다가 칸 하나만 크게 (제가 잠가 놨던 자리) |

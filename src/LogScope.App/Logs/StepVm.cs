@@ -72,6 +72,11 @@ namespace LogScope.App.Logs
                 int pair = _map[value];
                 if (_state.StepPick == pair) return;
                 _state.StepPick = pair;
+
+                // 칸 목록도 달라집니다 — 나눠 보는 중에 하나를 고르면
+                // 그 칸 하나만 그립니다.
+                _bands = null;
+
                 Raise("PickIndex"); Raise("Note"); Raise("Summary"); Raise("Picked");
                 Fire();
             }
@@ -115,7 +120,9 @@ namespace LogScope.App.Logs
                 // 나눠 보는 중에는 한 단계만 고르는 것이 뜻이 없습니다
                 // (모든 칸이 다 보입니다). 고른 것을 풀어 둬야 밀기 값도
                 // 칸이 정하는 대로 갑니다.
-                if (value) _state.StepPick = -1;
+                // 고른 단계는 그대로 둡니다 — 나눠 보기를 켜면 그 단계
+                // 칸 하나만, 끄면 그 단계 구간만 보입니다. 둘 다 "그
+                // 단계를 보고 있다" 라서 끄고 켤 때 뜻이 안 바뀝니다.
 
                 Raise("SplitByStep"); Raise("CanPick"); Raise("CanZero");
                 Raise("CanPickNow"); Raise("CanZeroNow"); Raise("NoStepText");
@@ -133,16 +140,28 @@ namespace LogScope.App.Logs
             get
             {
                 if (!SplitByStep) return null;
-                if (_bands == null) _bands = StepBands.Build(_state.StepPairs());
+
+                // 나눠 보는 중에 한 단계를 골랐으면 <b>그 칸 하나만</b>
+                // 그립니다 — 여러 칸으로 훑다가 하나를 들여다보는 길입니다.
+                // [전체 구간] 으로 돌리면 모든 칸이 돌아옵니다.
+                if (_bands == null) _bands = StepBands.Build(_state.StepPairs(), _state.StepPick);
                 return _bands;
             }
         }
 
-        /// <summary>단계를 하나 고를 수 있는지 (나눠 보는 중에는 못 고릅니다).</summary>
-        public bool CanPick { get { return !SplitByStep; } }
+        /// <summary>
+        /// 단계를 하나 고를 수 있는지. <b>나눠 보는 중에도 고를 수
+        /// 있습니다</b> (1.01) — 그러면 그 칸 하나만 그립니다.
+        ///
+        /// 0.93 ~ 1.00 에는 나눠 보는 중에 잠가 뒀습니다 ("모든 칸이 다
+        /// 보이니 고를 것이 없다" 고 생각했습니다). 그런데 칸이 여섯이면
+        /// 한 칸이 화면 폭의 육분의 일이라, <b>하나를 들여다볼 길이
+        /// 없었습니다.</b>
+        /// </summary>
+        public bool CanPick { get { return true; } }
 
-        /// <summary>지금 고르기 단추를 켤지 (단계가 있고, 나눠 보기가 꺼져 있고).</summary>
-        public bool CanPickNow { get { return HasSteps && CanPick; } }
+        /// <summary>지금 고르기 단추를 켤지 (단계가 있으면 켭니다).</summary>
+        public bool CanPickNow { get { return HasSteps; } }
 
         /// <summary>지금 [시작을 0 으로] 를 켤지.</summary>
         public bool CanZeroNow { get { return HasSteps && CanZero; } }
@@ -224,7 +243,11 @@ namespace LogScope.App.Logs
         {
             get
             {
-                if (SplitByStep) return "단계별로 나눠 보기";
+                if (SplitByStep)
+                {
+                    StepPair one = _state.PickedStep;
+                    return one != null ? "칸 " + one.Label : "단계별로 나눠 보기";
+                }
                 StepPair p = _state.PickedStep;
                 if (p == null) return "단계";
                 return "단계 " + p.Label;
@@ -246,6 +269,12 @@ namespace LogScope.App.Logs
                 {
                     StepBands b = Bands;
                     if (b == null || b.IsEmpty) parts.Add("나눠 그릴 단계가 없습니다.");
+                    else if (b.Count == 1 && _state.PickedStep != null)
+                    {
+                        parts.Add("단계 " + _state.PickedStep.Label + " 칸 하나만 보고 있습니다 —"
+                                  + " [전체 구간] 으로 돌리면 모든 칸이 돌아옵니다.");
+                        parts.Add("휠로 확대, Home 으로 되돌리기.");
+                    }
                     else
                     {
                         parts.Add("단계 " + b.Count + " 칸으로 나눠 그립니다 — 칸마다 그 단계의"
