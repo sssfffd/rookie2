@@ -29,7 +29,10 @@ namespace LogScope.App.Logs
         private const double FontNormal = 12.0;
         private const double FontSmall = 11.0;
 
-        /// <summary>왼쪽 이름 칸의 너비.</summary>
+        /// <summary>
+        /// 왼쪽 이름 칸의 너비. HeatmapView.xaml 의 IO 검색 칸(Width="196")이
+        /// 이 폭에 맞춰져 있습니다 — 바꾸면 거기도 같이 바꿔 주세요.
+        /// </summary>
         private const double NameW = 196;
         /// <summary>위쪽 시간 눈금 줄의 높이.</summary>
         private const double HeaderH = 30;

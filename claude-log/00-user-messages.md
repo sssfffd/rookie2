@@ -1284,3 +1284,12 @@
 > 오른쪽 분석 2 PASS 글자 사이즈랑 맞추면 될듯
 
 → 답변: [89-score-30-files-up.md](89-score-30-files-up.md)
+
+---
+
+## 요청 116 — 히트맵 검색을 IO 목록 위로 · 쓰는 법 글 지우기
+
+> 그 히트맵에 io 검색 기능을 io리스트 바로 위에 적어주고
+> 빨강 초록 이런 설명 외에 칸을 누르면 어쩌구 글자들 지워주셈
+
+→ 답변: [90-heatmap-search-above-list.md](90-heatmap-search-above-list.md)
