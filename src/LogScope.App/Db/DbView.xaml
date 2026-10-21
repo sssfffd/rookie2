@@ -29,6 +29,16 @@
                              Value="{x:Static db:DbDiffLine.MarkValue}">
                     <Setter Property="Background" Value="{DynamicResource Brush.BadSoft}" />
                 </DataTrigger>
+                <!--
+                  두 쪽이 <b>같은</b> 줄은 옅은 초록 (1.12). [전체] 로 볼 때만
+                  목록에 들어오는 줄입니다. Mark 로 칠하지 않고 Change 로 칠하는
+                  까닭: Mark 가 비어 있지 않은 줄은 "차이 발생" 으로 세어집니다
+                  (DbDiffList.Count). 같은 줄에 Mark 를 붙이면 개수가 늘어납니다.
+                -->
+                <DataTrigger Binding="{Binding Change}"
+                             Value="{x:Static db:DbDiffLine.ChangeSame}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.GoodSoft}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
@@ -236,6 +246,16 @@
                                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
                             <TextBlock Text="값이 달라진 줄" Style="{StaticResource Muted}"
                                        VerticalAlignment="Center" Margin="0,0,14,0" />
+                            <!-- 초록 설명은 같은 줄이 보이는 [전체] 일 때만 -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                        Visibility="{Binding ViewEveryIo, Converter={StaticResource BoolToVisibility}}">
+                                <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource Brush.GoodSoft}"
+                                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" />
+                                <TextBlock Text="차이 없는 줄" Style="{StaticResource Muted}"
+                                           VerticalAlignment="Center" Margin="0,0,14,0" />
+                            </StackPanel>
 
                             <Button Content=".CSV로 저장" Click="OnSaveList"
                                     ToolTip="차이 목록 전체를 칸 그대로 저장합니다 — 걸러 보는 중이어도 감춘 줄과 알림까지 다 나갑니다. 거르고 정렬하는 일은 엑셀이 이 화면보다 훨씬 잘합니다." />

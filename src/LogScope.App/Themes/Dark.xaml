@@ -24,6 +24,8 @@
     <SolidColorBrush x:Key="Brush.Bad"          Color="#FFF06A5B" />
     <!-- 값이 달라진 줄을 칠하는 옅은 빨강 (0.82) -->
     <SolidColorBrush x:Key="Brush.BadSoft" Color="#4A2626" />
+    <!-- 분석 2 [전체] 에서 두 쪽이 같은 줄을 칠하는 옅은 초록 (1.12) -->
+    <SolidColorBrush x:Key="Brush.GoodSoft" Color="#233F2B" />
 
     <SolidColorBrush x:Key="Brush.Before"       Color="#FF5AA6FF" />
     <SolidColorBrush x:Key="Brush.After"        Color="#FFFF6E6E" />
