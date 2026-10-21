@@ -3839,6 +3839,31 @@ namespace LogScope.Tests
             Check("단계 경계는 표본 번호", t[1].First == 10 && t[1].Last == 29,
                   t[1].First + "~" + t[1].Last);
 
+            // ---- 읽어 둔 로그에 나중에 단계를 넣기 ----
+            //
+            // 설정에 단계 IO 를 적는 일은 보통 로그를 연 <b>뒤</b>입니다
+            // (이름을 한 번에 맞게 적는 일이 드물어서 — 대소문자·밑줄·공백).
+            // 그때 파일을 다시 읽어야 하면 10M 칸을 다시 읽는 꼴입니다.
+            // 이미 메모리에 있는 채널을 한 번 훑으면 되어야 합니다.
+            LogDataset later = Open(WriteCsv("steps_later.csv", sb.ToString()), Orientation.Auto);
+            Check("처음엔 단계가 없음", !later.HasSteps, null);
+
+            var fill = new OpenOptions();
+            fill.StepIo = "STEP";
+            StepRead.Fill(later, fill);
+
+            Check("다시 읽지 않고 단계가 들어옴", later.HasSteps, later.StepNote);
+            Check("찾은 단계 수가 같음", later.Steps.Count == 4,
+                  later.Steps.Count.ToString(CultureInfo.InvariantCulture));
+            Check("경계도 같음", later.Steps[1].First == 10 && later.Steps[1].Last == 29,
+                  later.Steps[1].First + "~" + later.Steps[1].Last);
+
+            // 이름을 지우면 단계도 없어집니다 (적어 둔 것을 되돌릴 수 있어야 합니다).
+            var off = new OpenOptions();
+            StepRead.Fill(later, off);
+            Check("이름을 비우면 단계도 없어짐", !later.HasSteps, null);
+            Check("비웠으면 말도 없음", later.StepNote.Length == 0, later.StepNote);
+
             // 없는 IO 를 집으면 짐작하지 않고 이유를 돌려줍니다.
             LogDataset none = OpenWithSteps(WriteCsv("steps2.csv", sb.ToString()), "NO_SUCH_IO");
             Check("없는 IO 면 단계 없음", !none.HasSteps, null);

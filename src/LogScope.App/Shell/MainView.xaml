@@ -195,21 +195,26 @@
                                 -->
                                 <Grid Margin="0,12,0,0"
                                       Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
+                                    <!--
+                                      칸 둘을 <b>위아래로</b> 놓습니다 (0.99).
+                                      나란히 놓으면 칸 하나가 카드 폭의 절반이라
+                                      파일 이름이 잘립니다 — 날짜가 앞에 붙은
+                                      긴 이름이 보통이라 뒤쪽(무엇을 받은
+                                      로그인지)이 먼저 잘려 나갔습니다.
+                                      위아래면 한 칸이 카드 폭을 다 씁니다.
+                                    -->
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="5" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                                    <TextBlock Grid.Row="0"
                                                Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
                                                Text="로그    (칸에 끌어다 놓으면 열립니다)" />
 
-                                    <Border Grid.Row="1" Grid.Column="0" Tag="before|Brush.Window"
+                                    <Border Grid.Row="1" Tag="before|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"
@@ -237,7 +242,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Grid.Row="1" Grid.Column="2" Tag="after|Brush.Window"
+                                    <Border Grid.Row="3" Tag="after|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"
@@ -280,21 +285,26 @@
                                 -->
                                 <Grid Margin="0,12,0,0"
                                       Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
+                                    <!--
+                                      칸 둘을 <b>위아래로</b> 놓습니다 (0.99).
+                                      나란히 놓으면 칸 하나가 카드 폭의 절반이라
+                                      파일 이름이 잘립니다 — 날짜가 앞에 붙은
+                                      긴 이름이 보통이라 뒤쪽(무엇을 받은
+                                      로그인지)이 먼저 잘려 나갔습니다.
+                                      위아래면 한 칸이 카드 폭을 다 씁니다.
+                                    -->
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="5" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                                    <TextBlock Grid.Row="0"
                                                Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
                                                Text="견줄 자리    (끌어다 놓기 · 둘 다 차면 바로 읽습니다)" />
 
-                                    <Border Grid.Row="1" Grid.Column="0" Tag="before|Brush.Window"
+                                    <Border Grid.Row="1" Tag="before|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"
@@ -318,7 +328,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Grid.Row="1" Grid.Column="2" Tag="after|Brush.Window"
+                                    <Border Grid.Row="3" Tag="after|Brush.Window"
                                             Background="{DynamicResource Brush.Window}"
                                             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                             CornerRadius="4" Padding="9,7"

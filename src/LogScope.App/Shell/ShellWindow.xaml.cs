@@ -554,14 +554,41 @@ namespace LogScope.App.Shell
         {
             // 열어 둔 로그의 IO 이름을 같이 넘깁니다. IO 별 허용 오차를
             // 걸 때 이름을 손으로 적지 않고 고를 수 있게.
+            // 닫은 뒤에 "단계 IO" 가 바뀌었는지 보려고 적어 둡니다.
+            string stepIo = _state.Settings.StepIo ?? string.Empty;
+
             var dlg = new SettingsWindow(_state.Settings, _state.IoNames());
             dlg.Owner = this;
             dlg.ShowDialog();
 
             SaveSettings();
+
+            // 단계 IO 를 고쳤으면 <b>그 자리에서</b> 단계를 다시 찾습니다.
+            // 로그를 다시 읽지 않습니다 — 이미 메모리에 있는 채널을 한 번
+            // 훑으면 됩니다. 이름을 한 번에 맞게 적는 일이 드물어서
+            // (대소문자·밑줄·공백) 그때마다 파일을 다시 열게 두면 못 씁니다.
+            if ((_state.Settings.StepIo ?? string.Empty) != stepIo)
+            {
+                string why = _state.ReapplySteps();
+
+                if (why.Length > 0 && (_state.Settings.StepIo ?? string.Empty).Length > 0)
+                {
+                    // 못 찾았으면 말해 줍니다. 조용히 두면 적어 놓고도
+                    // 왜 단추가 안 켜지는지 알 수가 없습니다.
+                    MessageBox.Show(this, why, "단계 IO",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+
+                _vm.Step.Reload();
+                _vm.Heatmap.Reload();
+                Heatmap.Invalidate();
+                if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
+            }
+
             _vm.Dashboard.Refresh();
             _vm.Graph.Reload();
             Graph.OnDataChanged();
+            Graph.ApplyStep();
         }
 
         private void SaveSettings()

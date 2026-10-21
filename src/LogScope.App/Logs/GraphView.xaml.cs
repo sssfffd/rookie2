@@ -107,7 +107,10 @@ namespace LogScope.App.Logs
         private void UpdateReadout()
         {
             if (_vm == null) return;
-            _vm.UpdateReadout(Plot.CursorA, Plot.CursorB, Plot.VisibleStart, Plot.VisibleEnd);
+            // 칸으로 나눠 보는 중이면 "그 단계 시작에서 몇 초" 도 같이
+            // 넘깁니다 (그 셈은 판이 압니다 — 칸 경계를 들고 있으니까요).
+            _vm.UpdateReadout(Plot.CursorA, Plot.CursorB, Plot.VisibleStart, Plot.VisibleEnd,
+                              Plot.StepInfo(Plot.CursorA), Plot.StepInfo(Plot.CursorB));
         }
 
         // ---------------- 로그가 바뀌었을 때 ----------------

@@ -159,7 +159,7 @@
                                  ToolTip="이 IO 의 값이 바뀌는 자리가 단계 경계입니다 (&quot;준비&quot; → &quot;가열&quot;).&#x0a;글자 IO 면 그 글자가 단계 이름이고, 숫자면 값이 그대로 이름입니다.&#x0a;비우면 단계를 안 씁니다." />
                         <TextBlock Grid.Row="6" Grid.Column="2" Style="{StaticResource Muted}"
                                    Margin="10,0,0,0" VerticalAlignment="Center"
-                                   Text="적고 나서 로그를 다시 읽어야 들어갑니다." />
+                                   Text="설정을 닫으면 바로 들어갑니다 (로그를 다시 읽지 않습니다)." />
                     </Grid>
 
                     <!--

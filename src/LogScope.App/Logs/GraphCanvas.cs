@@ -741,6 +741,30 @@ namespace LogScope.App.Logs
             for (int i = 0; i < _stepT0.Length; i++) PanStep(i, fraction);
         }
 
+        /// <summary>
+        /// 그 시각이 <b>어느 단계의 시작에서 얼마나 지난 때</b>인지.
+        /// 칸으로 나눠 보는 중이 아니거나 어느 칸에도 안 들면 빈 글자입니다.
+        ///
+        /// 커서를 찍었을 때 아래 띠에 이 글이 붙습니다. 칸으로 나눠 보면
+        /// 가로가 시각이 아니라 공정 차례라서, <b>"몇 시 몇 분" 보다
+        /// "단계 시작 몇 초 뒤" 가 알고 싶은 값입니다</b> — 그래야 다른
+        /// 단계의 같은 자리와 견줄 수 있습니다.
+        /// </summary>
+        public string StepInfo(double t)
+        {
+            if (!StepMode || double.IsNaN(t)) return string.Empty;
+
+            for (int i = 0; i < _stepBands.Count; i++)
+            {
+                StepBand band = _stepBands[i];
+                if (t < band.T0 || t > band.T1) continue;
+
+                LogDataset refDs = _state != null ? _state.TimeReference : null;
+                return band.Label + " 시작 " + TimeText.Elapsed(refDs, t - band.T0);
+            }
+            return string.Empty;
+        }
+
         /// <summary>칸 하나가 지금 보여 주는 구간.</summary>
         private void StepView(int k, out double t0, out double t1)
         {

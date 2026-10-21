@@ -271,6 +271,38 @@ namespace LogScope.App.Common
         /// <summary>로그나 가로축이 바뀌었을 때. 다음에 물으면 다시 짓습니다.</summary>
         public void ForgetSteps() { _stepPairs = null; }
 
+        /// <summary>
+        /// 설정의 <b>단계 IO</b> 로 단계를 다시 찾습니다. <b>로그를 다시
+        /// 읽지 않습니다</b> — 이미 메모리에 있는 채널을 한 번 훑으면 됩니다.
+        ///
+        /// 0.98 까지는 로그를 읽는 자리에서만 단계를 찾았습니다. 그래서
+        /// 설정에 IO 이름을 적어 놓고도 파일을 다시 열어야 들어갔습니다 —
+        /// 이름을 한 번에 맞게 적는 일이 드물어서(대소문자, 밑줄, 공백)
+        /// 그때마다 10M 칸을 다시 읽는 꼴이 됐습니다.
+        ///
+        /// 돌려주는 글은 <b>못 찾았으면 그 이유</b>입니다. 빈 글자면 괜찮은
+        /// 것입니다 (단계 IO 를 안 적어 둔 경우도 빈 글자입니다).
+        /// </summary>
+        public string ReapplySteps()
+        {
+            var opt = new OpenOptions();
+            opt.StepIo = Settings.StepIo ?? string.Empty;
+
+            StepRead.Fill(Before, opt);
+            StepRead.Fill(After, opt);
+
+            // 짝 목록과 고른 단계를 버립니다 — 단계가 통째로 달라졌습니다.
+            ForgetSteps();
+            StepPick = -1;
+
+            string b = Before != null ? Before.StepNote : string.Empty;
+            string a = After != null ? After.StepNote : string.Empty;
+
+            if (b.Length == 0) return a;
+            if (a.Length == 0 || string.Equals(a, b, StringComparison.Ordinal)) return b;
+            return "이전 로그: " + b + "   이후 로그: " + a;
+        }
+
         /// <summary>고를 수 있는 단계가 있는지 (양쪽에 다 있는 단계).</summary>
         public bool HasSteps { get { return StepPairs().UsableCount > 0; } }
 

@@ -43,11 +43,16 @@ namespace LogScope.App.Logs
             else if (StepMode)
             {
                 // 커서를 올려 둔 <b>그 칸만</b> 확대합니다. 다른 칸은 그대로
-                // 남아야 견줄 바탕이 됩니다. 칸 사이의 틈에서는 아무 일도
-                // 일어나지 않습니다 (어느 칸을 확대할지 알 수 없습니다).
+                // 남아야 견줄 바탕이 됩니다.
+                //
+                // 칸 위가 아니면 (칸 사이의 틈 · 왼쪽 눈금 자리 · 아래 눈금
+                // 띠) <b>모든 칸을 같이</b> 확대합니다. 전에는 아무 일도
+                // 안 일어났는데, 틈이 10 px 이라 거기서 굴린 사람은 확대가
+                // 안 되는 줄로 읽습니다.
                 double left, width;
                 int k = StepAt(at.X, PlotArea, out left, out width);
                 if (k >= 0) ZoomStep(k, XToTime(at.X), factor);
+                else ZoomAllSteps(factor);
             }
             else ZoomTimeAround(XToTime(at.X), factor);
 

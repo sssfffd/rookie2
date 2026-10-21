@@ -325,10 +325,26 @@ namespace LogScope.App.Logs
 
         public void UpdateReadout(double cursorA, double cursorB, double visibleStart, double visibleEnd)
         {
+            UpdateReadout(cursorA, cursorB, visibleStart, visibleEnd, string.Empty, string.Empty);
+        }
+
+        /// <param name="stepA">
+        /// 커서 A 가 든 단계와 그 시작에서 지난 시간 ("2. 가열 시작 +12.300").
+        /// 칸으로 나눠 보는 중이 아니면 빈 글자입니다.
+        /// </param>
+        public void UpdateReadout(double cursorA, double cursorB, double visibleStart, double visibleEnd,
+                                  string stepA, string stepB)
+        {
             LogDataset refDs = _state.TimeReference;
 
             string a = double.IsNaN(cursorA) ? "없음" : Format(refDs, cursorA);
             string b = double.IsNaN(cursorB) ? "없음" : Format(refDs, cursorB);
+
+            // 단계 안의 자리를 시각 바로 뒤에 붙입니다. 칸으로 나눠 보면
+            // 가로가 공정 차례라서, 시각만 적어 두면 그 칸이 어느 단계의
+            // 어디인지 다시 세어 봐야 합니다.
+            if (!string.IsNullOrEmpty(stepA)) a += "  (" + stepA + ")";
+            if (!string.IsNullOrEmpty(stepB)) b += "  (" + stepB + ")";
 
             string delta = "-";
             if (!double.IsNaN(cursorA) && !double.IsNaN(cursorB))
