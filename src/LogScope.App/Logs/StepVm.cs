@@ -22,10 +22,17 @@ namespace LogScope.App.Logs
     {
         private readonly AppState _state;
 
-        public StepVm(AppState state) { _state = state; }
+        public StepVm(AppState state)
+        {
+            _state = state;
 
-        /// <summary>목록 맨 위. 단계를 안 고른 상태입니다.</summary>
-        public const string AllItem = "(전체 구간)";
+            // [눈금 0 = 단계 시작] 단추를 1.15 에 뺐습니다. 예전에 켜 둔 것이
+            // 설정에 남아 있으면 끌 단추가 없는데 눈금만 0 부터 세어집니다.
+            if (_state.Settings.StepZeroAtStart) _state.Settings.StepZeroAtStart = false;
+        }
+
+        /// <summary>목록 맨 위. 단계를 안 고른 상태입니다 (글자는 StepText.Whole).</summary>
+        public const string AllItem = StepText.Whole;
 
         // 목록과 "목록 번호 → 짝 번호" 표. 로그가 바뀔 때만 다시 짭니다
         // (ItemsSource 는 화면이 그려질 때마다 읽습니다).
@@ -131,26 +138,20 @@ namespace LogScope.App.Logs
             }
         }
 
-        // ---- 도구 줄의 두 단추 (1.15) ----
-        //
-        // [정렬] [단계마다] [전체 구간] — 둘 중 하나입니다. 1.14 까지 있던
-        // [?] · [◀] [목록] [▶] · [눈금 0 = 단계 시작] 은 화면에서 뺐습니다.
-        // 그래서 두 단추는 <b>한 단계만 고른 상태를 늘 풉니다</b> — 고르는
-        // 목록이 안 보이는데 고른 것이 남아 있으면 왜 한 칸만 보이는지
-        // 알 수 없습니다. 단추 글자는 Core/Model/StepText.cs 에 있습니다.
+        // ---- 칸 머리를 눌러 그 단계만 (1.16) ----
 
-        /// <summary>[단계마다] — 단계 칸을 나란히.</summary>
-        public bool ViewEach
+        /// <summary>
+        /// 나눠 보는 중에 칸 머리(단계 이름)를 눌렀을 때. 그 단계만 봅니다.
+        /// <b>이미 그 단계만 보고 있으면 모든 칸으로 돌아갑니다</b> — 머리를
+        /// 한 번 더 누르는 것이 "나가기" 입니다 (목록에서 [전체 구간] 을
+        /// 골라도 됩니다).
+        /// </summary>
+        public void ToggleBand(int pair)
         {
-            get { return SplitByStep; }
-            set { if (value) { PickIndex = 0; SplitByStep = true; Raise("ViewEach"); Raise("ViewWhole"); } }
-        }
-
-        /// <summary>[전체 구간] — 시간 한 줄로 전체.</summary>
-        public bool ViewWhole
-        {
-            get { return !SplitByStep; }
-            set { if (value) { PickIndex = 0; SplitByStep = false; Raise("ViewEach"); Raise("ViewWhole"); } }
+            Fill();
+            if (_state.StepPick == pair) { PickIndex = 0; return; }
+            int at = _map.IndexOf(pair);
+            if (at > 0) PickIndex = at;
         }
 
         /// <summary>

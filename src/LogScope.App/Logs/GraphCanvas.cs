@@ -492,15 +492,31 @@ namespace LogScope.App.Logs
         private const double HeaderH = 21;
         private const double MinLaneH = 64;
 
+        /// <summary>
+        /// 단계로 나눠 볼 때 그림 <b>위</b>에 두는 칸 머리 줄의 높이 (1.16).
+        /// 단계 이름이 여기 적히고, 누르면 그 단계만 봅니다. 나눠 보지
+        /// 않을 때는 0 이라 그림이 맨 위부터 시작합니다.
+        /// </summary>
+        private const double StepHeadH = 22;
+
+        private double TopH { get { return StepMode ? StepHeadH : 0; } }
+
         private Rect PlotArea
         {
             get
             {
+                double top = TopH;
                 double w = Math.Max(10, ActualWidth - GutterW - 6);
-                double h = Math.Max(10, ActualHeight - AxisH);
-                return new Rect(GutterW, 0, w, h);
+                double h = Math.Max(10, ActualHeight - AxisH - top);
+                return new Rect(GutterW, top, w, h);
             }
         }
+
+        /// <summary>
+        /// 칸 머리(단계 이름)를 눌렀을 때. 넘기는 값은 단계 짝 번호입니다
+        /// (StepBand.Pair). 화면이 받아 그 단계만 보게 합니다.
+        /// </summary>
+        public event EventHandler<int> StepHeadClicked;
 
         private double XToTime(double x)
         {

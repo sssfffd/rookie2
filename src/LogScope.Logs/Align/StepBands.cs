@@ -22,6 +22,13 @@ namespace LogScope.Logs.Align
         /// <summary>이 칸에서 이후 로그를 미는 값 (이후 시각 + Shift = 이전 시각).</summary>
         public double Shift;
 
+        /// <summary>
+        /// 이 칸이 어느 단계 짝인지 (StepPairList 의 번호). 칸 머리를 눌러
+        /// 그 단계만 볼 때 씁니다 (1.16). 칸 번호와 다릅니다 — 짝이 없는
+        /// 단계는 칸이 안 생겨서 번호가 밀립니다.
+        /// </summary>
+        public int Pair = -1;
+
         public double Length { get { return T1 - T0; } }
     }
 
@@ -113,6 +120,7 @@ namespace LogScope.Logs.Align
                 b.T0 = t0;
                 b.T1 = t1;
                 b.Shift = p.Shift;
+                b.Pair = i;
                 list.Add(b);
             }
             return new StepBands(list, skipped);

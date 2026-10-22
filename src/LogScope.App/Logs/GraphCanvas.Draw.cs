@@ -60,20 +60,22 @@ namespace LogScope.App.Logs
             int columns = (int)Math.Max(1, Math.Floor(plot.Width * _pixelsPerDip));
             EnsureBuffers(columns);
 
-            dc.PushClip(new RectangleGeometry(new Rect(0, 0, ActualWidth, plot.Bottom)));
+            // 레인은 plot.Top 부터 쌓습니다 — 단계로 나눠 보면 그 위에 칸
+            // 머리 줄(StepHeadH)이 있습니다 (1.16).
+            dc.PushClip(new RectangleGeometry(new Rect(0, plot.Top, ActualWidth, plot.Height)));
             if (_laneMode)
             {
                 for (int i = 0; i < _channels.Count; i++)
                 {
-                    double top = i * laneH - scrollY;
-                    if (top + laneH < 0 || top > plot.Height) continue;
+                    double top = plot.Top + i * laneH - scrollY;
+                    if (top + laneH < plot.Top || top > plot.Bottom) continue;
                     var rect = new Rect(plot.Left, top, plot.Width, laneH);
                     DrawLane(dc, p, rect, new[] { _channels[i] }, _channels[i].Name, columns);
                 }
             }
             else
             {
-                var rect = new Rect(plot.Left, 0, plot.Width, plot.Height);
+                var rect = new Rect(plot.Left, plot.Top, plot.Width, plot.Height);
                 DrawLane(dc, p, rect, _channels.ToArray(), OverlayLaneKey, columns);
             }
             dc.Pop();
@@ -81,6 +83,7 @@ namespace LogScope.App.Logs
             if (!Diffing && !_showBefore && !_showAfter) DrawBothOff(dc, p, plot);
 
             DrawTimeAxis(dc, p, plot);
+            if (StepMode) DrawStepHead(dc, p, plot);
             DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
             DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
             DrawLegend(dc, p, plot);

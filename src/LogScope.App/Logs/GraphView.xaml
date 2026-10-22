@@ -372,39 +372,41 @@
                     </Border>
 
                     <!--
-                      ================= 정렬 (단계) — 단추 둘 (1.15) =================
+                      ================= 정렬 (단계) (1.16) =================
 
-                      [단계마다]   가로를 단계 칸 여러 개로 나눠 나란히 놓습니다.
-                                   칸마다 그 단계의 시작끼리 맞춥니다.
-                      [전체 구간]  나누지 않고 시간 한 줄로 전체를 봅니다.
+                      [정렬] [단계마다] [전체 구간 ▼]
 
-                      1.14 까지 있던 [?] · [◀][목록][▶] (한 단계만 고르기) ·
-                      [눈금 0 = 단계 시작] 은 뺐습니다. 뷰모델(StepVm)의 그 기능은
-                      남아 있어서 단추만 다시 달면 됩니다.
+                      [단계마다]     켜고 끄는 단추. 켜면 가로가 단계 칸 여러 개로
+                                     나뉘고, 칸마다 그 단계의 시작끼리 맞춥니다.
+                                     칸 머리(그림 위 단계 이름)를 누르면 그 단계
+                                     하나만, 한 번 더 누르면 모든 칸으로.
+                      [전체 구간 ▼]  목록: 전체 구간 · 1 · 2 · … 하나를 고르면 그
+                                     단계만 봅니다 (두 로그는 그 단계 시작끼리).
+                                     [단계마다] 를 켠 채로 고르면 그 칸 하나만.
+
+                      1.15 에 [단계마다][전체 구간] 둘로 줄였다가, 단계 하나씩 보는
+                      목록이 다시 필요하다고 하셔서 [전체 구간] 을 목록으로 바꿨습니다.
 
                       <b>글자는 여기 적지 않습니다.</b> src/LogScope.Core/Model/
                       StepText.cs 한 곳에 있고, 단계 이름 앞뒤에 붙는 글도 거기서
                       고칩니다.
-
-                      단계가 없으면 단추가 잠기고, 마우스를 올리면 왜 잠겼는지
-                      나옵니다 (ShowOnDisabled).
                     -->
                     <Border Style="{StaticResource ToolGroup}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource ToolGroupCaption}"
                                        Text="{x:Static model:StepText.Caption}" />
-                            <RadioButton GroupName="stepview" Style="{StaticResource SegmentButton}"
-                                         Content="{x:Static model:StepText.Each}"
-                                         IsChecked="{Binding Step.ViewEach, Mode=TwoWay}"
-                                         IsEnabled="{Binding Step.HasSteps}"
-                                         ToolTipService.ShowOnDisabled="True"
-                                         ToolTip="가로를 단계 칸 여러 개로 나눠 나란히 놓습니다. 칸마다 그 단계의 시작끼리 맞춥니다.&#x0a;휠을 칸 위에 올리면 그 칸만 확대됩니다.&#x0a;(잠겨 있으면: 두 로그를 열고 설정 [비교] 의 &quot;단계 IO&quot; 를 적으면 켜집니다)" />
-                            <RadioButton GroupName="stepview" Style="{StaticResource SegmentButton}"
-                                         Content="{x:Static model:StepText.Whole}"
-                                         IsChecked="{Binding Step.ViewWhole, Mode=TwoWay}"
-                                         IsEnabled="{Binding Step.HasSteps}"
-                                         ToolTipService.ShowOnDisabled="True"
-                                         ToolTip="나누지 않고 시간 한 줄로 전체를 봅니다." />
+                            <ToggleButton Style="{StaticResource ToolToggle}"
+                                          Content="{x:Static model:StepText.Each}"
+                                          IsChecked="{Binding Step.SplitByStep, Mode=TwoWay}"
+                                          IsEnabled="{Binding Step.HasSteps}"
+                                          ToolTipService.ShowOnDisabled="True"
+                                          ToolTip="가로를 단계 칸 여러 개로 나눠 나란히 놓습니다. 칸마다 그 단계의 시작끼리 맞춥니다.&#x0a;그림 위 단계 이름을 누르면 그 단계만, 한 번 더 누르면 모든 칸.&#x0a;(잠겨 있으면: 두 로그를 열고 설정 [비교] 의 &quot;단계 IO&quot; 를 적으면 켜집니다)" />
+                            <ComboBox MinWidth="130" Margin="3,0,0,0"
+                                      ItemsSource="{Binding Step.Choices}"
+                                      SelectedIndex="{Binding Step.PickIndex, Mode=TwoWay}"
+                                      IsEnabled="{Binding Step.CanPickNow}"
+                                      ToolTipService.ShowOnDisabled="True"
+                                      ToolTip="한 단계만 골라 봅니다. 두 로그는 그 단계의 시작끼리 맞춥니다.&#x0a;맨 위를 고르면 다시 전체입니다." />
                         </StackPanel>
                     </Border>
 

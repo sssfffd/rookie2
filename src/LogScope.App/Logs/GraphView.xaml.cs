@@ -30,6 +30,11 @@ namespace LogScope.App.Logs
             InitializeComponent();
             DataContextChanged += OnDataContextChanged;
             Plot.ViewChanged += OnCanvasViewChanged;
+            // 칸 머리(단계 이름)를 누르면 그 단계만 (1.16).
+            Plot.StepHeadClicked += delegate (object s, int pair)
+            {
+                if (_vm != null) _vm.Step.ToggleBand(pair);
+            };
         }
 
         /// <summary>창이 상태를 넘겨 줍니다.</summary>

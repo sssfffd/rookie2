@@ -3756,6 +3756,10 @@ namespace LogScope.Tests
             StepBands one = StepBands.Build(StepPairList.Build(dsA, dsB), 1);
             Check("칸 하나만", one.Count == 1, one.Count.ToString(CultureInfo.InvariantCulture));
             Check("고른 그 단계", one[0].Label == Lb("가열"), one[0].Label);
+            // 칸이 어느 단계 짝인지 들고 있어야 칸 머리를 눌러 그 단계로 갈 수
+            // 있습니다 (1.16).
+            Check("칸이 단계 짝 번호를 앎", bands[1].Pair == 1 && one[0].Pair == 1,
+                  bands[1].Pair + " / " + one[0].Pair);
             Near("밀기 값도 그 단계 것", one[0].Shift, bands[1].Shift, 1e-9);
 
             double[] ox, ow;

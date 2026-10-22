@@ -109,10 +109,10 @@ namespace LogScope.App.Logs
             double needed = laneH * _channels.Count;
             double scrollY = needed > plot.Height ? VerticalOffset : 0;
 
-            int idx = (int)((at.Y + scrollY) / laneH);
+            int idx = (int)((at.Y - plot.Top + scrollY) / laneH);
             if (idx < 0 || idx >= _channels.Count) return false;
 
-            double top = idx * laneH - scrollY;
+            double top = plot.Top + idx * laneH - scrollY;
             key = _channels[idx].Name;
             inner = new Rect(plot.Left, top + HeaderH, plot.Width, Math.Max(8, laneH - HeaderH - 4));
             ios = new[] { _channels[idx] };
@@ -124,6 +124,18 @@ namespace LogScope.App.Logs
             base.OnMouseLeftButtonDown(e);
             Focus();
             if (_state == null) return;
+
+            // 칸 머리(단계 이름)를 눌렀으면 그 단계만 봅니다 (1.16).
+            // 그림을 누르는 것(커서 찍기 · 끌기)과는 자리가 따로라 섞이지
+            // 않습니다.
+            int head = StepHeadAt(e.GetPosition(this));
+            if (head >= 0)
+            {
+                EventHandler<int> h = StepHeadClicked;
+                if (h != null) h(this, _stepBands[head].Pair);
+                e.Handled = true;
+                return;
+            }
 
             _dragging = true;
             _moved = false;
@@ -149,9 +161,21 @@ namespace LogScope.App.Logs
             e.Handled = true;
         }
 
+        /// <summary>그 자리가 몇 번째 칸의 머리인지. 머리가 아니면 -1.</summary>
+        private int StepHeadAt(Point at)
+        {
+            if (!StepMode || at.Y < 0 || at.Y >= StepHeadH) return -1;
+            double left, width;
+            return StepAt(at.X, PlotArea, out left, out width);
+        }
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            // 칸 머리 위에서는 손 모양 — 누를 수 있다는 표시입니다.
+            if (!_dragging && !_band)
+                Cursor = StepHeadAt(e.GetPosition(this)) >= 0 ? Cursors.Hand : null;
 
             if (_band)
             {

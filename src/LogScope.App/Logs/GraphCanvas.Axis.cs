@@ -257,7 +257,6 @@ namespace LogScope.App.Logs
             dc.PushClip(new RectangleGeometry(strip));
             for (int i = 0; i < _stepBands.Count; i++)
             {
-                StepBand band = _stepBands[i];
                 double x = xs[i];
                 double width = ws[i];
 
@@ -267,38 +266,64 @@ namespace LogScope.App.Logs
                 dc.DrawLine(p.BorderPen, new Point(Snap(x + width), strip.Top),
                                          new Point(Snap(x + width), strip.Top + 4));
 
-                FormattedText name = Text(band.Label, FontSmall, p.TextBrush);
-                if (name.Width + 6 <= width)
-                {
-                    dc.DrawText(name, new Point(x + (width - name.Width) * 0.5, strip.Top + 2));
+                // 단계 이름은 <b>위</b> 칸 머리 줄에 적습니다 (1.16,
+                // DrawStepHead). 여기 아래 줄에는 그 칸이 지금 보여 주는
+                // 구간만 적습니다 — 칸을 확대하면 단계 전체가 아니라 그
+                // 일부를 보고 있으니, 단계 구간을 적어 두면 거짓이 됩니다.
+                double a0, a1;
+                StepView(i, out a0, out a1);
+                string when = refDs != null
+                    ? refDs.FormatTime(a0) + " ~ " + refDs.FormatTime(a1)
+                    : NumberText.Plain(a0) + " ~ " + NumberText.Plain(a1);
+                FormattedText ft = Text(when, FontSmall, p.MutedBrush);
+                if (ft.Width + 6 <= width)
+                    dc.DrawText(ft, new Point(x + (width - ft.Width) * 0.5, strip.Top + 5));
+            }
+            dc.Pop();
+        }
 
-                    // 칸이 넉넉하면 구간도 적습니다. 단계 이름만 있으면
-                    // 그 단계가 언제였는지 알 수 없습니다.
-                    //
-                    // <b>지금 보고 있는 구간</b>을 적습니다 — 칸을 확대하면
-                    // 단계 전체가 아니라 그 일부를 보고 있으니, 단계 구간을
-                    // 적어 두면 거짓이 됩니다.
-                    double a0, a1;
-                    StepView(i, out a0, out a1);
-                    string when = refDs != null
-                        ? refDs.FormatTime(a0) + " ~ " + refDs.FormatTime(a1)
-                        : NumberText.Plain(a0) + " ~ " + NumberText.Plain(a1);
-                    FormattedText ft = Text(when, FontSmall, p.MutedBrush);
-                    if (ft.Width + 6 <= width && name.Height + ft.Height + 2 <= strip.Height)
-                        dc.DrawText(ft, new Point(x + (width - ft.Width) * 0.5,
-                                                  strip.Top + name.Height + 1));
-                }
-                else
+        /// <summary>
+        /// 단계로 나눠 볼 때 그림 <b>위</b>의 칸 머리 줄 (1.16). 칸마다 단계
+        /// 이름을 적고, <b>누르면 그 단계만</b> 봅니다 (다시 누르면 모든 칸).
+        ///
+        /// 1.15 까지는 이름이 아래 시간 줄에 있었습니다. 위에 있어야 칸을
+        /// 내려다보기 전에 "이 칸이 어느 단계인가" 가 먼저 읽히고, 누르는
+        /// 자리(머리)와 그림이 겹치지 않습니다.
+        ///
+        /// 한 단계만 보는 중이면 머리 끝에 "◀ 전체" 를 붙여, 다시 누르면
+        /// 돌아간다는 것을 알려 줍니다.
+        /// </summary>
+        private void DrawStepHead(DrawingContext dc, Palette p, Rect plot)
+        {
+            var strip = new Rect(0, 0, ActualWidth, StepHeadH);
+            dc.DrawRectangle(p.AxisStripBrush, null, strip);
+            dc.DrawLine(p.BorderPen, new Point(0, StepHeadH - 0.5), new Point(ActualWidth, StepHeadH - 0.5));
+
+            double[] xs, ws;
+            StepLayout(plot, out xs, out ws);
+            // 한 단계만 고른 상태인지 — 칸 수가 아니라 고른 것으로 봅니다
+            // (단계가 원래 하나뿐인 로그에서 "◀ 전체" 가 뜨면 안 됩니다).
+            bool single = _state != null && _state.StepPick >= 0;
+
+            dc.PushClip(new RectangleGeometry(strip));
+            for (int i = 0; i < _stepBands.Count; i++)
+            {
+                double x = xs[i], width = ws[i];
+                var cell = new Rect(x, 2, Math.Max(1, width), StepHeadH - 5);
+                dc.DrawRectangle(Frozen(p.Window), p.BorderPen, cell);
+
+                string label = _stepBands[i].Label + (single ? "   ◀ 전체" : "");
+                FormattedText name = Text(label, FontSmall, p.TextBrush);
+                name.SetFontWeight(FontWeights.SemiBold);
+                if (name.Width + 6 > width)
                 {
-                    // 칸이 좁으면 번호만 적습니다. 아무것도 안 적으면 어느
-                    // 칸인지 알 수 없고, 이름을 잘라 적으면 옆 칸 글자와
+                    // 칸이 좁으면 번호만. 이름을 잘라 적으면 옆 칸 글자와
                     // 붙어 한 낱말처럼 읽힙니다.
-                    FormattedText num = Text((i + 1).ToString(CultureInfo.InvariantCulture),
-                                             FontSmall, p.MutedBrush);
-                    if (num.Width + 2 <= width)
-                        dc.DrawText(num, new Point(x + (width - num.Width) * 0.5, strip.Top + 2));
+                    name = Text((i + 1).ToString(CultureInfo.InvariantCulture), FontSmall, p.TextBrush);
+                    if (name.Width + 2 > width) continue;
                 }
-
+                dc.DrawText(name, new Point(x + (width - name.Width) * 0.5,
+                                            cell.Top + (cell.Height - name.Height) * 0.5));
             }
             dc.Pop();
         }

@@ -102,3 +102,4 @@
 | `93-step-label-no-number.md` | 단계 이름 앞 순번 "1." 빼기 (같은 이름 둘째부터 "(2)") |
 | `94-db-list-card.md` | 분석 2 목록을 카드로 띄우고 칸 폭을 창에 맞춰 40 · 30 · 30 으로 |
 | `95-graph-cleanup-step-buttons.md` | Delete 로 커서 지우기 · 그래프 아래 설명 · 맨 아래 파일 줄 빼기 · [정렬][단계마다][전체 구간] · StepText.cs |
+| `96-step-pick-and-head.md` | 단계 목록 [전체 구간 ▼] 되살림 · 칸 머리 눌러 그 단계만 · 단계 이름을 그림 위로 · 칸마다 맞추는 법 |
