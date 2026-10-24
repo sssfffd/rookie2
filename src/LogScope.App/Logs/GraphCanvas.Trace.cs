@@ -29,8 +29,8 @@ namespace LogScope.App.Logs
         {
             if (_state == null || inner.Width <= 1) return;
 
-            bool haveB = ShownB && vm.InBefore && _state.Before != null;
-            bool haveA = ShownA && vm.InAfter && _state.After != null;
+            bool haveB = ShownB && vm.InBefore && _state.Before != null && _sideOnly != 2;
+            bool haveA = ShownA && vm.InAfter && _state.After != null && _sideOnly != 1;
 
             double shift = ShiftNow;   // 단계 칸을 그리는 중이면 그 칸의 값
             double bt0 = _t0, bt1 = _t1;                  // 이전 로그의 시간 기준
@@ -43,6 +43,8 @@ namespace LogScope.App.Logs
             // ---- 차이 눈금: 선 하나 -------------------------------------
             if (Diffing)
             {
+                // 한쪽 로그만 남은 자리(단계 칸 꼬리)에는 차이가 없습니다.
+                if (_sideOnly != 0) return;
                 if (!CanDiff(vm)) return;     // 한쪽에만 있는 IO 는 견줄 상대가 없습니다.
 
                 if (_shade)
@@ -57,7 +59,7 @@ namespace LogScope.App.Logs
                 return;
             }
 
-            if (_shade && haveB && haveA)
+            if (_shade && haveB && haveA && _sideOnly == 0)
             {
                 // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.

@@ -136,6 +136,16 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Themes\Palette.cs" />
     <Compile Include="Themes\ThemeManager.cs" />
+    <Compile Include="Texts\AlignTexts.cs" />
+    <Compile Include="Texts\CommonTexts.cs" />
+    <Compile Include="Texts\DashboardTexts.cs" />
+    <Compile Include="Texts\DbTexts.cs" />
+    <Compile Include="Texts\GraphTexts.cs" />
+    <Compile Include="Texts\HeatmapTexts.cs" />
+    <Compile Include="Texts\MainTexts.cs" />
+    <Compile Include="Texts\SavedTexts.cs" />
+    <Compile Include="Texts\SettingsTexts.cs" />
+    <Compile Include="Texts\ShellTexts.cs" />
     <Compile Include="Common\ObservableObject.cs" />
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Common\CardTag.cs" />

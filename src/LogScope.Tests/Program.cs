@@ -3774,6 +3774,14 @@ namespace LogScope.Tests
             // 있습니다 (1.16).
             Check("칸이 단계 짝 번호를 앎", bands[1].Pair == 1 && one[0].Pair == 1,
                   bands[1].Pair + " / " + one[0].Pair);
+            // 두 로그의 단계 끝을 칸이 들고 있어야 짧은 쪽 선을 제 끝에서 끊습니다 (1.18).
+            StepPair sp1 = StepPairList.Build(dsA, dsB)[1];
+            Check("칸이 이전 단계 끝을 앎", bands[1].BeforeEnd == sp1.BeforeEnd,
+                  bands[1].BeforeEnd + " / " + sp1.BeforeEnd);
+            Check("칸이 이후 단계 끝을 이전 시간으로 앎", bands[1].AfterEnd == sp1.AfterEnd + sp1.Shift,
+                  bands[1].AfterEnd + " / " + (sp1.AfterEnd + sp1.Shift));
+            Check("칸 끝은 둘 중 긴 쪽", bands[1].T1 == Math.Max(bands[1].BeforeEnd, bands[1].AfterEnd),
+                  bands[1].T1.ToString(CultureInfo.InvariantCulture));
             Near("밀기 값도 그 단계 것", one[0].Shift, bands[1].Shift, 1e-9);
 
             double[] ox, ow;

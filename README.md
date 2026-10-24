@@ -594,6 +594,21 @@ git 이 PATH 에 없으면 이 줄들은 그냥 나오지 않습니다.
 
 파일을 고칠 때마다 `version.txt` 를 0.01 씩 올립니다.
 
+## 6-0. 화면 글자 — 화면마다 파일 하나 (1.18)
+
+단추 이름 · 칸 이름 · 마우스를 올리면 뜨는 설명은 **`src/LogScope.App/Texts/`** 에
+화면마다 파일 하나로 모여 있습니다. 바꿀 글을 Ctrl+F 로 찾아 따옴표 안만 고치고
+다시 빌드합니다. 화면 → 파일 표와, 코드가 그때그때 짓는 글(판정 문장 · 요약 등)이
+어디 있는지는 [`src/LogScope.App/Texts/README.md`](src/LogScope.App/Texts/README.md).
+
+| 화면 | 파일 |
+|---|---|
+| 메인 | `MainTexts.cs` |
+| 맨 위 메뉴 줄 | `ShellTexts.cs` |
+| 분석 1 대시보드 · 그래프 · 히트맵 · 시간 맞추기 판 | `DashboardTexts.cs` · `GraphTexts.cs` · `HeatmapTexts.cs` · `AlignTexts.cs` |
+| 분석 2 | `DbTexts.cs` |
+| 설정 창 · 저장된 분석 창 · 작은 창들 | `SettingsTexts.cs` · `SavedTexts.cs` · `CommonTexts.cs` |
+
 ## 6-1. 손으로 고치는 설정 — `config.txt` 한 파일
 
 **프로그램 이름과 분석 이름은 `config.txt` 한 파일에서 바꿉니다.** 실행 파일
@@ -802,17 +817,20 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
   **대시보드와 점수는 아직 밀기 값 하나로 셉니다** (DiffEngine). 히트맵만
   칸마다 맞춥니다.
 - **그래프 — 도구 줄 [정렬] [단계마다] [전체 구간 ▼]** (1.15, 1.16). [단계마다] 는
-  켜고 끄는 단추, [전체 구간 ▼] 는 목록(전체 구간 · 1 · 2 · …)입니다. 단추 글자와 단계
-  이름 앞뒤에 붙는 글은 **`src/LogScope.Core/Model/StepText.cs` 한 곳**에서
-  고칩니다:
+  켜고 끄는 단추, [전체 구간 ▼] 는 목록(전체 구간 · 1 · 2 · …)입니다.
+  - 단추 글자: `src/LogScope.App/Texts/GraphTexts.cs` 의 `StepCaption` · `StepEach` ·
+    `StepWhole` (1.18 부터, 화면 글자 파일 — 아래 "화면 글자" 참고)
+  - 단계 이름 앞뒤에 붙는 글: `src/LogScope.Core/Model/StepText.cs`
 
   ```csharp
-  public const string Caption = "정렬";        // 묶음 이름
-  public const string Each = "단계마다";        // 단계 칸으로 나누기
-  public const string Whole = "전체 구간";      // 나누지 않고 한 줄
   public const string LabelBefore = "";         // 단계 이름 앞 ("S" → S1, S2)
   public const string LabelAfter = "";          // 단계 이름 뒤 ("단계" → 1단계, 2단계)
   ```
+
+  **두 로그 단계 길이가 다를 때** (1.18): 예를 들어 1 단계가 이전 10 초 · 이후 12 초면
+  1 단계 칸은 긴 쪽(12 초)만큼 넓고, 0~10 초는 두 선을 다, **10~12 초는 이후 선만**
+  그립니다 (이전 선은 제 단계 끝인 10 초에서 끊김). 1.17 까지는 이전 선이 12 초까지
+  이어져 그 2 초에 이전 로그의 **2 단계 값**이 그려졌습니다.
 
 - **그래프 — [단계마다]** (0.93, 0.95 에 확대 추가, 1.14 까지 이름 [단계마다 칸으로]): 가로를 **단계 칸
   여러 개**로 쪼개 나란히 놓습니다. 1 단계 시작으로 맞춘 칸이 맨 왼쪽,

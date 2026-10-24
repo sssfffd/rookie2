@@ -100,19 +100,52 @@ namespace LogScope.App.Logs
 
                 int cols = (int)Math.Max(1, Math.Floor(sub.Width * _pixelsPerDip));
 
-                dc.PushClip(new RectangleGeometry(sub));
-                for (int k = 0; k < ios.Length; k++)
-                {
-                    Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
-                    Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
-                    DrawChannel(dc, p, sub, ios[k], vlo, vhi, before, after, cols);
-                }
-                dc.Pop();
+                // 두 로그 단계 길이가 다르면(1.18) — 둘 다 있는 자리까지는
+                // 평소대로, 그 뒤 꼬리는 <b>긴 쪽 로그만</b> 그립니다. 짧은
+                // 쪽은 제 단계 끝에서 선이 끊깁니다. 안 끊으면 그 꼬리에
+                // 짧은 쪽의 다음 단계 값이 이어져 그려집니다.
+                StepBand band = _stepBands[bi];
+                double xB = BandX(sub, band.BeforeEnd), xA = BandX(sub, band.AfterEnd);
+                double xBoth = Math.Min(xB, xA);
+
+                DrawBandPart(dc, p, sub, sub.Left, xBoth, ios, vlo, vhi, cols, 0);
+                if (xB > xBoth) DrawBandPart(dc, p, sub, xBoth, xB, ios, vlo, vhi, cols, 1);
+                if (xA > xBoth) DrawBandPart(dc, p, sub, xBoth, xA, ios, vlo, vhi, cols, 2);
             }
 
             _t0 = saveT0;
             _t1 = saveT1;
             _stepShift = double.NaN;
+        }
+
+        /// <summary>
+        /// 단계 칸 하나에서 [x0, x1] 사이만 그립니다. side: 0 = 두 로그 다,
+        /// 1 = 이전만, 2 = 이후만 (_sideOnly 를 그동안만 바꿔 끼웁니다).
+        /// </summary>
+        private void DrawBandPart(DrawingContext dc, Palette p, Rect sub, double x0, double x1,
+                                  IoRowVm[] ios, double vlo, double vhi, int cols, int side)
+        {
+            if (!(x1 > x0)) return;
+            _sideOnly = side;
+            dc.PushClip(new RectangleGeometry(new Rect(x0, sub.Top, x1 - x0, sub.Height)));
+            for (int k = 0; k < ios.Length; k++)
+            {
+                Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
+                Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
+                DrawChannel(dc, p, sub, ios[k], vlo, vhi, before, after, cols);
+            }
+            dc.Pop();
+            _sideOnly = 0;
+        }
+
+        /// <summary>단계 칸 안에서 그 시각의 x (칸 밖이면 칸 끝으로 가둠).</summary>
+        private double BandX(Rect sub, double t)
+        {
+            if (double.IsNaN(t)) return sub.Right;
+            double span = _t1 - _t0;
+            if (!(span > 0)) return sub.Right;
+            double x = sub.Left + (t - _t0) * sub.Width / span;
+            return Math.Max(sub.Left, Math.Min(sub.Right, x));
         }
 
         /// <summary>

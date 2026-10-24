@@ -1,6 +1,7 @@
 ﻿<Window x:Class="LogScope.App.Shell.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:t="clr-namespace:LogScope.App.Texts"
         xmlns:v="clr-namespace:LogScope.App.Shell"
         xmlns:logs="clr-namespace:LogScope.App.Logs"
         xmlns:db="clr-namespace:LogScope.App.Db"
@@ -87,11 +88,11 @@
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabMain}"
                                  IsChecked="{Binding ShowMain, Mode=TwoWay}"
-                                 ToolTip="점수와 저장된 분석을 봅니다." />
+                                 ToolTip="{x:Static t:ShellTexts.ShowMainTip}" />
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabAnalysis1}"
                                  IsChecked="{Binding ShowAnalysis1, Mode=TwoWay}"
-                                 ToolTip="두 로그를 견주는 화면입니다." />
+                                 ToolTip="{x:Static t:ShellTexts.ShowAnalysis1Tip}" />
                     <RadioButton GroupName="screen" Style="{StaticResource NavButton}"
                                  Content="{Binding TabAnalysis2}"
                                  IsChecked="{Binding ShowAnalysis2, Mode=TwoWay}" />
@@ -121,23 +122,23 @@
                       있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
                       하게 됩니다.
                     -->
-                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="대시보드"
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowDashboard}"
                                  IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                                 ToolTip="요약 화면입니다 (F1)." />
-                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="그래프"
+                                 ToolTip="{x:Static t:ShellTexts.ShowDashboardTip}" />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowGraph}"
                                  IsChecked="{Binding ShowGraph, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                                 ToolTip="시간에 따른 파형을 봅니다 (F2)." />
-                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="히트맵"
+                                 ToolTip="{x:Static t:ShellTexts.ShowGraphTip}" />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowHeatmap}"
                                  IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                                 ToolTip="시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3)." />
+                                 ToolTip="{x:Static t:ShellTexts.ShowHeatmapTip}" />
 
-                    <Button Style="{StaticResource TopBarButton}" Content="이전 로그 열기"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.OpenBefore}"
                             Click="OnOpenBefore" Margin="10,3,3,3"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
-                    <Button Style="{StaticResource TopBarButton}" Content="이후 로그 열기"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.OpenAfter}"
                             Click="OnOpenAfter"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
                     <!--
@@ -147,11 +148,11 @@
                       놓으면 되고, 허용 오차를 고친 뒤에 눌러야 하는 것은
                       이쪽입니다.
                     -->
-                    <Button Style="{StaticResource TopBarButton}" Content="비교 다시 하기"
-                            Click="OnRecompare" ToolTip="허용 오차 등을 바꾼 뒤 누르세요 (F5)."
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.Recompare}"
+                            Click="OnRecompare" ToolTip="{x:Static t:ShellTexts.RecompareTip}"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
 
-                    <Button Style="{StaticResource TopBarButton}" Content="설정"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.Settings}"
                             Click="OnSettings" Margin="10,3,3,3" />
                 </WrapPanel>
 

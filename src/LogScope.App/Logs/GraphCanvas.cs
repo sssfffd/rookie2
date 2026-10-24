@@ -501,6 +501,12 @@ namespace LogScope.App.Logs
 
         private double TopH { get { return StepMode ? StepHeadH : 0; } }
 
+        /// <summary>
+        /// 단계 칸 꼬리를 그리는 동안만: 0 = 두 로그 다, 1 = 이전만, 2 = 이후만
+        /// (1.18, DrawBandPart). 평소에는 0 입니다.
+        /// </summary>
+        private int _sideOnly;
+
         private Rect PlotArea
         {
             get

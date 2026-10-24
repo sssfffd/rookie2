@@ -29,6 +29,15 @@ namespace LogScope.Logs.Align
         /// </summary>
         public int Pair = -1;
 
+        /// <summary>
+        /// 두 로그의 그 단계 <b>끝</b> (이전 로그 시간 기준, 이후는 밀어 둔 값)
+        /// (1.18). 두 로그 단계 길이가 다르면(10 초 / 12 초) 짧은 쪽은 제
+        /// 끝에서 선을 끊습니다 — 안 끊으면 칸 끝(긴 쪽 끝)까지 <b>다음 단계
+        /// 값</b>이 이어져 그려져서, 다음 단계가 이 단계처럼 보입니다.
+        /// </summary>
+        public double BeforeEnd;
+        public double AfterEnd;
+
         public double Length { get { return T1 - T0; } }
     }
 
@@ -121,6 +130,8 @@ namespace LogScope.Logs.Align
                 b.T1 = t1;
                 b.Shift = p.Shift;
                 b.Pair = i;
+                b.BeforeEnd = p.BeforeEnd;
+                b.AfterEnd = p.AfterEnd + p.Shift;
                 list.Add(b);
             }
             return new StepBands(list, skipped);

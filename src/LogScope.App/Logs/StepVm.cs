@@ -31,8 +31,8 @@ namespace LogScope.App.Logs
             if (_state.Settings.StepZeroAtStart) _state.Settings.StepZeroAtStart = false;
         }
 
-        /// <summary>목록 맨 위. 단계를 안 고른 상태입니다 (글자는 StepText.Whole).</summary>
-        public const string AllItem = StepText.Whole;
+        /// <summary>목록 맨 위. 단계를 안 고른 상태입니다 (글자는 Texts/GraphTexts.StepWhole).</summary>
+        public const string AllItem = LogScope.App.Texts.GraphTexts.StepWhole;
 
         // 목록과 "목록 번호 → 짝 번호" 표. 로그가 바뀔 때만 다시 짭니다
         // (ItemsSource 는 화면이 그려질 때마다 읽습니다).

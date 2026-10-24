@@ -104,3 +104,4 @@
 | `95-graph-cleanup-step-buttons.md` | Delete 로 커서 지우기 · 그래프 아래 설명 · 맨 아래 파일 줄 빼기 · [정렬][단계마다][전체 구간] · StepText.cs |
 | `96-step-pick-and-head.md` | 단계 목록 [전체 구간 ▼] 되살림 · 칸 머리 눌러 그 단계만 · 단계 이름을 그림 위로 · 칸마다 맞추는 법 |
 | `97-db-search-heatmap-instant.md` | 분석 2 IO 검색 (검색 규칙 한 곳 NameSearch) · 히트맵 [차이 없는 IO도 보기] 바로 반영 |
+| `98-step-length-and-screen-texts.md` | 단계 길이가 다르면 짧은 쪽 선을 제 끝에서 끊기 · 화면마다 글자 파일 하나 (`App/Texts/`) |
