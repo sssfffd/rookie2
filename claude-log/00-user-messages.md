@@ -1460,3 +1460,11 @@
 > 너 만든거 다시확인해봐 빌드 에러나는 거 같은데?
 
 → 답변: [104-build-fix-buildinfo.md](104-build-fix-buildinfo.md)
+
+---
+
+## 요청 131 — BuildInfo 가 없다는 오류
+
+> build info가 없대
+
+→ 답변: [105-buildinfo-plain-class.md](105-buildinfo-plain-class.md)

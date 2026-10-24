@@ -573,9 +573,15 @@ git 이 PATH 에 없으면 이 줄들은 그냥 나오지 않습니다.
 ## 6. 버전
 
 버전은 `version.txt` **한 곳**에만 있습니다.
-빌드할 때 `tools/BuildInfo.targets` 가 그 값과 `git rev-parse` 결과를 읽어
-`BuildInfo.g.cs` 를 만들어 냅니다. 설정 창 → [정보] 에서 버전과 커밋 해시를
-함께 볼 수 있습니다.
+`LogScope.csproj` 가 그 파일을 **그대로 프로그램 안에 넣고**(리소스),
+`src/LogScope/BuildInfo.cs` 가 실행할 때 읽습니다. 커밋 해시 · 빌드 시각은
+`tools/BuildInfo.targets` 가 빌드할 때 `obj` 에 글 파일로 써서 같이 넣습니다 (git 이
+없으면 "unknown"). 설정 창 → [정보] 에서 버전과 커밋 해시를 함께 볼 수 있습니다.
+
+> 1.24 까지는 빌드 도중에 `BuildInfo.g.cs` (코드)를 만들어 끼워 넣었는데, XAML 임시
+> 빌드 · VS IntelliSense 에서 그 파일이 빠져 **"BuildInfo 가 없다"** 오류가 났습니다.
+> 1.25 부터 `BuildInfo` 는 저장소에 있는 평범한 코드라 빌드 순서와 상관없이 늘 있습니다.
+> 디스크에 예전 `src/LogScope/BuildInfo.g.cs` 가 남아 있으면 지워도 됩니다 (프로젝트에 안 들어감).
 
 파일을 고칠 때마다 `version.txt` 를 0.01 씩 올립니다.
 

@@ -205,9 +205,8 @@
     <Compile Include="Settings\SettingsStore.cs" />
     <Compile Include="Settings\ToleranceRule.cs" />
     <Compile Include="Settings\ToleranceTable.cs" />
-    <!-- 버전 · 커밋 글. tools/BuildInfo.targets 가 빌드 맨 처음에 만듭니다 (저장소에는
-         없음, .gitignore). 여기 늘 적어 두어야 XAML 임시 빌드에도 들어갑니다. -->
-    <Compile Include="BuildInfo.g.cs" />
+    <!-- 버전 · 커밋 (1.25). 평범한 코드 파일이고, 값은 아래 리소스에서 실행할 때 읽습니다. -->
+    <Compile Include="BuildInfo.cs" />
     <Compile Include="Common\AppState.cs" />
     <Compile Include="Common\DesignData.cs" />
     <Compile Include="Common\BackgroundJob.cs" />
@@ -291,5 +290,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <!-- 버전은 저장소 루트 version.txt 한 곳 — 그 파일을 그대로 프로그램 안에 넣습니다. -->
+    <EmbeddedResource Include="..\..\version.txt">
+      <LogicalName>LogScope.version.txt</LogicalName>
+      <Link>version.txt</Link>
+    </EmbeddedResource>
+  </ItemGroup>
   <Import Project="$(MSBuildThisFileDirectory)..\..\tools\BuildInfo.targets" />
 </Project>

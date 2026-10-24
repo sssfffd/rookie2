@@ -33,20 +33,6 @@ fi
 
 REFS="-r:System.dll -r:System.Core.dll -r:System.Xml.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll"
 
-# BuildInfo.g.cs 는 빌드할 때 만들어지는 파일이라 여기서 흉내 냅니다.
-cat > "$OUT/BuildInfo.g.cs" <<'CS'
-namespace LogScope
-{
-    public static class BuildInfo
-    {
-        public const string Version = "check";
-        public const string Commit = "check";
-        public const bool  Modified = false;
-        public const string BuiltAt = "check";
-    }
-}
-CS
-
 echo "[1/4] WPF 흉내"
 python3 "$ROOT/scripts/make_xaml_stubs.py" "$OUT/app/XamlStubs.cs"
 mcs -langversion:latest -target:library -out:"$OUT/app/WpfStub.dll" \
@@ -57,7 +43,7 @@ echo "[2/4] LogScope (화면 · 계산)"
 mcs -langversion:latest -target:library -out:"$OUT/app/LogScope.dll" $REFS \
     -r:"$OUT/app/WpfStub.dll" \
     -nowarn:0067,0414,0169,0649 \
-    $(find "$ROOT/src/LogScope" -name '*.cs' ! -name '*.g.cs') "$OUT/app/XamlStubs.cs" "$OUT/BuildInfo.g.cs"
+    $(find "$ROOT/src/LogScope" -name '*.cs' ! -name '*.g.cs') "$OUT/app/XamlStubs.cs"
 
 echo "[3/4] LogScope.Tests"
 mcs -langversion:latest -target:exe -out:"$OUT/app/LogScope.Tests.exe" $REFS \

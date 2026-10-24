@@ -345,7 +345,6 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
                 bad('csproj 누락 %s <- %s' % (rel, os.path.basename(proj)))
     for rel in sorted(listed):
         if rel.endswith(('.cs','.xaml')) and not os.path.exists(os.path.join(d, rel)):
-            if 'BuildInfo.g.cs' in rel: continue
             bad('파일 없음 %s (%s 에 적혀 있음)' % (rel, os.path.basename(proj)))
 
 print('\n'.join(fail) if fail else 'OK — 지적 사항 없음')
