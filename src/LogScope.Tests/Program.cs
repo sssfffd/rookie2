@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using LogScope.Core.Text;
 using LogScope.Analysis1.Align;
 using LogScope.Analysis1.Compare;
+using LogScope.Analysis1.Graph;
+using LogScope.Analysis1.Heatmap;
+using LogScope.Analysis1.LogFile;
 using LogScope.Analysis2;
-using LogScope.Analysis1.History;
-using LogScope.Core.Io;
-using LogScope.Core.Model;
-using LogScope.Analysis1.Render;
-using LogScope.Core.Settings;
+using LogScope.Common;
+using LogScope.Main;
+using LogScope.Settings;
 
 namespace LogScope.Tests
 {

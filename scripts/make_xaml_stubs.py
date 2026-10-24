@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (0.77 에서 실제로 그랬습니다).
 def our_types():
     found = {}
-    for c in glob.glob(ROOT + '/src/LogScope.App/**/*.cs', recursive=True):
+    for c in glob.glob(ROOT + '/src/LogScope/**/*.cs', recursive=True):
         if '/obj/' in c or c.endswith('.g.cs'): continue
         t = io.open(c, encoding='utf-8-sig').read()
         m = re.search(r'^namespace\s+([\w\.]+)', t, re.M)
@@ -57,7 +57,7 @@ WPF = {
 
 def main(out_path):
     out = ['// XAML 이 생성하는 부분을 흉내 낸 것입니다 (scripts/make_xaml_stubs.py).']
-    for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope.App/**/*.xaml'), recursive=True)):
+    for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope/**/*.xaml'), recursive=True)):
         t = io.open(x, encoding='utf-8-sig').read()
         m = re.search(r'x:Class="([\w\.]+)"', t)
         if not m:

@@ -1444,3 +1444,11 @@
 > 그리고 지금 core .app이렇게 되어있는 거 말고 화면 기준으로 파일 구조들 바뀌면 좋겠음 개발자가 알 기 쉽게
 
 → 답변: [102-screen-folders-designer.md](102-screen-folders-designer.md)
+
+---
+
+## 요청 129 — 이상하게 쪼개지 말 것 (프로젝트 하나로)
+
+> 왜 app에도 코드가 있고 analysis는 또 왜존재하고 core는 왜있는거야 이따구로 이상하게 쪼개지말라고 찾아보기도 힘들고 찾아야되는 것도 많아지잖아 ㅡㅡ
+
+→ 답변: [103-one-project.md](103-one-project.md)

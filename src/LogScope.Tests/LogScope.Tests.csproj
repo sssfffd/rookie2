@@ -36,25 +36,21 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="XlsxWriter.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LogScope.Core\LogScope.Core.csproj">
-      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}</Project>
-      <Name>LogScope.Core</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\LogScope.Analysis1\LogScope.Analysis1.csproj">
-      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}</Project>
-      <Name>LogScope.Analysis1</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LogScope.Analysis2\LogScope.Analysis2.csproj">
-      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}</Project>
-      <Name>LogScope.Analysis2</Name>
+    <!-- 시험은 프로그램(LogScope) 하나를 참조합니다 (1.23 에 프로젝트를 하나로 합침).
+         계산 코드만 부르므로 창은 뜨지 않습니다. -->
+    <ProjectReference Include="..\LogScope\LogScope.csproj">
+      <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}</Project>
+      <Name>LogScope</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

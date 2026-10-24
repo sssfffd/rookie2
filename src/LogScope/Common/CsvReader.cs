@@ -1,0 +1,210 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+
+
+namespace LogScope.Common
+{
+    /// <summary>
+    /// CSV / TSV 를 한 줄씩 흘려보냅니다. 파일 전체를 문자열로 올리지 않고
+    /// StreamReader 로 흘려 읽으므로 몇 백 MB 짜리도 열립니다.
+    /// 구분자와 인코딩은 앞부분을 보고 스스로 정합니다.
+    /// </summary>
+    public sealed class CsvReader : IRowSource
+    {
+        private readonly FileStream _file;
+        private readonly StreamReader _reader;
+        private readonly char _delim;
+        private readonly long _length;
+        private readonly List<Cell> _row = new List<Cell>(256);
+        private Cell[] _buffer = new Cell[256];
+        private long _rows;
+        private readonly bool _raw;
+
+        public char Delimiter { get { return _delim; } }
+        public Encoding DetectedEncoding { get; private set; }
+
+        public CsvReader(string path) : this(path, false) { }
+
+        /// <summary>
+        /// <paramref name="rawText"/> 를 켜면 <b>적힌 글자를 그대로</b>
+        /// 돌려줍니다 — 참거짓도 숫자도 가리지 않습니다.
+        ///
+        /// 로그를 읽을 때는 가려야 합니다 (그래야 그래프를 그립니다). 하지만
+        /// <b>DB 를 견줄 때는 가리면 안 됩니다.</b> <c>ON</c> 과 <c>1</c> 이
+        /// 둘 다 참으로 읽히면 <b>서로 다른 두 값이 같아 보이고</b>, 있는
+        /// 차이가 조용히 사라집니다. <c>12.0</c> 이 <c>12</c> 로 적히는 것도
+        /// 같은 종류입니다 — 적힌 글자를 바꿔 보여 주는 셈입니다.
+        /// </summary>
+        public CsvReader(string path, bool rawText)
+        {
+            _raw = rawText;
+            _file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1 << 16);
+            _length = _file.Length;
+
+            Encoding enc = TextSniff.Of(_file);
+            DetectedEncoding = enc;
+            _file.Position = 0;
+            _reader = new StreamReader(_file, enc, true, 1 << 16);
+
+            _delim = SniffDelimiter(path, _file, enc);
+        }
+
+        private static char SniffDelimiter(string path, FileStream fs, Encoding enc)
+        {
+            string ext = Path.GetExtension(path);
+            if (string.Equals(ext, ".tsv", StringComparison.OrdinalIgnoreCase)) return '\t';
+
+            fs.Position = 0;
+            var sr = new StreamReader(fs, enc, true, 1 << 14);
+            int comma = 0, tab = 0, semi = 0, pipe = 0, lines = 0;
+            string line;
+            while (lines < 30 && (line = sr.ReadLine()) != null)
+            {
+                lines++;
+                for (int i = 0; i < line.Length; i++)
+                {
+                    char c = line[i];
+                    if (c == ',') comma++;
+                    else if (c == '\t') tab++;
+                    else if (c == ';') semi++;
+                    else if (c == '|') pipe++;
+                }
+            }
+            fs.Position = 0;
+
+            char best = ','; int bestCount = comma;
+            if (tab > bestCount) { best = '\t'; bestCount = tab; }
+            if (semi > bestCount) { best = ';'; bestCount = semi; }
+            if (pipe > bestCount) { best = '|'; bestCount = pipe; }
+            return bestCount == 0 ? ',' : best;
+        }
+
+        public double Progress
+        {
+            get
+            {
+                if (_length <= 0) return -1;
+                try { return Math.Min(1.0, (double)_file.Position / _length); }
+                catch (ObjectDisposedException) { return -1; }
+            }
+        }
+
+        public long RowsRead { get { return _rows; } }
+
+        public bool NextRow(out Cell[] cells, out int count)
+        {
+            cells = _buffer; count = 0;
+            string line = ReadLogicalLine();
+            if (line == null) return false;
+            _rows++;
+
+            _row.Clear();
+            SplitLine(line, _delim, _row, _raw);
+
+            if (_row.Count > _buffer.Length)
+            {
+                int cap = _buffer.Length;
+                while (cap < _row.Count) cap *= 2;
+                _buffer = new Cell[cap];
+            }
+            for (int i = 0; i < _row.Count; i++) _buffer[i] = _row[i];
+            cells = _buffer;
+            count = _row.Count;
+            return true;
+        }
+
+        // 따옴표 안에 줄바꿈이 들어 있으면 여러 물리 줄이 한 논리 줄입니다.
+        private readonly StringBuilder _pending = new StringBuilder();
+        private string ReadLogicalLine()
+        {
+            _pending.Length = 0;
+            while (true)
+            {
+                string line = _reader.ReadLine();
+                if (line == null) return _pending.Length > 0 ? _pending.ToString() : null;
+                if (_pending.Length > 0) _pending.Append('\n');
+                _pending.Append(line);
+                if (QuotesBalanced(_pending)) return _pending.ToString();
+                if (_pending.Length > (1 << 22)) return _pending.ToString();  // 망가진 따옴표 방어
+            }
+        }
+
+        private static bool QuotesBalanced(StringBuilder sb)
+        {
+            int q = 0;
+            for (int i = 0; i < sb.Length; i++) if (sb[i] == '"') q++;
+            return (q & 1) == 0;
+        }
+
+        private static void SplitLine(string line, char delim, List<Cell> outCells, bool raw)
+        {
+            int i = 0, n = line.Length;
+            var sb = new StringBuilder(32);
+            while (true)
+            {
+                sb.Length = 0;
+                bool quoted = false;
+                if (i < n && line[i] == '"') { quoted = true; i++; }
+
+                if (quoted)
+                {
+                    while (i < n)
+                    {
+                        char c = line[i];
+                        if (c == '"')
+                        {
+                            if (i + 1 < n && line[i + 1] == '"') { sb.Append('"'); i += 2; continue; }
+                            i++; break;
+                        }
+                        sb.Append(c); i++;
+                    }
+                    while (i < n && line[i] != delim) i++;
+                }
+                else
+                {
+                    while (i < n && line[i] != delim) { sb.Append(line[i]); i++; }
+                }
+
+                outCells.Add(raw ? Raw(sb.ToString()) : Classify(sb.ToString()));
+
+                if (i >= n) break;
+                i++;   // 구분자 건너뛰기
+                if (i == n) { outCells.Add(Cell.Empty); break; }   // 줄 끝의 구분자 = 빈 칸 하나
+            }
+        }
+
+        /// <summary>적힌 글자 그대로. 앞뒤 공백만 떼어 냅니다.</summary>
+        public static Cell Raw(string s)
+        {
+            if (s == null) return Cell.Empty;
+            s = s.Trim();
+            return s.Length == 0 ? Cell.Empty : Cell.FromText(s);
+        }
+
+        /// <summary>글자를 보고 빈 칸 / 참거짓 / 숫자 / 글자로 나눕니다.</summary>
+        public static Cell Classify(string s)
+        {
+            if (s == null) return Cell.Empty;
+            s = s.Trim();
+            if (s.Length == 0) return Cell.Empty;
+
+            bool b;
+            if (ValueParse.TryBool(s, out b)) return Cell.FromBool(b);
+
+            double d;
+            if (double.TryParse(s, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out d))
+                return Cell.FromNumber(d);
+
+            return Cell.FromText(s);
+        }
+
+        public void Dispose()
+        {
+            try { _reader.Dispose(); } catch (ObjectDisposedException) { }
+            try { _file.Dispose(); } catch (ObjectDisposedException) { }
+        }
+    }
+}

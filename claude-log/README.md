@@ -109,3 +109,4 @@
 | `100-graph-labels-two-rows.md` | 그래프: 빈 화면 문구 · 타입 빼기 · 전체 IO / 차이 발생 IO · Value / Difference · 도구 줄 두 줄 · 구간 맞춤 설명 |
 | `101-card1-count-and-history-plan.md` | 분석 1 카드 개수를 점수 오른쪽 · 한쪽에만 있는 IO 빼기 · 분석 이력 제안 |
 | `102-screen-folders-designer.md` | 화면 기준 폴더 (App/Main · Analysis1/… · Analysis2) · 프로젝트 이름 Analysis1 · Analysis2 · VS 디자이너 견본 · 그룹 칸 낮게 |
+| `103-one-project.md` | 프로젝트 넷을 `src/LogScope` 하나로 — 화면 폴더에 그 화면의 모양 · 코드 · 글자 · 계산 전부 |

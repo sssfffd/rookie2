@@ -3,7 +3,7 @@
 import io, os, re, sys, glob, xml.dom.minidom, xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP  = os.path.join(ROOT, 'src/LogScope.App')
+APP  = os.path.join(ROOT, 'src/LogScope')
 fail = []
 def bad(m): fail.append(m)
 
@@ -320,7 +320,7 @@ for c in css:
 #    드롭 칸 색이 그렇게 틀렸습니다).
 #    쪽 글자는 CardTag 한 곳에 상수로 있습니다. 그래서 그 화면의 코드
 #    비하인드만 보지 않고 App 쪽 코드 전체에서 찾습니다.
-app_code = ''.join(read(c) for c in css if '/LogScope.App/' in c.replace('\\', '/'))
+app_code = ''.join(read(c) for c in css if '/src/LogScope/' in c.replace('\\', '/'))
 for x in xamls:
     rel = os.path.relpath(x, ROOT)
     for raw in re.findall(r'\bTag="([^"{}]+)"', read(x)):

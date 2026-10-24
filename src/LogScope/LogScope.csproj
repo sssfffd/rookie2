@@ -1,0 +1,292 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- LogScope — 프로그램 전부 (화면 · 계산). 1.23 에 프로젝트 넷을 하나로 합쳤습니다.
+     폴더는 화면 기준입니다 (src/LogScope/README.md).
+     AnyCPU + Prefer32Bit=false 로 64비트 윈도우에서는 64비트로 돌아갑니다.
+     1000만 칸짜리 로그를 이전/이후 두 개 여는 데 필요합니다. -->
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}</ProjectGuid>
+    <!-- 첫 번째 GUID 가 "이 프로젝트는 WPF" 라는 표시입니다. 이게 있어야
+         MSBuild 가 .xaml 을 컴파일합니다. -->
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>LogScope</RootNamespace>
+    <!-- 빌드 산출물의 이름입니다. 화면에 보이는 이름(config.txt 의 name)과는
+         다릅니다 — out 폴더로 복사할 때 build.bat 이 그 이름을 붙입니다.
+         여기서 config.txt 를 읽으려면 MSBuild 가 줄을 갈라 읽어야 하는데,
+         그 한 줄을 위해 빌드가 멈출 위험을 지는 것보다 복사할 때 붙이는
+         편이 안전합니다. -->
+    <AssemblyName>LogScope</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <WarningLevel>4</WarningLevel>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <!-- 폴더 고르는 창(FolderBrowserDialog) 하나 때문에만 참조합니다.
+         WPF 에는 폴더 선택 창이 없고, 이것은 .NET Framework 에 원래
+         들어 있는 어셈블리입니다 (바깥에서 받아 온 라이브러리가 아닙니다). -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Themes\Light.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Themes\Dark.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Themes\Controls.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Shell\ShellWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis1\Dashboard\DashboardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis1\Align\AlignPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Main\MainView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis3\PlaceholderView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis2\DbView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis1\Graph\GraphView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Analysis1\Heatmap\HeatmapView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Settings\SettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Common\LoadingWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Main\SavedResultWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Common\TextInputWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Common\TextViewWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Themes\Palette.cs" />
+    <Compile Include="Themes\ThemeManager.cs" />
+    <Compile Include="Analysis1\Align\AlignTexts.cs" />
+    <Compile Include="Common\CommonTexts.cs" />
+    <Compile Include="Analysis1\Dashboard\DashboardTexts.cs" />
+    <Compile Include="Analysis2\DbTexts.cs" />
+    <Compile Include="Analysis1\Graph\GraphTexts.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapTexts.cs" />
+    <Compile Include="Main\MainTexts.cs" />
+    <Compile Include="Main\SavedTexts.cs" />
+    <Compile Include="Settings\SettingsTexts.cs" />
+    <Compile Include="Shell\ShellTexts.cs" />
+    <Compile Include="Common\ObservableObject.cs" />
+    <Compile Include="Common\RelayCommand.cs" />
+    <Compile Include="Common\CardTag.cs" />
+    <Compile Include="Common\Converters.cs" />
+    <Compile Include="Analysis1\Align\TriggerAlign.cs" />
+    <Compile Include="Analysis1\Compare\AiBridge.cs" />
+    <Compile Include="Analysis1\Compare\DiffEngine.cs" />
+    <Compile Include="Analysis1\Compare\DiffTypes.cs" />
+    <Compile Include="Analysis1\Compare\StepPairs.cs" />
+    <Compile Include="Analysis1\Graph\Decimator.cs" />
+    <Compile Include="Analysis1\Graph\DifferenceSeries.cs" />
+    <Compile Include="Analysis1\Graph\StepBands.cs" />
+    <Compile Include="Analysis1\Graph\TraceColors.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatBuckets.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatLayout.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatTypes.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapBuilder.cs" />
+    <Compile Include="Analysis1\LogFile\Channel.cs" />
+    <Compile Include="Analysis1\LogFile\ChannelAccum.cs" />
+    <Compile Include="Analysis1\LogFile\ChannelKind.cs" />
+    <Compile Include="Analysis1\LogFile\FloatBuffer.cs" />
+    <Compile Include="Analysis1\LogFile\LogDataset.cs" />
+    <Compile Include="Analysis1\LogFile\LogReader.cs" />
+    <Compile Include="Analysis1\LogFile\LogSteps.cs" />
+    <Compile Include="Analysis1\LogFile\OpenOptions.cs" />
+    <Compile Include="Analysis1\LogFile\StepRead.cs" />
+    <Compile Include="Analysis1\LogFile\StepText.cs" />
+    <Compile Include="Analysis1\LogFile\TableBuilder.cs" />
+    <Compile Include="Analysis1\LogFile\TimeAxis.cs" />
+    <Compile Include="Analysis1\LogFile\TimeKind.cs" />
+    <Compile Include="Analysis1\LogFile\TimeText.cs" />
+    <Compile Include="Analysis2\DbCompare.cs" />
+    <Compile Include="Analysis2\DbModel.cs" />
+    <Compile Include="Analysis2\DbNames.cs" />
+    <Compile Include="Analysis2\DbPathText.cs" />
+    <Compile Include="Analysis2\DbRead.cs" />
+    <Compile Include="Analysis2\DbReadMysql.cs" />
+    <Compile Include="Analysis2\DbSql.cs" />
+    <Compile Include="Analysis2\DbVerdict.cs" />
+    <Compile Include="Common\Cell.cs" />
+    <Compile Include="Common\CsvReader.cs" />
+    <Compile Include="Common\Json.cs" />
+    <Compile Include="Common\NameSearch.cs" />
+    <Compile Include="Common\NumberText.cs" />
+    <Compile Include="Common\RowSource.cs" />
+    <Compile Include="Common\TextSniff.cs" />
+    <Compile Include="Common\ValueParse.cs" />
+    <Compile Include="Common\XlsxReader.cs" />
+    <Compile Include="Main\AnalysisRecord.cs" />
+    <Compile Include="Main\HistoryStore.cs" />
+    <Compile Include="Settings\AppConfig.cs" />
+    <Compile Include="Settings\AppSettings.cs" />
+    <Compile Include="Settings\DiffMetric.cs" />
+    <Compile Include="Settings\GroupFile.cs" />
+    <Compile Include="Settings\SettingsStore.cs" />
+    <Compile Include="Settings\ToleranceRule.cs" />
+    <Compile Include="Settings\ToleranceTable.cs" />
+    <Compile Include="Common\AppState.cs" />
+    <Compile Include="Common\DesignData.cs" />
+    <Compile Include="Common\BackgroundJob.cs" />
+    <Compile Include="Analysis1\Graph\IoRowVm.cs" />
+    <Compile Include="Analysis1\Graph\GroupRowVm.cs" />
+    <Compile Include="Analysis1\Graph\ChannelListVm.cs" />
+    <Compile Include="Analysis1\Align\AlignVm.cs" />
+    <Compile Include="Analysis1\Graph\StepVm.cs" />
+    <Compile Include="Main\AnalysisCardVm.cs" />
+    <Compile Include="Main\MainVm.cs" />
+    <Compile Include="Main\HistoryRowVm.cs" />
+    <Compile Include="Analysis1\Graph\GraphVm.cs" />
+    <Compile Include="Analysis1\Dashboard\DashboardVm.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapVm.cs" />
+    <Compile Include="Settings\SettingsVm.cs" />
+    <Compile Include="Settings\ToleranceRowVm.cs" />
+    <Compile Include="Analysis2\DbVm.cs" />
+    <Compile Include="Shell\ShellVm.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Draw.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Lane.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Trace.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Axis.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Input.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapCanvas.cs" />
+    <Compile Include="Shell\ShellWindow.xaml.cs">
+      <DependentUpon>ShellWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis1\Dashboard\DashboardView.xaml.cs">
+      <DependentUpon>DashboardView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis1\Align\AlignPanel.xaml.cs">
+      <DependentUpon>AlignPanel.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Main\MainView.xaml.cs">
+      <DependentUpon>MainView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis3\PlaceholderView.xaml.cs">
+      <DependentUpon>PlaceholderView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis2\DbView.xaml.cs">
+      <DependentUpon>DbView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis1\Graph\GraphView.xaml.cs">
+      <DependentUpon>GraphView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis1\Heatmap\HeatmapView.xaml.cs">
+      <DependentUpon>HeatmapView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Settings\SettingsWindow.xaml.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Common\LoadingWindow.xaml.cs">
+      <DependentUpon>LoadingWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Main\SavedResultWindow.xaml.cs">
+      <DependentUpon>SavedResultWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Common\TextInputWindow.xaml.cs">
+      <DependentUpon>TextInputWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Common\TextViewWindow.xaml.cs">
+      <DependentUpon>TextViewWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.manifest" />
+    <None Include="App.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\..\tools\BuildInfo.targets" />
+</Project>

@@ -2,15 +2,9 @@
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.902
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.App", "src\LogScope.App\LogScope.App.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Core", "src\LogScope.Core\LogScope.Core.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope", "src\LogScope\LogScope.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Tests", "src\LogScope.Tests\LogScope.Tests.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Analysis1", "src\LogScope.Analysis1\LogScope.Analysis1.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Analysis2", "src\LogScope.Analysis2\LogScope.Analysis2.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,22 +16,10 @@ Global
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E002}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E001}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

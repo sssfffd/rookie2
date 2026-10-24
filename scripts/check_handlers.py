@@ -33,7 +33,7 @@ ARGS = {
 }
 
 hits = []
-for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope.App/**/*.xaml'), recursive=True)):
+for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope/**/*.xaml'), recursive=True)):
     cb = x + '.cs'
     if not os.path.exists(cb):
         continue
@@ -74,7 +74,7 @@ for x in sorted(glob.glob(os.path.join(ROOT, 'src/LogScope.App/**/*.xaml'), recu
 #
 # 선언한 이벤트마다 어딘가에서 "+=" 로 붙는지만 봅니다.
 import glob as _glob
-APPDIR = os.path.join(ROOT, 'src', 'LogScope.App')
+APPDIR = os.path.join(ROOT, 'src', 'LogScope')
 srcs = {}
 for f in _glob.glob(APPDIR + '/**/*.cs', recursive=True):
     srcs[f] = io.open(f, encoding='utf-8-sig').read()

@@ -1,8 +1,9 @@
 # 구조
 
-> **폴더는 화면 기준**입니다 (1.22) — 어느 화면이 어느 폴더인지는 루트 `README.md` 3 장과
-> `src/LogScope.App/README.md`. 아래는 그 밑의 어셈블리 경계 이야기입니다. 1.21 까지 이름
-> `LogScope.Logs` · `LogScope.Db` 는 `LogScope.Analysis1` · `LogScope.Analysis2` 로 바뀌었습니다.
+> **1.23 부터 프로젝트는 하나(`src/LogScope`), 폴더는 화면 기준**입니다 — 어느 화면이 어느
+> 폴더인지는 루트 `README.md` 3 장과 `src/LogScope/README.md`. 아래의 "DLL 하나 + EXE 하나"
+> 이야기는 1.22 까지의 구조입니다. 지금은 DLL 경계 대신 **파일 경계**로 나눕니다 — 계산 파일은
+> WPF 를 쓰지 않고, 시험(`LogScope.Tests`)이 창 없이 그 계산을 돌립니다.
 
 ## 왜 DLL 하나 + EXE 하나인가
 

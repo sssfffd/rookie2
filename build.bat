@@ -41,7 +41,7 @@ rem     build.bat Release nt   skip the tests
 rem
 rem  Output:
 rem     out\<config.txt name>.exe                 <- copy this folder as-is
-rem     src\LogScope.App\bin\Release\LogScope.exe
+rem     src\LogScope\bin\Release\LogScope.exe
 rem
 rem  Logs:
 rem     build.log       everything, UTF-8, meant to be opened in an editor
@@ -177,7 +177,7 @@ if not "%RC%"=="0" (
   call :msg " 전체 내용은 build.log 에 있습니다." " The full log is in build.log."
   call :msg " VS 에서 성공했다면 LogScope.Tests 를 안 빌드했을 수 있습니다." " If VS succeeded, it may not have built LogScope.Tests."
   call :msg " VS 는 시작 프로젝트와 그것이 참조하는 것만 빌드하고," " VS builds only the startup project and what it"
-  call :msg " LogScope.App 은 Tests 를 참조하지 않습니다." " references; LogScope.App does not reference Tests."
+  call :msg " LogScope 는 Tests 를 참조하지 않습니다." " references; LogScope does not reference Tests."
   call :msg " VS 에서 같이 보려면 [빌드] - [솔루션 빌드] 입니다." " In VS use Build - Build Solution to see the same."
   goto :fail
 )
@@ -222,15 +222,12 @@ if not exist "%OUT%" mkdir "%OUT%"
 rem  The build always makes LogScope.exe; the name from config.txt goes on
 rem  here. Renaming on copy keeps MSBuild out of parsing config.txt -- one
 rem  bad line there would stop the whole build.
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe" "%OUT%\!APPNAME!.exe" >nul
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Core.dll" "%OUT%\" >nul
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Analysis1.dll" "%OUT%\" >nul
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Analysis2.dll" "%OUT%\" >nul
-if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" (
-  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" "%OUT%\!APPNAME!.exe.config" >nul
+copy /y "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe" "%OUT%\!APPNAME!.exe" >nul
+if exist "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe.config" (
+  copy /y "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe.config" "%OUT%\!APPNAME!.exe.config" >nul
 )
 if /i "%CONFIG%"=="Debug" (
-  copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\*.pdb" "%OUT%\" >nul 2>nul
+  copy /y "%ROOT%src\LogScope\bin\%CONFIG%\*.pdb" "%OUT%\" >nul 2>nul
 )
 
 rem  config.txt: the one file the user edits (program name, analysis names).

@@ -25,9 +25,9 @@ python scripts/check_handlers.py XAML 이벤트 처리기 서명
 
 눈으로 훑는 게 아니라 **C# 컴파일러에게 물어봅니다.**
 
-1. `LogScope.Core` · `LogScope.Analysis1` · `LogScope.Analysis2` 컴파일 (따로따로 — 모듈 경계를 컴파일러가 지킵니다)
-2. `LogScope.Tests` 컴파일 **+ 실제로 실행** (통과/실패가 숫자로 나옵니다)
-3. `LogScope.App` 컴파일 — 리눅스에 WPF 가 없으므로 `wpfstub/` 의 껍데기로 대신
+1. WPF 흉내(`wpfstub/`) 컴파일 — 리눅스에 WPF 가 없으므로 껍데기로 대신
+2. `LogScope` 컴파일 — 화면 · 계산 전부 (1.23 부터 프로젝트 하나)
+3. `LogScope.Tests` 컴파일 **+ 실제로 실행** (통과/실패가 숫자로 나옵니다)
 
 필요한 것:
 
