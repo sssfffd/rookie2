@@ -819,15 +819,34 @@ namespace LogScope.App.Logs
         /// </summary>
         private double ShiftAt(double t)
         {
-            if (StepMode && !double.IsNaN(t))
-            {
-                for (int i = 0; i < _stepBands.Count; i++)
-                {
-                    StepBand band = _stepBands[i];
-                    if (t >= band.T0 && t <= band.T1) return band.Shift;
-                }
-            }
+            StepBand band = BandAt(t);
+            if (band != null) return band.Shift;
             return _state != null ? _state.AppliedShift : 0.0;
+        }
+
+        /// <summary>그 시각이 든 단계 칸. 나눠 보지 않거나 칸 밖이면 null.</summary>
+        private StepBand BandAt(double t)
+        {
+            if (!StepMode || double.IsNaN(t)) return null;
+            for (int i = 0; i < _stepBands.Count; i++)
+            {
+                StepBand band = _stepBands[i];
+                if (t >= band.T0 && t <= band.T1) return band;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 그 시각에 이전 / 이후 로그가 <b>그 단계 안에 있는지</b> (1.19). 단계
+        /// 칸 꼬리(짧은 쪽 단계가 끝난 뒤)에서는 짧은 쪽이 거짓입니다 — 그 자리는
+        /// 선을 안 그리므로 커서 값도 안 적습니다 (적으면 다음 단계 값이 나옵니다).
+        /// 나눠 보지 않을 때는 늘 참입니다.
+        /// </summary>
+        private bool InStep(double t, bool before)
+        {
+            StepBand band = BandAt(t);
+            if (band == null) return true;
+            return t <= (before ? band.BeforeEnd : band.AfterEnd);
         }
 
         private static double ValueToY(double v, Rect inner, double vlo, double vhi)

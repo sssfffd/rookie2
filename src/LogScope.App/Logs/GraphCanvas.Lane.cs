@@ -267,6 +267,12 @@ namespace LogScope.App.Logs
             }
         }
 
+        /// <summary>
+        /// 그 자리에 그 로그 값이 없을 때 적는 글 (단계 칸 꼬리, 1.19).
+        /// 글자는 Texts/GraphTexts.NoValue 에서 고칩니다.
+        /// </summary>
+        private const string NoValue = LogScope.App.Texts.GraphTexts.NoValue;
+
         private string ValueReadout(IoRowVm vm)
         {
             if (double.IsNaN(_cursorA) || _state == null) return string.Empty;
@@ -274,7 +280,9 @@ namespace LogScope.App.Logs
             if (vm.InBefore && _state.Before != null)
             {
                 Channel c = _state.Before.Channels[vm.BeforeIndex];
-                s += "이전 " + c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA));
+                s += "이전 " + (InStep(_cursorA, true)
+                    ? c.FormatValue(_state.Before.SampleAt(vm.BeforeIndex, _cursorA))
+                    : NoValue);
             }
             if (vm.InAfter && _state.After != null)
             {
@@ -283,7 +291,9 @@ namespace LogScope.App.Logs
                 // 커서가 든 칸의 밀기 값으로 읽습니다 (단계별로 나눠
                 // 보는 중이면 칸마다 다릅니다).
                 double t = _cursorA - ShiftAt(_cursorA);
-                s += "이후 " + c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t));
+                s += "이후 " + (InStep(_cursorA, false)
+                    ? c.FormatValue(_state.After.SampleAt(vm.AfterIndex, t))
+                    : NoValue);
             }
             return s + DiffNote(vm);
         }
@@ -298,6 +308,8 @@ namespace LogScope.App.Logs
         private string DiffNote(IoRowVm vm)
         {
             if (!Diffing || !CanDiff(vm)) return string.Empty;
+            // 한쪽 단계가 끝난 자리에는 견줄 상대가 없습니다 (선도 안 그림).
+            if (!InStep(_cursorA, true) || !InStep(_cursorA, false)) return string.Empty;
 
             double d = DifferenceSeries.At(_state.Before, vm.BeforeIndex,
                                            _state.After, vm.AfterIndex,

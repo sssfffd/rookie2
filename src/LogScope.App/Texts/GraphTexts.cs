@@ -26,6 +26,8 @@ namespace LogScope.App.Texts
         public const string StepEach = "단계마다";
         /// <summary>단계 목록 맨 위 (단계를 안 고른 상태)</summary>
         public const string StepWhole = "전체 구간";
+        /// <summary>커서 값 — 그 로그의 그 단계가 이미 끝난 자리 (단계마다 칸의 꼬리)</summary>
+        public const string NoValue = "— (단계 끝)";
 
         // ---- 왼쪽: IO 목록과 그룹 ----
 
