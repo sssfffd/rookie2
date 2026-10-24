@@ -110,3 +110,4 @@
 | `101-card1-count-and-history-plan.md` | 분석 1 카드 개수를 점수 오른쪽 · 한쪽에만 있는 IO 빼기 · 분석 이력 제안 |
 | `102-screen-folders-designer.md` | 화면 기준 폴더 (App/Main · Analysis1/… · Analysis2) · 프로젝트 이름 Analysis1 · Analysis2 · VS 디자이너 견본 · 그룹 칸 낮게 |
 | `103-one-project.md` | 프로젝트 넷을 `src/LogScope` 하나로 — 화면 폴더에 그 화면의 모양 · 코드 · 글자 · 계산 전부 |
+| `104-build-fix-buildinfo.md` | 1.23 빌드 오류: BuildInfo 가 XAML 임시 빌드에서 빠짐 → 빌드 맨 처음에 만들고 csproj 에 늘 적어 둠 · C# 7.3 컴파일러로 재확인 |

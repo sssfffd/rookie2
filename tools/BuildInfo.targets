@@ -16,8 +16,15 @@
     <BuildInfoFile>$(MSBuildThisFileDirectory)..\src\LogScope\BuildInfo.g.cs</BuildInfoFile>
   </PropertyGroup>
 
-  <Target Name="GenerateBuildInfo" BeforeTargets="BeforeCompile"
-          Condition=" '$(MSBuildProjectName)' == 'LogScope' ">
+  <!-- 1.23: LogScope (WPF) 프로젝트 하나가 됐으므로 <b>빌드 맨 처음(BeforeBuild)</b>에
+       만들고, csproj 에는 BuildInfo.g.cs 를 늘 적어 둡니다 (Compile Include).
+       WPF 는 XAML 을 컴파일하면서 임시 프로젝트(…_wpftmp)를 한 번 더 빌드하는데,
+       그 빌드는 BeforeCompile 을 거치지 않습니다. 전처럼 여기서 Compile 을 더하면
+       임시 빌드에는 이 파일이 빠져 "BuildInfo 가 없다" 로 실패합니다.
+       조건은 프로젝트 파일 이름이 아니라 AssemblyName 으로 봅니다 — 임시 프로젝트는
+       파일 이름이 다릅니다. -->
+  <Target Name="GenerateBuildInfo" BeforeTargets="BeforeBuild"
+          Condition=" '$(AssemblyName)' == 'LogScope' ">
     <ReadLinesFromFile File="$(RepoRoot)version.txt">
       <Output TaskParameter="Lines" ItemName="_VersionLines" />
     </ReadLinesFromFile>
@@ -62,8 +69,5 @@
       <_BuildInfoLines Include="}" />
     </ItemGroup>
     <WriteLinesToFile File="$(BuildInfoFile)" Lines="@(_BuildInfoLines)" Overwrite="true" Encoding="UTF-8" />
-    <ItemGroup>
-      <Compile Include="$(BuildInfoFile)" />
-    </ItemGroup>
   </Target>
 </Project>

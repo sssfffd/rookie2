@@ -1452,3 +1452,11 @@
 > 왜 app에도 코드가 있고 analysis는 또 왜존재하고 core는 왜있는거야 이따구로 이상하게 쪼개지말라고 찾아보기도 힘들고 찾아야되는 것도 많아지잖아 ㅡㅡ
 
 → 답변: [103-one-project.md](103-one-project.md)
+
+---
+
+## 요청 130 — 빌드 에러 다시 확인
+
+> 너 만든거 다시확인해봐 빌드 에러나는 거 같은데?
+
+→ 답변: [104-build-fix-buildinfo.md](104-build-fix-buildinfo.md)
