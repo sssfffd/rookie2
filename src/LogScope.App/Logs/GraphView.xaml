@@ -39,17 +39,13 @@
                                      ToolTip="{x:Static t:GraphTexts.SearchTip}" />
                         </DockPanel>
 
+                        <!-- 타입(디지털 · 아날로그 · 상태) 고르기 목록과 줄마다 적던
+                             타입 글자는 1.20 에서 뺐습니다. -->
                         <WrapPanel Margin="0,4,0,0">
-                            <ComboBox MinWidth="118" SelectedIndex="{Binding KindFilter, Mode=TwoWay}">
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item}" />
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item2}" />
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item3}" />
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item4}" />
-                            </ComboBox>
                             <ComboBox MinWidth="130" SelectedIndex="{Binding ScopeFilter, Mode=TwoWay}">
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item5}" />
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item6}" />
-                                <ComboBoxItem Content="{x:Static t:GraphTexts.Item7}" />
+                                <ComboBoxItem Content="{x:Static t:GraphTexts.ScopeAll}" />
+                                <ComboBoxItem Content="{x:Static t:GraphTexts.ScopePicked}" />
+                                <ComboBoxItem Content="{x:Static t:GraphTexts.ScopeChanged}" />
                             </ComboBox>
                         </WrapPanel>
 
@@ -212,9 +208,6 @@
                                                VerticalAlignment="Center" Margin="6,0,0,0"
                                                Foreground="{DynamicResource Brush.Muted}" />
 
-                                    <TextBlock Grid.Column="3" Text="{Binding KindText}" FontSize="11"
-                                               VerticalAlignment="Center" Margin="8,0,2,0"
-                                               Foreground="{DynamicResource Brush.Muted}" />
                                 </Grid>
                             </Border>
                             <DataTemplate.Triggers>
@@ -274,6 +267,14 @@
                     Padding="8,4">
                 <ScrollViewer MaxHeight="88" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
+                <!--
+                  <b>두 줄로 나눠 둡니다</b> (1.20). 한 WrapPanel 에 다 넣으면 창 폭에
+                  따라 접히는 자리가 달라져 묶음이 이 줄 저 줄로 흩어졌습니다.
+                    1 줄: 어떻게 보나   — 보기 · 세로 눈금 · Time Scale · Value Scale
+                    2 줄: 무엇을 견주나 — 비교 · 정렬(단계) · 시간 맞추기
+                  창이 아주 좁으면 그 줄 안에서만 더 접힙니다.
+                -->
+                <StackPanel>
                 <WrapPanel>
 
                     <!--
@@ -341,6 +342,9 @@
                                           ToolTip="{x:Static t:GraphTexts.FitVisibleTip}" />
                         </StackPanel>
                     </Border>
+
+                </WrapPanel>
+                <WrapPanel>
 
                     <!-- 이전 로그와 이후 로그를 견주는 것들 -->
                     <Border Style="{StaticResource ToolGroup}">
@@ -428,7 +432,7 @@
                               폭까지 바뀌면 그때마다 도구 줄이 다시 접혀
                               줄 수가 달라집니다.
                             -->
-                            <Button Content="{Binding Align.Summary}" Width="146"
+                            <Button Content="{Binding Align.Summary}" Width="130"
                                     Click="OnAlignOpen"
                                     ToolTip="{x:Static t:GraphTexts.AlignOpenTip}" />
                             <Popup x:Name="AlignPopup" PlacementTarget="{Binding ElementName=AlignAnchor}"
@@ -441,6 +445,7 @@
                     </Border>
 
                 </WrapPanel>
+                </StackPanel>
                 </ScrollViewer>
             </Border>
 

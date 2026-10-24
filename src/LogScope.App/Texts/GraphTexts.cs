@@ -38,19 +38,11 @@ namespace LogScope.App.Texts
         /// <summary>입력 칸 마우스를 올리면 뜨는 설명</summary>
         public const string SearchTip = "IO 이름으로 찾습니다.";
         /// <summary>목록 항목 이름</summary>
-        public const string Item = "전체 타입";
+        public const string ScopeAll = "전체 IO";
         /// <summary>목록 항목 이름</summary>
-        public const string Item2 = "디지털";
+        public const string ScopePicked = "고른 IO만";
         /// <summary>목록 항목 이름</summary>
-        public const string Item3 = "아날로그";
-        /// <summary>목록 항목 이름</summary>
-        public const string Item4 = "상태";
-        /// <summary>목록 항목 이름</summary>
-        public const string Item5 = "모든 IO";
-        /// <summary>목록 항목 이름</summary>
-        public const string Item6 = "고른 IO만";
-        /// <summary>목록 항목 이름</summary>
-        public const string Item7 = "달라진 IO만";
+        public const string ScopeChanged = "차이 발생 IO";
         /// <summary>단추 이름</summary>
         public const string SelectAll = "전체 선택";
         /// <summary>단추 이름</summary>
@@ -89,7 +81,7 @@ namespace LogScope.App.Texts
         // ---- 오른쪽: 도구 줄 + 그래프 ----
 
         /// <summary>글</summary>
-        public const string LaneModeCaption = "보기 (여러 IO 선택시)";
+        public const string LaneModeCaption = "보기";
         /// <summary>고르기 단추 이름</summary>
         public const string LaneMode = "Lane";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
@@ -101,11 +93,11 @@ namespace LogScope.App.Texts
         /// <summary>글</summary>
         public const string ScaleRawCaption = "세로 눈금";
         /// <summary>고르기 단추 이름</summary>
-        public const string ScaleRaw = "기존 값";
+        public const string ScaleRaw = "Value";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
         public const string ScaleRawTip = "이전 로그와 이후 로그를 각각 그립니다. 로그에 적힌 값 그대로.";
         /// <summary>고르기 단추 이름</summary>
-        public const string ScaleDelta = "차이";
+        public const string ScaleDelta = "Difference";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
         public const string ScaleDeltaTip = "두 로그의 차이를 선 하나로 그립니다.\n같으면 0, 이후가 1 크면 +1, 1 작으면 -1.\n상태 채널은 이름이 같으면 0, 다르면 1 입니다.\n한쪽에만 있는 IO 는 견줄 상대가 없어 비어 있습니다.";
         /// <summary>글</summary>

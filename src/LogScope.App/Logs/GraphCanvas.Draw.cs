@@ -260,7 +260,7 @@ namespace LogScope.App.Logs
         private void DrawEmpty(DrawingContext dc, Palette p)
         {
             string msg = (_state != null && _state.HasAny)
-                ? "왼쪽 목록에서 IO 를 골라 주세요.\n처음에는 아무것도 선택되어 있지 않습니다."
+                ? "왼쪽 목록에서 IO 를 골라 주세요."
                 : "위쪽 메뉴의 '이전 로그 열기' / '이후 로그 열기' 로 파일을 열어 주세요.";
             FormattedText ft = Text(msg, FontNormal, p.MutedBrush);
             ft.MaxTextWidth = Math.Max(100, ActualWidth - 48);

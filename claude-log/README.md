@@ -106,3 +106,4 @@
 | `97-db-search-heatmap-instant.md` | 분석 2 IO 검색 (검색 규칙 한 곳 NameSearch) · 히트맵 [차이 없는 IO도 보기] 바로 반영 |
 | `98-step-length-and-screen-texts.md` | 단계 길이가 다르면 짧은 쪽 선을 제 끝에서 끊기 · 화면마다 글자 파일 하나 (`App/Texts/`) |
 | `99-step-tail-readout.md` | 단계 길이가 다를 때 짧은 쪽은 끝에서 없음 — 그래프(1.18) 와 커서 값(1.19) |
+| `100-graph-labels-two-rows.md` | 그래프: 빈 화면 문구 · 타입 빼기 · 전체 IO / 차이 발생 IO · Value / Difference · 도구 줄 두 줄 · 구간 맞춤 설명 |

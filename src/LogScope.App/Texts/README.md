@@ -9,7 +9,7 @@
 | 메인 화면 | `MainTexts.cs` | 17 |
 | 맨 위 메뉴 줄 (모든 화면) | `ShellTexts.cs` | 13 |
 | 분석 1 — 대시보드 | `DashboardTexts.cs` | 9 |
-| 분석 1 — 그래프 (단계 단추 [정렬] [단계마다] [전체 구간] 포함) | `GraphTexts.cs` | 69 |
+| 분석 1 — 그래프 (단계 단추 [정렬] [단계마다] [전체 구간] 포함) | `GraphTexts.cs` | 66 |
 | 분석 1 — 히트맵 | `HeatmapTexts.cs` | 25 |
 | 분석 1 — 시간 맞추기 판 (그래프 · 히트맵 공용) | `AlignTexts.cs` | 12 |
 | 분석 2 — DB 비교 | `DbTexts.cs` | 25 |
