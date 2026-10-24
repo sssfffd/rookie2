@@ -67,6 +67,7 @@
 
     <Compile Include="Text\Json.cs" />
     <Compile Include="Text\TextSniff.cs" />
+    <Compile Include="Text\NameSearch.cs" />
     <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Settings\DiffMetric.cs" />
     <Compile Include="Settings\ToleranceRule.cs" />

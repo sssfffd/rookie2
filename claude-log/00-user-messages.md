@@ -1370,3 +1370,13 @@
 > 그리고 이거 단계별로 1,2 둘다 재정렬 하는 거 맞아?
 
 → 답변: [96-step-pick-and-head.md](96-step-pick-and-head.md)
+
+---
+
+## 요청 123 — 분석 2 IO 검색 · 히트맵 차이 없는 IO 보기 바로 반영
+
+> 분석 2에도 io검색 기능 넣어주셈
+>
+> 그리고 분석 1에 히트맵에서 차이없는 IO도 보는거 선택하면 바로 반영되게 하고
+
+→ 답변: [97-db-search-heatmap-instant.md](97-db-search-heatmap-instant.md)

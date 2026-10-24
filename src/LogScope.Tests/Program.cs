@@ -146,6 +146,7 @@ namespace LogScope.Tests
                 StepBandWidths();
                 HeatmapPerStepShift();
                 HeatmapGroupsAndSearch();
+                NameSearchRule();
                 DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
@@ -3570,6 +3571,19 @@ namespace LogScope.Tests
             List<HeatLine> noGroups = HeatLayout.Build(rows, null, "", null);
             Check("그룹이 없으면 전부 \"그룹에 없는 IO\" 하나",
                   noGroups.Count == 5 && noGroups[0].Group == HeatLayout.Ungrouped, Shape(noGroups));
+        }
+
+        /// <summary>IO 이름 검색 규칙 한 곳 (1.17) — 그래프 · 히트맵 · 분석 2 가 같이 씀.</summary>
+        private static void NameSearchRule()
+        {
+            Say("IO 검색 — 세 화면이 같은 규칙");
+            Check("가운데 글자도 맞음", NameSearch.Matches("TEMP_MAX", "MP_M"), null);
+            Check("대소문자 안 가림", NameSearch.Matches("TEMP_MAX", "temp"), null);
+            Check("안 들었으면 아님", !NameSearch.Matches("TEMP_MAX", "PRES"), null);
+            Check("빈 검색은 모두 맞음", NameSearch.Matches("X", "") && NameSearch.Matches("X", null), null);
+            Check("앞뒤 빈칸 무시", NameSearch.Matches("TEMP_MAX", "  temp "), null);
+            Check("빈칸만이면 거르지 않음", !NameSearch.IsActive("   "), null);
+            Check("이름이 null 이면 아님 (검색 중)", !NameSearch.Matches(null, "a"), null);
         }
 
         private static string Shape(List<HeatLine> lines)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LogScope.Core.Settings;
+using LogScope.Core.Text;
 
 namespace LogScope.Logs.Compare
 {
@@ -71,7 +72,6 @@ namespace LogScope.Logs.Compare
             var lines = new List<HeatLine>();
             if (rows == null || rows.Count == 0) return lines;
 
-            string find = (search ?? string.Empty).Trim();
 
             // IO 이름 → 처음 든 그룹 번호. 뒤 그룹에 또 있어도 앞 그룹이 이깁니다.
             var groupOf = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -92,8 +92,7 @@ namespace LogScope.Logs.Compare
             {
                 HeatRow row = rows[i];
                 if (row == null) continue;
-                if (find.Length > 0
-                    && row.Name.IndexOf(find, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                if (!NameSearch.Matches(row.Name, search)) continue;
 
                 int g;
                 buckets[groupOf.TryGetValue(row.Name, out g) ? g : groupCount].Add(row);

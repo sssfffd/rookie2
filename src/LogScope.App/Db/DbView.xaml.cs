@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using LogScope.Db;
 using LogScope.Core.Io;
 using LogScope.Core.Settings;
+using LogScope.Core.Text;
 
 using LogScope.App.Common;
 using LogScope.App.Logs;
@@ -96,6 +97,10 @@ namespace LogScope.App.Db
         {
             if (string.IsNullOrEmpty(io)) return;
 
+            // 검색으로 걸러 둔 중이면 그 IO 가 안 보일 수 있습니다 — 메인 화면
+            // 에서 눌러 넘어왔는데 못 찾으면 안 되니 검색을 풉니다 (1.17).
+            if (!NameSearch.Matches(io, _vm.Search)) _vm.Search = string.Empty;
+
             IList<DbDiffLine> lines = _vm.Lines;
             for (int i = 0; i < lines.Count; i++)
             {
@@ -183,6 +188,11 @@ namespace LogScope.App.Db
             // 적고 안 읽어서, 메인 칸에 두 파일 이름이 다 보이는데
             // 결과는 "아직 읽지 않았습니다" 였습니다.
             if (PickFile(before) && _vm.HasPaths) Read();
+        }
+
+        private void OnClearSearch(object sender, RoutedEventArgs e)
+        {
+            _vm.Search = string.Empty;
         }
 
         private void OnPickFile(object sender, RoutedEventArgs e)

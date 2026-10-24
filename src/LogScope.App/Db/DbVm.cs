@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Text;
 using LogScope.Db;
 using LogScope.Core.Settings;
+using LogScope.Core.Text;
 
 using LogScope.App.Common;
 using LogScope.App.Logs;
@@ -310,6 +311,45 @@ namespace LogScope.App.Db
             set { if (value) SetView(ViewAll); }
         }
 
+        // ---------------- IO 검색 (1.17) ----------------
+        //
+        // 목록 머리의 검색 칸. 규칙은 그래프 · 히트맵과 같은 NameSearch 입니다
+        // (IO 이름에 그 글자가 들면, 대소문자 안 가림). 다시 견주지 않고, 이미
+        // 지은 줄(_built)을 거르기만 해서 치는 대로 바로 바뀝니다.
+        //
+        // 메인 화면의 개수 · 판정과 [.CSV로 저장] 은 검색과 상관없이 그대로
+        // 입니다 — 검색은 "찾기" 이고, 거른 것을 차이의 전부로 읽으면 안 됩니다.
+
+        private string _search = string.Empty;
+        public string Search
+        {
+            get { return _search; }
+            set { if (Set(ref _search, value ?? string.Empty)) ApplySearch(); }
+        }
+
+        /// <summary>보기에 맞춰 지은 줄 (검색으로 거르기 전).</summary>
+        private List<DbDiffLine> _built = new List<DbDiffLine>();
+
+        private void ApplySearch()
+        {
+            if (!NameSearch.IsActive(_search)) _lines = _built;
+            else
+            {
+                _lines = new List<DbDiffLine>();
+                for (int i = 0; i < _built.Count; i++)
+                    if (_built[i] != null && NameSearch.Matches(_built[i].Io, _search)) _lines.Add(_built[i]);
+            }
+
+            if (_diff != null && _lines.Count == 0 && _built.Count > 0)
+                EmptyText = "\"" + _search.Trim() + "\" 이(가) 이름에 든 IO 가 없습니다.";
+            else EmptyText = _baseEmpty;
+
+            Raise("Lines");
+            Raise("LinesIsEmpty");
+        }
+
+        private string _baseEmpty = "아직 읽지 않았습니다. [데이터 읽기] 를 눌러 주세요.";
+
         private void SetView(int v)
         {
             if (_view == v) return;
@@ -323,17 +363,17 @@ namespace LogScope.App.Db
             // 늘 전체입니다. 표를 고르는 왼쪽 목록을 없앴으니 범위도 하나입니다.
             if (_diff == null)
             {
-                _lines = new List<DbDiffLine>();
-                EmptyText = "아직 읽지 않았습니다. [데이터 읽기] 를 눌러 주세요.";
+                _built = new List<DbDiffLine>();
+                _baseEmpty = "아직 읽지 않았습니다. [데이터 읽기] 를 눌러 주세요.";
             }
             else
             {
                 var opt = new DbDiffList.Options();
                 opt.IncludeSame = _view == ViewAll;
 
-                _lines = TakeNotes(DbDiffList.Build(_diff, opt));
+                _built = TakeNotes(DbDiffList.Build(_diff, opt));
 
-                EmptyText = _diff.Tables.Count == 0
+                _baseEmpty = _diff.Tables.Count == 0
                     ? "읽은 표가 없습니다. 위 두 칸을 봐 주세요."
                     : "두 DB 가 같습니다 — 다른 데가 없습니다. [전체] 로 보면 "
                       + "같은 IO 도 줄로 보입니다.";
@@ -341,8 +381,7 @@ namespace LogScope.App.Db
 
             // 줄 수 · 판정 · 차이 개수 글은 이 화면에 적지 않습니다 (1.05).
             // 판정과 개수는 메인 화면 분석 2 칸에 있습니다.
-            Raise("Lines");
-            Raise("LinesIsEmpty");
+            ApplySearch();
             Raise("Notes");
         }
 

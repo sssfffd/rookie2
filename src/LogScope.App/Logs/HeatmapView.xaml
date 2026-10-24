@@ -42,8 +42,11 @@
                          Text="{Binding RelativeTolerancePercent, UpdateSourceTrigger=LostFocus}"
                          ToolTip="오차 = |이후 − 이전| / |이전| x 100. 기본 0.1%.&#x0a;칸에 적히는 퍼센트와 같은 잣대라 그대로 견주면 됩니다." />
 
+                <!-- 누르면 바로 다시 셉니다 (1.17). 전에는 켜 두고 [히트맵 다시
+                     계산] 을 눌러야 반영돼서, 눌러도 아무 일이 없는 단추로 보였습니다. -->
                 <ToggleButton Style="{StaticResource ToolToggle}" Content="차이 없는 IO도 보기"
-                              IsChecked="{Binding IncludeUnchanged, Mode=TwoWay}" Margin="12,3,3,3" />
+                              IsChecked="{Binding IncludeUnchanged, Mode=TwoWay}" Margin="12,3,3,3"
+                              Click="OnIncludeUnchanged" />
 
                 <!-- 칸에 적을 숫자를 값으로 볼지 퍼센트로 볼지 -->
                 <TextBlock Text="칸에 적을 값" Style="{StaticResource FieldLabel}" Margin="12,0,10,0" />

@@ -172,6 +172,16 @@ namespace LogScope.App.Logs
         }
 
         /// <summary>
+        /// [차이 없는 IO도 보기] 를 눌렀을 때 바로 다시 셉니다 (1.17). 로그가
+        /// 없으면 조용히 넘깁니다 — 단추를 눌렀을 뿐인데 "로그가 부족합니다"
+        /// 창이 뜨면 놀랍니다. IsChecked 는 Click 전에 이미 바뀌어 있습니다.
+        /// </summary>
+        private void OnIncludeUnchanged(object sender, RoutedEventArgs e)
+        {
+            Recalculate(false);
+        }
+
+        /// <summary>
         /// 히트맵을 다시 계산합니다. showMessage 가 거짓이면 로그가 없어도
         /// 조용히 넘어갑니다 (화면을 열 때 자동으로 부르는 경우).
         /// </summary>

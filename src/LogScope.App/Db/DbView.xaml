@@ -217,6 +217,18 @@
                             <TextBlock Text="차이 목록" Style="{StaticResource FieldLabel}"
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
                             <!--
+                              IO 검색 (1.17). 그래프 · 히트맵과 같은 규칙(NameSearch) —
+                              IO 이름에 그 글자가 들면, 대소문자 안 가림. 치는 대로 바로
+                              걸러집니다. 메인 화면 개수와 CSV 는 검색과 상관없습니다.
+                            -->
+                            <TextBlock Text="IO 검색" Style="{StaticResource Muted}"
+                                       VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox Width="160" VerticalContentAlignment="Center" Margin="0,0,2,0"
+                                     Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=120}"
+                                     ToolTip="IO 이름으로 찾습니다 (그래프 · 히트맵 검색과 같습니다)." />
+                            <Button Content="✕" Padding="6,0" Margin="0,0,14,0"
+                                    Click="OnClearSearch" ToolTip="검색 지우기" />
+                            <!--
                               읽으면서 생긴 일(못 읽은 파일 · 키 없는 표 등). 있을
                               때만 ⚠ 하나가 뜨고, 마우스를 올리면 다 보입니다.
                               아예 빼면 파일 하나를 못 읽어도 모르고 지나갑니다 —

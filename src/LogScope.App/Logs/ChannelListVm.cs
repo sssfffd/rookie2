@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
+using LogScope.Core.Text;
 
 using LogScope.App.Common;
 namespace LogScope.App.Logs
@@ -174,7 +175,7 @@ namespace LogScope.App.Logs
             List<GroupDef> groups = _state.Settings.Groups;
             var rows = new ObservableCollection<object>();
             var placed = new HashSet<string>(StringComparer.Ordinal);
-            bool filtering = !string.IsNullOrEmpty(_search) || _kindFilter != 0 || _scopeFilter != 0;
+            bool filtering = NameSearch.IsActive(_search) || _kindFilter != 0 || _scopeFilter != 0;
 
             for (int g = 0; g < groups.Count; g++)
             {
@@ -246,8 +247,8 @@ namespace LogScope.App.Logs
                 case 3: if (vm.Kind != ChannelKind.State) return false; break;
             }
 
-            if (!string.IsNullOrEmpty(_search)
-                && vm.Name.IndexOf(_search, StringComparison.OrdinalIgnoreCase) < 0) return false;
+            // 검색 규칙은 NameSearch 한 곳 (히트맵 · 분석 2 와 같음).
+            if (!NameSearch.Matches(vm.Name, _search)) return false;
 
             return true;
         }
