@@ -107,3 +107,4 @@
 | `98-step-length-and-screen-texts.md` | 단계 길이가 다르면 짧은 쪽 선을 제 끝에서 끊기 · 화면마다 글자 파일 하나 (`App/Texts/`) |
 | `99-step-tail-readout.md` | 단계 길이가 다를 때 짧은 쪽은 끝에서 없음 — 그래프(1.18) 와 커서 값(1.19) |
 | `100-graph-labels-two-rows.md` | 그래프: 빈 화면 문구 · 타입 빼기 · 전체 IO / 차이 발생 IO · Value / Difference · 도구 줄 두 줄 · 구간 맞춤 설명 |
+| `101-card1-count-and-history-plan.md` | 분석 1 카드 개수를 점수 오른쪽 · 한쪽에만 있는 IO 빼기 · 분석 이력 제안 |

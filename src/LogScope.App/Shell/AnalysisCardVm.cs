@@ -315,6 +315,19 @@ namespace LogScope.App.Shell
         /// </summary>
         public string VerdictCount { get { return _verdictCount; } }
 
+        /// <summary>
+        /// 점수 칸(분석 1)에서 점수 오른쪽에 적을 "차이 발생 N 개" (1.21). 분석 2 의
+        /// 판정 옆 개수와 <b>같은 자리 · 같은 크기</b>라 두 칸의 줄이 그대로 맞습니다.
+        /// 빈 글자면 숨깁니다.
+        /// </summary>
+        public void SetCount(string count)
+        {
+            string v = count ?? string.Empty;
+            if (_verdictCount == v) return;
+            _verdictCount = v;
+            Raise("VerdictCount");
+        }
+
         public void ClearVerdict()
         {
             if (_word.Length == 0) return;

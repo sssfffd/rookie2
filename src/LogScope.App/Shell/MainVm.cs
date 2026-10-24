@@ -56,6 +56,7 @@ namespace LogScope.App.Shell
             if (r == null)
             {
                 Cards[0].ClearScore();
+                Cards[0].SetCount(string.Empty);
                 Cards[0].SetStats(new List<StatVm>());
             }
             else
@@ -72,13 +73,13 @@ namespace LogScope.App.Shell
                 //
                 // 종합 칸의 수와 같은 값을 씁니다 (둘 다 CompareResult 를
                 // 그대로 읽습니다) — 따로 셈하면 두 수가 어긋납니다.
-                Cards[0].SetStats(new List<StatVm>
-                {
-                    new StatVm("차이 난 IO",
-                               r.ChangedCount.ToString("N0") + " / " + r.CommonCount.ToString("N0")),
-                    new StatVm("한쪽에만 있는 IO",
-                               (r.OnlyBefore.Count + r.OnlyAfter.Count).ToString("N0") + "개"),
-                });
+                //
+                // 1.21: 차이 난 IO 개수는 <b>점수 오른쪽</b>으로 옮겼습니다 (분석 2 의
+                // "FAIL 차이 발생 N 개" 와 같은 자리 · 같은 크기 — 줄 맞춤이 그대로).
+                // "한쪽에만 있는 IO" 는 뺐습니다 (대시보드에 목록으로 있음).
+                // 그래서 숫자 칸(Stats)은 비고, 비면 그 줄째 안 보입니다.
+                Cards[0].SetCount(r.ChangedCount.ToString("N0"));
+                Cards[0].SetStats(new List<StatVm>());
             }
 
             Cards[0].SetGroups(BuildGroups(r));
