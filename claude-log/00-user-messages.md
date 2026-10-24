@@ -1433,3 +1433,14 @@
 > 그리고 한쪽에만 있는 IO는 삭제해줘
 
 → 답변: [101-card1-count-and-history-plan.md](101-card1-count-and-history-plan.md)
+
+---
+
+## 요청 128 — 그룹 칸 낮게 · VS 디자이너 · 화면 기준 폴더
+
+> 그리고
+> 분석 1 그래프 화면 좌측 아래에 그룹 수정 칸 세로로 조금 줄여줘
+> 전체 프로젝트가 xaml 파일들 추가해서 visual studio에서 화면 보고 수정할 수 있게 되었으면 좋겠음
+> 그리고 지금 core .app이렇게 되어있는 거 말고 화면 기준으로 파일 구조들 바뀌면 좋겠음 개발자가 알 기 쉽게
+
+→ 답변: [102-screen-folders-designer.md](102-screen-folders-designer.md)

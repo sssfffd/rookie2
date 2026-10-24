@@ -8,9 +8,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Core", "src\LogSco
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Tests", "src\LogScope.Tests\LogScope.Tests.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E003}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Logs", "src\LogScope.Logs\LogScope.Logs.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Analysis1", "src\LogScope.Analysis1\LogScope.Analysis1.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Db", "src\LogScope.Db\LogScope.Db.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogScope.Analysis2", "src\LogScope.Analysis2\LogScope.Analysis2.csproj", "{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

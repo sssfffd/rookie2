@@ -91,7 +91,7 @@ WPF 에는 폴더를 고르는 창이 없습니다. 설정 창의 "폴더 고르
 
 ## 5. 선택 기능: 파이썬 AI 모듈
 
-`src/LogScope.Logs/Ai/AiBridge.cs` + `ai/analyze.py`.
+`src/LogScope.Analysis1/Ai/AiBridge.cs` + `ai/analyze.py`.
 
 **기본은 꺼져 있습니다.** 설정 창에서 켜고, `python.exe` 경로와 스크립트
 경로를 사람이 직접 지정해야만 동작합니다.

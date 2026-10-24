@@ -83,31 +83,31 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Logs\DashboardView.xaml">
+    <Page Include="Analysis1\Dashboard\DashboardView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Logs\AlignPanel.xaml">
+    <Page Include="Analysis1\Align\AlignPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Shell\MainView.xaml">
+    <Page Include="Main\MainView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Shell\PlaceholderView.xaml">
+    <Page Include="Analysis3\PlaceholderView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Db\DbView.xaml">
+    <Page Include="Analysis2\DbView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Logs\GraphView.xaml">
+    <Page Include="Analysis1\Graph\GraphView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Logs\HeatmapView.xaml">
+    <Page Include="Analysis1\Heatmap\HeatmapView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -119,7 +119,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Shell\SavedResultWindow.xaml">
+    <Page Include="Main\SavedResultWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -136,73 +136,74 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Themes\Palette.cs" />
     <Compile Include="Themes\ThemeManager.cs" />
-    <Compile Include="Texts\AlignTexts.cs" />
-    <Compile Include="Texts\CommonTexts.cs" />
-    <Compile Include="Texts\DashboardTexts.cs" />
-    <Compile Include="Texts\DbTexts.cs" />
-    <Compile Include="Texts\GraphTexts.cs" />
-    <Compile Include="Texts\HeatmapTexts.cs" />
-    <Compile Include="Texts\MainTexts.cs" />
-    <Compile Include="Texts\SavedTexts.cs" />
-    <Compile Include="Texts\SettingsTexts.cs" />
-    <Compile Include="Texts\ShellTexts.cs" />
+    <Compile Include="Analysis1\Align\AlignTexts.cs" />
+    <Compile Include="Common\CommonTexts.cs" />
+    <Compile Include="Analysis1\Dashboard\DashboardTexts.cs" />
+    <Compile Include="Analysis2\DbTexts.cs" />
+    <Compile Include="Analysis1\Graph\GraphTexts.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapTexts.cs" />
+    <Compile Include="Main\MainTexts.cs" />
+    <Compile Include="Main\SavedTexts.cs" />
+    <Compile Include="Settings\SettingsTexts.cs" />
+    <Compile Include="Shell\ShellTexts.cs" />
     <Compile Include="Common\ObservableObject.cs" />
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Common\CardTag.cs" />
     <Compile Include="Common\Converters.cs" />
     <Compile Include="Common\AppState.cs" />
+    <Compile Include="Common\DesignData.cs" />
     <Compile Include="Common\BackgroundJob.cs" />
-    <Compile Include="Logs\IoRowVm.cs" />
-    <Compile Include="Logs\GroupRowVm.cs" />
-    <Compile Include="Logs\ChannelListVm.cs" />
-    <Compile Include="Logs\AlignVm.cs" />
-    <Compile Include="Logs\StepVm.cs" />
-    <Compile Include="Shell\AnalysisCardVm.cs" />
-    <Compile Include="Shell\MainVm.cs" />
-    <Compile Include="Shell\HistoryRowVm.cs" />
-    <Compile Include="Logs\GraphVm.cs" />
-    <Compile Include="Logs\DashboardVm.cs" />
-    <Compile Include="Logs\HeatmapVm.cs" />
+    <Compile Include="Analysis1\Graph\IoRowVm.cs" />
+    <Compile Include="Analysis1\Graph\GroupRowVm.cs" />
+    <Compile Include="Analysis1\Graph\ChannelListVm.cs" />
+    <Compile Include="Analysis1\Align\AlignVm.cs" />
+    <Compile Include="Analysis1\Graph\StepVm.cs" />
+    <Compile Include="Main\AnalysisCardVm.cs" />
+    <Compile Include="Main\MainVm.cs" />
+    <Compile Include="Main\HistoryRowVm.cs" />
+    <Compile Include="Analysis1\Graph\GraphVm.cs" />
+    <Compile Include="Analysis1\Dashboard\DashboardVm.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapVm.cs" />
     <Compile Include="Settings\SettingsVm.cs" />
     <Compile Include="Settings\ToleranceRowVm.cs" />
-    <Compile Include="Db\DbVm.cs" />
+    <Compile Include="Analysis2\DbVm.cs" />
     <Compile Include="Shell\ShellVm.cs" />
-    <Compile Include="Logs\GraphCanvas.cs" />
-    <Compile Include="Logs\GraphCanvas.Draw.cs" />
-    <Compile Include="Logs\GraphCanvas.Lane.cs" />
-    <Compile Include="Logs\GraphCanvas.Trace.cs" />
-    <Compile Include="Logs\GraphCanvas.Axis.cs" />
-    <Compile Include="Logs\GraphCanvas.Input.cs" />
-    <Compile Include="Logs\HeatmapCanvas.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Draw.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Lane.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Trace.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Axis.cs" />
+    <Compile Include="Analysis1\Graph\GraphCanvas.Input.cs" />
+    <Compile Include="Analysis1\Heatmap\HeatmapCanvas.cs" />
     <Compile Include="Shell\ShellWindow.xaml.cs">
       <DependentUpon>ShellWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Logs\DashboardView.xaml.cs">
+    <Compile Include="Analysis1\Dashboard\DashboardView.xaml.cs">
       <DependentUpon>DashboardView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Logs\AlignPanel.xaml.cs">
+    <Compile Include="Analysis1\Align\AlignPanel.xaml.cs">
       <DependentUpon>AlignPanel.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Shell\MainView.xaml.cs">
+    <Compile Include="Main\MainView.xaml.cs">
       <DependentUpon>MainView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Shell\PlaceholderView.xaml.cs">
+    <Compile Include="Analysis3\PlaceholderView.xaml.cs">
       <DependentUpon>PlaceholderView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Db\DbView.xaml.cs">
+    <Compile Include="Analysis2\DbView.xaml.cs">
       <DependentUpon>DbView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Logs\GraphView.xaml.cs">
+    <Compile Include="Analysis1\Graph\GraphView.xaml.cs">
       <DependentUpon>GraphView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Logs\HeatmapView.xaml.cs">
+    <Compile Include="Analysis1\Heatmap\HeatmapView.xaml.cs">
       <DependentUpon>HeatmapView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
@@ -214,7 +215,7 @@
       <DependentUpon>LoadingWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Shell\SavedResultWindow.xaml.cs">
+    <Compile Include="Main\SavedResultWindow.xaml.cs">
       <DependentUpon>SavedResultWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
@@ -238,13 +239,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LogScope.Logs\LogScope.Logs.csproj">
+    <ProjectReference Include="..\LogScope.Analysis1\LogScope.Analysis1.csproj">
       <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}</Project>
-      <Name>LogScope.Logs</Name>
+      <Name>LogScope.Analysis1</Name>
     </ProjectReference>
-    <ProjectReference Include="..\LogScope.Db\LogScope.Db.csproj">
+    <ProjectReference Include="..\LogScope.Analysis2\LogScope.Analysis2.csproj">
       <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}</Project>
-      <Name>LogScope.Db</Name>
+      <Name>LogScope.Analysis2</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

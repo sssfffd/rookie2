@@ -352,33 +352,46 @@ config.txt               손으로 고치는 설정 한 파일 (프로그램 이
 build.bat                확장 없이 빌드하는 진입점
 CMakeLists.txt           CMake 로 VS 솔루션을 만들고 싶을 때
 LogScope.sln             VS2017 로 바로 열 때
+```
 
-src/LogScope.Core/       바탕 — 자료 · 파일 읽기 · 설정. 화면도 분석도 모릅니다.
-  Model/                 채널, 데이터셋, 단계(LogSteps), 시간 글자(TimeText)
-  Io/                    CSV / XLSX 읽기, 표 배치 판별, 시간축, 단계 넣기(StepRead)
-  Settings/              설정 저장, 허용 오차 표, 차이량 잣대
-  Text/                  작은 JSON
+**화면 기준**입니다 (1.22). "이 화면을 고치고 싶다" → 아래 표에서 폴더 하나.
 
-src/LogScope.Logs/       분석 1 알맹이 — 로그 비교
-  Compare/               두 로그 견주기(DiffEngine) · 히트맵 집계
-                         HeatTypes(뜻) / HeatmapBuilder(세기) / HeatBuckets(칸 자르기)
-  Align/                 시간 맞추기 — 기준 변화 찾기(TriggerAlign) · 단계 짝짓기(StepPairs)
-  Render/                픽셀 열 접기 (그리기 전 단계 계산)
-  History/               지난 분석 기록
-  Ai/                    선택 기능: 파이썬 모듈 호출
+| 화면 | 화면 (보이는 것 · 단추 · 글자) | 계산 (화면 없이 도는 것) |
+|---|---|---|
+| 메인 | `src/LogScope.App/Main/` | (분석 1 · 2 결과를 모아 보여 줌) · 저장 기록 `src/LogScope.Analysis1/History/` |
+| 맨 위 메뉴 줄 · 창 틀 | `src/LogScope.App/Shell/` | — |
+| 분석 1 대시보드 | `src/LogScope.App/Analysis1/Dashboard/` | `src/LogScope.Analysis1/Compare/` (DiffEngine) |
+| 분석 1 그래프 (단계 포함) | `src/LogScope.App/Analysis1/Graph/` | `src/LogScope.Analysis1/Render/` · `Align/` (단계 짝 · 칸) |
+| 분석 1 히트맵 | `src/LogScope.App/Analysis1/Heatmap/` | `src/LogScope.Analysis1/Compare/` (Heat…) |
+| 분석 1 시간 맞추기 판 | `src/LogScope.App/Analysis1/Align/` | `src/LogScope.Analysis1/Align/` (TriggerAlign) |
+| 분석 2 (DB) | `src/LogScope.App/Analysis2/` | `src/LogScope.Analysis2/` |
+| 분석 3 (준비 중) | `src/LogScope.App/Analysis3/` | — |
+| 설정 창 | `src/LogScope.App/Settings/` | `src/LogScope.Core/Settings/` |
+| 여러 화면이 같이 쓰는 것 | `src/LogScope.App/Common/` · `Themes/` | `src/LogScope.Core/` (로그 읽기 · 자료 · 설정) |
 
-src/LogScope.Db/         분석 2 알맹이 — DB 분석 (여섯 파일, 아래 9 장)
+화면 폴더 하나에는 그 화면의 **XAML(모양) · 코드 · 뷰모델 · 글자 파일(`…Texts.cs`)** 이 다
+들어 있습니다. 예를 들어 그래프 화면은:
 
-src/LogScope.App/        화면 (WPF). 레이어가 아니라 기능으로 묶었습니다.
-  Shell/                 창 틀 + 메인 화면 (셸 창 · 종합 분석 결과 · 저장 결과)
-  Logs/                  분석 1 화면 (대시보드 · 그래프 · 히트맵 · IO 목록 · 시간 맞추기 · 단계)
-                         GraphCanvas 는 한 클래스를 파일 다섯으로 나눴습니다 (partial):
-                         .cs(틀) .Draw .Lane .Trace .Axis .Input
-  Db/                    분석 2 화면 (DbView + DbVm, 셋뿐입니다)
-  Settings/              설정 창
-  Common/                바꾸미 · 명령 · 상태 · 배경 작업 · 작은 창
-  Themes/                색 사전(Light/Dark) + 컨트롤 모양
+```
+src/LogScope.App/Analysis1/Graph/
+  GraphView.xaml        모양 (Visual Studio 디자이너로 열림)
+  GraphView.xaml.cs     단추를 눌렀을 때
+  GraphVm.cs            화면이 보여 주는 값
+  GraphTexts.cs         단추 이름 · 설명 글  ← 글자만 고칠 때
+  GraphCanvas.*.cs      그래프 그리기 (한 클래스를 파일 여섯으로: 틀 · Draw · Lane · Trace · Axis · Input)
+  ChannelListVm.cs · IoRowVm.cs · GroupRowVm.cs   왼쪽 IO 목록 · 그룹
+  StepVm.cs             정렬(단계) 단추
+```
 
+계산 쪽 프로젝트가 화면 쪽과 나뉘어 있는 까닭: 계산은 WPF 없이 돌아서 시험(Tests)을 어디서나
+돌릴 수 있고, 분석 1 계산과 분석 2 계산이 서로를 모르게(따로 컴파일) 해 둡니다. 1.21 까지 이름은
+`LogScope.Logs` (→ `LogScope.Analysis1`) · `LogScope.Db` (→ `LogScope.Analysis2`) 였습니다.
+
+```
+src/LogScope.Core/       공통 — 로그 읽기 · 자료 · 설정 · 단계 이름 글(Model/StepText.cs)
+src/LogScope.Analysis1/  분석 1 계산 — Compare(견주기 · 히트맵) · Align(시간 맞추기 · 단계) · Render · History · Ai
+src/LogScope.Analysis2/  분석 2 계산 — DB 읽기 · 견주기 · 판정 · SQL
+src/LogScope.App/        화면 — 위 표의 폴더들 (자세히: src/LogScope.App/README.md)
 src/LogScope.Tests/      콘솔 자체 테스트
 ai/                      선택 기능인 파이썬 분석 모듈 (없어도 됩니다)
 claude-log/              작업 대화 기록
@@ -396,8 +409,8 @@ docs/                    보안 메모, 구조 설명
 |---|---|---|
 | **LogScope.App** | **실행 파일. 이게 시작 프로젝트입니다** | `LogScope.exe` (out 폴더에서는 `config.txt` 의 `name`) |
 | LogScope.Core | 바탕 — 자료 · 파일 읽기 · 설정 | `LogScope.Core.dll` |
-| LogScope.Logs | 분석 1 알맹이 — 로그 비교 | `LogScope.Logs.dll` |
-| LogScope.Db | 분석 2 알맹이 — DB 분석 | `LogScope.Db.dll` |
+| LogScope.Analysis1 | 분석 1 알맹이 — 로그 비교 | `LogScope.Analysis1.dll` |
+| LogScope.Analysis2 | 분석 2 알맹이 — DB 분석 | `LogScope.Analysis2.dll` |
 | LogScope.Tests | 콘솔 자체 테스트 (실행 파일과 무관) | `LogScope.Tests.exe` |
 
 **Logs 와 Db 는 서로를 모릅니다.** 둘 다 Core 만 봅니다. 한쪽이 다른 쪽을
@@ -416,10 +429,10 @@ docs/                    보안 메모, 구조 설명
 
 | 고치려는 것 | 여는 폴더 | 파일 수 |
 |---|---|---|
-| DB 화면 | `src/LogScope.App/Db/` | 3 |
-| DB 읽기 · 견주기 · SQL | `src/LogScope.Db/` | 6 |
-| 그래프 · 히트맵 화면 | `src/LogScope.App/Logs/` | 17 |
-| 견주기 · 히트맵 셈 | `src/LogScope.Logs/` | 폴더별 2~3 |
+| DB 화면 | `src/LogScope.App/Analysis2/` | 3 |
+| DB 읽기 · 견주기 · SQL | `src/LogScope.Analysis2/` | 6 |
+| 그래프 · 히트맵 화면 | `src/LogScope.App/Analysis1/` | 17 |
+| 견주기 · 히트맵 셈 | `src/LogScope.Analysis1/` | 폴더별 2~3 |
 | 설정 창 | `src/LogScope.App/Settings/` | 4 |
 | 색 · 컨트롤 모양 | `src/LogScope.App/Themes/` | 5 |
 
@@ -599,20 +612,22 @@ git 이 PATH 에 없으면 이 줄들은 그냥 나오지 않습니다.
 
 파일을 고칠 때마다 `version.txt` 를 0.01 씩 올립니다.
 
-## 6-0. 화면 글자 — 화면마다 파일 하나 (1.18)
+## 6-0. 화면 글자 — 화면마다 파일 하나 (1.18, 1.22)
 
-단추 이름 · 칸 이름 · 마우스를 올리면 뜨는 설명은 **`src/LogScope.App/Texts/`** 에
-화면마다 파일 하나로 모여 있습니다. 바꿀 글을 Ctrl+F 로 찾아 따옴표 안만 고치고
-다시 빌드합니다. 화면 → 파일 표와, 코드가 그때그때 짓는 글(판정 문장 · 요약 등)이
-어디 있는지는 [`src/LogScope.App/Texts/README.md`](src/LogScope.App/Texts/README.md).
+단추 이름 · 칸 이름 · 마우스를 올리면 뜨는 설명은 **그 화면 폴더의 `…Texts.cs`** 한 파일에
+모여 있습니다. 바꿀 글을 Ctrl+F 로 찾아 따옴표 안만 고치고 다시 빌드합니다. 화면 → 파일 표와,
+코드가 그때그때 짓는 글(판정 문장 · 요약 등)이 어디 있는지는
+[`src/LogScope.App/README.md`](src/LogScope.App/README.md).
 
 | 화면 | 파일 |
 |---|---|
-| 메인 | `MainTexts.cs` |
-| 맨 위 메뉴 줄 | `ShellTexts.cs` |
-| 분석 1 대시보드 · 그래프 · 히트맵 · 시간 맞추기 판 | `DashboardTexts.cs` · `GraphTexts.cs` · `HeatmapTexts.cs` · `AlignTexts.cs` |
-| 분석 2 | `DbTexts.cs` |
-| 설정 창 · 저장된 분석 창 · 작은 창들 | `SettingsTexts.cs` · `SavedTexts.cs` · `CommonTexts.cs` |
+| 메인 · 저장된 분석 창 | `Main/MainTexts.cs` · `Main/SavedTexts.cs` |
+| 맨 위 메뉴 줄 | `Shell/ShellTexts.cs` |
+| 분석 1 대시보드 · 그래프 · 히트맵 · 시간 맞추기 판 | `Analysis1/Dashboard/DashboardTexts.cs` · `Analysis1/Graph/GraphTexts.cs` · `Analysis1/Heatmap/HeatmapTexts.cs` · `Analysis1/Align/AlignTexts.cs` |
+| 분석 2 | `Analysis2/DbTexts.cs` |
+| 설정 창 · 작은 창들 | `Settings/SettingsTexts.cs` · `Common/CommonTexts.cs` |
+
+(모두 `src/LogScope.App/` 아래)
 
 ## 6-1. 손으로 고치는 설정 — `config.txt` 한 파일
 
@@ -823,7 +838,7 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
   칸마다 맞춥니다.
 - **그래프 — 도구 줄 [정렬] [단계마다] [전체 구간 ▼]** (1.15, 1.16). [단계마다] 는
   켜고 끄는 단추, [전체 구간 ▼] 는 목록(전체 구간 · 1 · 2 · …)입니다.
-  - 단추 글자: `src/LogScope.App/Texts/GraphTexts.cs` 의 `StepCaption` · `StepEach` ·
+  - 단추 글자: `src/LogScope.App/Analysis1/Graph/GraphTexts.cs` 의 `StepCaption` · `StepEach` ·
     `StepWhole` (1.18 부터, 화면 글자 파일 — 아래 "화면 글자" 참고)
   - 단계 이름 앞뒤에 붙는 글: `src/LogScope.Core/Model/StepText.cs`
 
@@ -987,12 +1002,12 @@ private static StepTable Mine(LogDataset ds)
 |---|---|
 | 단계 하나 · 단계 목록 · 규칙(겹침·상한) | `src/LogScope.Core/Model/LogSteps.cs` |
 | **직접 파싱해 넣는 자리** | `src/LogScope.Core/Io/StepRead.cs` (`Mine`) |
-| 두 로그의 단계 짝짓기 · 보여 줄 구간 | `src/LogScope.Logs/Align/StepPairs.cs` |
-| 히트맵의 칸 자르기 (시간 / 단계) | `src/LogScope.Logs/Compare/HeatBuckets.cs` |
-| 그래프 도구 줄의 단계 고르기·나눠 보기 | `src/LogScope.App/Logs/StepVm.cs` |
-| 나눠 보기의 칸과 폭 나누기 | `src/LogScope.Logs/Align/StepBands.cs` |
-| 칸으로 나눠 그리기 | `src/LogScope.App/Logs/GraphCanvas.Lane.cs` (`DrawLaneInBands`) |
-| 가로축 0 자리 (눈금 글자만) | `src/LogScope.App/Logs/GraphCanvas.cs` (`ZeroAt`) |
+| 두 로그의 단계 짝짓기 · 보여 줄 구간 | `src/LogScope.Analysis1/Align/StepPairs.cs` |
+| 히트맵의 칸 자르기 (시간 / 단계) | `src/LogScope.Analysis1/Compare/HeatBuckets.cs` |
+| 그래프 도구 줄의 단계 고르기·나눠 보기 | `src/LogScope.App/Analysis1/Graph/StepVm.cs` |
+| 나눠 보기의 칸과 폭 나누기 | `src/LogScope.Analysis1/Align/StepBands.cs` |
+| 칸으로 나눠 그리기 | `src/LogScope.App/Analysis1/Graph/GraphCanvas.Lane.cs` (`DrawLaneInBands`) |
+| 가로축 0 자리 (눈금 글자만) | `src/LogScope.App/Analysis1/Graph/GraphCanvas.cs` (`ZeroAt`) |
 
 ---
 
@@ -1006,7 +1021,7 @@ private static StepTable Mine(LogDataset ds)
 
 | 글자 | 어디서 바꾸나 | 다시 빌드 |
 |---|---|---|
-| **DB 목록 칸 머리글 (`IO명` · `이전 value` …)** | **`src/LogScope.Db/DbNames.cs` 한 줄** | 예 |
+| **DB 목록 칸 머리글 (`IO명` · `이전 value` …)** | **`src/LogScope.Analysis2/DbNames.cs` 한 줄** | 예 |
 | 분석 화면 이름 · 프로그램 이름 · 긴 이름 | `config.txt` 의 `analysis1` · `name` · `fullname` | 아니오 |
 | 갈래·구분 (`행` `알림` `달라짐` …) | `DbDiffLine` 의 `Kind...` · `Change...` 상수 | 예 |
 | 줄 색을 가르는 값 (`changed` `good` …) | `IoRowVm` · `ScoreBands` · `HistoryRowVm` 의 상수 | 예 |
@@ -1033,7 +1048,7 @@ old_2026-03-14.csv — 6 개 열 중 3 번(io)으로 행을 짝짓고 4 번(valu
 견줍니다. 안 본 열: no · addr · unit · note
 ```
 
-자리를 바꾸려면 `src/LogScope.Db/DbNames.cs` 의 **두 줄**입니다.
+자리를 바꾸려면 `src/LogScope.Analysis2/DbNames.cs` 의 **두 줄**입니다.
 
 ```csharp
 public const int CsvKeyColumn = 3;
@@ -1045,7 +1060,7 @@ public const int CsvValueColumn = 4;
 
 ### 고칠 때 여는 파일 — 여섯 개
 
-DB 쪽 알맹이는 **`src/LogScope.Db/` 한 프로젝트, 여섯 파일**입니다. 0.73
+DB 쪽 알맹이는 **`src/LogScope.Analysis2/` 한 프로젝트, 여섯 파일**입니다. 0.73
 전에는 열 파일이었고, 0.76 까지는 `LogScope.Core` 안에 섞여 있었습니다.
 
 | 파일 | 무엇이 | 언제 여나 |
@@ -1053,7 +1068,7 @@ DB 쪽 알맹이는 **`src/LogScope.Db/` 한 프로젝트, 여섯 파일**입니
 | **`DbNames.cs`** | 칸 이름과 `.csv` 의 자리 번호 | **이름이나 3 · 4 자리를 바꿀 때** (한 곳) |
 | **`DbRead.cs`** | 폴더 훑기 · `.sql` · `.csv` | **새 형식을 더하거나 읽는 법을 고칠 때** |
 
-화면 쪽은 `src/LogScope.App/Db/` 세 파일이고, 부르는 자리는 넷입니다.
+화면 쪽은 `src/LogScope.App/Analysis2/` 세 파일이고, 부르는 자리는 넷입니다.
 
 ```
 DbView.xaml.cs:324   DbFolderReader.Read(path, null)   ← 파일을 읽어 자료로
@@ -1153,7 +1168,7 @@ VALVE_1     OPEN         CLOSE  (OPEN → CLOSE)
                                    └→ DbSql → 맞추는 SQL
 ```
 
-화면 쪽은 **`src/LogScope.App/Db/` 한 폴더, 세 파일**입니다
+화면 쪽은 **`src/LogScope.App/Analysis2/` 한 폴더, 세 파일**입니다
 (`DbView.xaml` · `DbView.xaml.cs` · `DbVm.cs`).
 
 ### 어디를 읽나 — 화면에서 정합니다
@@ -1685,7 +1700,7 @@ IO 이름                퍼센트 (%)    값 (절대)
   [히트맵 다시 계산] 을 따로 눌러야 했음).
 - **검색** 칸은 **IO 이름 칸 바로 위**에 있습니다 (1.10, 전에는 도구 줄).
   그래프 검색과 같습니다 (이름에 그 글자가 들면, 대소문자 안 가림). 치는 대로 바로 걸러지고, 맞는 IO 가 없는 그룹은 사라집니다.
-- 규칙은 `src/LogScope.Logs/Compare/HeatLayout.cs` 한 곳입니다.
+- 규칙은 `src/LogScope.Analysis1/Compare/HeatLayout.cs` 한 곳입니다.
 
 ### 히트맵 칸의 숫자
 

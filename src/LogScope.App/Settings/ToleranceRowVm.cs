@@ -1,9 +1,9 @@
 ﻿using System;
 using LogScope.Core.Settings;
 using System.Globalization;
-using LogScope.Logs.Compare;
-
+using LogScope.Analysis1.Compare;
 using LogScope.App.Common;
+
 namespace LogScope.App.Settings
 {
     /// <summary>

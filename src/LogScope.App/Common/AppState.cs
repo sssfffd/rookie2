@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using LogScope.Logs.Align;
-using LogScope.Logs.Compare;
+using LogScope.Analysis1.Align;
+using LogScope.Analysis1.Compare;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
-using LogScope.Db;
+using LogScope.Analysis2;
 
 namespace LogScope.App.Common
 {
@@ -27,7 +27,7 @@ namespace LogScope.App.Common
         // ---- 분석 2 (DB) 가 마지막으로 센 수 ----
         //
         // 메인 화면 칸이 PASS · WARNING · FAIL 을 적는 데 씁니다. 수만
-        // 둡니다 — 판정하는 규칙은 LogScope.Db 의 DbVerdict 한 곳입니다.
+        // 둡니다 — 판정하는 규칙은 LogScope.Analysis2 의 DbVerdict 한 곳입니다.
         //
         // 아직 한 번도 안 읽었으면 HasDbResult 가 거짓입니다. 0 으로 두면
         // "차이 없음(PASS)" 과 "아직 안 봄" 을 가릴 수 없습니다.

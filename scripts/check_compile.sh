@@ -8,7 +8,7 @@
 #
 #  하는 일
 #    1. LogScope.Core 컴파일 (자료 · 파일 · 설정)
-#    2. LogScope.Logs · LogScope.Db 컴파일 (분석 1 · 2 의 알맹이)
+#    2. LogScope.Analysis1 · LogScope.Analysis2 컴파일 (분석 1 · 2 의 알맹이)
 #    3. LogScope.Tests 컴파일 + <b>실제 실행</b>
 #    4. LogScope.App 컴파일 (WPF 가 없으므로 scripts/wpfstub 으로 대신)
 #
@@ -55,15 +55,15 @@ mcs -langversion:latest -target:library -out:"$OUT/LogScope.Core.dll" $REFS \
 # Logs 와 Db 는 서로를 모릅니다. 따로 컴파일하므로, 한쪽이 다른 쪽을
 # 쓰기 시작하면 여기서 바로 "그런 타입 없다" 가 납니다 — 모듈 경계를
 # 사람이 지키는 게 아니라 컴파일러가 지킵니다.
-echo "[2/5] LogScope.Logs · LogScope.Db"
-mcs -langversion:latest -target:library -out:"$OUT/LogScope.Logs.dll" $REFS \
-    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Logs" -name '*.cs')
-mcs -langversion:latest -target:library -out:"$OUT/LogScope.Db.dll" $REFS \
-    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Db" -name '*.cs')
+echo "[2/5] LogScope.Analysis1 · LogScope.Analysis2"
+mcs -langversion:latest -target:library -out:"$OUT/LogScope.Analysis1.dll" $REFS \
+    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Analysis1" -name '*.cs')
+mcs -langversion:latest -target:library -out:"$OUT/LogScope.Analysis2.dll" $REFS \
+    -r:"$OUT/LogScope.Core.dll" $(find "$ROOT/src/LogScope.Analysis2" -name '*.cs')
 
 echo "[3/5] LogScope.Tests"
 mcs -langversion:latest -target:exe -out:"$OUT/LogScope.Tests.exe" $REFS \
-    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Logs.dll" -r:"$OUT/LogScope.Db.dll" \
+    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Analysis1.dll" -r:"$OUT/LogScope.Analysis2.dll" \
     $(find "$ROOT/src/LogScope.Tests" -name '*.cs')
 
 echo "[4/5] 테스트 실행"
@@ -80,7 +80,7 @@ mcs -langversion:latest -target:library -out:"$OUT/app/WpfStub.dll" \
     "$ROOT"/scripts/wpfstub/*.cs
 mcs -langversion:latest -target:library -out:"$OUT/app/LogScope.App.dll" \
     -r:System.dll -r:System.Core.dll -r:System.Xml.dll \
-    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Logs.dll" -r:"$OUT/LogScope.Db.dll" \
+    -r:"$OUT/LogScope.Core.dll" -r:"$OUT/LogScope.Analysis1.dll" -r:"$OUT/LogScope.Analysis2.dll" \
     -r:"$OUT/app/WpfStub.dll" \
     -nowarn:0067,0414,0169,0649 \
     $(find "$ROOT/src/LogScope.App" -name '*.cs') "$OUT/app/XamlStubs.cs"

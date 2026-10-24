@@ -18,7 +18,7 @@ namespace LogScope.Core.Model
     /// ("1단계 (2)").
     ///
     /// <b>단추 이름</b>([정렬] [단계마다] [전체 구간])은 1.18 에 화면 글자 파일로
-    /// 옮겼습니다 — src/LogScope.App/Texts/GraphTexts.cs 의 Step... 세 줄.
+    /// 옮겼습니다 — src/LogScope.App/Analysis1/Graph/GraphTexts.cs 의 Step... 세 줄.
     ///
     /// 단계를 <b>짝짓는</b> 데는 이 글자를 쓰지 않습니다 — 짝은 단계 IO 값
     /// 그대로 봅니다. 그래서 여기를 고쳐도 짝이 바뀌지 않습니다.

@@ -224,8 +224,8 @@ rem  here. Renaming on copy keeps MSBuild out of parsing config.txt -- one
 rem  bad line there would stop the whole build.
 copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe" "%OUT%\!APPNAME!.exe" >nul
 copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Core.dll" "%OUT%\" >nul
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Logs.dll" "%OUT%\" >nul
-copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Db.dll" "%OUT%\" >nul
+copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Analysis1.dll" "%OUT%\" >nul
+copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.Analysis2.dll" "%OUT%\" >nul
 if exist "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" (
   copy /y "%ROOT%src\LogScope.App\bin\%CONFIG%\LogScope.exe.config" "%OUT%\!APPNAME!.exe.config" >nul
 )

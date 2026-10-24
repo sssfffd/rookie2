@@ -1,10 +1,18 @@
 ﻿<Window x:Class="LogScope.App.Shell.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:t="clr-namespace:LogScope.App.Texts"
-        xmlns:v="clr-namespace:LogScope.App.Shell"
-        xmlns:logs="clr-namespace:LogScope.App.Logs"
-        xmlns:db="clr-namespace:LogScope.App.Db"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:common="clr-namespace:LogScope.App.Common"
+        mc:Ignorable="d"
+        d:DataContext="{x:Static common:DesignData.Shell}"
+        xmlns:t="clr-namespace:LogScope.App.Shell"
+        xmlns:a3="clr-namespace:LogScope.App.Analysis3"
+        xmlns:main="clr-namespace:LogScope.App.Main"
+        xmlns:heat="clr-namespace:LogScope.App.Analysis1.Heatmap"
+        xmlns:graph="clr-namespace:LogScope.App.Analysis1.Graph"
+        xmlns:dash="clr-namespace:LogScope.App.Analysis1.Dashboard"
+        xmlns:db2="clr-namespace:LogScope.App.Analysis2"
         Width="1360" Height="860" MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Window}"
@@ -169,24 +177,24 @@
         <Grid>
 
             <!-- 메인 -->
-            <v:MainView x:Name="Main" DataContext="{Binding Main}"
+            <main:MainView x:Name="Main" DataContext="{Binding Main}"
                         Visibility="{Binding DataContext.ShowMain,
                                      RelativeSource={RelativeSource AncestorType=Window},
                                      Converter={StaticResource BoolToVisibility}}" />
 
             <!-- 분석 1 — 지금까지 만든 것. 안에서 다시 셋으로 갈립니다. -->
             <Grid Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}">
-                <logs:DashboardView x:Name="Dashboard" DataContext="{Binding Dashboard}"
+                <dash:DashboardView x:Name="Dashboard" DataContext="{Binding Dashboard}"
                                  Visibility="{Binding DataContext.ShowDashboard,
                                               RelativeSource={RelativeSource AncestorType=Window},
                                               Converter={StaticResource BoolToVisibility}}" />
 
-                <logs:GraphView x:Name="Graph" DataContext="{Binding Graph}"
+                <graph:GraphView x:Name="Graph" DataContext="{Binding Graph}"
                              Visibility="{Binding DataContext.ShowGraph,
                                           RelativeSource={RelativeSource AncestorType=Window},
                                           Converter={StaticResource BoolToVisibility}}" />
 
-                <logs:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
+                <heat:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
                                Visibility="{Binding DataContext.ShowHeatmap,
                                             RelativeSource={RelativeSource AncestorType=Window},
                                             Converter={StaticResource BoolToVisibility}}" />
@@ -201,13 +209,13 @@
               Visibility 는 기본값 Visible 로 남아 이 화면이 메인 화면 위에
               계속 덮입니다. (실제로 그랬습니다.)
             -->
-            <db:DbView x:Name="Db"
+            <db2:DbView x:Name="Db"
                       Visibility="{Binding DataContext.ShowAnalysis2,
                                    RelativeSource={RelativeSource AncestorType=Window},
                                    Converter={StaticResource BoolToVisibility}}" />
 
             <!-- 분석 3 — 아직 빈 화면입니다. -->
-            <v:PlaceholderView Heading="{Binding Analysis3Name}"
+            <a3:PlaceholderView Heading="{Binding Analysis3Name}"
                                Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
     </DockPanel>

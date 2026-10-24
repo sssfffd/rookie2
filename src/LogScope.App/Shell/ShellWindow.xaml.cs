@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using LogScope.Logs.Align;
+using LogScope.Analysis1.Align;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
-using LogScope.Db;
-
+using LogScope.Analysis2;
+using LogScope.App.Analysis1.Dashboard;
+using LogScope.App.Analysis1.Heatmap;
 using LogScope.App.Common;
-using LogScope.App.Logs;
+using LogScope.App.Main;
 using LogScope.App.Settings;
+
 namespace LogScope.App.Shell
 {
     /// <summary>

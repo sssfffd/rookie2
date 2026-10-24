@@ -9,13 +9,13 @@
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:inf="clr-namespace:LogScope.App.Common">
+                    xmlns:common="clr-namespace:LogScope.App.Common">
 
     <!-- ===================== 값 바꾸미 ===================== -->
 
-    <inf:BoolToVisibility x:Key="BoolToVisibility" />
-    <inf:TextToVisibility x:Key="TextToVisibility" />
-    <inf:ZeroToVisible x:Key="ZeroToVisible" />
+    <common:BoolToVisibility x:Key="BoolToVisibility" />
+    <common:TextToVisibility x:Key="TextToVisibility" />
+    <common:ZeroToVisible x:Key="ZeroToVisible" />
 
     <!-- ===================== 글자 ===================== -->
 

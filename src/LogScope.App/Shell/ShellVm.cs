@@ -3,10 +3,13 @@ using System.IO;
 using LogScope.Core;
 using LogScope.Core.Model;
 using LogScope.Core.Settings;
-
+using LogScope.App.Analysis1.Align;
+using LogScope.App.Analysis1.Dashboard;
+using LogScope.App.Analysis1.Graph;
+using LogScope.App.Analysis1.Heatmap;
 using LogScope.App.Common;
-using LogScope.App.Logs;
-using LogScope.App.Settings;
+using LogScope.App.Main;
+
 namespace LogScope.App.Shell
 {
     /// <summary>창 전체의 상태. 위쪽 메뉴 줄과 아래쪽 알림 줄이 여기를 봅니다.</summary>

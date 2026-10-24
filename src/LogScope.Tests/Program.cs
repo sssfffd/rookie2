@@ -4,13 +4,13 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using LogScope.Core.Text;
-using LogScope.Logs.Align;
-using LogScope.Logs.Compare;
-using LogScope.Db;
-using LogScope.Logs.History;
+using LogScope.Analysis1.Align;
+using LogScope.Analysis1.Compare;
+using LogScope.Analysis2;
+using LogScope.Analysis1.History;
 using LogScope.Core.Io;
 using LogScope.Core.Model;
-using LogScope.Logs.Render;
+using LogScope.Analysis1.Render;
 using LogScope.Core.Settings;
 
 namespace LogScope.Tests

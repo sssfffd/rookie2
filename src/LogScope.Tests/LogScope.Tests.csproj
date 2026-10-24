@@ -48,13 +48,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LogScope.Logs\LogScope.Logs.csproj">
+    <ProjectReference Include="..\LogScope.Analysis1\LogScope.Analysis1.csproj">
       <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E004}</Project>
-      <Name>LogScope.Logs</Name>
+      <Name>LogScope.Analysis1</Name>
     </ProjectReference>
-    <ProjectReference Include="..\LogScope.Db\LogScope.Db.csproj">
+    <ProjectReference Include="..\LogScope.Analysis2\LogScope.Analysis2.csproj">
       <Project>{1A6D0B2C-5E44-4C21-9D1E-0B7A31C6E005}</Project>
-      <Name>LogScope.Db</Name>
+      <Name>LogScope.Analysis2</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

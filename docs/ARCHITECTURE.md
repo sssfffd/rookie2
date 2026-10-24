@@ -1,12 +1,16 @@
 # 구조
 
+> **폴더는 화면 기준**입니다 (1.22) — 어느 화면이 어느 폴더인지는 루트 `README.md` 3 장과
+> `src/LogScope.App/README.md`. 아래는 그 밑의 어셈블리 경계 이야기입니다. 1.21 까지 이름
+> `LogScope.Logs` · `LogScope.Db` 는 `LogScope.Analysis1` · `LogScope.Analysis2` 로 바뀌었습니다.
+
 ## 왜 DLL 하나 + EXE 하나인가
 
 요구사항 0번의 "파일 파싱/데이터 부분과 UI 부분이 나뉘어" 를 지키는 가장 단순한
 모양입니다.
 
 ```
-LogScope.exe  ──참조──▶  LogScope.Logs.dll · LogScope.Db.dll  ──참조──▶  LogScope.Core.dll
+LogScope.exe  ──참조──▶  LogScope.Analysis1.dll · LogScope.Analysis2.dll  ──참조──▶  LogScope.Core.dll
    (WPF)                   (파싱 / 데이터 / 비교 / 히트맵 / 설정)
 ```
 

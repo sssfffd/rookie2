@@ -1,0 +1,28 @@
+﻿<UserControl x:Class="LogScope.App.Analysis3.PlaceholderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignWidth="1200" d:DesignHeight="760"
+             xmlns:t="clr-namespace:LogScope.App.Common"
+             Background="{DynamicResource Brush.Window}"
+             Foreground="{DynamicResource Brush.Text}"
+             FontFamily="Segoe UI" FontSize="12">
+
+    <!--
+      아직 만들지 않은 분석 화면. 진짜로 아무것도 안 그리면 프로그램이
+      멈춘 것처럼 보여서, 여기가 어디인지만 적어 둡니다.
+    -->
+    <Border Background="{DynamicResource Brush.Window}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
+            <TextBlock x:Name="TitleText" Text="분석" Style="{StaticResource H1}"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="{x:Static t:CommonTexts.PlaceholderNote}" Style="{StaticResource Muted}"
+                       HorizontalAlignment="Center" Margin="0,8,0,0" />
+            <TextBlock Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"
+                       TextAlignment="Center" Margin="0,14,0,0"
+                       Text="{x:Static t:CommonTexts.PlaceholderLogScopeNote}" />
+        </StackPanel>
+    </Border>
+</UserControl>

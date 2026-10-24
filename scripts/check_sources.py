@@ -249,6 +249,12 @@ for x in xamls:
     for pfx, typ, mem in re.findall(r'x:Static\s+(\w+):(\w+)\.(\w+)', t):
         uses.append((pfx, typ, mem))
 
+    # 선언만 남은 옛 이름 공간 (1.22 에 폴더를 옮기며 DbView 에 하나 남았습니다).
+    # 안 쓰는 접두어라도 없는 이름 공간을 가리키면 XAML 컴파일러가 막을 수 있습니다.
+    for pfx, ns in clr.items():
+        if ns.startswith('LogScope.') and ns not in ns_types:
+            bad('XAML 이 없는 이름 공간을 가리킴 xmlns:%s="%s" <- %s' % (pfx, ns, rel))
+
     for pfx, typ, mem in uses:
         if pfx not in declared:
             bad('XAML 접두어 %s: 가 선언되어 있지 않음 (%s:%s) <- %s' % (pfx, pfx, typ, rel))
@@ -289,8 +295,8 @@ for x in xamls:
 
 # 7c) 폴더 이름과 이름 공간이 같은가
 #
-#     0.77 부터 폴더가 "기능" 입니다 (App/Db, App/Logs, …). 폴더와 이름
-#     공간이 어긋나면 "DB 화면은 App/Db 를 열면 된다" 가 거짓말이 되고,
+#     1.22 부터 폴더가 "화면" 입니다 (App/Main, App/Analysis1/Graph, …). 폴더와 이름
+#     공간이 어긋나면 "DB 화면은 App/Analysis2 를 열면 된다" 가 거짓말이 되고,
 #     XAML 의 clr-namespace 를 적을 때마다 틀립니다. 컴파일은 되므로
 #     아무도 말해 주지 않습니다.
 for c in css:

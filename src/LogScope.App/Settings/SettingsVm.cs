@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using LogScope.App.Themes;
 using LogScope.Core;
-using LogScope.Logs.Compare;
+using LogScope.Analysis1.Compare;
 using LogScope.Core.Settings;
-
+using LogScope.App.Analysis1.Dashboard;
 using LogScope.App.Common;
-using LogScope.App.Logs;
+using LogScope.App.Themes;
+
 namespace LogScope.App.Settings
 {
     /// <summary>

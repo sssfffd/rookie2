@@ -1,8 +1,13 @@
 ﻿<Window x:Class="LogScope.App.Settings.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:t="clr-namespace:LogScope.App.Texts"
-        xmlns:vm="clr-namespace:LogScope.App.Settings"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:common="clr-namespace:LogScope.App.Common"
+        mc:Ignorable="d"
+        d:DataContext="{x:Static common:DesignData.Settings}"
+        xmlns:t="clr-namespace:LogScope.App.Settings"
+        xmlns:settings="clr-namespace:LogScope.App.Settings"
         Title="{x:Static t:SettingsTexts.WindowTitle}" Width="760" Height="560" MinWidth="620" MinHeight="460"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource Brush.Window}"
@@ -200,7 +205,7 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding Tolerances}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:ToleranceRowVm}">
+                                    <DataTemplate DataType="{x:Type settings:ToleranceRowVm}">
                                         <Grid Margin="0,2">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
