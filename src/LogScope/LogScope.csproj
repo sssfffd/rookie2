@@ -97,10 +97,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Analysis3\PlaceholderView.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Analysis2\DbView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -248,10 +244,6 @@
       <DependentUpon>MainView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Analysis3\PlaceholderView.xaml.cs">
-      <DependentUpon>PlaceholderView.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Analysis2\DbView.xaml.cs">
       <DependentUpon>DbView.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -298,4 +290,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildThisFileDirectory)..\..\tools\BuildInfo.targets" />
+  <!-- Analysis3 폴더는 통째로 갈아 끼우는 자리 — 파일 목록을 여기 적지 않고 폴더에서 찾습니다.
+       반드시 맨 끝에 두세요 (위에 VS 가 적어 넣은 Analysis3 줄을 지우고 다시 넣습니다). -->
+  <Import Project="$(MSBuildThisFileDirectory)..\..\tools\Analysis3.targets" />
 </Project>

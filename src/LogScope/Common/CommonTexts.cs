@@ -10,11 +10,11 @@ namespace LogScope.Common
     /// scripts/check_sources.py 가 "x:Static 대상 없음" 으로 알려 줍니다.
     /// 줄바꿈은 \n 입니다.
     ///
-    /// 화면 파일: src/LogScope/Analysis3/PlaceholderView.xaml · src/LogScope/Common/LoadingWindow.xaml · src/LogScope/Common/TextInputWindow.xaml · src/LogScope/Common/TextViewWindow.xaml
+    /// 화면 파일: src/LogScope/Analysis3/Analysis3View.xaml (분석 3 자리) · src/LogScope/Common/LoadingWindow.xaml · src/LogScope/Common/TextInputWindow.xaml · src/LogScope/Common/TextViewWindow.xaml
     /// </summary>
     public static class CommonTexts
     {
-        // ---- PlaceholderView ----
+        // ---- 분석 3 자리 (Analysis3View) ----
 
         /// <summary>글</summary>
         public const string PlaceholderNote = "아직 만들지 않았습니다.";

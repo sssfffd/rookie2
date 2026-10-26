@@ -214,9 +214,17 @@
                                    RelativeSource={RelativeSource AncestorType=Window},
                                    Converter={StaticResource BoolToVisibility}}" />
 
-            <!-- 분석 3 — 아직 빈 화면입니다. -->
-            <a3:PlaceholderView Heading="{Binding Analysis3Name}"
-                               Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
+            <!--
+              분석 3 — Analysis3 폴더는 통째로 갈아 끼우는 자리입니다 (1.27).
+              그 폴더에 LogScope.Analysis3.Analysis3View 만 있으면 여기 뜹니다.
+              속성은 아무것도 넘기지 않습니다 — 갈아 끼운 화면이 몰라도 되게.
+              보이기 여부를 DbView 처럼 창의 뷰모델에서 찾는 것은, 그 화면이
+              제 DataContext 를 바꿔도 메인 화면 위에 덮이지 않게 하려는 것입니다.
+            -->
+            <a3:Analysis3View
+                      Visibility="{Binding DataContext.ShowAnalysis3,
+                                   RelativeSource={RelativeSource AncestorType=Window},
+                                   Converter={StaticResource BoolToVisibility}}" />
         </Grid>
     </DockPanel>
 </Window>

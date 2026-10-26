@@ -335,12 +335,24 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
     listed = set()
     for m in re.findall(r'<(?:Compile|Page|ApplicationDefinition|None|Resource) Include="([^"]+)"', read(proj)):
         listed.add(os.path.normpath(m.replace('\\', '/')))
+    # Analysis3 는 목록을 적지 않고 폴더에서 찾습니다 (tools/Analysis3.targets, 1.27).
+    globbed = 'Analysis3.targets' in read(proj)
+    if os.path.basename(proj) == 'LogScope.csproj':
+        if not globbed:
+            bad('LogScope.csproj 가 tools/Analysis3.targets 를 가져오지 않음')
+        elif not re.search(r'Analysis3\.targets" />\s*</Project>', read(proj)):
+            bad('tools/Analysis3.targets 는 LogScope.csproj 맨 끝에서 가져와야 함')
+        a3 = os.path.join(d, 'Analysis3')
+        if not any(re.search(r'\bclass\s+Analysis3View\b', read(f))
+                   for f in glob.glob(a3 + '/**/*.cs', recursive=True)):
+            bad('Analysis3 폴더에 Analysis3View 가 없음 — 창(ShellWindow.xaml)이 이 이름을 띄움')
     for root, dirs, files in os.walk(d):
         dirs[:] = [x for x in dirs if x not in ('bin','obj','Properties')]
         for f in files:
             if not f.endswith(('.cs','.xaml')): continue
             rel = os.path.normpath(os.path.relpath(os.path.join(root, f), d))
             if rel.startswith('obj') or rel.endswith('.g.cs'): continue
+            if globbed and rel.startswith('Analysis3' + os.sep): continue
             if rel not in listed:
                 bad('csproj 누락 %s <- %s' % (rel, os.path.basename(proj)))
     for rel in sorted(listed):

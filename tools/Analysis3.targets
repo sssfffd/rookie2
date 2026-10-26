@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Analysis3 폴더를 통째로 갈아 끼우는 자리 (1.27).
+
+     분석 3 은 따로(사내에서) 만들어 폴더째 들고 다닙니다. 저장소를 새로 받으면
+     csproj 도 새것이라, 거기에 파일을 하나하나 적어 두는 방식이면 받을 때마다
+     VS 에서 "기존 항목 추가" 를 다시 해야 했습니다. 그래서 이 폴더만은 파일 목록을
+     적지 않고 <b>폴더 안에 있는 것을 빌드할 때 찾습니다</b>.
+
+       Analysis3\**\*.cs    → 코드 (Compile)      — X.xaml.cs 도 여기로
+       Analysis3\**\*.xaml  → 화면 (Page)
+       Analysis3\**\그림    → 프로그램 안에 넣는 그림 (Resource)
+                               XAML 에서 Source="/Analysis3/그림.png" 로 씁니다.
+
+     지킬 것은 하나 — 폴더에 LogScope.Analysis3.Analysis3View (UserControl) 가
+     있어야 합니다. 창(Shell/ShellWindow.xaml)이 이 이름을 띄웁니다.
+
+     VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 그 파일 줄을 적어 넣습니다.
+     그대로 두면 같은 파일이 두 번 들어가므로, 여기서 먼저 Analysis3 줄을 <b>전부
+     지우고</b>(Remove) 폴더에서 다시 넣습니다. 그래서 csproj 맨 끝에서 가져와야
+     합니다 — 위에 적힌 줄보다 뒤에 와야 지울 수 있습니다. (Remove 는 VS2017 의
+     MSBuild 15 부터 됩니다.)
+
+     폴더 안의 bin · obj 는 넣지 않습니다 (다른 곳에서 빌드하다 남은 것). -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Analysis3Skip>Analysis3\**\bin\**;Analysis3\**\obj\**</Analysis3Skip>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Analysis3\**\*.cs" />
+    <Compile Include="Analysis3\**\*.cs" Exclude="$(Analysis3Skip);Analysis3\**\*.g.cs;Analysis3\**\*.g.i.cs" />
+
+    <Page Remove="Analysis3\**\*.xaml" />
+    <Page Include="Analysis3\**\*.xaml" Exclude="$(Analysis3Skip)">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+
+    <Resource Remove="Analysis3\**\*.png;Analysis3\**\*.jpg;Analysis3\**\*.jpeg;Analysis3\**\*.gif;Analysis3\**\*.bmp;Analysis3\**\*.ico" />
+    <Resource Include="Analysis3\**\*.png;Analysis3\**\*.jpg;Analysis3\**\*.jpeg;Analysis3\**\*.gif;Analysis3\**\*.bmp;Analysis3\**\*.ico" Exclude="$(Analysis3Skip)" />
+  </ItemGroup>
+</Project>
