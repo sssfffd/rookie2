@@ -1468,3 +1468,11 @@
 > build info가 없대
 
 → 답변: [105-buildinfo-plain-class.md](105-buildinfo-plain-class.md)
+
+---
+
+## 요청 132 — 분석 3 Python 프로그램을 사내 AI 로 C# 으로 옮길 때 올릴 것
+
+> 내가 분석 3은 이미 개발한 프로그램이 있음 근데 python으로 개발하고 지금 우리가 개발한 플젝과는 구조나 UI, 사용기술들이 다르단 말임 / 그래서 사내 ai를 활용해서 프로그램을 다시 C#으로 개조해서 붙이고 싶음 / 사내 ai에 이미 개발한 프로젝트 코드를 넣긴 할껀데 지금 우리 git에 올라와있는 코드를 다 올리진 못해서 어떤 내용을 올려야될지 너가 정리해주셈 그 git 대화내역에도 올려주고
+
+→ 답변: [106-analysis3-porting-guide.md](106-analysis3-porting-guide.md)

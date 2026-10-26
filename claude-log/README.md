@@ -112,3 +112,4 @@
 | `103-one-project.md` | 프로젝트 넷을 `src/LogScope` 하나로 — 화면 폴더에 그 화면의 모양 · 코드 · 글자 · 계산 전부 |
 | `104-build-fix-buildinfo.md` | 1.23 빌드 오류: BuildInfo 가 XAML 임시 빌드에서 빠짐 → 빌드 맨 처음에 만들고 csproj 에 늘 적어 둠 · C# 7.3 컴파일러로 재확인 |
 | `105-buildinfo-plain-class.md` | "BuildInfo 가 없다" → 만들어 끼우던 BuildInfo.g.cs 대신 평범한 BuildInfo.cs + 리소스(version.txt) |
+| `106-analysis3-porting-guide.md` | 분석 3 Python 프로그램을 사내 AI 로 C# 으로 — 올릴 파일 · 규칙 · 요청문 · 붙이는 자리 (`docs/ANALYSIS3-PORTING.md`) |
