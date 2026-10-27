@@ -1484,3 +1484,19 @@
 > 내가 코드 따로 작성해서 analysis3 폴더안에 visual studio 활용해서 넣었는데 / 문제는 여기서 수정할때마다 새로 추가를 해야되잖아 / 그냥 폴더를 복사하고 백업해놔서 여기서 코드 수정하면 다운받아서 해당 폴더만 다시 넣어가지고 빌드되게 하고싶단 말임? 어떻게 하는게 좋을까?
 
 → 답변: [107-analysis3-folder-swap.md](107-analysis3-folder-swap.md)
+
+---
+
+## 요청 134 — GraphCanvas.Trace.cs 지워도 되나
+
+> analysis1 폴더에 graphCanva.Trace.cs 파일이 있는데 지워도 됨?
+
+→ 답변: [108-analysis3-connect-view.md](108-analysis3-connect-view.md)
+
+---
+
+## 요청 135 — 내가 만든 것을 분석 3 화면에 연결
+
+> 내가 개발한거 anal3화면이랑 어떻게 연결하지??
+
+→ 답변: [108-analysis3-connect-view.md](108-analysis3-connect-view.md)

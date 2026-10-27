@@ -114,3 +114,4 @@
 | `105-buildinfo-plain-class.md` | "BuildInfo 가 없다" → 만들어 끼우던 BuildInfo.g.cs 대신 평범한 BuildInfo.cs + 리소스(version.txt) |
 | `106-analysis3-porting-guide.md` | 분석 3 Python 프로그램을 사내 AI 로 C# 으로 — 올릴 파일 · 규칙 · 요청문 · 붙이는 자리 (`docs/ANALYSIS3-PORTING.md`) |
 | `107-analysis3-folder-swap.md` | 분석 3 폴더를 통째로 갈아 끼워 빌드 — 파일 목록은 `tools/Analysis3.targets` 가 폴더에서 · 진입 화면 이름 `Analysis3View` |
+| `108-analysis3-connect-view.md` | GraphCanvas.Trace.cs 는 지우면 안 됨 (선 그리는 코드) · 내 화면을 `Analysis3View` 에 연결하는 법 (이름 바꾸기 / 감싸기 / Window → UserControl) |

@@ -190,6 +190,81 @@ VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 줄을 적어 �
 `python3 scripts/check_sources.py` (XAML 이 가리키는 이름 · `Analysis3View` 있는지 · 폴더=이름 공간),
 `check_handlers.py` · `check_shadowing.py`. XAML 컴파일은 Windows 의 `build.bat` 으로.
 
+## 4-1. 내가 만든 화면을 분석 3 자리에 연결하기 (1.28)
+
+창(`Shell/ShellWindow.xaml`)은 **`LogScope.Analysis3.Analysis3View`** 라는 이름 하나만 띄웁니다.
+내 화면을 그 이름에 걸어 주면 끝입니다. 방법은 둘 — **B (감싸기) 를 권합니다.** 내 파일은 그대로 두고
+작은 파일 두 개만 바꾸면 됩니다.
+
+```
+ShellWindow ──띄움──▶ Analysis3View (이름 고정, 껍데기)
+                           └──안에 넣음──▶ 내 화면 (MyMainView 등, 이름 자유)
+```
+
+**A. 내 화면 이름을 `Analysis3View` 로 바꾸기** — 내 맨 바깥 화면이 이미 UserControl 이고 이름을
+바꿔도 될 때. `x:Class="LogScope.Analysis3.Analysis3View"`, `.xaml.cs` 의 클래스 이름, 파일 이름을
+모두 바꾸고, 저장소의 자리 화면 `Analysis3View.xaml(.cs)` 은 지웁니다.
+
+**B. `Analysis3View` 를 껍데기로 두고 그 안에 내 화면 넣기** — 저장소의 자리 화면 두 파일을 아래로
+바꿉니다 (`MyMainView` 를 내 화면 이름으로).
+
+`Analysis3/Analysis3View.xaml`
+```xml
+<UserControl x:Class="LogScope.Analysis3.Analysis3View"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:my="clr-namespace:LogScope.Analysis3">
+    <my:MyMainView />
+</UserControl>
+```
+
+`Analysis3/Analysis3View.xaml.cs`
+```csharp
+using System.Windows.Controls;
+
+namespace LogScope.Analysis3
+{
+    /// <summary>창이 띄우는 분석 3 자리. 실제 화면은 안에 넣은 MyMainView.</summary>
+    public partial class Analysis3View : UserControl
+    {
+        public Analysis3View()
+        {
+            InitializeComponent();
+        }
+    }
+}
+```
+
+내 화면의 이름 공간이 `LogScope.Analysis3` 가 아니면 `xmlns:my="clr-namespace:내이름공간"` 으로
+바꿔도 빌드는 됩니다 (같은 프로그램 안). 다만 `check_sources.py` 가 "폴더 = 이름 공간" 으로
+지적하니, 되도록 `LogScope.Analysis3` 로 맞추세요.
+
+**내 맨 바깥 화면이 `Window` 라면** — 창 안에 창은 못 넣으므로 `UserControl` 로 바꿉니다.
+
+| 바꿀 것 | 어떻게 |
+|---|---|
+| XAML 첫 줄 `<Window …>` · 끝 `</Window>` | `<UserControl …>` · `</UserControl>` |
+| `.xaml.cs` 의 `: Window` | `: UserControl` (`using System.Windows.Controls;`) |
+| `Title` · `Width`/`Height` · `WindowStartupLocation` · `ResizeMode` · `SizeToContent` · `Icon` · `Topmost` · `WindowStyle` 속성 | 지우기 (UserControl 에 없음 — 크기는 창이 정함) |
+| `Window.Resources` | `UserControl.Resources` |
+| `Closing` / `Closed` 이벤트 | `Unloaded` |
+| `this.Close()` | 지우기 (분석 3 화면은 닫지 않고 탭을 옮김) |
+| 대화 상자의 `Owner = this` | `Owner = Window.GetWindow(this)` |
+| `MessageBox.Show(this, …)` | `MessageBox.Show(Window.GetWindow(this), …)` |
+
+**따로 프로젝트일 때 있던 것**
+
+| 내 프로젝트에 있던 것 | 여기서는 |
+|---|---|
+| `App.xaml` · `App.xaml.cs` | 가져오지 않음 (LogScope 의 것이 하나 있음). 켤 때 하던 일은 내 화면 생성자나 `Loaded` 로 |
+| `App.xaml` 의 `Application.Resources` (스타일 · 색) | 내 화면의 `UserControl.Resources` 로 옮기기. 이름이 LogScope 스타일(`H1` · `PrimaryButton` …)과 겹치면 내 화면 안에서는 내 것이 이김 |
+| `Properties\Settings` · `app.config` 설정 | 쓰지 않음 — 필요하면 Claude 에게 (LogScope 설정 파일에 칸을 더함) |
+| NuGet 패키지 · 바깥 dll | 원칙상 안 씀 — 꼭 필요하면 무엇을 왜 쓰는지 먼저 |
+| `Main` 메서드 · `StartupUri` | 필요 없음 |
+
+연결이 됐는지: 빌드 후 분석 3 탭을 누르면 내 화면이 뜹니다. 빌드 오류가 나면 오류 줄 전체를
+Claude 에게 주세요.
+
 ## 5. 사내 AI 결과를 받을 때 확인할 것
 
 - [ ] 파일이 전부 `src/LogScope/Analysis3/` 안이고 `namespace LogScope.Analysis3` 인가
