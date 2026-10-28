@@ -1516,3 +1516,11 @@
 > 아 그리고 내가 직접 visual studio로 anlaysis3 쪽에 파일들 추가해서 구현했거든? 근데 이제 git에서 업데이트 버전 다운받을 때 마다 사라질꺼 아니야 이거 어떻게 매번 넣을까( 자동화 프로그램까진 필요없고 비교적 간단하게 넣을 수 있는 방법)
 
 → 답변: [110-analysis3-not-in-repo.md](110-analysis3-not-in-repo.md)
+
+---
+
+## 요청 138 — 요약 칸에 넣는 코드를 어디에 어떻게?
+
+> 저거 요약칸에 내용 넣는거 사용자 코드에 넣으라고 했는데 어디에 어떻게 넣어야하는거?
+
+→ 답변: [111-analysis3-where-publish.md](111-analysis3-where-publish.md)

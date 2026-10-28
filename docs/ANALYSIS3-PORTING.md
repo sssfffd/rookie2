@@ -369,6 +369,82 @@ namespace LogScope.Analysis3
 
 아직 안 한 것: 메인 화면 "분석 결과 저장" 기록에 분석 3 의 낱말 · 요약 줄 넣기 (점수는 들어감).
 
+## 4-3. 요약 칸에 넣는 코드는 어디에? (1.31)
+
+**한 줄 답: 내 분석이 끝나고 결과를 내 화면에 보여 주는 바로 그 자리 아래에** 넣습니다.
+보통 내가 만든 [분석] / [실행] 단추의 클릭 처리 함수 안, 계산이 끝난 직후입니다.
+
+```
+ src\LogScope\Analysis3\
+   Analysis3View.xaml.cs   (또는 내 화면 MyMainView.xaml.cs)
+     ├ 맨 위 using 줄들          ← ① using LogScope.Common; 한 줄 추가
+     ├ 생성자                    ← ③ (선택) 메인 칸에서 이전·이후가 차면 저절로 돌리기
+     ├ [열기] 단추 처리          ← ④ (선택) 고른 경로를 메인 칸에도 보이기
+     └ [분석] 단추 처리
+         ├ 기존: 파일 읽고 계산
+         ├ 기존: 결과를 내 화면에 표시
+         └ ② 여기! 결과를 Analysis3Result 로 옮겨 Publish
+```
+
+**찾는 법** — VS 에서 내 Analysis3 화면의 `.xaml.cs` 를 열고, 결과를 화면에 보이는 줄을 찾습니다.
+`ItemsSource =` · `.Text =` · `DataGrid` · `MessageBox.Show(` 같은 줄이 보통 그 자리입니다.
+
+**② 넣는 모양** (아래 `MyAnalyzer` · `diffs` · `d.Name` 같은 이름은 **내 코드의 이름으로** 바꾸세요)
+
+```csharp
+using LogScope.Common;                 // ① 파일 맨 위 using 들 사이에
+
+private void OnRunClick(object sender, RoutedEventArgs e)     // 내 [분석] 단추 (이름은 내 것)
+{
+    // ---- 기존 코드 (그대로) ----
+    List<MyDiff> diffs = MyAnalyzer.Compare(_beforePath, _afterPath);
+    ResultGrid.ItemsSource = diffs;
+
+    // ---- ② 여기부터 추가: 메인 화면 분석 3 칸으로 ----
+    var r = new Analysis3Result();
+    r.Verdict = diffs.Count == 0 ? "PASS" : "FAIL";           // 크게 적는 낱말 (점수면 r.Score = 87;)
+    r.Count = diffs.Count.ToString();                          // "차이 발생 N 개"
+    foreach (MyDiff d in diffs)                                // 요약 칸 한 줄씩
+    {
+        var line = new Analysis3Line(d.Name, d.Before + " → " + d.After, Analysis3Grade.Bad);
+        line.Target = d.Name;            // 누르면 분석 3 화면으로 + OpenRequested 로 이 글자
+        line.ValueIsChange = true;       // 값을 빨간 글씨로
+        r.Lines.Add(line);
+    }
+    r.EmptyText = "차이가 없습니다.";   // 줄이 하나도 없을 때
+    Analysis3Link.Publish(r);           // → 메인 화면 분석 3 칸이 바로 바뀜
+}
+```
+
+**내 결과 → 요약 칸** 옮기는 표
+
+| 내 결과에 있는 것 | 넣을 곳 | 메인 칸에 |
+|---|---|---|
+| 합격/불합격, OK/NG | `r.Verdict = "PASS"` / `"FAIL"` / `"WARNING"` | 크게, 색은 저절로 |
+| 점수 (0~100) | `r.Score = 87;` (`Verdict` 는 비움) | `87 / 100` |
+| 문제 개수 | `r.Count = "3";` | 오른쪽 "차이 발생 3 개" |
+| 항목 하나하나 | `r.Lines.Add(new Analysis3Line(이름, 값, 색))` | 요약 칸 한 줄 |
+| 항목의 덧글 | `line.Detail = "…";` | 줄 아래 작은 글 |
+
+**③ (선택) 메인 칸에 이전 · 이후를 넣으면 저절로 돌리기** — 생성자의 `InitializeComponent();` 아래:
+
+```csharp
+Analysis3Link.PathsChanged += (s, e) =>
+{
+    if (!Analysis3Link.HasBoth) return;
+    _beforePath = Analysis3Link.BeforePath;    // 내 코드가 경로를 담아 두는 변수
+    _afterPath = Analysis3Link.AfterPath;
+    OnRunClick(null, null);                    // 내 [분석] 단추 처리를 그대로 부름
+};
+```
+
+**④ (선택) 내 화면의 [열기] 로 고른 경로를 메인 칸에도** — 파일을 고른 줄 아래:
+`Analysis3Link.SetPath(true, 고른경로);` (이전) · `Analysis3Link.SetPath(false, 고른경로);` (이후).
+③ 을 넣었다면 둘 다 찼을 때 저절로 돕니다.
+
+**오래 걸리는 계산을 배경 작업에서 돌린다면** — `Publish` 는 배경 작업 안에서 불러도 됩니다
+(메인 칸 바꾸는 일은 창이 화면 스레드로 넘겨서 함).
+
 ## 5. 사내 AI 결과를 받을 때 확인할 것
 
 - [ ] 파일이 전부 `src/LogScope/Analysis3/` 안이고 `namespace LogScope.Analysis3` 인가
