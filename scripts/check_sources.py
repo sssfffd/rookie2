@@ -342,10 +342,8 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
             bad('LogScope.csproj 가 tools/Analysis3.targets 를 가져오지 않음')
         elif not re.search(r'Analysis3\.targets" />\s*</Project>', read(proj)):
             bad('tools/Analysis3.targets 는 LogScope.csproj 맨 끝에서 가져와야 함')
-        a3 = os.path.join(d, 'Analysis3')
-        if not any(re.search(r'\bclass\s+Analysis3View\b', read(f))
-                   for f in glob.glob(a3 + '/**/*.cs', recursive=True)):
-            bad('Analysis3 폴더에 Analysis3View 가 없음 — 창(ShellWindow.xaml)이 이 이름을 띄움')
+        # 1.30: Analysis3 폴더는 사용자 것이라 저장소에 없습니다 (.gitignore). 창은 이름으로
+        # 찾아 띄우고, 없으면 Shell/Analysis3Placeholder. 그래서 비어 있어도 됩니다.
     for root, dirs, files in os.walk(d):
         dirs[:] = [x for x in dirs if x not in ('bin','obj','Properties')]
         for f in files:

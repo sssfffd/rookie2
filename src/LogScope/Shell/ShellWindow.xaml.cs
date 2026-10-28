@@ -41,6 +41,8 @@ namespace LogScope.Shell
 
             InitializeComponent();
 
+            LoadAnalysis3();
+
             Width = Math.Max(MinWidth, state.Settings.WindowWidth);
             Height = Math.Max(MinHeight, state.Settings.WindowHeight);
             if (state.Settings.WindowMaximized) WindowState = WindowState.Maximized;
@@ -346,6 +348,37 @@ namespace LogScope.Shell
         }
 
         // ---------------- 분석 3 (1.29) ----------------
+
+        /// <summary>
+        /// 분석 3 화면을 찾아 자리에 넣습니다 (1.30).
+        ///
+        /// 사용자의 Analysis3 폴더는 저장소에 없어서, 새로 받은 직후에는 비어 있을 수
+        /// 있습니다. 이름을 XAML 에 적으면 그때 빌드가 깨지므로, 빌드된 프로그램 안에서
+        /// 이름으로 찾습니다. 없으면 자리 화면, 만들다 오류가 나면 그 까닭을 자리 화면에.
+        /// 그 화면 오류로 프로그램 전체가 안 켜지는 것보다 낫습니다.
+        /// </summary>
+        private void LoadAnalysis3()
+        {
+            const string name = "LogScope.Analysis3.Analysis3View";
+            Type t = typeof(ShellWindow).Assembly.GetType(name, false);
+            if (t == null || !typeof(FrameworkElement).IsAssignableFrom(t))
+            {
+                A3Host.Content = new Analysis3Placeholder();
+                return;
+            }
+
+            try
+            {
+                A3Host.Content = (FrameworkElement)Activator.CreateInstance(t);
+            }
+            catch (Exception ex)
+            {
+                // 생성자 안에서 난 오류는 TargetInvocationException 에 싸여 옵니다.
+                Exception inner = ex.InnerException ?? ex;
+                A3Host.Content = new Analysis3Placeholder(
+                    "Analysis3View 를 만들다 오류가 났습니다.\n" + inner.GetType().Name + ": " + inner.Message);
+            }
+        }
         //
         // 메인 칸에서 자리를 정하면 Analysis3Link 에 적기만 합니다. 읽고 돌리는 일은
         // 분석 3 화면이 PathsChanged 를 듣고 합니다 — 무엇을 돌릴지는 그 폴더만 압니다.

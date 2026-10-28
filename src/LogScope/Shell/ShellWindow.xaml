@@ -6,7 +6,6 @@
         xmlns:graph="clr-namespace:LogScope.Analysis1.Graph"
         xmlns:heat="clr-namespace:LogScope.Analysis1.Heatmap"
         xmlns:main="clr-namespace:LogScope.Main"
-        xmlns:a3="clr-namespace:LogScope.Analysis3"
         xmlns:t="clr-namespace:LogScope.Shell"
         xmlns:common="clr-namespace:LogScope.Common"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -215,16 +214,19 @@
                                    Converter={StaticResource BoolToVisibility}}" />
 
             <!--
-              분석 3 — Analysis3 폴더는 통째로 갈아 끼우는 자리입니다 (1.27).
-              그 폴더에 LogScope.Analysis3.Analysis3View 만 있으면 여기 뜹니다.
-              속성은 아무것도 넘기지 않습니다 — 갈아 끼운 화면이 몰라도 되게.
-              보이기 여부를 DbView 처럼 창의 뷰모델에서 찾는 것은, 그 화면이
-              제 DataContext 를 바꿔도 메인 화면 위에 덮이지 않게 하려는 것입니다.
+              분석 3 — 사용자가 src/LogScope/Analysis3 에 직접 만드는 화면 (1.30).
+
+              XAML 에 이름을 적지 않고 빈 자리(ContentControl)만 둡니다. 창이 켤 때
+              프로그램 안에서 LogScope.Analysis3.Analysis3View 를 찾아 여기 넣고,
+              없으면 자리 화면(Analysis3Placeholder)을 넣습니다 (LoadAnalysis3).
+              이름을 적어 두면 그 폴더가 비었을 때 빌드가 깨집니다 — 그 폴더는
+              저장소에 없으니 새로 받은 직후가 늘 그렇습니다.
+
+              보이기 여부는 이 ContentControl 이 창의 뷰모델에서 바로 읽습니다.
+              안에 들어간 화면이 제 DataContext 를 바꿔도 여기에는 닿지 않습니다.
             -->
-            <a3:Analysis3View
-                      Visibility="{Binding DataContext.ShowAnalysis3,
-                                   RelativeSource={RelativeSource AncestorType=Window},
-                                   Converter={StaticResource BoolToVisibility}}" />
+            <ContentControl x:Name="A3Host" Focusable="False"
+                            Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
     </DockPanel>
 </Window>

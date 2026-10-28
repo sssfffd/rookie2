@@ -15,7 +15,7 @@
 | 분석 1 — 시간 맞추기 판 | `Analysis1/Align/` | `AlignPanel.xaml` | `AlignTexts.cs` | `TriggerAlign` |
 | 분석 1 — 여러 화면이 같이 씀 | `Analysis1/LogFile/` · `Analysis1/Compare/` | — | — | 로그 읽기 · 자료 · 단계 이름(`StepText`) / 두 로그 견주기 `DiffEngine` · 단계 짝 `StepPairs` |
 | 분석 2 — DB 비교 | `Analysis2/` | `DbView.xaml` | `DbTexts.cs` | DB 읽기 · 견주기 · 판정 · SQL (`Db…`) |
-| 분석 3 — **폴더째 갈아 끼우는 자리** ([안내](../../docs/ANALYSIS3-PORTING.md) 4 장) | `Analysis3/` | `Analysis3View.xaml` (이 이름 꼭) | — | 파일 목록은 csproj 가 아니라 `tools/Analysis3.targets` 가 폴더에서 찾음 · 메인 칸과는 `Common/Analysis3Link.cs` 로만 주고받음 |
+| 분석 3 — **사용자 폴더, 저장소에 없음** ([안내](../../docs/ANALYSIS3-PORTING.md) 4 장) | `Analysis3/` | `Analysis3View.xaml` (이 이름 꼭 · 없으면 `Shell/Analysis3Placeholder`) | — | 파일 목록은 csproj 가 아니라 `tools/Analysis3.targets` 가 폴더에서 찾음 · 메인 칸과는 `Common/Analysis3Link.cs` 로만 주고받음 |
 | 설정 창 | `Settings/` | `SettingsWindow.xaml` | `SettingsTexts.cs` | 설정 저장 · 허용 오차 표 |
 | 작은 창들 (읽는 중 · 이름 넣기 · 글 보기) | `Common/` | `LoadingWindow.xaml` 외 | `CommonTexts.cs` | CSV · XLSX 읽기 · 숫자 글자 · 검색 규칙 |
 | 색 · 단추 모양 (모든 화면) | `Themes/` | `Light.xaml` · `Dark.xaml` · `Controls.xaml` | — | |

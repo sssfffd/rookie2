@@ -37,6 +37,7 @@ WPF = {
     'ListBox': 'System.Windows.Controls.ListBox',
     'TextBox': 'System.Windows.Controls.TextBox',
     'TextBlock': 'System.Windows.Controls.TextBlock',
+    'ContentControl': 'System.Windows.Controls.ContentControl',
     'ComboBox': 'System.Windows.Controls.ComboBox',
     'Button': 'System.Windows.Controls.Button',
     'CheckBox': 'System.Windows.Controls.CheckBox',

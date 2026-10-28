@@ -15,7 +15,7 @@
                                             (계산 파일들).cs         Python 의 계산 부분 — WPF 안 씀
 ```
 
-지금 `src/LogScope/Analysis3/` 에는 "아직 만들지 않았습니다" 자리(`Analysis3View`)만 있습니다.
+`src/LogScope/Analysis3/` 는 저장소에 없는 사용자 폴더입니다 (1.30, 4 장). 없으면 "아직 만들지 않았습니다" 자리 화면이 뜹니다.
 **이 폴더는 통째로 갈아 끼우는 자리입니다** (1.27, 4 장). 사내 AI 는 이 폴더 안의 파일만 만들고,
 `Analysis3View` 라는 이름의 화면을 하나 꼭 둡니다. csproj 나 다른 폴더는 건드리지 않습니다.
 
@@ -27,7 +27,7 @@
 |---|---|---|
 | **이 문서** `docs/ANALYSIS3-PORTING.md` | — | 규칙 · 붙이는 자리 · 요청문 |
 | `src/LogScope/README.md` | 71 | 폴더 = 화면 지도. 파일을 어떻게 나누는지 |
-| `src/LogScope/Analysis3/Analysis3View.xaml` · `.xaml.cs` | 58 | 갈아 끼울 자리 (이 이름을 그대로 써야 함) |
+| `src/LogScope/Shell/Analysis3Placeholder.xaml` · `.xaml.cs` | 71 | Analysis3View 가 없을 때 뜨는 자리 (만들 화면 이름은 `Analysis3View`) |
 | **본보기 화면** `src/LogScope/Analysis2/DbView.xaml` | 372 | 분석 하나짜리 완성 화면의 XAML — 파일 고르기 · 끌어다 놓기 · 목록 · 단추 줄 · 테마 색 쓰는 법 |
 | `src/LogScope/Analysis2/DbView.xaml.cs` | 532 | 단추 처리 · 배경 작업으로 읽기 · 결과를 창에 알리기 (`ResultChanged`) |
 | `src/LogScope/Analysis2/DbVm.cs` | 431 | 뷰모델 꼴 (`ObservableObject` · `Set` · `Raise`) |
@@ -39,7 +39,7 @@
 | `src/LogScope/Common/CardTag.cs` | 109 | 끌어다 놓는 칸의 색 바꾸기 (놓는 칸을 쓸 때) |
 | `src/LogScope/Themes/Controls.xaml` | 749 | 쓸 수 있는 스타일 이름 (`PrimaryButton` · `ToolGroup` · `SegmentButton` · `H1` · `Muted` …) |
 | `src/LogScope/Themes/Light.xaml` · `Dark.xaml` | 72 | 색 이름 (`Brush.Text` · `Brush.Bad` · `Brush.Good` …) — 색은 늘 이 이름으로 |
-| `src/LogScope/Shell/ShellWindow.xaml` | 222 | 화면이 어떻게 갈아 끼워지나 (`a3:Analysis3View`) |
+| `src/LogScope/Shell/ShellWindow.xaml` | 222 | 분석 3 화면이 들어가는 자리 (`A3Host`) |
 | **Python 원본** (분석 3) | — | 옮길 대상. 화면 캡처 몇 장도 같이 주면 좋습니다 |
 
 ### B. 분석 3 이 그 기능을 쓸 때만 더 올릴 것
@@ -140,44 +140,54 @@
 남겨 주세요.
 ```
 
-## 4. 폴더째 갈아 끼우기 (1.27)
+## 4. 새 버전을 받아도 Analysis3 가 남게 (1.30)
 
-분석 3 은 사내에서 VS 로 만들고, 나머지는 이 저장소에서 고칩니다. 그래서 **`Analysis3` 폴더만
-따로 들고 다니다가, 저장소를 새로 받을 때마다 그 폴더를 덮어 넣고 빌드**합니다.
+분석 3 은 사용자가 VS 로 `src\LogScope\Analysis3\` 에 직접 만들고, 나머지는 이 저장소에서 고칩니다.
+1.30 부터 **`Analysis3` 폴더는 저장소에 아예 없습니다** (`.gitignore`). 새 버전에는 그 폴더가 없으니
+받아서 덮어도 내 파일이 지워지거나 덮이지 않습니다.
 
 ```
- 사내 PC                                 이 저장소 (Claude 가 고침)
- ┌──────────────────┐   새로 받기        ┌────────────────────────────┐
- │ 백업\Analysis3\  │ ─────────────────▶ │ src\LogScope\Analysis3\   │ ← 이 폴더만 지우고
- │  Analysis3View…  │   폴더째 덮어 넣기 │   (자리 화면뿐)            │   백업 폴더를 넣음
- │  그 밖의 .cs/.xaml│                   │ 나머지 전부 — 새것 그대로  │
- └──────────────────┘                    └────────────────────────────┘
-                                                  └▶ build.bat
+ 새 버전 (zip / git)                 내 작업 폴더
+ ┌──────────────────────┐           ┌─────────────────────────────┐
+ │ src\LogScope\Main\   │ ──덮음──▶ │ src\LogScope\Main\    (새것)  │
+ │ src\LogScope\Shell\  │ ──덮음──▶ │ src\LogScope\Shell\   (새것)  │
+ │ (Analysis3 없음)     │           │ src\LogScope\Analysis3\ (그대로) │ ← 내 파일
+ └──────────────────────┘           └─────────────────────────────┘
 ```
 
-순서
-1. 저장소를 새로 받습니다 (zip 이든 git 이든).
-2. `src\LogScope\Analysis3\` 폴더를 **지우고**, 백업해 둔 `Analysis3` 폴더를 그 자리에 넣습니다.
-   (덮어쓰기만 하면 자리 화면 `Analysis3View` 가 내 것으로 바뀌므로 그것도 됩니다. 지우는 쪽이
-   지난번에 지운 파일이 남지 않아 깔끔합니다.)
-3. `build.bat` (또는 VS 에서 빌드). csproj 에 파일을 더할 일이 없습니다.
+**zip 으로 받을 때 — 기존 폴더 위에 풀기**
+1. 새 zip 을 **지금 쓰는 폴더 위에** 풉니다. 덮어쓰겠냐고 물으면 "모두 예".
+2. `build.bat` (또는 VS 에서 빌드). 끝.
 
-명령 한 줄로 하려면 (cmd, 경로는 바꿔서):
+새 폴더에 풀었다면 옛 폴더의 `src\LogScope\Analysis3` 를 새 폴더의 같은 자리로 복사만 하면 됩니다.
 ```
-rmdir /s /q src\LogScope\Analysis3 & xcopy /e /i /y D:\백업\Analysis3 src\LogScope\Analysis3
+xcopy /e /i /y D:\옛폴더\src\LogScope\Analysis3 D:\새폴더\src\LogScope\Analysis3
 ```
 
-**왜 되나** — `src/LogScope/LogScope.csproj` 맨 끝이 `tools/Analysis3.targets` 를 가져오고, 거기서
-`Analysis3\**\*.cs` (코드) · `Analysis3\**\*.xaml` (화면) · 그림 (Resource) 을 폴더에서 찾습니다.
-VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 줄을 적어 넣는데, 같은 파일이 두 번 들어가지
-않게 targets 가 먼저 그 줄을 지우고 다시 넣습니다. 그 csproj 는 다음에 새로 받으면 어차피 바뀝니다.
+**git 으로 받을 때 — `git pull`**
+`Analysis3` 는 git 이 보지 않는 폴더라 pull 해도 손대지 않습니다.
+- **이번(1.30) 한 번만**: 1.27~1.29 에는 저장소에 `Analysis3\Analysis3View.xaml(.cs)` 자리 화면이 있었습니다.
+  pull 하면 git 이 그 두 파일을 지우려 하므로(고쳤다면 pull 이 멈춤), **pull 전에 `Analysis3` 폴더를
+  다른 곳에 복사해 두고, pull 뒤 다시 넣으세요.** 그다음부터는 그냥 pull.
+
+**그래도 백업은** — 저장소에 없는 폴더라 그 PC 에만 있습니다. 가끔 다른 곳에 복사해 두세요.
+
+**왜 되나**
+- 파일 목록: `LogScope.csproj` 맨 끝이 `tools/Analysis3.targets` 를 가져오고, 거기서
+  `Analysis3\**\*.cs` · `*.xaml` · 그림을 폴더에서 찾습니다. VS 가 csproj 에 줄을 적어 넣어도 targets 가
+  먼저 지우고 다시 넣어 두 번 들어가지 않습니다 (그 csproj 는 다음에 새로 받으면 어차피 바뀜).
+- 화면: 창은 `LogScope.Analysis3.Analysis3View` 를 **이름으로 찾아** 띄웁니다 (`ShellWindow.LoadAnalysis3`).
+  없으면 "아직 만들지 않았습니다" 자리 화면(`Shell/Analysis3Placeholder`), 만들다 오류가 나면 그 까닭을
+  자리 화면에 빨갛게 적습니다. 그래서 `Analysis3` 가 비어 있어도 빌드는 됩니다.
+- 덮어 풀어도 되는 까닭: 저장소에서 지운 파일이 내 폴더에 남아도, `Analysis3` 밖은 csproj 에
+  적힌 파일만 빌드하므로 남은 파일은 무시됩니다.
 
 **지킬 것**
 
 | | |
 |---|---|
-| 폴더 안에 `LogScope.Analysis3.Analysis3View` (UserControl) 가 있어야 함 | 창이 이 이름을 띄웁니다. 내 화면 이름이 다르면 이름을 바꾸거나, `Analysis3View.xaml` 을 하나 만들어 그 안에 내 화면을 넣기 |
-| `Analysis3` 폴더 **밖**은 사내에서 고치지 않기 | 새로 받으면 덮어써져 사라집니다. 밖을 고쳐야 하면 Claude 에게 |
+| 맨 바깥 화면은 `LogScope.Analysis3.Analysis3View` (UserControl, 매개변수 없는 생성자) | 창이 이 이름을 찾습니다. 이름이 다르면 4-1 장처럼 감싸기 |
+| `Analysis3` 폴더 **밖**은 사내에서 고치지 않기 | 새로 받으면 덮여 사라집니다. 밖을 고쳐야 하면 Claude 에게 |
 | 폴더 안에 `bin` · `obj` 를 넣지 않기 | 넣어도 빌드에서는 빠지지만 폴더만 커집니다 |
 | 이름 공간은 `LogScope.Analysis3` (하위 폴더면 `.하위폴더`) | `check_sources.py` 가 봅니다 |
 
@@ -185,12 +195,12 @@ VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 줄을 적어 �
 `config.txt` 의 `analysis3 = 이름 | 설명` 줄을 고치면 탭 · 칸 이름이 바뀝니다.
 
 확인 (Claude 가 돌림): `sh scripts/check_compile.sh` (컴파일 · 시험),
-`python3 scripts/check_sources.py` (XAML 이 가리키는 이름 · `Analysis3View` 있는지 · 폴더=이름 공간),
+`python3 scripts/check_sources.py` (XAML 이 가리키는 이름 · 폴더=이름 공간),
 `check_handlers.py` · `check_shadowing.py`. XAML 컴파일은 Windows 의 `build.bat` 으로.
 
 ## 4-1. 내가 만든 화면을 분석 3 자리에 연결하기 (1.28)
 
-창(`Shell/ShellWindow.xaml`)은 **`LogScope.Analysis3.Analysis3View`** 라는 이름 하나만 띄웁니다.
+창은 **`LogScope.Analysis3.Analysis3View`** 라는 이름 하나만 찾아 띄웁니다 (없으면 자리 화면).
 내 화면을 그 이름에 걸어 주면 끝입니다. 방법은 둘 — **B (감싸기) 를 권합니다.** 내 파일은 그대로 두고
 작은 파일 두 개만 바꾸면 됩니다.
 
@@ -201,10 +211,10 @@ ShellWindow ──띄움──▶ Analysis3View (이름 고정, 껍데기)
 
 **A. 내 화면 이름을 `Analysis3View` 로 바꾸기** — 내 맨 바깥 화면이 이미 UserControl 이고 이름을
 바꿔도 될 때. `x:Class="LogScope.Analysis3.Analysis3View"`, `.xaml.cs` 의 클래스 이름, 파일 이름을
-모두 바꾸고, 저장소의 자리 화면 `Analysis3View.xaml(.cs)` 은 지웁니다.
+모두 바꿉니다.
 
-**B. `Analysis3View` 를 껍데기로 두고 그 안에 내 화면 넣기** — 저장소의 자리 화면 두 파일을 아래로
-바꿉니다 (`MyMainView` 를 내 화면 이름으로).
+**B. `Analysis3View` 를 껍데기로 두고 그 안에 내 화면 넣기** — `Analysis3` 폴더에 아래 두 파일을
+만듭니다 (`MyMainView` 를 내 화면 이름으로).
 
 `Analysis3/Analysis3View.xaml`
 ```xml

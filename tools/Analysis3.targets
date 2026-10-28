@@ -11,8 +11,10 @@
        Analysis3\**\그림    → 프로그램 안에 넣는 그림 (Resource)
                                XAML 에서 Source="/Analysis3/그림.png" 로 씁니다.
 
-     지킬 것은 하나 — 폴더에 LogScope.Analysis3.Analysis3View (UserControl) 가
-     있어야 합니다. 창(Shell/ShellWindow.xaml)이 이 이름을 띄웁니다.
+     창은 빌드된 프로그램 안에서 LogScope.Analysis3.Analysis3View (UserControl) 를
+     이름으로 찾아 띄웁니다. 없으면 Shell/Analysis3Placeholder 가 대신 뜹니다 —
+     그래서 폴더가 비어 있어도 빌드는 됩니다. 이 폴더는 저장소에 없습니다 (1.30,
+     .gitignore) — 새 버전을 받아도 사용자의 파일이 덮이지 않게.
 
      VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 그 파일 줄을 적어 넣습니다.
      그대로 두면 같은 파일이 두 번 들어가므로, 여기서 먼저 Analysis3 줄을 <b>전부

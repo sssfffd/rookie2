@@ -81,6 +81,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Shell\Analysis3Placeholder.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Shell\ShellWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -229,6 +233,10 @@
     <Compile Include="Analysis1\Graph\GraphCanvas.Axis.cs" />
     <Compile Include="Analysis1\Graph\GraphCanvas.Input.cs" />
     <Compile Include="Analysis1\Heatmap\HeatmapCanvas.cs" />
+    <Compile Include="Shell\Analysis3Placeholder.xaml.cs">
+      <DependentUpon>Analysis3Placeholder.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Shell\ShellWindow.xaml.cs">
       <DependentUpon>ShellWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
