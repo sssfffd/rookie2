@@ -144,6 +144,7 @@
     <Compile Include="Main\SavedTexts.cs" />
     <Compile Include="Settings\SettingsTexts.cs" />
     <Compile Include="Shell\ShellTexts.cs" />
+    <Compile Include="Common\Analysis3Link.cs" />
     <Compile Include="Common\ObservableObject.cs" />
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Common\CardTag.cs" />

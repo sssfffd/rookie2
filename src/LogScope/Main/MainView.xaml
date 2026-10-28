@@ -445,6 +445,115 @@
                                     </Border>
                                 </Grid>
 
+                                <!-- ===== 분석 3 의 이전 · 이후 (1.29) — 분석 2 칸과 같은 두 모양 =====
+                                     자리는 Common/Analysis3Link 에 적히고 분석 3 화면이
+                                     거기서 읽습니다. 누르면 파일 고르는 창, 폴더는 끌어다 놓기. -->
+                                <Grid Margin="0,4,0,0"
+                                      Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="4" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Tag="before|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                            MouseLeftButtonUp="OnA3CardClick"
+                                            Visibility="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.A3BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                            MouseLeftButtonUp="OnA3CardClick"
+                                            Visibility="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.Before}" />
+                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.A3BeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Window"
+                                            Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                            MouseLeftButtonUp="OnA3CardClick"
+                                            Visibility="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                                           Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                       Text="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                            Background="{DynamicResource Brush.Panel}"
+                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                            ToolTip="{Binding DataContext.A3AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            AllowDrop="True" DragOver="OnDropCardDragOver"
+                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                            MouseLeftButtonUp="OnA3CardClick"
+                                            Visibility="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                    Background="{DynamicResource Brush.After}" />
+                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding DataContext.A3AfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
                                 <!-- 그 분석이 실제로 센 숫자들 -->
                                 <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
                                               Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">

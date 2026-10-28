@@ -140,6 +140,8 @@ namespace LogScope.Tests
                 DbChangedValuesRule();
                 DbDeltaText();
                 DbPathNames();
+                Analysis3LinkRules();
+                Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
                 HeatmapByStep();
@@ -4168,6 +4170,96 @@ namespace LogScope.Tests
         /// 됩니다 — 그러면 칸에 전체 경로가 박혀 들어가고, 그건 Windows 에서
         /// 열어 봐야만 드러납니다.
         /// </summary>
+        /// <summary>
+        /// 분석 3 게시판 (1.29). 메인 칸과 갈아 끼운 분석 3 화면이 이것 하나로만
+        /// 주고받으므로, 알림이 <b>한 번만 · 바뀔 때만</b> 울리는지가 중요합니다 —
+        /// 두 번 울리면 분석 3 이 두 번 돌고, 켤 때 울리면 켜자마자 돕니다.
+        /// </summary>
+        private static void Analysis3LinkRules()
+        {
+            Say("분석 3 — 게시판");
+
+            int paths = 0, results = 0;
+            string opened = null;
+            EventHandler onPaths = (s, e) => paths++;
+            EventHandler onResult = (s, e) => results++;
+            EventHandler<Analysis3OpenEventArgs> onOpen = (s, e) => opened = e.Target;
+            Analysis3Link.PathsChanged += onPaths;
+            Analysis3Link.ResultChanged += onResult;
+            Analysis3Link.OpenRequested += onOpen;
+            try
+            {
+                Analysis3Link.Restore(@"C:\a\before.csv", null);
+                Check("되살리기는 알리지 않음", paths == 0, "울림 " + paths);
+                Check("되살린 자리", Analysis3Link.BeforePath == @"C:\a\before.csv" && Analysis3Link.AfterPath == "",
+                      Analysis3Link.BeforePath + " | " + Analysis3Link.AfterPath);
+                Check("한쪽만이면 HasBoth 아님", !Analysis3Link.HasBoth, "");
+
+                Analysis3Link.SetPath(false, @" C:\a\after.csv ");
+                Check("바꾸면 한 번 울림", paths == 1, "울림 " + paths);
+                Check("앞뒤 빈칸은 뗌", Analysis3Link.AfterPath == @"C:\a\after.csv", Analysis3Link.AfterPath);
+                Check("둘 다 차면 HasBoth", Analysis3Link.HasBoth, "");
+
+                Analysis3Link.SetPath(false, @"C:\a\after.csv");
+                Check("같은 값이면 안 울림", paths == 1, "울림 " + paths);
+
+                Analysis3Link.SetPaths("x", "y");
+                Check("둘을 한꺼번에 바꿔도 한 번", paths == 2, "울림 " + paths);
+
+                var r = new Analysis3Result();
+                r.Verdict = "FAIL";
+                Analysis3Link.Publish(r);
+                Check("결과를 올리면 울림", results == 1 && Analysis3Link.Result == r, "울림 " + results);
+                Analysis3Link.ClearResult();
+                Check("지우면 울리고 비움", results == 2 && Analysis3Link.Result == null, "울림 " + results);
+
+                Analysis3Link.RequestOpen("항목 A");
+                Check("줄 누름이 실려 옴", opened == "항목 A", opened ?? "null");
+            }
+            finally
+            {
+                Analysis3Link.PathsChanged -= onPaths;
+                Analysis3Link.ResultChanged -= onResult;
+                Analysis3Link.OpenRequested -= onOpen;
+                Analysis3Link.Restore(string.Empty, string.Empty);
+                Analysis3Link.ClearResult();
+            }
+        }
+
+        /// <summary>
+        /// 분석 3 칸 (1.29). 결과가 오기 전에는 "?? / 100" 을 띄우지 않고, 낱말이 오면
+        /// 분석 2 처럼, 점수가 오면 분석 1 처럼 적습니다.
+        /// </summary>
+        private static void Analysis3CardRules()
+        {
+            Say("분석 3 — 메인 칸");
+
+            var card = new AnalysisCardVm(3, "분석 3", "", true);
+            Check("이전/이후 칸이 있음", card.HasA3Box && !card.HasDbBox && !card.HasLogBox, "");
+            Check("결과 전에는 크게 적는 것 없음", card.ScoreText == "" && card.ScoreOutOf == "",
+                  card.ScoreText + "|" + card.ScoreOutOf);
+
+            card.SetScore(87);
+            Check("점수가 오면 점수 칸", card.ScoreText == "87" && card.ScoreOutOf == "/ 100",
+                  card.ScoreText + "|" + card.ScoreOutOf);
+            card.ClearScore();
+            Check("점수를 지우면 다시 빈 칸", card.ScoreText == "", card.ScoreText);
+
+            card.SetVerdict("FAIL", MainVm.A3Grade(Analysis3Grade.None, "FAIL"), "", "3");
+            Check("낱말이 오면 낱말", card.ScoreText == "FAIL" && card.Grade == ScoreBands.GradeBad
+                  && card.VerdictCount == "3", card.ScoreText + "|" + card.Grade);
+
+            Check("PASS 는 초록", MainVm.A3Grade(Analysis3Grade.None, "pass") == ScoreBands.GradeGood, "");
+            Check("WARNING 은 노랑", MainVm.A3Grade(Analysis3Grade.None, "WARNING") == ScoreBands.GradeWarn, "");
+            Check("모르는 낱말은 회색", MainVm.A3Grade(Analysis3Grade.None, "검토") == ScoreBands.GradeNone, "");
+            Check("정해 온 색이 이김", MainVm.A3Grade(Analysis3Grade.Good, "FAIL") == ScoreBands.GradeGood, "");
+
+            var db = new AnalysisCardVm(2, "분석 2", "", true);
+            Check("분석 2 는 늘 판정 칸", db.UsesVerdict, "");
+            var line = new CardLineVm("a", "b", ScoreBands.GradeNone, "");
+            Check("줄은 기본이 분석 2 칸", line.Card == 2, line.Card.ToString());
+        }
+
         private static void DbPathNames()
         {
             Say("DB — 견줄 자리 이름");
@@ -4655,7 +4747,11 @@ namespace LogScope.Tests
             g.Members.Add("밸브 CLOSE");
             s.Groups.Add(g);
 
+            s.A3BeforePath = @"D:\분석3\이전";
+            s.A3AfterPath = @"D:\분석3\이후.csv";
             AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("분석 3 자리", back.A3BeforePath == @"D:\분석3\이전" && back.A3AfterPath == @"D:\분석3\이후.csv",
+                  back.A3BeforePath + " | " + back.A3AfterPath);
 
             Check("테마", back.Theme == "dark", back.Theme);
             Check("고른 세트", back.ActiveSet == 3, back.ActiveSet.ToString());

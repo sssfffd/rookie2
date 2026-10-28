@@ -32,7 +32,9 @@ namespace LogScope.Main
                 // 분석 2 는 만들어져 있습니다 (0.93 까지는 거짓으로 남아
                 // 있었는데, 그러면 요약 칸에 "아직 만들지 않았습니다" 가 떴습니다).
                 new AnalysisCardVm(2, names.Title(2), names.Summary(2), true),
-                new AnalysisCardVm(3, names.Title(3), names.Summary(3), false),
+                // 분석 3 은 Analysis3 폴더를 갈아 끼워 붙입니다 (1.29 부터 칸이 살아 있음).
+                // 결과는 Common/Analysis3Link 로 올라옵니다.
+                new AnalysisCardVm(3, names.Title(3), names.Summary(3), true),
             };
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();
@@ -81,8 +83,8 @@ namespace LogScope.Main
 
             Cards[0].SetGroups(BuildGroups(r));
 
-            // 분석 3 은 아직 없습니다. 점수를 비워 둬야 "안 만들었다" 가
-            // 그대로 읽힙니다.
+            // 분석 2 · 3 은 그룹 줄을 쓰지 않습니다. 점수는 비워 두고, 분석 3 은
+            // 바로 아래 ShowA3Result 가 올라온 결과로 다시 적습니다.
             for (int i = 1; i < Cards.Count; i++)
             {
                 Cards[i].ClearScore();
@@ -90,6 +92,7 @@ namespace LogScope.Main
             }
 
             ShowDbVerdict();
+            ShowA3Result();
 
             RefreshDeltas();
 
@@ -106,6 +109,10 @@ namespace LogScope.Main
             Raise("BeforeDetail"); Raise("AfterDetail");
             Raise("DbBeforeHint"); Raise("DbAfterHint");
             Raise("DbBeforeKind"); Raise("DbAfterKind");
+            Raise("A3BeforePath"); Raise("A3AfterPath");
+            Raise("A3BeforeName"); Raise("A3AfterName");
+            Raise("A3BeforeHint"); Raise("A3AfterHint");
+            Raise("A3BeforeKind"); Raise("A3AfterKind");
             Raise("ComparedText");
             Raise("OverallHeadline"); Raise("OverallGrade");
             Raise("OverallBasis");
@@ -149,6 +156,81 @@ namespace LogScope.Main
             card.SetVerdict(word, GradeOf(word), string.Empty, t.Changed.ToString("N0"));
             List<CardLineVm> lines = DbLines(t);
             card.SetLines(lines, lines.Count == 0 ? NoDbLines(t) : string.Empty);
+        }
+
+        /// <summary>
+        /// 분석 3 칸 (1.29). 분석 3 화면이 <see cref="Analysis3Link.Publish"/> 로 올린
+        /// 결과를 적습니다 — 낱말이 있으면 분석 2 처럼, 없고 점수가 있으면 분석 1 처럼.
+        ///
+        /// 결과가 없으면 <b>비워 둡니다</b> (분석 2 와 같은 까닭: 0 이나 PASS 를 적으면
+        /// "봤는데 괜찮다" 로 읽힙니다).
+        /// </summary>
+        private void ShowA3Result()
+        {
+            if (Cards.Count < 3) return;
+            AnalysisCardVm card = Cards[2];
+            Analysis3Result r = Analysis3Link.Result;
+
+            if (r == null)
+            {
+                card.ClearVerdict();
+                card.ClearScore();
+                card.SetCount(string.Empty);
+                card.SetLines(new List<CardLineVm>(), Analysis3Link.HasBoth
+                    ? "아직 결과가 없습니다. 분석 3 화면에서 돌리면 여기에 요약이 올라옵니다."
+                    : "아직 결과가 없습니다. 위 칸에 이전 · 이후를 넣으세요.");
+                return;
+            }
+
+            string word = (r.Verdict ?? string.Empty).Trim();
+            if (word.Length > 0)
+            {
+                card.ClearScore();
+                card.SetVerdict(word, A3Grade(r.Grade, word), r.Note ?? string.Empty, r.Count ?? string.Empty);
+            }
+            else
+            {
+                card.ClearVerdict();
+                // 범위 밖 점수는 끝으로 붙입니다 — "120 / 100" 은 읽는 사람을 헷갈리게 합니다.
+                if (double.IsNaN(r.Score) || double.IsInfinity(r.Score)) card.ClearScore();
+                else card.SetScore(Math.Max(0.0, Math.Min(AnalysisCardVm.MaxScore, r.Score)));
+                card.SetCount(r.Count ?? string.Empty);
+            }
+
+            var lines = new List<CardLineVm>();
+            if (r.Lines != null)
+            {
+                for (int i = 0; i < r.Lines.Count; i++)
+                {
+                    Analysis3Line l = r.Lines[i];
+                    if (l == null) continue;
+                    var line = new CardLineVm(l.Label, l.Value, A3Grade(l.Grade, string.Empty), l.Detail, l.Target);
+                    line.ValueIsChange = l.ValueIsChange;
+                    line.Card = 3;
+                    lines.Add(line);
+                }
+            }
+            string empty = string.IsNullOrEmpty(r.EmptyText) ? "적을 것이 없습니다." : r.EmptyText;
+            card.SetLines(lines, lines.Count == 0 ? empty : string.Empty);
+        }
+
+        /// <summary>
+        /// 분석 3 의 색. 정해 왔으면 그대로, 아니면 낱말로 고릅니다 —
+        /// PASS · OK 초록, WARNING · WARN 노랑, FAIL · NG 빨강, 그 밖은 회색.
+        /// </summary>
+        public static string A3Grade(Analysis3Grade grade, string word)
+        {
+            switch (grade)
+            {
+                case Analysis3Grade.Good: return ScoreBands.GradeGood;
+                case Analysis3Grade.Warn: return ScoreBands.GradeWarn;
+                case Analysis3Grade.Bad: return ScoreBands.GradeBad;
+            }
+            string w = (word ?? string.Empty).Trim().ToUpperInvariant();
+            if (w == "PASS" || w == "OK") return ScoreBands.GradeGood;
+            if (w == "WARNING" || w == "WARN") return ScoreBands.GradeWarn;
+            if (w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
+            return ScoreBands.GradeNone;
         }
 
         /// <summary>판정 낱말에 맞는 색. 칸의 색 이름으로 옮겨 줍니다.</summary>
@@ -418,6 +500,25 @@ namespace LogScope.Main
         public string DbAfterNote
         {
             get { return DbPathText.Note(DbPath(false), DbPathText.NoneOnCard); }
+        }
+
+        // ---- 분석 3 의 이전 · 이후 자리 (1.29) — 분석 2 칸과 같은 말 ----
+        //
+        // 자리는 Common/Analysis3Link 한 곳에 있습니다. 분석 3 화면도 거기서 읽으므로
+        // 메인 칸과 분석 3 화면이 다른 자리를 보는 일이 없습니다.
+
+        public string A3BeforePath { get { return Analysis3Link.BeforePath; } }
+        public string A3AfterPath { get { return Analysis3Link.AfterPath; } }
+        public string A3BeforeName { get { return DbPathText.Name(Analysis3Link.BeforePath); } }
+        public string A3AfterName { get { return DbPathText.Name(Analysis3Link.AfterPath); } }
+        public string A3BeforeHint { get { return Analysis3Link.BeforePath.Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
+        public string A3AfterHint { get { return Analysis3Link.AfterPath.Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
+        public string A3BeforeKind { get { return A3Kind(Analysis3Link.BeforePath); } }
+        public string A3AfterKind { get { return A3Kind(Analysis3Link.AfterPath); } }
+
+        private static string A3Kind(string path)
+        {
+            return path.Length == 0 ? string.Empty : DbPathText.Note(path);
         }
 
         private string DbPath(bool before)

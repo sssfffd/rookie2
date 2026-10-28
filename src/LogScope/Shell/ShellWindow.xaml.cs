@@ -34,6 +34,11 @@ namespace LogScope.Shell
             _state = state;
             _startupArgs = args;
 
+            // 분석 3 의 지난 자리를 <b>화면을 만들기 전에</b> 되살립니다 — 분석 3 화면은
+            // 아래 InitializeComponent 안에서 만들어지므로, 그 생성자가 자리를 읽을 수
+            // 있어야 합니다. 알리지는 않습니다 (켜자마자 저절로 돌지 않게).
+            Analysis3Link.Restore(state.Settings.A3BeforePath, state.Settings.A3AfterPath);
+
             InitializeComponent();
 
             Width = Math.Max(MinWidth, state.Settings.WindowWidth);
@@ -56,6 +61,8 @@ namespace LogScope.Shell
             Main.DbPickRequested += OnMainDbPick;
             Main.LogDropped += OnLogDropped;
             Main.DbDropped += OnMainDbDropped;
+            Main.A3PickRequested += OnMainA3Pick;
+            Main.A3Dropped += OnMainA3Dropped;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -86,6 +93,11 @@ namespace LogScope.Shell
             Db.Attach(_state);
             Db.PathsChanged += OnDbPathsChanged;
             Db.ResultChanged += OnDbResultChanged;
+
+            // 분석 3 은 갈아 끼우는 폴더라 그 안의 클래스를 직접 부르지 않고
+            // Common/Analysis3Link 게시판으로만 주고받습니다 (1.29).
+            Analysis3Link.PathsChanged += OnA3PathsChanged;
+            Analysis3Link.ResultChanged += OnA3ResultChanged;
 
             Loaded += OnLoaded;
         }
@@ -333,6 +345,72 @@ namespace LogScope.Shell
             Db.TakePaths(e.Files, e.Before);
         }
 
+        // ---------------- 분석 3 (1.29) ----------------
+        //
+        // 메인 칸에서 자리를 정하면 Analysis3Link 에 적기만 합니다. 읽고 돌리는 일은
+        // 분석 3 화면이 PathsChanged 를 듣고 합니다 — 무엇을 돌릴지는 그 폴더만 압니다.
+
+        /// <summary>메인 화면 분석 3 칸을 눌렀을 때 — 파일 고르는 창.</summary>
+        private void OnMainA3Pick(object sender, MainView.PickEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.Title = (e.Before ? "이전" : "이후") + " — " + AppConfig.Current.Title(3);
+            dlg.Filter = "모든 파일 (*.*)|*.*";
+            dlg.CheckFileExists = true;
+
+            string start = e.Before ? Analysis3Link.BeforePath : Analysis3Link.AfterPath;
+            try
+            {
+                if (start.Length > 0)
+                {
+                    string dir = Directory.Exists(start) ? start : Path.GetDirectoryName(start);
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) dlg.InitialDirectory = dir;
+                }
+            }
+            catch (ArgumentException) { }
+            catch (PathTooLongException) { }
+
+            if (dlg.ShowDialog(this) != true) return;
+            Analysis3Link.SetPath(e.Before, dlg.FileName);   // PathsChanged 가 저장 · 다시 그리기
+        }
+
+        /// <summary>
+        /// 메인 화면 분석 3 칸에 놓았을 때. 분석 2 칸처럼 <b>첫 번째 것만</b> 그 자리에
+        /// 적습니다 (파일도 폴더도 됨).
+        /// </summary>
+        private void OnMainA3Dropped(object sender, MainView.FileDropEventArgs e)
+        {
+            if (e.Files == null || e.Files.Count == 0) return;
+            Analysis3Link.SetPath(e.Before, e.Files[0]);
+        }
+
+        /// <summary>분석 3 의 자리가 바뀌었을 때 — 저장하고 메인 칸을 다시 그립니다.</summary>
+        private void OnA3PathsChanged(object sender, EventArgs e)
+        {
+            // 분석 3 화면이 배경 작업 안에서 SetPath 를 불러도 되게 화면 스레드로 넘깁니다.
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => OnA3PathsChanged(sender, e)));
+                return;
+            }
+            _state.Settings.A3BeforePath = Analysis3Link.BeforePath;
+            _state.Settings.A3AfterPath = Analysis3Link.AfterPath;
+            SaveSettings();
+            _vm.Main.Refresh();
+        }
+
+        /// <summary>분석 3 이 결과를 올렸을 때 — 메인 칸을 다시 그립니다.</summary>
+        private void OnA3ResultChanged(object sender, EventArgs e)
+        {
+            // Publish 는 배경 작업 안에서 불릴 수 있습니다 (BackgroundJob).
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => OnA3ResultChanged(sender, e)));
+                return;
+            }
+            _vm.Main.Refresh();
+        }
+
         // ---------------- 비교 ----------------
 
         private void OnRecompare(object sender, RoutedEventArgs e)
@@ -542,6 +620,14 @@ namespace LogScope.Shell
         /// </summary>
         private void OnMainIoOpened(object sender, MainView.IoEventArgs e)
         {
+            // 분석 3 칸의 줄이면 분석 3 화면으로 가서, 무엇을 눌렀는지 게시판으로 알립니다.
+            if (e.Card == 3)
+            {
+                _vm.Screen = ShellVm.ScreenAnalysis3;
+                Analysis3Link.RequestOpen(e.Io);
+                return;
+            }
+
             _vm.Screen = ShellVm.ScreenAnalysis2;
             Db.FocusIo(e.Io);
         }

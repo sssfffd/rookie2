@@ -181,10 +181,8 @@ VS 에서 이 폴더에 파일을 추가하면 VS 가 csproj 에 줄을 적어 �
 | 폴더 안에 `bin` · `obj` 를 넣지 않기 | 넣어도 빌드에서는 빠지지만 폴더만 커집니다 |
 | 이름 공간은 `LogScope.Analysis3` (하위 폴더면 `.하위폴더`) | `check_sources.py` 가 봅니다 |
 
-**메인 화면 분석 3 칸에 결과를 보이고 싶을 때** (아직 안 함) — 창이 `Analysis3View` 에 상태를
-넘기고 결과를 받아 카드에 적는 약속(인터페이스)을 폴더 밖에 하나 만들면, 폴더를 갈아 끼우는
-방식은 그대로 두고 연결할 수 있습니다. 필요해지면 Claude 에게 요청하세요.
-`config.txt` 의 `analysis3 = 이름 | 설명` 줄은 지금도 고치면 탭 · 카드 이름이 바뀝니다.
+**메인 화면 분석 3 칸** — 이전 · 이후 자리와 결과 요약은 4-2 장 (1.29).
+`config.txt` 의 `analysis3 = 이름 | 설명` 줄을 고치면 탭 · 칸 이름이 바뀝니다.
 
 확인 (Claude 가 돌림): `sh scripts/check_compile.sh` (컴파일 · 시험),
 `python3 scripts/check_sources.py` (XAML 이 가리키는 이름 · `Analysis3View` 있는지 · 폴더=이름 공간),
@@ -264,6 +262,102 @@ namespace LogScope.Analysis3
 
 연결이 됐는지: 빌드 후 분석 3 탭을 누르면 내 화면이 뜹니다. 빌드 오류가 나면 오류 줄 전체를
 Claude 에게 주세요.
+
+## 4-2. 메인 화면 분석 3 칸과 주고받기 (1.29)
+
+메인 화면 분석 3 칸에 **이전 · 이후 자리**가 생겼고, 분석 3 이 올린 **결과가 요약 칸에** 뜹니다.
+분석 3 폴더는 갈아 끼우는 자리라서 창 · 메인 화면과 직접 잇지 않고, 폴더 밖의 게시판
+**`Common/Analysis3Link.cs`** 하나로만 주고받습니다. (폴더를 갈아 끼워도 이 파일은 그대로.)
+
+```
+ 메인 화면 분석 3 칸                 Common/Analysis3Link            Analysis3 폴더 (내 코드)
+ ┌──────────────────────────┐
+ │ [FAIL]  차이 발생 [2] 개 │ ◀── ResultChanged ── Publish(결과) ◀── 내 분석이 끝나면
+ │ ● 이전  before.csv  파일 │ ──▶ BeforePath/AfterPath ── PathsChanged ──▶ 둘 다 차면 내 분석 실행
+ │ ● 이후  after.csv   파일 │
+ │ ┌ 요약 ────────────────┐ │
+ │ │ ● 항목 A     1 → 2   │ │ ──▶ (누르면) 분석 3 화면으로 + OpenRequested("항목 A")
+ │ │ ● 항목 B     OK      │ │
+ │ └──────────────────────┘ │
+ └──────────────────────────┘
+```
+
+**메인 칸의 이전 · 이후** — 누르면 파일 고르는 창, 폴더는 끌어다 놓기 (분석 2 칸과 같음).
+넣은 자리는 설정에 저장되고 다음에 켤 때 되살아납니다 (켤 때는 알림 없이 — 저절로 돌지 않게).
+
+**내 코드에서 쓰는 것** (`using LogScope.Common;`)
+
+| 쓰는 것 | 뜻 |
+|---|---|
+| `Analysis3Link.BeforePath` · `AfterPath` · `HasBoth` | 지금 넣어 둔 자리 (파일이나 폴더, 안 넣었으면 빈 글자) |
+| `Analysis3Link.PathsChanged` | 사람이 자리를 바꿨을 때 (바뀔 때만 한 번) |
+| `Analysis3Link.SetPath(true/false, 경로)` | 내 화면 안의 [열기] 단추로 골랐을 때 — 메인 칸에도 보이고 저장됨 |
+| `Analysis3Link.Publish(결과)` · `ClearResult()` | 메인 칸에 결과 올리기 · 지우기. 배경 작업 안에서 불러도 됨 |
+| `Analysis3Link.OpenRequested` | 메인 칸 요약 줄을 눌렀을 때 (그 줄의 `Target`) |
+
+**결과 (`Analysis3Result`)**
+
+| 칸 | 넣는 것 | 비우면 |
+|---|---|---|
+| `Verdict` | 크게 적는 낱말 `"PASS"` · `"WARNING"` · `"FAIL"` (다른 낱말도 됨) | 점수를 씀 |
+| `Score` | 0~100 점수 (분석 1 처럼, 색도 같은 기준) | (NaN) 안 적음 |
+| `Grade` | 낱말 색 `Analysis3Grade.Good/Warn/Bad` | 낱말로 고름 (PASS·OK 초록, WARNING·WARN 노랑, FAIL·NG 빨강) |
+| `Count` | 오른쪽 "차이 발생 **N** 개" 의 N | 숨김 |
+| `Note` | 낱말 오른쪽 작은 글 | 없음 |
+| `Lines` | 요약 칸 줄 (`Analysis3Line`: `Label` · `Value` · `Grade` · `Detail` · `Target` · `ValueIsChange`) | `EmptyText` (없으면 "적을 것이 없습니다.") |
+
+**예시** — 내 화면(`MyMainView`)의 코드 비하인드:
+
+```csharp
+using System;
+using System.Windows.Controls;
+using LogScope.Common;
+
+namespace LogScope.Analysis3
+{
+    public partial class MyMainView : UserControl
+    {
+        public MyMainView()
+        {
+            InitializeComponent();
+            Analysis3Link.PathsChanged += OnPathsChanged;      // 메인 칸에서 이전·이후를 바꾸면
+            Analysis3Link.OpenRequested += OnOpenRequested;    // 메인 칸 요약 줄을 누르면
+            // 켤 때 지난 자리: Analysis3Link.BeforePath / AfterPath 를 그냥 읽으면 됩니다.
+        }
+
+        private void OnPathsChanged(object sender, EventArgs e)
+        {
+            if (Analysis3Link.HasBoth) Run();      // 둘 다 차면 바로 돌리기
+        }
+
+        private void Run()
+        {
+            string before = Analysis3Link.BeforePath;
+            string after = Analysis3Link.AfterPath;
+
+            // ... 내 분석 ... (오래 걸리면 BackgroundJob.Run 안에서)
+
+            var r = new Analysis3Result();
+            r.Verdict = "FAIL";                    // 점수로 하려면 r.Score = 87;
+            r.Count = "1";                         // "차이 발생 1 개"
+            r.Lines.Add(new Analysis3Line("항목 A", "1 → 2", Analysis3Grade.Bad)
+                        { Target = "항목 A", ValueIsChange = true });
+            r.Lines.Add(new Analysis3Line("항목 B", "OK", Analysis3Grade.Good));
+            Analysis3Link.Publish(r);              // → 메인 화면 분석 3 칸
+        }
+
+        private void OnOpenRequested(object sender, Analysis3OpenEventArgs e)
+        {
+            // e.Target 을 내 화면에서 찾아 보여 주기
+        }
+    }
+}
+```
+
+결과가 없을 때 메인 칸은 크게 적는 자리를 **비워 둡니다** ("?? / 100" 이나 PASS 를 적으면 이미 본 것으로
+읽히기 때문 — 분석 2 와 같은 규칙). 요약 칸에는 "아직 결과가 없습니다" 가 적힙니다.
+
+아직 안 한 것: 메인 화면 "분석 결과 저장" 기록에 분석 3 의 낱말 · 요약 줄 넣기 (점수는 들어감).
 
 ## 5. 사내 AI 결과를 받을 때 확인할 것
 

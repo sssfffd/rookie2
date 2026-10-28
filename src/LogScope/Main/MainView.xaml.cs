@@ -41,6 +41,9 @@ namespace LogScope.Main
         /// </summary>
         public event EventHandler<FileDropEventArgs> DbDropped;
 
+        /// <summary>분석 3 칸의 이전/이후 줄에 놓았을 때 (1.29).</summary>
+        public event EventHandler<FileDropEventArgs> A3Dropped;
+
         /// <summary>놓은 것과, 어느 쪽 칸인지.</summary>
         public sealed class FileDropEventArgs : EventArgs
         {
@@ -147,6 +150,22 @@ namespace LogScope.Main
             if (h != null) h(this, new FileDropEventArgs(new List<string>(paths), CardTag.IsBefore(g)));
         }
 
+        /// <summary>분석 3 칸에 놓았을 때. 분석 2 칸과 같은 길입니다.</summary>
+        private void OnA3Drop(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+            Lit(sender as Border, false);
+
+            var g = sender as FrameworkElement;
+            if (g == null || !HasFiles(e)) return;
+
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null || paths.Length == 0) return;
+
+            EventHandler<FileDropEventArgs> h = A3Dropped;
+            if (h != null) h(this, new FileDropEventArgs(new List<string>(paths), CardTag.IsBefore(g)));
+        }
+
         private static bool HasFiles(DragEventArgs e)
         {
             return e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop);
@@ -166,6 +185,9 @@ namespace LogScope.Main
         /// <summary>분석 2 의 견줄 자리를 눌렀을 때.</summary>
         public event EventHandler<PickEventArgs> DbPickRequested;
 
+        /// <summary>분석 3 칸의 이전/이후 줄을 눌렀을 때 (1.29).</summary>
+        public event EventHandler<PickEventArgs> A3PickRequested;
+
         public sealed class PickEventArgs : EventArgs
         {
             /// <summary>참이면 이전 자리, 거짓이면 이후 자리입니다.</summary>
@@ -181,6 +203,11 @@ namespace LogScope.Main
         private void OnDbCardClick(object sender, MouseButtonEventArgs e)
         {
             Pick(sender, e, DbPickRequested);
+        }
+
+        private void OnA3CardClick(object sender, MouseButtonEventArgs e)
+        {
+            Pick(sender, e, A3PickRequested);
         }
 
         private void Pick(object sender, MouseButtonEventArgs e, EventHandler<PickEventArgs> h)
@@ -203,7 +230,11 @@ namespace LogScope.Main
         public sealed class IoEventArgs : EventArgs
         {
             public readonly string Io;
-            public IoEventArgs(string io) { Io = io ?? string.Empty; }
+
+            /// <summary>어느 칸의 줄인지 (2 = 분석 2, 3 = 분석 3).</summary>
+            public readonly int Card;
+
+            public IoEventArgs(string io, int card) { Io = io ?? string.Empty; Card = card; }
         }
 
         private void OnCardIoClick(object sender, RoutedEventArgs e)
@@ -216,8 +247,12 @@ namespace LogScope.Main
             string io = b.Tag as string;
             if (string.IsNullOrEmpty(io)) return;
 
+            // 어느 칸의 줄인지는 줄이 들고 있습니다 (CardLineVm.Card).
+            var line = b.DataContext as CardLineVm;
+            int card = line != null ? line.Card : 2;
+
             EventHandler<IoEventArgs> h = IoOpened;
-            if (h != null) h(this, new IoEventArgs(io));
+            if (h != null) h(this, new IoEventArgs(io, card));
         }
 
         /// <summary>요약에서 그룹 한 줄을 눌렀을 때.</summary>

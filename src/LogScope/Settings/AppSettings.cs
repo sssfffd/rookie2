@@ -153,6 +153,13 @@ namespace LogScope.Settings
         public string DbBeforePath = string.Empty;
         public string DbAfterPath = string.Empty;
 
+        // ---- 분석 3 의 이전 · 이후 자리 (1.29) ----
+        //
+        // 메인 화면 분석 3 칸에 넣은 자리. 켤 때 Common/Analysis3Link 에 되살립니다
+        // (알리지 않고 — 켜자마자 분석 3 이 저절로 돌지 않게).
+        public string A3BeforePath = string.Empty;
+        public string A3AfterPath = string.Empty;
+
         /// <summary>
         /// <b>선택</b> — DB 쪽 바깥 도구. 설정 창의 "DB 도구" 칸입니다.
         ///
@@ -290,6 +297,8 @@ namespace LogScope.Settings
             root["stepSplit"] = StepSplit;
             root["dbBefore"] = DbBeforePath;
             root["dbAfter"] = DbAfterPath;
+            root["a3Before"] = A3BeforePath ?? string.Empty;
+            root["a3After"] = A3AfterPath ?? string.Empty;
             root["dbMysqlDump"] = MysqlDumpPath ?? string.Empty;
             root["dbDumpBefore"] = DbDumpBefore ?? string.Empty;
             root["dbDumpAfter"] = DbDumpAfter ?? string.Empty;
@@ -411,6 +420,8 @@ namespace LogScope.Settings
             s.StepSplit = Json.GetBool(root, "stepSplit", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);
             s.DbAfterPath = Json.GetString(root, "dbAfter", string.Empty);
+            s.A3BeforePath = Json.GetString(root, "a3Before", string.Empty);
+            s.A3AfterPath = Json.GetString(root, "a3After", string.Empty);
             s.MysqlDumpPath = Json.GetString(root, "dbMysqlDump", string.Empty);
             s.DbDumpBefore = Json.GetString(root, "dbDumpBefore", string.Empty);
             s.DbDumpAfter = Json.GetString(root, "dbDumpAfter", string.Empty);

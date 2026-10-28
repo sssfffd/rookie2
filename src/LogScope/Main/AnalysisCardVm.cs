@@ -104,6 +104,12 @@ namespace LogScope.Main
         /// </summary>
         public bool ValueIsChange { get; set; }
 
+        /// <summary>
+        /// 이 줄이 어느 칸의 줄인지 — 누르면 그 분석 화면으로 갑니다 (1.29).
+        /// 줄을 적는 칸이 분석 2 하나이던 때의 뜻을 지키려고 기본은 2.
+        /// </summary>
+        public int Card { get; set; }
+
         public CardLineVm(string label, string value, string grade, string detail)
             : this(label, value, grade, detail, string.Empty) { }
 
@@ -114,6 +120,7 @@ namespace LogScope.Main
             Grade = grade ?? ScoreBands.GradeNone;
             Detail = detail ?? string.Empty;
             Target = target ?? string.Empty;
+            Card = 2;
         }
     }
 
@@ -226,6 +233,19 @@ namespace LogScope.Main
         public bool HasDbBox { get; private set; }
 
         /// <summary>
+        /// 이 칸 안에 <b>분석 3 의 이전/이후 칸</b>을 넣을지 (1.29). 자리는
+        /// Common/Analysis3Link 에 있고, 분석 3 화면이 거기서 읽습니다.
+        /// </summary>
+        public bool HasA3Box { get; private set; }
+
+        /// <summary>
+        /// 결과가 낱말일 수도 점수일 수도 있는 칸 (분석 3). 결과가 오기 전에는
+        /// 판정 칸처럼 아무것도 크게 적지 않고 ("?? / 100" 을 띄우지 않음),
+        /// 점수가 오면 점수 칸이 됩니다.
+        /// </summary>
+        private readonly bool _scoreOptional;
+
+        /// <summary>
         /// 점수(0~100) 자리를 <b>쓰지 않는</b> 칸인지. 분석 2 가 그렇습니다 —
         /// 점수가 아니라 PASS·WARNING·FAIL 을 적습니다.
         ///
@@ -233,7 +253,10 @@ namespace LogScope.Main
         /// <c>?? / 100</c> 과 "Log 파일을 비교한 후 점수가 나옵니다" 를
         /// 띄웠습니다. <b>DB 칸에 로그 이야기가 적혀 있었습니다.</b>
         /// </summary>
-        public bool UsesVerdict { get; private set; }
+        public bool UsesVerdict
+        {
+            get { return Number == 2 || (_scoreOptional && !_has); }
+        }
 
         public AnalysisCardVm(int number, string title, string summary, bool ready)
         {
@@ -243,7 +266,8 @@ namespace LogScope.Main
             Ready = ready;
             HasLogBox = number == 1;
             HasDbBox = number == 2;
-            UsesVerdict = number == 2;
+            HasA3Box = number == 3;
+            _scoreOptional = number == 3;
             _stats = new List<StatVm>();
         }
 
