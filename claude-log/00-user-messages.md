@@ -1524,3 +1524,11 @@
 > 저거 요약칸에 내용 넣는거 사용자 코드에 넣으라고 했는데 어디에 어떻게 넣어야하는거?
 
 → 답변: [111-analysis3-where-publish.md](111-analysis3-where-publish.md)
+
+---
+
+## 요청 139 — 분석 3 폴더 열기 할 때 오류
+
+> 이거 anal3 따로 만든거 프로젝트 포함으로 추가해서 실행시키니까 폴더 열기 할 때 에러남 왜이래
+
+→ 답변: [112-analysis3-folder-error.md](112-analysis3-folder-error.md)

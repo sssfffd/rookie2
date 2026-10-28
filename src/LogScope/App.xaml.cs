@@ -67,15 +67,35 @@ namespace LogScope
         private static void Show(Exception ex)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("예상하지 못한 오류가 났습니다.");
+            sb.AppendLine("예상하지 못한 오류가 났습니다. (이 창에서 Ctrl+C 를 누르면 글 전체가 복사됩니다)");
             sb.AppendLine();
-            sb.AppendLine(ex != null ? ex.Message : "(내용 없음)");
+
+            // 오류의 <b>종류</b>와 <b>속 오류</b>까지 적습니다 (1.32). 분석 3 처럼 이름으로 찾아
+            // 만든 화면이나 XAML 에서 난 오류는 겉이 TargetInvocationException ·
+            // XamlParseException 이라, 겉 글만 적으면 "호출 대상이 예외를 throw했습니다"
+            // 한 줄뿐이고 진짜 까닭은 속에 있습니다.
+            Exception innermost = ex;
+            if (ex == null)
+            {
+                sb.AppendLine("(내용 없음)");
+            }
+            else
+            {
+                int depth = 0;
+                for (Exception x = ex; x != null && depth < 6; x = x.InnerException, depth++)
+                {
+                    sb.AppendLine((depth == 0 ? "" : "└ ") + x.GetType().Name + ": " + x.Message);
+                    innermost = x;
+                }
+            }
             sb.AppendLine();
             sb.AppendLine("버전 " + BuildInfo.Version + " (" + BuildInfo.Commit + ")");
-            if (ex != null && ex.StackTrace != null)
+
+            // 자리는 맨 속 오류의 것이 진짜 난 곳입니다.
+            if (innermost != null && innermost.StackTrace != null)
             {
                 sb.AppendLine();
-                string trace = ex.StackTrace;
+                string trace = innermost.StackTrace;
                 sb.AppendLine(trace.Length > 1500 ? trace.Substring(0, 1500) + "…" : trace);
             }
             try

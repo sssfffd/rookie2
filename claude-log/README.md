@@ -118,3 +118,4 @@
 | `109-analysis3-main-card.md` | 메인 화면 분석 3 칸에 이전 · 이후 자리 + 분석 3 결과 요약 — 폴더 밖 게시판 `Common/Analysis3Link` 로 주고받음 |
 | `110-analysis3-not-in-repo.md` | Analysis3 폴더를 저장소에서 빼서(.gitignore) 새 버전을 덮어 풀어도 사용자 파일이 남게 · 창은 Analysis3View 를 이름으로 찾음 |
 | `111-analysis3-where-publish.md` | 요약 칸에 넣는 코드는 내 [분석] 단추 처리에서 결과를 화면에 보인 바로 아래 — 넣는 모양과 옮기는 표 |
+| `112-analysis3-folder-error.md` | 분석 3 폴더 열기 오류 — 오류 창에 종류 · 속 오류 · 진짜 자리를 적게 하고, 흔한 까닭 표 |

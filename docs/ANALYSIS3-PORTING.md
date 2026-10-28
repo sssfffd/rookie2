@@ -445,6 +445,22 @@ Analysis3Link.PathsChanged += (s, e) =>
 **오래 걸리는 계산을 배경 작업에서 돌린다면** — `Publish` 는 배경 작업 안에서 불러도 됩니다
 (메인 칸 바꾸는 일은 창이 화면 스레드로 넘겨서 함).
 
+## 4-4. 분석 3 에서 오류가 날 때 (1.32)
+
+오류 창에서 **Ctrl+C** 를 누르면 글 전체가 복사됩니다. 1.32 부터 그 창에 오류의 **종류**와 **속 오류**,
+진짜 난 자리(맨 속 오류의 호출 순서)가 적힙니다 — 그 글을 그대로 Claude 에게 주세요.
+
+**폴더를 열 때** 자주 나는 것:
+
+| 오류 창에 적힌 종류 | 흔한 까닭 | 고치는 법 |
+|---|---|---|
+| `ThreadStateException` (STA) | 폴더 고르는 창(`FolderBrowserDialog`)을 **배경 작업 안에서** 띄움 | 고르는 창은 [열기] 단추 처리(화면 스레드)에서 띄우고, 고른 경로만 배경 작업에 넘기기 |
+| `FileNotFoundException` — `Microsoft.WindowsAPICodePack…` 등 dll 이름 | 폴더 고르기에 **바깥 라이브러리**(WindowsAPICodePack · Ookii 등)를 씀. 사내 PC 에서는 빌드됐어도 `out` 폴더에 그 dll 이 없음 | 바깥 라이브러리 대신 `System.Windows.Forms.FolderBrowserDialog` (LogScope 가 이미 참조) |
+| `UnauthorizedAccessException` — "경로에 대한 액세스가 거부" | **폴더 경로를 파일처럼 읽음** (`File.ReadAllText(폴더)`), 또는 하위 폴더 중 권한 없는 곳까지 `AllDirectories` 로 훑음 | `Directory.Exists(경로)` 로 폴더인지 먼저 보고 `Directory.GetFiles(경로, "*.csv")` 로 파일을 꺼내기. 메인 칸에는 폴더를 끌어다 놓을 수 있으니 둘 다 받게 |
+| `DirectoryNotFoundException` · `FileNotFoundException` (내 파일) | Python 의 상대 경로(`./data`, `os.getcwd()`)를 그대로 옮김 — 실행 위치가 달라짐 | 프로그램 옆 파일은 `AppDomain.CurrentDomain.BaseDirectory` 기준으로 |
+| `MissingManifestResourceException` | 옛 프로젝트의 `Properties\Resources.resx` 를 씀 — `Analysis3` 폴더의 `.resx` 는 빌드에 안 들어감 | 글은 `Analysis3Texts.cs` 상수로, 그림은 `Analysis3` 폴더의 png (자동으로 들어감) |
+| `ArgumentException` — "경로에 잘못된 문자" | `"*.csv;*.xlsx"` 처럼 여러 패턴을 한 번에, 또는 경로에 따옴표가 붙음 | 패턴마다 따로 `GetFiles`, 경로는 `Trim('"')` |
+
 ## 5. 사내 AI 결과를 받을 때 확인할 것
 
 - [ ] 파일이 전부 `src/LogScope/Analysis3/` 안이고 `namespace LogScope.Analysis3` 인가
