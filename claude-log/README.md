@@ -119,3 +119,4 @@
 | `110-analysis3-not-in-repo.md` | Analysis3 폴더를 저장소에서 빼서(.gitignore) 새 버전을 덮어 풀어도 사용자 파일이 남게 · 창은 Analysis3View 를 이름으로 찾음 |
 | `111-analysis3-where-publish.md` | 요약 칸에 넣는 코드는 내 [분석] 단추 처리에서 결과를 화면에 보인 바로 아래 — 넣는 모양과 옮기는 표 |
 | `112-analysis3-folder-error.md` | 분석 3 폴더 열기 오류 — 오류 창에 종류 · 속 오류 · 진짜 자리를 적게 하고, 흔한 까닭 표 |
+| `113-analysis3-attach.md` | 창이 분석 3 화면을 만든 뒤 Attach(AppState) / Attach() 를 불러 줌 — 사용자가 ShellWindow 를 직접 고친 것을 저장소에 넣음 |

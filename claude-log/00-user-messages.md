@@ -1532,3 +1532,11 @@
 > 이거 anal3 따로 만든거 프로젝트 포함으로 추가해서 실행시키니까 폴더 열기 할 때 에러남 왜이래
 
 → 답변: [112-analysis3-folder-error.md](112-analysis3-folder-error.md)
+
+---
+
+## 요청 140 — LoadAnalysis3 에서 Attach 를 부르게 고쳤더니 됨
+
+> 아이거 shell window쪽에 loadanalysis3 있잖아 그 안에 try a3host.content이렇게 되어 있는데 / framework view = (frameworkelement)activator.createinstant(t) / var attach = t.getmethod("attach" / 이런식으로 attach로 바꾸니까 잘 되는데 어떻게 할까
+
+→ 답변: [113-analysis3-attach.md](113-analysis3-attach.md)

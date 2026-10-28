@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace LogScope.Common
 {
@@ -95,6 +96,39 @@ namespace LogScope.Common
         public static void ClearResult()
         {
             Publish(null);
+        }
+
+        /// <summary>
+        /// 분석 3 화면에 <b>Attach</b> 가 있으면 불러 줍니다 (1.33). 창이 화면을 만든 직후에 부릅니다.
+        ///
+        /// 분석 2 화면(DbView)이 <c>Attach(AppState)</c> 로 설정 · 로그를 받는 꼴이라, 분석 3 도
+        /// 그 꼴로 만든 경우가 있습니다. 창은 갈아 끼우는 폴더의 클래스를 직접 모르므로 이름으로
+        /// 찾습니다. 받는 꼴은 둘 — <c>public void Attach(AppState state)</c> (먼저 찾음) 또는
+        /// <c>public void Attach()</c>. 없으면 아무것도 안 하고 false.
+        ///
+        /// Attach 안에서 난 오류는 그대로 올립니다 (<see cref="TargetInvocationException"/> 에
+        /// 싸여서) — 부르는 쪽(창)이 자리 화면에 그 까닭을 적습니다.
+        /// </summary>
+        public static bool CallAttach(object view, AppState state)
+        {
+            if (view == null) return false;
+            Type t = view.GetType();
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+
+            MethodInfo m = t.GetMethod("Attach", flags, null, new[] { typeof(AppState) }, null);
+            if (m != null)
+            {
+                m.Invoke(view, new object[] { state });
+                return true;
+            }
+
+            m = t.GetMethod("Attach", flags, null, Type.EmptyTypes, null);
+            if (m != null)
+            {
+                m.Invoke(view, null);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>메인 칸의 줄을 눌렀다고 분석 3 화면에 알립니다 (창이 부릅니다).</summary>

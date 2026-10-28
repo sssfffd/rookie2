@@ -98,7 +98,8 @@
   (`xmlns:t="clr-namespace:LogScope.Analysis3"`). 글자만 고칠 때 그 파일 하나만 열면 되게.
   코드가 상황 따라 짓는 문장(요약 · 알림 창)은 그 코드에 둬도 됩니다.
 - **맨 바깥 화면 이름은 `Analysis3View`** (`LogScope.Analysis3.Analysis3View`, `UserControl`,
-  매개변수 없는 생성자). 창이 이 이름을 띄우고 아무 속성도 넘기지 않습니다.
+  매개변수 없는 생성자). 창이 이 이름을 띄웁니다. 설정 · 로그가 필요하면
+  `public void Attach(AppState state)` 를 두면 창이 만든 직후 불러 줍니다 (1.33, DbView 와 같은 꼴).
 - **csproj 에 파일을 적지 않습니다.** `tools/Analysis3.targets` 가 `Analysis3` 폴더 안의
   `.cs` · `.xaml` · 그림(png · jpg · gif · bmp · ico)을 빌드할 때 저절로 찾습니다.
   그 밖의 파일(txt · json 등)은 빌드에 안 들어갑니다 — 필요하면 Claude 에게 말하기.
@@ -187,6 +188,7 @@ xcopy /e /i /y D:\옛폴더\src\LogScope\Analysis3 D:\새폴더\src\LogScope\Ana
 | | |
 |---|---|
 | 맨 바깥 화면은 `LogScope.Analysis3.Analysis3View` (UserControl, 매개변수 없는 생성자) | 창이 이 이름을 찾습니다. 이름이 다르면 4-1 장처럼 감싸기 |
+| (선택) `public void Attach(AppState state)` 또는 `public void Attach()` | 있으면 창이 화면을 만들어 자리에 넣은 직후 불러 줍니다 (1.33). 그 안에서 난 오류는 자리 화면에 빨갛게 |
 | `Analysis3` 폴더 **밖**은 사내에서 고치지 않기 | 새로 받으면 덮여 사라집니다. 밖을 고쳐야 하면 Claude 에게 |
 | 폴더 안에 `bin` · `obj` 를 넣지 않기 | 넣어도 빌드에서는 빠지지만 폴더만 커집니다 |
 | 이름 공간은 `LogScope.Analysis3` (하위 폴더면 `.하위폴더`) | `check_sources.py` 가 봅니다 |

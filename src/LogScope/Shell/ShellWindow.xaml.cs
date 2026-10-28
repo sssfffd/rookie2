@@ -348,6 +348,9 @@ namespace LogScope.Shell
         }
 
         // ---------------- 분석 3 (1.29) ----------------
+        //
+        // 메인 칸에서 자리를 정하면 Analysis3Link 에 적기만 합니다. 읽고 돌리는 일은
+        // 분석 3 화면이 PathsChanged 를 듣고 합니다 — 무엇을 돌릴지는 그 폴더만 압니다.
 
         /// <summary>
         /// 분석 3 화면을 찾아 자리에 넣습니다 (1.30).
@@ -367,21 +370,29 @@ namespace LogScope.Shell
                 return;
             }
 
+            string step = "만들다";
             try
             {
-                A3Host.Content = (FrameworkElement)Activator.CreateInstance(t);
+                var view = (FrameworkElement)Activator.CreateInstance(t);
+
+                // 자리에 먼저 넣고 Attach 를 부릅니다 — Attach 안에서 Window.GetWindow(this)
+                // 같은 것을 쓰면 창 안에 들어 있어야 합니다.
+                A3Host.Content = view;
+
+                // Attach(AppState) 가 있으면 설정 · 로그를 넘겨 줍니다 (1.33, DbView 와 같은 꼴).
+                // 이게 없던 1.32 까지는 Attach 로 받는 화면이 빈 상태로 돌다가 폴더를 열 때
+                // 오류가 났습니다.
+                step = "Attach 하다";
+                Analysis3Link.CallAttach(view, _state);
             }
             catch (Exception ex)
             {
-                // 생성자 안에서 난 오류는 TargetInvocationException 에 싸여 옵니다.
+                // 생성자 · Attach 안에서 난 오류는 TargetInvocationException 에 싸여 옵니다.
                 Exception inner = ex.InnerException ?? ex;
                 A3Host.Content = new Analysis3Placeholder(
-                    "Analysis3View 를 만들다 오류가 났습니다.\n" + inner.GetType().Name + ": " + inner.Message);
+                    "Analysis3View 를 " + step + " 오류가 났습니다.\n" + inner.GetType().Name + ": " + inner.Message);
             }
         }
-        //
-        // 메인 칸에서 자리를 정하면 Analysis3Link 에 적기만 합니다. 읽고 돌리는 일은
-        // 분석 3 화면이 PathsChanged 를 듣고 합니다 — 무엇을 돌릴지는 그 폴더만 압니다.
 
         /// <summary>메인 화면 분석 3 칸을 눌렀을 때 — 파일 고르는 창.</summary>
         private void OnMainA3Pick(object sender, MainView.PickEventArgs e)

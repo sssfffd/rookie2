@@ -141,6 +141,7 @@ namespace LogScope.Tests
                 DbDeltaText();
                 DbPathNames();
                 Analysis3LinkRules();
+                Analysis3AttachRules();
                 Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
@@ -4224,6 +4225,57 @@ namespace LogScope.Tests
                 Analysis3Link.Restore(string.Empty, string.Empty);
                 Analysis3Link.ClearResult();
             }
+        }
+
+        private sealed class A3WithState
+        {
+            public AppState Got;
+            public int Calls;
+            public void Attach(AppState state) { Got = state; Calls++; }
+            public void Attach() { Calls += 100; }   // 둘 다 있으면 AppState 쪽이 먼저
+        }
+
+        private sealed class A3NoArgs
+        {
+            public int Calls;
+            public void Attach() { Calls++; }
+        }
+
+        private sealed class A3None { }
+
+        private sealed class A3Throws
+        {
+            public void Attach(AppState state) { throw new InvalidOperationException("설정 없음"); }
+        }
+
+        /// <summary>
+        /// 분석 3 화면의 Attach 를 이름으로 찾아 부르기 (1.33). 사용자가 ShellWindow 를 직접
+        /// 고쳐 붙였던 것을 창 쪽으로 옮긴 것 — 받는 꼴 둘과, 없을 때 · 오류 날 때.
+        /// </summary>
+        private static void Analysis3AttachRules()
+        {
+            Say("분석 3 — Attach 부르기");
+
+            var state = new AppState();
+            var a = new A3WithState();
+            Check("Attach(AppState) 를 부름", Analysis3Link.CallAttach(a, state) && a.Got == state && a.Calls == 1,
+                  "부름 " + a.Calls);
+
+            var b = new A3NoArgs();
+            Check("Attach() 도 부름", Analysis3Link.CallAttach(b, state) && b.Calls == 1, "부름 " + b.Calls);
+
+            Check("없으면 false", !Analysis3Link.CallAttach(new A3None(), state), "");
+            Check("null 이면 false", !Analysis3Link.CallAttach(null, state), "");
+
+            bool threw = false;
+            string why = string.Empty;
+            try { Analysis3Link.CallAttach(new A3Throws(), state); }
+            catch (System.Reflection.TargetInvocationException ex)
+            {
+                threw = true;
+                why = ex.InnerException != null ? ex.InnerException.Message : string.Empty;
+            }
+            Check("Attach 오류는 속에 싸여 올라옴", threw && why == "설정 없음", why);
         }
 
         /// <summary>
