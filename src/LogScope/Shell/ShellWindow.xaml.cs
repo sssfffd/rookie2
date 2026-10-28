@@ -353,6 +353,41 @@ namespace LogScope.Shell
         // 분석 3 화면이 PathsChanged 를 듣고 합니다 — 무엇을 돌릴지는 그 폴더만 압니다.
 
         /// <summary>
+        /// 분석 3 화면에 <b>Attach</b> 가 있으면 불러 줍니다 (1.33). 화면을 만든 직후에 부릅니다.
+        ///
+        /// 분석 2 화면(DbView)이 <c>Attach(AppState)</c> 로 설정 · 로그를 받는 꼴이라, 분석 3 도
+        /// 그 꼴로 만든 경우가 있습니다. 창은 갈아 끼우는 폴더의 클래스를 직접 모르므로 이름으로
+        /// 찾습니다. 받는 꼴은 둘 — <c>public void Attach(AppState state)</c> (먼저 찾음) 또는
+        /// <c>public void Attach()</c>. 꼴을 정해 찾으므로 Attach 가 여럿이어도
+        /// AmbiguousMatchException 이 나지 않습니다. 없으면 아무것도 안 하고 false.
+        ///
+        /// 이 창 파일 하나에만 둡니다 (1.34) — 이 파일만 바꿔 끼워도 되게.
+        /// Attach 안에서 난 오류는 TargetInvocationException 에 싸여 그대로 올라갑니다.
+        /// </summary>
+        public static bool CallAttach(object view, AppState state)
+        {
+            if (view == null) return false;
+            Type t = view.GetType();
+            const System.Reflection.BindingFlags flags =
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+
+            System.Reflection.MethodInfo m = t.GetMethod("Attach", flags, null, new[] { typeof(AppState) }, null);
+            if (m != null)
+            {
+                m.Invoke(view, new object[] { state });
+                return true;
+            }
+
+            m = t.GetMethod("Attach", flags, null, Type.EmptyTypes, null);
+            if (m != null)
+            {
+                m.Invoke(view, null);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 분석 3 화면을 찾아 자리에 넣습니다 (1.30).
         ///
         /// 사용자의 Analysis3 폴더는 저장소에 없어서, 새로 받은 직후에는 비어 있을 수
@@ -383,7 +418,7 @@ namespace LogScope.Shell
                 // 이게 없던 1.32 까지는 Attach 로 받는 화면이 빈 상태로 돌다가 폴더를 열 때
                 // 오류가 났습니다.
                 step = "Attach 하다";
-                Analysis3Link.CallAttach(view, _state);
+                CallAttach(view, _state);
             }
             catch (Exception ex)
             {

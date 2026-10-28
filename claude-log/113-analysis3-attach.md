@@ -12,7 +12,7 @@
 
 | | 바꾼 것 |
 |---|---|
-| `Common/Analysis3Link.CallAttach(view, state)` (새) | `public void Attach(AppState)` 를 먼저, 없으면 `public void Attach()` 를 이름으로 찾아 부름. 없으면 false. 오버로드가 있어도 `AmbiguousMatchException` 안 남 (꼴을 정해서 찾음) |
+| `ShellWindow.CallAttach(view, state)` (새 — 1.34 에 Analysis3Link 에서 창 파일로 옮김) | `public void Attach(AppState)` 를 먼저, 없으면 `public void Attach()` 를 이름으로 찾아 부름. 없으면 false. 오버로드가 있어도 `AmbiguousMatchException` 안 남 (꼴을 정해서 찾음) |
 | `ShellWindow.LoadAnalysis3` | 만들기 → 자리에 넣기 → `CallAttach(view, _state)`. 만들기 · Attach 중 오류는 자리 화면에 "Attach 하다 오류가 났습니다" 처럼 어느 단계인지와 함께 |
 | 시험 | 두 꼴 · 둘 다 있을 때 AppState 쪽 · 없을 때 · 오류가 속에 싸여 올라옴 (900 → 905) |
 

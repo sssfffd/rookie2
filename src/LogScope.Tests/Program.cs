@@ -4258,18 +4258,18 @@ namespace LogScope.Tests
 
             var state = new AppState();
             var a = new A3WithState();
-            Check("Attach(AppState) 를 부름", Analysis3Link.CallAttach(a, state) && a.Got == state && a.Calls == 1,
+            Check("Attach(AppState) 를 부름", LogScope.Shell.ShellWindow.CallAttach(a, state) && a.Got == state && a.Calls == 1,
                   "부름 " + a.Calls);
 
             var b = new A3NoArgs();
-            Check("Attach() 도 부름", Analysis3Link.CallAttach(b, state) && b.Calls == 1, "부름 " + b.Calls);
+            Check("Attach() 도 부름", LogScope.Shell.ShellWindow.CallAttach(b, state) && b.Calls == 1, "부름 " + b.Calls);
 
-            Check("없으면 false", !Analysis3Link.CallAttach(new A3None(), state), "");
-            Check("null 이면 false", !Analysis3Link.CallAttach(null, state), "");
+            Check("없으면 false", !LogScope.Shell.ShellWindow.CallAttach(new A3None(), state), "");
+            Check("null 이면 false", !LogScope.Shell.ShellWindow.CallAttach(null, state), "");
 
             bool threw = false;
             string why = string.Empty;
-            try { Analysis3Link.CallAttach(new A3Throws(), state); }
+            try { LogScope.Shell.ShellWindow.CallAttach(new A3Throws(), state); }
             catch (System.Reflection.TargetInvocationException ex)
             {
                 threw = true;

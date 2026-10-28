@@ -1540,3 +1540,11 @@
 > 아이거 shell window쪽에 loadanalysis3 있잖아 그 안에 try a3host.content이렇게 되어 있는데 / framework view = (frameworkelement)activator.createinstant(t) / var attach = t.getmethod("attach" / 이런식으로 attach로 바꾸니까 잘 되는데 어떻게 할까
 
 → 답변: [113-analysis3-attach.md](113-analysis3-attach.md)
+
+---
+
+## 요청 141 — ShellWindow 만 고쳐 달라
+
+> ㄴㄴ 너가 shell window만 고쳐주면 될 것 같음
+
+→ 답변: [114-attach-in-shell-only.md](114-attach-in-shell-only.md)
