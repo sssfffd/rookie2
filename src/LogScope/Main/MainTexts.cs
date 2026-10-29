@@ -29,7 +29,7 @@ namespace LogScope.Main
         /// <summary>글 — 아직 결과가 없을 때</summary>
         public const string LlmEmpty = "분석 1 · 2 · 3 중 하나 이상을 마친 뒤 [LLM 분석 실행] 을 누르면 여기에 종합 분석 결과가 나옵니다.";
         /// <summary>알림 — LLM 분석 기능이 꽂혀 있지 않을 때</summary>
-        public const string LlmNoAnalyzer = "연결된 LLM 분석 기능이 없습니다.\n\nsrc/LogScope/Main/LlmSetup.cs 의 Register 에서\nLlmLink.Analyzer = new 내분석기(); 를 넣어 주세요.";
+        public const string LlmNoAnalyzer = "연결된 LLM 분석 기능이 없습니다.\n\nILlmAnalyzer 를 맞춘 클래스(매개변수 없는 생성자)를 만들면 켤 때 저절로 꽂힙니다.\n(src/LogScope/Main/LlmSetup.cs · src/LogScope/Common/LlmLink.cs)";
         /// <summary>글</summary>
         public const string Heading = "분석 결과";
         /// <summary>단추 이름</summary>

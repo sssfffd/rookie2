@@ -1668,3 +1668,11 @@
 > 지금 소스코드에 analysis3폴더가 없잖아 내가 추가해도 build.bat돌아가나? 그리고 llmexport쪽 폴더에 파일구조들 내가 바꿨는데도 되나?
 
 → 답변: [129-user-folders-build.md](129-user-folders-build.md)
+
+---
+
+## 요청 157 — LLM 실행 주석 한 줄 풀기
+
+> 아 그리고 log 종합 분석 실행에 주석처리한거 있잖아? 버튼누르면 동작하는거에서 한줄 주석처리한거 그거 풀어줘
+
+→ 답변: [130-llm-auto-register.md](130-llm-auto-register.md)
