@@ -277,8 +277,9 @@ Claude 에게 주세요.
 
 ## 4-2. 메인 화면 분석 3 칸과 주고받기 (1.29)
 
-> **1.37 — 결과를 메인 칸에 적습니다** (`src/LogScope/Main/MainVm.cs` 의 `A3ResultOnCard = true`,
-> 1.36 에 잠깐 껐음). 결과가 오기 전에는 칸을 비워 둡니다 (안내 글 없음).
+> **1.38 — 메인 칸에는 요약 줄(`Lines`)만 적습니다.** `Verdict` · `Score` · `Count` · `Note` 는 칸에 안 보입니다
+> (`src/LogScope/Main/MainVm.cs` 의 `A3HeadlineOnCard = false` — true 로 켜면 보임). 결과가 오기 전에는
+> 빈 칸. 결과 전체를 끄는 스위치는 `A3ResultOnCard` (지금 true).
 
 메인 화면 분석 3 칸에 **이전 · 이후 자리**가 생겼고, 분석 3 이 올린 **결과가 요약 칸에** 뜹니다.
 분석 3 폴더는 갈아 끼우는 자리라서 창 · 메인 화면과 직접 잇지 않고, 폴더 밖의 게시판

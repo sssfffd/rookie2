@@ -172,6 +172,13 @@ namespace LogScope.Main
         /// </summary>
         public static readonly bool A3ResultOnCard = true;
 
+        /// <summary>
+        /// 분석 3 칸의 <b>머리 줄</b>(크게 적는 낱말 · 점수, 오른쪽 "차이 발생 N 개", 작은 글 Note)을
+        /// 적을지 (1.38). <b>지금은 끔</b> — 사용자 요청으로 요약 줄(Lines)만 보입니다. 그 자리의
+        /// 높이는 그대로 남아 칸 셋의 이전 · 이후 줄이 나란히 놓입니다. 켜려면 true.
+        /// </summary>
+        public static readonly bool A3HeadlineOnCard = false;
+
         private void ShowA3Result()
         {
             if (Cards.Count < 3) return;
@@ -198,7 +205,13 @@ namespace LogScope.Main
             }
 
             string word = (r.Verdict ?? string.Empty).Trim();
-            if (word.Length > 0)
+            if (!A3HeadlineOnCard)
+            {
+                card.ClearVerdict();
+                card.ClearScore();
+                card.SetCount(string.Empty);
+            }
+            else if (word.Length > 0)
             {
                 card.ClearScore();
                 card.SetVerdict(word, A3Grade(r.Grade, word), r.Note ?? string.Empty, r.Count ?? string.Empty);

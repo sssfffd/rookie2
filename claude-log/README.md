@@ -125,3 +125,4 @@
 | `116-a3-card-result-blank.md` | 메인 화면 분석 3 칸의 결과 자리 당분간 비움 (`MainVm.A3ResultOnCard`) |
 | `117-a3-main-code-map.md` | 분석 3 → 메인 화면: 자리 · 요약을 받고 띄우는 코드의 파일 · 줄 지도 |
 | `118-a3-card-result-on.md` | 분석 3 결과를 메인 칸에 다시 띄움 (`A3ResultOnCard = true`), 결과 전에는 빈 칸 |
+| `119-a3-headline-off-paths.md` | 분석 3 칸 머리 줄(낱말 · 차이 발생 N 개 · 작은 글) 지우고 요약 줄만 · 이전/이후 폴더 칸 연결하는 두 줄 |
