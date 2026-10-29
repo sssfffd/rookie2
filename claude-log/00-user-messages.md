@@ -1686,3 +1686,11 @@
 > 아 그거 LlmLink.Analyzer = new LogScope.LlmExport.OverallLlmAnalyzer(); 이걸로 작성하면 됨
 
 → 답변: [131-llm-register-uncomment.md](131-llm-register-uncomment.md)
+
+---
+
+## 요청 159 — 분석 2 의 2 만 개 상한
+
+> 아 그리고 분석 2 2만개 까지면 안됨 / 이거 몇만~ 몇십만개 있을 수 있음
+
+→ 답변: [132-db-many-rows.md](132-db-many-rows.md)

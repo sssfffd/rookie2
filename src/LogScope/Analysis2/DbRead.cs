@@ -518,8 +518,11 @@ namespace LogScope.Analysis2
     /// </summary>
     public static class SqlDumpReader
     {
-        /// <summary>표 하나에서 읽을 행 수 상한. 넘으면 거기까지만 읽고 밝힙니다.</summary>
-        public const int MaxRowsPerTable = 200000;
+        /// <summary>
+        /// 표 하나에서 읽을 행 수 상한. 넘으면 거기까지만 읽고 밝힙니다.
+        /// 1.49: 20 만 → 200 만 — IO 표가 몇만 ~ 몇십만 행일 수 있습니다 (64 비트로 돌아 메모리는 넉넉).
+        /// </summary>
+        public const int MaxRowsPerTable = 2000000;
 
         public static void Read(string path, DbSnapshot into, int maxRows)
         {

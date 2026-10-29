@@ -138,3 +138,4 @@
 | `129-user-folders-build.md` | Analysis3 폴더는 build.bat 에 저절로 들어감 · LlmExport 도 사용자 폴더로 (tools/LlmExport.targets, 저장소에서 뺌) |
 | `130-llm-auto-register.md` | LLM 분석기 꽂기 — 주석 한 줄 대신 ILlmAnalyzer 를 맞춘 클래스를 찾아 꽂음 |
 | `131-llm-register-uncomment.md` | 1.47 되돌림 — LlmSetup 에 `LlmLink.Analyzer = new LogScope.LlmExport.OverallLlmAnalyzer();` 한 줄 |
+| `132-db-many-rows.md` | 분석 2 상한 (같은 줄 2 만 · 행 차이 5 천 · 목록 5 천/5 만 · 읽기 20 만) → 몇십만 행까지 |

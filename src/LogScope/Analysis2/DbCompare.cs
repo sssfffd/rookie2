@@ -194,15 +194,19 @@ namespace LogScope.Analysis2
     /// </summary>
     public static class DbDiff
     {
-        /// <summary>표 하나에서 적어 둘 행 차이의 상한. 넘으면 세기만 합니다.</summary>
-        public const int MaxRowDiffsPerTable = 5000;
+        /// <summary>
+        /// 표 하나에서 적어 둘 행 차이의 상한. 넘으면 세기만 합니다.
+        /// 1.49: 5 천 → 100 만. 상한을 넘으면 목록에서 빠진 IO 는 "차이 발생 N 개" 에도 안 세어져
+        /// 수가 적게 나왔습니다 — IO 표가 몇만 ~ 몇십만 행이라 넉넉히 둡니다.
+        /// </summary>
+        public const int MaxRowDiffsPerTable = 1000000;
 
         /// <summary>
         /// 표 하나에서 <b>같은 줄</b>을 몇 개까지 담을지. "모든 IO 보기" 를
-        /// 위한 것이라 차이보다 넉넉히 둡니다 — IO 표는 보통 수백~수천
-        /// 줄입니다. 넘으면 담기를 그치고 <b>그렇다고 적습니다</b>.
+        /// 위한 것입니다. 넘으면 담기를 그치고 <b>그렇다고 적습니다</b>.
+        /// 1.49: 2 만 → 100 만 — IO 표가 몇만 ~ 몇십만 줄일 수 있습니다.
         /// </summary>
-        public const int MaxSameRowsPerTable = 20000;
+        public const int MaxSameRowsPerTable = 1000000;
 
         public static DbDiffResult Compare(DbSnapshot before, DbSnapshot after)
         {
@@ -596,7 +600,7 @@ namespace LogScope.Analysis2
 
         /// <summary>
         /// 차이를 적어 둡니다. 상한을 넘으면 <b>세는 것만</b> 계속합니다 —
-        /// 10 만 줄을 화면에 띄워도 읽을 수 없고, 그 전에 메모리가 먼저 찹니다.
+        /// 상한(<see cref="MaxRowDiffsPerTable"/>)은 몇십만 행 표도 다 담도록 넉넉히 둡니다 (1.49).
         /// </summary>
         private static void Add(TableDiff td, RowDiff d)
         {
@@ -894,11 +898,15 @@ namespace LogScope.Analysis2
     /// </summary>
     public static class DbDiffList
     {
-        /// <summary>목록 전체 줄 수 상한.</summary>
-        public const int MaxLines = 50000;
+        /// <summary>
+        /// 목록 전체 줄 수 상한. 1.49: 5 만 → 300 만. 목록은 가상화(ListView)라 줄이 많아도 화면에
+        /// 그리는 것은 보이는 몇십 줄뿐이고, "차이 발생 N 개" 는 이 목록으로 세므로 상한이 작으면 수가
+        /// 적게 나옵니다. 생기거나 없어진 행은 열마다 펼쳐져 IO 수보다 줄이 많습니다.
+        /// </summary>
+        public const int MaxLines = 3000000;
 
-        /// <summary>표 하나가 차지할 수 있는 줄 수 상한. 한 표가 목록을 다 먹지 않게.</summary>
-        public const int MaxLinesPerTable = 5000;
+        /// <summary>표 하나가 차지할 수 있는 줄 수 상한. 1.49: 5 천 → 100 만.</summary>
+        public const int MaxLinesPerTable = 1000000;
 
         public sealed class Options
         {

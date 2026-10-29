@@ -139,6 +139,7 @@ namespace LogScope.Tests
                 CsvKeyAndValue();
                 DbShowAllIos();
                 DbVerdictRule();
+                DbManyRows();
                 DbChangedValuesRule();
                 DbDeltaText();
                 DbPathNames();
@@ -4311,6 +4312,48 @@ namespace LogScope.Tests
             Check("요청: 아무것도 없으면 Any 거짓", !q.Any, "");
             q.Use3 = true;
             Check("요청: 분석 3 만 있어도 Any", q.Any, "");
+        }
+
+        /// <summary>
+        /// IO 표가 몇만 행일 때 (1.49). 1.48 까지는 표마다 행 차이 5 천 · 목록 5 천 줄 · 같은 줄 2 만 에서
+        /// 끊겨 "차이 발생 N 개" 가 적게 나왔습니다. 3 만 행 · 1 만 2 천 개 바뀜으로 다 세는지 봅니다.
+        /// </summary>
+        private static void DbManyRows()
+        {
+            Say("DB — 몇만 행");
+            const int n = 30000;
+            var b = new StringBuilder();
+            var a = new StringBuilder();
+            string head = "CREATE TABLE `io` (`name` varchar(64) NOT NULL, `v` int, PRIMARY KEY (`name`));\n";
+            b.Append(head); a.Append(head);
+            for (int i = 0; i < n; i += 1000)
+            {
+                b.Append("INSERT INTO `io` VALUES "); a.Append("INSERT INTO `io` VALUES ");
+                for (int k = i; k < i + 1000; k++)
+                {
+                    string sep = k > i ? "," : "";
+                    b.Append(sep).Append("('IO_").Append(k).Append("',").Append(k).Append(')');
+                    a.Append(sep).Append("('IO_").Append(k).Append("',").Append(k % 5 < 2 ? k + 1 : k).Append(')');   // 40 % 바뀜
+                }
+                b.Append(";\n"); a.Append(";\n");
+            }
+            var sb = new DbSnapshot(); SqlDumpReader.Read(WriteText("many_b.sql", b.ToString()), sb, 0);
+            var sa = new DbSnapshot(); SqlDumpReader.Read(WriteText("many_a.sql", a.ToString()), sa, 0);
+            DbDiffResult d = DbDiff.Compare(sb, sa);
+
+            List<DbDiffLine> lines = DbDiffList.Build(d, null);
+            DbDiffList.Tally t = DbDiffList.Count(lines);
+            Check("3 만 행 다 읽음", sb.RowCount == n && sa.RowCount == n, sb.RowCount + "/" + sa.RowCount);
+            Check("바뀐 1 만 2 천 개를 다 셈 (전엔 5 천에서 끊김)", t.Changed == 12000, t.Changed.ToString());
+            Check("표의 바뀐 행 수와 같음", d.Tables[0].RowsChanged == 12000 && d.Tables[0].Rows.Count == 12000,
+                  d.Tables[0].RowsChanged + "/" + d.Tables[0].Rows.Count);
+            Check("상한 알림 없음", d.Tables[0].RowNote.IndexOf("상한", StringComparison.Ordinal) < 0, d.Tables[0].RowNote);
+
+            var o = new DbDiffList.Options();
+            o.IncludeSame = true;
+            List<DbDiffLine> all = DbDiffList.Build(d, o);
+            Check("모든 IO 보기: 같은 1 만 8 천 줄까지 (전엔 2 만 상한 근처)", d.Tables[0].SameRows.Count == 18000
+                  && all.Count >= n, d.Tables[0].SameRows.Count + " / " + all.Count);
         }
 
         private static void Analysis3LinkRules()

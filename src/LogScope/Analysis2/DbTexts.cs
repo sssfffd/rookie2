@@ -57,7 +57,7 @@ namespace LogScope.Analysis2
         /// <summary>고르기 단추 이름</summary>
         public const string ViewEveryIo = "전체";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ViewEveryIoTip = "두 쪽이 같은 IO 까지 모두 보여 줍니다 — \"이 IO 는 봤고 괜찮았다\" 를 확인하는 자리입니다.\n같은 줄은 차이 뒤에 옵니다. 표 하나에서 2 만 개까지 담습니다 (넘으면 그렇다고 적습니다).";
+        public const string ViewEveryIoTip = "두 쪽이 같은 IO 까지 모두 보여 줍니다 — \"이 IO 는 봤고 괜찮았다\" 를 확인하는 자리입니다.\n같은 줄은 차이 뒤에 옵니다. 표 하나에서 100 만 개까지 담습니다 (넘으면 그렇다고 적습니다).";
         /// <summary>글</summary>
         public const string Note2 = "값이 달라진 줄";
         /// <summary>글</summary>
