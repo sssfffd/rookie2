@@ -197,15 +197,6 @@
     <Compile Include="Main\CardSnapshot.cs" />
     <Compile Include="Main\LlmPanelVm.cs" />
     <Compile Include="Main\LlmSetup.cs" />
-    <Compile Include="LlmExport\LlmSection.cs" />
-    <Compile Include="LlmExport\LlmFormat.cs" />
-    <Compile Include="LlmExport\LlmExportOptions.cs" />
-    <Compile Include="LlmExport\LlmPrompt.cs" />
-    <Compile Include="LlmExport\Analysis1Digest.cs" />
-    <Compile Include="LlmExport\Analysis2Digest.cs" />
-    <Compile Include="LlmExport\Analysis3Digest.cs" />
-    <Compile Include="LlmExport\CrossLink.cs" />
-    <Compile Include="LlmExport\LlmDocument.cs" />
     <Compile Include="Main\HistoryStore.cs" />
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\AppSettings.cs" />
@@ -303,6 +294,8 @@
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildThisFileDirectory)..\..\tools\BuildInfo.targets" />
+  <!-- LlmExport 폴더도 사용자 폴더 — 파일 목록을 폴더에서 찾습니다 (1.46). 다른 ItemGroup 보다 뒤에. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\..\tools\LlmExport.targets" />
   <!-- Analysis3 폴더는 통째로 갈아 끼우는 자리 — 파일 목록을 여기 적지 않고 폴더에서 찾습니다.
        반드시 맨 끝에 두세요 (위에 VS 가 적어 넣은 Analysis3 줄을 지우고 다시 넣습니다). -->
   <Import Project="$(MSBuildThisFileDirectory)..\..\tools\Analysis3.targets" />

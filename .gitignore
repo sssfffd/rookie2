@@ -21,3 +21,7 @@ test.fail.log
 # 그래서 새 버전을 기존 폴더 위에 풀거나 git pull 해도 이 폴더는 그대로 남습니다.
 # (파일 목록은 tools/Analysis3.targets 가 폴더에서 찾고, 창은 Analysis3View 를 이름으로 찾음)
 src/LogScope/Analysis3/
+
+# 사내 LLM 입력 만들기 — 1.43 에 만들었고 1.46 부터 사용자가 직접 고치는 폴더. 저장소에 넣지 않습니다
+# (Analysis3 와 같음). 파일 목록은 tools/LlmExport.targets 가 폴더에서 찾음.
+src/LogScope/LlmExport/

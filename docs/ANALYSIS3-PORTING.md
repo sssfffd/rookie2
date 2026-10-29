@@ -173,6 +173,10 @@ xcopy /e /i /y D:\옛폴더\src\LogScope\Analysis3 D:\새폴더\src\LogScope\Ana
 
 **그래도 백업은** — 저장소에 없는 폴더라 그 PC 에만 있습니다. 가끔 다른 곳에 복사해 두세요.
 
+**`src\LogScope\LlmExport\` 도 같습니다 (1.46)** — 사용자가 직접 고치는 폴더라 저장소에서 뺐고
+(`.gitignore`), 파일 목록은 `tools/LlmExport.targets` 가 폴더에서 찾습니다. 파일 이름을 바꾸거나 더하거나
+지워도 csproj 를 고칠 일이 없습니다. 폴더가 없어도 빌드는 됩니다.
+
 **왜 되나**
 - 파일 목록: `LogScope.csproj` 맨 끝이 `tools/Analysis3.targets` 를 가져오고, 거기서
   `Analysis3\**\*.cs` · `*.xaml` · 그림을 폴더에서 찾습니다. VS 가 csproj 에 줄을 적어 넣어도 targets 가

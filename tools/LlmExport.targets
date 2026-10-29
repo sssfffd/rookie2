@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- LlmExport 폴더도 사용자 폴더 — 파일 목록을 적지 않고 폴더에서 찾습니다 (1.46).
+
+     LlmExport (사내 LLM 입력 만들기) 는 1.43 에 Claude 가 만들었지만, 그 뒤 사용자가 파일 구조를
+     바꿔 가며 직접 고칩니다. csproj 에 파일 이름을 하나하나 적어 두면 이름을 바꾸거나 파일을 더할
+     때마다 csproj 도 고쳐야 하고, 새 버전을 받으면 csproj 가 바뀌어 그 줄이 사라집니다.
+     그래서 Analysis3 와 같은 방식입니다 (tools/Analysis3.targets 머리 주석 참고):
+
+       LlmExport\**\*.cs    → 코드 (Compile)
+       LlmExport\**\*.xaml  → 화면 (Page) — 지금은 없지만 더해도 되게
+
+     폴더도 저장소에 없습니다 (.gitignore) — 새 버전을 받아 덮어 풀어도 사용자의 파일이 그대로.
+
+     VS 가 csproj 에 LlmExport 줄을 적어 넣어도 여기서 먼저 지우고(Remove) 다시 넣으므로 두 번 들어가지
+     않습니다 — 그래서 csproj 의 다른 ItemGroup 보다 뒤에서 가져와야 합니다.
+     폴더 안의 bin · obj · sample · *.g.cs 는 넣지 않습니다. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <LlmExportSkip>LlmExport\**\bin\**;LlmExport\**\obj\**;LlmExport\sample\**</LlmExportSkip>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="LlmExport\**\*.cs" />
+    <Compile Include="LlmExport\**\*.cs" Exclude="$(LlmExportSkip);LlmExport\**\*.g.cs;LlmExport\**\*.g.i.cs" />
+
+    <Page Remove="LlmExport\**\*.xaml" />
+    <Page Include="LlmExport\**\*.xaml" Exclude="$(LlmExportSkip)">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+</Project>

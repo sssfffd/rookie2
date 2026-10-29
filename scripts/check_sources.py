@@ -337,11 +337,17 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
         listed.add(os.path.normpath(m.replace('\\', '/')))
     # Analysis3 는 목록을 적지 않고 폴더에서 찾습니다 (tools/Analysis3.targets, 1.27).
     globbed = 'Analysis3.targets' in read(proj)
+    # LlmExport 도 같은 방식 (tools/LlmExport.targets, 1.46).
+    globbed_llm = 'LlmExport.targets' in read(proj)
     if os.path.basename(proj) == 'LogScope.csproj':
         if not globbed:
             bad('LogScope.csproj 가 tools/Analysis3.targets 를 가져오지 않음')
         elif not re.search(r'Analysis3\.targets" />\s*</Project>', read(proj)):
             bad('tools/Analysis3.targets 는 LogScope.csproj 맨 끝에서 가져와야 함')
+        if not globbed_llm:
+            bad('LogScope.csproj 가 tools/LlmExport.targets 를 가져오지 않음')
+        elif read(proj).rfind('LlmExport.targets') < read(proj).rfind('</ItemGroup>'):
+            bad('tools/LlmExport.targets 는 LogScope.csproj 의 ItemGroup 들보다 뒤에서 가져와야 함')
         # 1.30: Analysis3 폴더는 사용자 것이라 저장소에 없습니다 (.gitignore). 창은 이름으로
         # 찾아 띄우고, 없으면 Shell/Analysis3Placeholder. 그래서 비어 있어도 됩니다.
     for root, dirs, files in os.walk(d):
@@ -351,6 +357,7 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
             rel = os.path.normpath(os.path.relpath(os.path.join(root, f), d))
             if rel.startswith('obj') or rel.endswith('.g.cs'): continue
             if globbed and rel.startswith('Analysis3' + os.sep): continue
+            if globbed_llm and rel.startswith('LlmExport' + os.sep): continue
             if rel not in listed:
                 bad('csproj 누락 %s <- %s' % (rel, os.path.basename(proj)))
     for rel in sorted(listed):
