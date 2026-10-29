@@ -1572,3 +1572,11 @@
 > 그 분석 3안에서 폴더 열고 요약메세지 보냈을 때 메인화면에서 받고 띄워주는 코드들 어디에 있음?
 
 → 답변: [117-a3-main-code-map.md](117-a3-main-code-map.md)
+
+---
+
+## 요청 145 — A3ResultOnCard 를 true 로
+
+> a3resultoncard는 true로 바꿔야 될듯? / 지금 분석3 내에서 프로그램돌린게 메인화면에 안뜸
+
+→ 답변: [118-a3-card-result-on.md](118-a3-card-result-on.md)

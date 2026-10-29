@@ -4324,7 +4324,7 @@ namespace LogScope.Tests
             var empty = new AnalysisCardVm(3, "분석 3", "", true);
             empty.SetLines(new List<CardLineVm>(), string.Empty);
             Check("분석 3 요약은 글이 없으면 빈 칸 (그룹 이야기 안 함)", empty.GroupNote == "", empty.GroupNote);
-            Check("지금은 분석 3 결과를 메인 칸에 안 적음 (1.36)", !MainVm.A3ResultOnCard, "");
+            Check("분석 3 결과를 메인 칸에 적음 (1.37 에 다시 켬)", MainVm.A3ResultOnCard, "");
 
             var db = new AnalysisCardVm(2, "분석 2", "", true);
             Check("분석 2 는 늘 판정 칸", db.UsesVerdict, "");
