@@ -555,6 +555,13 @@ namespace LogScope.Main
         private string _lineNote = string.Empty;
 
         public IList<CardLineVm> Lines { get { return _lines; } }
+
+        /// <summary>
+        /// 요약 줄 칸의 높이 한도 (1.41). 분석 2 는 230 (여섯 줄쯤, 넘으면 칸 안에서 굴림).
+        /// 분석 3 은 한도 없음 — 문장이 길어 줄을 바꾸므로 230 이면 두어 줄에서 나머지가
+        /// 가려졌습니다. 칸이 길어지면 메인 화면 전체가 굴러갑니다.
+        /// </summary>
+        public double LinesMaxHeight { get { return HasA3Box ? double.PositiveInfinity : 230.0; } }
         public bool HasLines { get { return _lines.Count > 0; } }
 
         /// <summary>

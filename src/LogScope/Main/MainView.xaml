@@ -615,7 +615,10 @@
                                           보입니다). 누르면 그 분석 화면으로 넘어갑니다 —
                                           그룹 줄과 같은 손놀림입니다.
                                         -->
-                                        <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto"
+                                        <!-- 높이 한도는 칸마다 (1.41) — 분석 2 는 230 에서 굴리고,
+                                             분석 3 은 문장이 길어 줄을 바꾸므로 한도 없이 다 보입니다
+                                             (230 이면 긴 줄 두어 개에서 나머지가 가려졌음). -->
+                                        <ScrollViewer MaxHeight="{Binding LinesMaxHeight}" VerticalScrollBarVisibility="Auto"
                                                       HorizontalScrollBarVisibility="Disabled"
                                                       Visibility="{Binding HasLines, Converter={StaticResource BoolToVisibility}}">
                                         <ItemsControl ItemsSource="{Binding Lines}">

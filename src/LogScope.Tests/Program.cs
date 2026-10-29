@@ -4300,6 +4300,8 @@ namespace LogScope.Tests
 
             var card = new AnalysisCardVm(3, "분석 3", "", true);
             Check("이전/이후 칸이 있음", card.HasA3Box && !card.HasDbBox && !card.HasLogBox, "");
+            Check("분석 3 요약 줄은 높이 한도 없음 (1.41)", double.IsPositiveInfinity(card.LinesMaxHeight), card.LinesMaxHeight.ToString());
+            Check("분석 2 요약 줄은 230 에서 굴림", new AnalysisCardVm(2, "", "", true).LinesMaxHeight == 230.0, "");
             Check("결과 전에는 크게 적는 것 없음", card.ScoreText == "" && card.ScoreOutOf == "",
                   card.ScoreText + "|" + card.ScoreOutOf);
 
