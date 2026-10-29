@@ -531,6 +531,8 @@ namespace LogScope.Main
             {
                 if (_groups.Count > 0 || _lines.Count > 0) return string.Empty;
                 if (_lineNote.Length > 0) return _lineNote;
+                // 분석 3 은 그룹 이야기를 적지 않습니다 — 적을 글이 없으면 비워 둡니다 (1.36).
+                if (HasA3Box) return string.Empty;
                 if (!Ready) return "아직 만들지 않았습니다.";
                 return "그룹이 없거나 아직 비교하지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
             }

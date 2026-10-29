@@ -165,11 +165,28 @@ namespace LogScope.Main
         /// 결과가 없으면 <b>비워 둡니다</b> (분석 2 와 같은 까닭: 0 이나 PASS 를 적으면
         /// "봤는데 괜찮다" 로 읽힙니다).
         /// </summary>
+        /// <summary>
+        /// 분석 3 이 올린 결과를 메인 칸에 적을지 (1.36). <b>지금은 끔</b> — 사용자 요청으로
+        /// 칸의 결과 자리(낱말 · 점수 · 개수 · 요약 줄)를 비워 둡니다. 분석 3 쪽이 무엇을
+        /// Publish 해도 칸은 비어 있고, 이전 · 이후 자리와 [분석] [리포트] 단추는 그대로입니다.
+        /// 다시 보이려면 true 로 바꾸고 빌드하면 됩니다 (Analysis3Link.Result 는 그대로 쌓임).
+        /// </summary>
+        public static readonly bool A3ResultOnCard = false;
+
         private void ShowA3Result()
         {
             if (Cards.Count < 3) return;
             AnalysisCardVm card = Cards[2];
             Analysis3Result r = Analysis3Link.Result;
+
+            if (!A3ResultOnCard)
+            {
+                card.ClearVerdict();
+                card.ClearScore();
+                card.SetCount(string.Empty);
+                card.SetLines(new List<CardLineVm>(), string.Empty);
+                return;
+            }
 
             if (r == null)
             {
