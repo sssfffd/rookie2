@@ -123,3 +123,4 @@
 | `114-attach-in-shell-only.md` | Attach 부르기를 ShellWindow.xaml.cs 하나에만 — 1.32 에서 그 파일 하나만 바꿔 넣으면 됨 |
 | `115-a3-folder-pick-buttons.md` | 분석 3 칸: 누르면 폴더 고르기 · 칸 머리에 [분석] [리포트] (Analysis3Link 이벤트로 연결) |
 | `116-a3-card-result-blank.md` | 메인 화면 분석 3 칸의 결과 자리 당분간 비움 (`MainVm.A3ResultOnCard`) |
+| `117-a3-main-code-map.md` | 분석 3 → 메인 화면: 자리 · 요약을 받고 띄우는 코드의 파일 · 줄 지도 |
