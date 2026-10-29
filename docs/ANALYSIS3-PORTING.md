@@ -321,7 +321,7 @@ Claude 에게 주세요.
 | `Grade` | 낱말 색 `Analysis3Grade.Good/Warn/Bad` | 낱말로 고름 (PASS·OK 초록, WARNING·WARN 노랑, FAIL·NG 빨강) |
 | `Count` | 오른쪽 "차이 발생 **N** 개" 의 N | 숨김 |
 | `Note` | 낱말 오른쪽 작은 글 | 없음 |
-| `Lines` | 요약 칸 줄 (`Analysis3Line`: `Label` · `Value` · `Grade` · `Detail` · `Target` · `ValueIsChange`) | `EmptyText` (없으면 "적을 것이 없습니다.") |
+| `Lines` | 요약 칸 줄 (`Analysis3Line`: `Label` · `Value` · `Grade` · `Detail` · `Target` · `ValueIsChange`). 길면 줄을 바꿔 다 보임 (1.40). `Label` 이 `"[오류] …"` 처럼 꼬리표로 시작하면 꼬리표만 점과 같은 색 — `Grade` 를 안 정하면 꼬리표로 고름 (오류·에러·ERROR·FAIL·NG 빨강, 경고·주의·WARN 노랑, 정상·OK·PASS 초록) | `EmptyText` (없으면 "적을 것이 없습니다.") |
 
 **예시** — 내 화면(`MyMainView`)의 코드 비하인드:
 

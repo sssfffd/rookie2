@@ -56,6 +56,8 @@ namespace LogScope.Main
 
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
         public const string CardIoClickTip = "분석 2 화면에서 이 IO 를 찾아 줍니다.";
+        /// <summary>단추 마우스를 올리면 뜨는 설명 — 분석 3 칸의 요약 줄 (1.40)</summary>
+        public const string CardA3LineTip = "분석 3 화면으로 넘어갑니다.";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
         public const string GroupClickTip = "이 그룹의 IO 만 히트맵에서 봅니다.";
 

@@ -4328,6 +4328,21 @@ namespace LogScope.Tests
             Check("분석 2 는 늘 판정 칸", db.UsesVerdict, "");
             var line = new CardLineVm("a", "b", ScoreBands.GradeNone, "");
             Check("줄은 기본이 분석 2 칸", line.Card == 2, line.Card.ToString());
+            Check("분석 2 줄은 자름 (줄 안 바꿈)", !line.Wrap, "");
+            line.Card = 3;
+            Check("분석 3 줄은 줄을 바꿈", line.Wrap, "");
+
+            // 꼬리표 (1.40): "[오류] …" 의 [오류] 만 점 색으로.
+            var tagged = new CardLineVm("[오류] 압력 센서 응답 없음", "", ScoreBands.GradeBad, "");
+            Check("꼬리표 뗌", tagged.LabelTag == "[오류]" && tagged.LabelRest == " 압력 센서 응답 없음",
+                  tagged.LabelTag + "|" + tagged.LabelRest);
+            Check("꼬리표 없으면 이름 그대로", new CardLineVm("TEMP_MAX", "", "", "").LabelRest == "TEMP_MAX"
+                  && new CardLineVm("TEMP_MAX", "", "", "").LabelTag == "", "");
+            Check("닫는 괄호가 멀면 꼬리표 아님", CardLineVm.TagOf("[이건 꼬리표가 아니라 그냥 긴 글] 내용") == "", "");
+            Check("[] 는 꼬리표 아님", CardLineVm.TagOf("[] 내용") == "", "");
+            Check("색을 안 정하면 꼬리표로 — 경고", new CardLineVm("[경고] x", "", ScoreBands.GradeNone, "").Grade == ScoreBands.GradeWarn, "");
+            Check("색을 안 정하면 꼬리표로 — 정상", new CardLineVm("[정상] x", "", null, "").Grade == ScoreBands.GradeGood, "");
+            Check("정한 색이 이김", new CardLineVm("[정상] x", "", ScoreBands.GradeBad, "").Grade == ScoreBands.GradeBad, "");
         }
 
         private static void DbPathNames()

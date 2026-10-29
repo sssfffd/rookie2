@@ -621,7 +621,7 @@
                                         <ItemsControl ItemsSource="{Binding Lines}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type main:CardLineVm}">
-                                                    <Button Style="{StaticResource RowButton}"
+                                                    <Button x:Name="LineButton" Style="{StaticResource RowButton}"
                                                             Click="OnCardIoClick" Tag="{Binding Target}"
                                                             IsEnabled="{Binding CanOpen}"
                                                             ToolTip="{x:Static t:MainTexts.CardIoClickTip}"
@@ -639,9 +639,33 @@
                                                                         VerticalAlignment="Center" Margin="0,0,7,0"
                                                                         Background="{DynamicResource Brush.Muted}" />
 
-                                                                <TextBlock Grid.Column="1" Text="{Binding Label}"
+                                                                <!--
+                                                                  이름 = 꼬리표 + 나머지 (1.40). "[오류] …" 의 [오류] 만 점과
+                                                                  같은 색. Run.Text 는 기본이 양방향 바인딩이라 읽기 전용
+                                                                  속성에 걸면 오류가 납니다 — 그래서 Mode=OneWay.
+                                                                  분석 3 은 길면 줄을 바꿔 다 보입니다 (아래 Wrap 트리거).
+                                                                -->
+                                                                <TextBlock x:Name="LineLabel" Grid.Column="1"
                                                                            VerticalAlignment="Center" FontSize="12"
-                                                                           TextTrimming="CharacterEllipsis" />
+                                                                           TextTrimming="CharacterEllipsis">
+                                                                    <Run Text="{Binding LabelTag, Mode=OneWay}">
+                                                                        <Run.Style>
+                                                                            <Style TargetType="{x:Type Run}">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Run.Style>
+                                                                    </Run><Run Text="{Binding LabelRest, Mode=OneWay}" />
+                                                                </TextBlock>
 
                                                                 <!-- 분석 2 는 여기에 "1 → 2" (1.04). 값이 길면
                                                                      이름을 밀어내지 않게 자릅니다 — 다 보려면 아래
@@ -679,6 +703,21 @@
                                                         <DataTrigger Binding="{Binding ValueIsChange}" Value="True">
                                                             <Setter TargetName="LineValue" Property="Foreground"
                                                                     Value="{DynamicResource Brush.Bad}" />
+                                                        </DataTrigger>
+                                                        <!-- 분석 3 의 줄 (1.40): 문장이 길어 자르지 않고 줄을 바꿉니다.
+                                                             여러 줄이 되면 점은 첫 줄 높이에 붙입니다. -->
+                                                        <DataTrigger Binding="{Binding Wrap}" Value="True">
+                                                            <Setter TargetName="LineLabel" Property="TextWrapping" Value="Wrap" />
+                                                            <Setter TargetName="LineLabel" Property="TextTrimming" Value="None" />
+                                                            <Setter TargetName="LineLabel" Property="VerticalAlignment" Value="Top" />
+                                                            <Setter TargetName="LineValue" Property="TextWrapping" Value="Wrap" />
+                                                            <Setter TargetName="LineValue" Property="TextTrimming" Value="None" />
+                                                            <Setter TargetName="LineValue" Property="MaxWidth" Value="140" />
+                                                            <Setter TargetName="LineValue" Property="VerticalAlignment" Value="Top" />
+                                                            <Setter TargetName="LineDot" Property="VerticalAlignment" Value="Top" />
+                                                            <Setter TargetName="LineDot" Property="Margin" Value="0,5,7,0" />
+                                                            <Setter TargetName="LineButton" Property="ToolTip"
+                                                                    Value="{x:Static t:MainTexts.CardA3LineTip}" />
                                                         </DataTrigger>
                                                     </DataTemplate.Triggers>
                                                 </DataTemplate>

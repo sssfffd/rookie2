@@ -110,6 +110,24 @@ namespace LogScope.Main
         /// </summary>
         public int Card { get; set; }
 
+        /// <summary>
+        /// 이름이 길면 <b>줄을 바꿔</b> 다 보일지 (1.40). 분석 3 의 요약 줄은 문장이라 길어서
+        /// 자르면 뜻이 사라집니다. 분석 2 는 IO 이름이라 지금처럼 … 으로 자릅니다.
+        /// </summary>
+        public bool Wrap { get { return Card == 3; } }
+
+        /// <summary>
+        /// 이름 앞의 <b>꼬리표</b> — "[오류] 무엇무엇" 의 "[오류]" (1.40). 점과 같은 색으로
+        /// 칠합니다. 없으면 빈 글자.
+        /// </summary>
+        public string LabelTag { get; private set; }
+
+        /// <summary>꼬리표를 뗀 나머지 이름. 꼬리표가 없으면 이름 그대로.</summary>
+        public string LabelRest { get; private set; }
+
+        /// <summary>꼬리표로 보는 길이 한도 — "[" 부터 "]" 까지 이 글자 수 안이어야 합니다.</summary>
+        private const int MaxTagLength = 12;
+
         public CardLineVm(string label, string value, string grade, string detail)
             : this(label, value, grade, detail, string.Empty) { }
 
@@ -121,6 +139,33 @@ namespace LogScope.Main
             Detail = detail ?? string.Empty;
             Target = target ?? string.Empty;
             Card = 2;
+
+            LabelTag = TagOf(Label);
+            LabelRest = Label.Substring(LabelTag.Length);
+
+            // 색을 안 정해 왔으면 꼬리표 낱말로 고릅니다 — "[오류]" 를 적고 색을 깜빡해도
+            // 점과 꼬리표가 회색으로 남지 않게.
+            if (Grade.Length == 0 || Grade == ScoreBands.GradeNone) Grade = GradeOfTag(LabelTag);
+        }
+
+        /// <summary>"[오류] 무엇" → "[오류]". 꼬리표가 없으면 빈 글자.</summary>
+        public static string TagOf(string label)
+        {
+            if (string.IsNullOrEmpty(label) || label[0] != '[') return string.Empty;
+            int close = label.IndexOf(']');
+            if (close <= 1 || close + 1 > MaxTagLength) return string.Empty;
+            return label.Substring(0, close + 1);
+        }
+
+        /// <summary>꼬리표 낱말의 색. 모르는 낱말이면 회색.</summary>
+        public static string GradeOfTag(string tag)
+        {
+            if (string.IsNullOrEmpty(tag)) return ScoreBands.GradeNone;
+            string w = tag.Trim('[', ']', ' ').ToUpperInvariant();
+            if (w == "오류" || w == "에러" || w == "ERROR" || w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
+            if (w == "경고" || w == "주의" || w == "WARN" || w == "WARNING") return ScoreBands.GradeWarn;
+            if (w == "정상" || w == "OK" || w == "PASS") return ScoreBands.GradeGood;
+            return ScoreBands.GradeNone;
         }
     }
 
