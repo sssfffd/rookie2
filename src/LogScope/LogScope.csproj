@@ -194,6 +194,15 @@
     <Compile Include="Common\XlsxReader.cs" />
     <Compile Include="Main\AnalysisRecord.cs" />
     <Compile Include="Main\CardSnapshot.cs" />
+    <Compile Include="LlmExport\LlmSection.cs" />
+    <Compile Include="LlmExport\LlmFormat.cs" />
+    <Compile Include="LlmExport\LlmExportOptions.cs" />
+    <Compile Include="LlmExport\LlmPrompt.cs" />
+    <Compile Include="LlmExport\Analysis1Digest.cs" />
+    <Compile Include="LlmExport\Analysis2Digest.cs" />
+    <Compile Include="LlmExport\Analysis3Digest.cs" />
+    <Compile Include="LlmExport\CrossLink.cs" />
+    <Compile Include="LlmExport\LlmDocument.cs" />
     <Compile Include="Main\HistoryStore.cs" />
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\AppSettings.cs" />

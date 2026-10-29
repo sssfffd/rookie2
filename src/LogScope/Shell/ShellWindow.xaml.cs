@@ -66,6 +66,7 @@ namespace LogScope.Shell
             Main.A3PickRequested += OnMainA3Pick;
             Main.A3Dropped += OnMainA3Dropped;
             Main.A3AnalyzeRequested += OnMainA3Analyze;
+            Main.LlmExportRequested += OnLlmExport;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -470,6 +471,53 @@ namespace LogScope.Shell
             if (!Analysis3Link.RequestAnalyze()) SayNoA3Handler("Analysis3Link.AnalyzeRequested");
         }
 
+        // ---------------- 사내 LLM 입력 저장 (1.43) ----------------
+
+        /// <summary>지난번에 고른 폴더 — 켜 있는 동안만 기억합니다.</summary>
+        private string _llmFolder = string.Empty;
+
+        /// <summary>
+        /// [LLM 입력 저장] — 폴더를 고르면 분석 1 · 2 · 3 을 줄인 .md · .json 을 씁니다
+        /// (src/LogScope/LlmExport). 로그가 크면 오래 걸려 진행 창에서 돌립니다. 보내지는 않습니다.
+        /// </summary>
+        private void OnLlmExport(object sender, EventArgs e)
+        {
+            string folder;
+            using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                dlg.Description = "사내 LLM 입력(.md · .json)을 저장할 폴더";
+                dlg.ShowNewFolderButton = true;
+                if (_llmFolder.Length > 0 && Directory.Exists(_llmFolder)) dlg.SelectedPath = _llmFolder;
+                if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+                folder = dlg.SelectedPath;
+            }
+            _llmFolder = folder;
+
+            object result;
+            Exception error;
+            BackgroundJob.Run(this, "사내 LLM 입력 만드는 중",
+                delegate (LoadProgress p)
+                {
+                    LogScope.LlmExport.LlmDocument doc = LogScope.LlmExport.LlmDocument.Build(
+                        _state, _state.DbDiff, new LogScope.LlmExport.LlmExportOptions(), p);
+                    string md = doc.Save(folder);
+                    return md + "\n" + doc.ToMarkdown().Length.ToString("N0") + (doc.Trimmed ? " (한도로 줄임)" : string.Empty);
+                },
+                out result, out error);
+
+            if (error is OperationCanceledException) return;
+            if (error != null)
+            {
+                MessageBox.Show(this, "만들지 못했습니다.\n\n" + error.Message, "LLM 입력",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            string[] parts = (result as string ?? string.Empty).Split('\n');
+            MessageBox.Show(this, "저장했습니다 (보내지는 않았습니다).\n\n" + parts[0]
+                            + "\n(같은 이름의 .json 도 함께)\n\n글자 수 " + (parts.Length > 1 ? parts[1] : string.Empty),
+                            "LLM 입력", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void SayNoA3Handler(string eventName)
         {
             MessageBox.Show(this, MainTexts.A3NoHandler + "\n\n연결할 곳: " + eventName,
@@ -608,6 +656,7 @@ namespace LogScope.Shell
             _state.DbGone = Db.Tally.Gone;
             _state.DbAdded = Db.Tally.Added;
             _state.DbChangedIos = new List<DbChangedIo>(Db.ChangedValues);
+            _state.DbDiff = Db.Diff;   // 사내 LLM 입력이 표 · 행 · 열 차이를 꺼내 씀 (1.43)
             _vm.Main.Refresh();
         }
 

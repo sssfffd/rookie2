@@ -132,3 +132,4 @@
 | `123-a3-lines-no-height-limit.md` | 분석 3 요약 줄 높이 한도(230) 없앰 — 줄 바꿈 뒤 두어 줄 넘으면 가려지던 것 |
 | `124-history-three-cards.md` | 종합 분석 결과 코드 지도 · "저장된 분석" → History: 저장 한 번에 칸 셋 요약, 줄 누르면 칸에 펼침 |
 | `125-llm-summary-input.md` | 사내 LLM 종합 분석 입력 제안 — 분석 1 · 2 에서 무엇을 층(L1~L3)으로, TSV, 분석 사이 IO 연결 표 |
+| `126-llm-export.md` | `src/LogScope/LlmExport/` — 분석 1 · 2 · 3 을 사내 LLM 입력(.md · .json)으로, 메인 [LLM 입력 저장] |

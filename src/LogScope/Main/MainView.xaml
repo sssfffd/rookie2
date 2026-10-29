@@ -31,8 +31,18 @@
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                     CornerRadius="5" Padding="18,14" Margin="6,0,6,16">
                 <StackPanel>
-                    <TextBlock Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
-                               Margin="0,0,0,8" />
+                    <!-- 제목 · [LLM 입력 저장] (1.43 — 분석 셋을 사내 LLM 에 넣을 파일로) -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="{x:Static t:MainTexts.LlmExport}" Click="OnLlmExport"
+                                ToolTip="{x:Static t:MainTexts.LlmExportTip}" IsEnabled="{Binding CanSave}"
+                                Height="24" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
+                    </Grid>
 
                     <!-- 판정 한 줄. 점 색은 점수 색과 같은 뜻입니다. -->
                     <StackPanel Orientation="Horizontal">

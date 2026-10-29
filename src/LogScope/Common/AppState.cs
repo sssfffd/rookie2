@@ -43,6 +43,12 @@ namespace LogScope.Common
         /// </summary>
         public List<DbChangedIo> DbChangedIos = new List<DbChangedIo>();
 
+        /// <summary>
+        /// 분석 2 가 마지막으로 견준 결과 전체 (1.43). 사내 LLM 입력(LlmExport)이 표 · 행 · 열 차이를
+        /// 꺼내 씁니다. 분석 2 화면이 읽을 때마다 창이 여기로 옮깁니다. 아직 안 읽었으면 null.
+        /// </summary>
+        public DbDiffResult DbDiff;
+
         public bool HasAny { get { return Before != null || After != null; } }
         public bool HasBoth { get { return Before != null && After != null; } }
 
