@@ -127,3 +127,4 @@
 | `118-a3-card-result-on.md` | 분석 3 결과를 메인 칸에 다시 띄움 (`A3ResultOnCard = true`), 결과 전에는 빈 칸 |
 | `119-a3-headline-off-paths.md` | 분석 3 칸 머리 줄(낱말 · 차이 발생 N 개 · 작은 글) 지우고 요약 줄만 · 이전/이후 폴더 칸 연결하는 두 줄 |
 | `120-a3-analyze-vs-report.md` | 분석 3 칸 [분석] · [리포트] 차이 — 둘 다 신호만, 하는 일은 분석 3 코드가 연결 |
+| `121-a3-report-button-removed.md` | 분석 3 칸의 [리포트] 단추 뺌 ([분석] 만) |

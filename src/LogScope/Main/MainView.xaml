@@ -123,7 +123,7 @@
                                 CornerRadius="5" Padding="16,12" Margin="6" MinHeight="390">
                             <StackPanel>
 
-                                <!-- 번호표 · 이름 · (분석 3: 분석 · 리포트) · 이동 화살표 -->
+                                <!-- 번호표 · 이름 · (분석 3: 분석) · 이동 화살표 -->
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -145,8 +145,8 @@
                                                TextTrimming="CharacterEllipsis" />
 
                                     <!--
-                                      분석 3 칸의 [분석] [리포트] (1.35). 누르면 Common/Analysis3Link 의
-                                      AnalyzeRequested / ReportRequested 가 울리고, 무엇을 할지는 분석 3
+                                      분석 3 칸의 [분석] (1.35, [리포트] 는 1.39 에 뺌). 누르면 Common/Analysis3Link 의
+                                      AnalyzeRequested 가 울리고, 무엇을 할지는 분석 3
                                       폴더의 코드가 정합니다 (갈아 끼우는 폴더라 여기서 직접 부르지 않음).
 
                                       머리 줄에 둔 까닭: 칸 셋의 이전/이후 · 요약 줄이 나란히 놓여야
@@ -159,9 +159,6 @@
                                                 Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
                                         <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
                                                 Click="OnA3Analyze" ToolTip="{x:Static t:MainTexts.A3AnalyzeTip}"
-                                                Height="26" MinHeight="0" Padding="10,0" Margin="0,0,4,0" FontSize="12" />
-                                        <Button Content="{x:Static t:MainTexts.A3Report}"
-                                                Click="OnA3Report" ToolTip="{x:Static t:MainTexts.A3ReportTip}"
                                                 Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
                                     </StackPanel>
 

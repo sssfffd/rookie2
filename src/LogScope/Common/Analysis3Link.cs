@@ -19,7 +19,7 @@ namespace LogScope.Common
     ///   <see cref="SetPath"/> — 분석 3 화면 안에서 파일을 골랐을 때 (메인 칸에도 보임)
     ///   <see cref="Publish"/> — 결과를 메인 화면 칸에 올림 · <see cref="ClearResult"/>
     ///   <see cref="OpenRequested"/> — 메인 칸의 요약 줄을 눌렀을 때 (그 줄의 Target)
-    ///   <see cref="AnalyzeRequested"/> · <see cref="ReportRequested"/> — 메인 칸의 [분석] · [리포트]
+    ///   <see cref="AnalyzeRequested"/> — 메인 칸의 [분석]
     ///
     /// WPF 를 쓰지 않습니다 (시험이 닿게). <see cref="Publish"/> 는 배경 작업 안에서
     /// 불러도 됩니다 — 화면에 옮기는 일은 창(ShellWindow)이 화면 스레드로 넘겨서 합니다.
@@ -57,22 +57,16 @@ namespace LogScope.Common
         /// <summary>메인 화면 분석 3 칸의 <b>[분석]</b> 을 눌렀을 때 (1.35). 분석 3 쪽에서 연결합니다.</summary>
         public static event EventHandler AnalyzeRequested;
 
-        /// <summary>메인 화면 분석 3 칸의 <b>[리포트]</b> 를 눌렀을 때 (1.35). 분석 3 쪽에서 연결합니다.</summary>
+        /// <summary>
+        /// <b>울리지 않습니다.</b> [리포트] 단추는 1.39 에 뺐습니다. 분석 3 쪽에 이미 연결해 둔
+        /// 코드(<c>ReportRequested += …</c>)가 빌드에서 깨지지 않게 이름만 남겨 둡니다.
+        /// </summary>
         public static event EventHandler ReportRequested;
 
         /// <summary>[분석] 을 알립니다 (창이 부름). 연결된 곳이 없으면 false.</summary>
         public static bool RequestAnalyze()
         {
             EventHandler h = AnalyzeRequested;
-            if (h == null) return false;
-            h(null, EventArgs.Empty);
-            return true;
-        }
-
-        /// <summary>[리포트] 를 알립니다 (창이 부름). 연결된 곳이 없으면 false.</summary>
-        public static bool RequestReport()
-        {
-            EventHandler h = ReportRequested;
             if (h == null) return false;
             h(null, EventArgs.Empty);
             return true;

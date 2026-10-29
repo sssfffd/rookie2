@@ -66,7 +66,6 @@ namespace LogScope.Shell
             Main.A3PickRequested += OnMainA3Pick;
             Main.A3Dropped += OnMainA3Dropped;
             Main.A3AnalyzeRequested += OnMainA3Analyze;
-            Main.A3ReportRequested += OnMainA3Report;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -469,12 +468,6 @@ namespace LogScope.Shell
         private void OnMainA3Analyze(object sender, EventArgs e)
         {
             if (!Analysis3Link.RequestAnalyze()) SayNoA3Handler("Analysis3Link.AnalyzeRequested");
-        }
-
-        /// <summary>메인 화면 분석 3 칸의 [리포트] (1.35). [분석] 과 같은 길.</summary>
-        private void OnMainA3Report(object sender, EventArgs e)
-        {
-            if (!Analysis3Link.RequestReport()) SayNoA3Handler("Analysis3Link.ReportRequested");
         }
 
         private void SayNoA3Handler(string eventName)

@@ -1596,3 +1596,11 @@
 > 분석3에 리포트랑 분석 버튼 차이
 
 → 답변: [120-a3-analyze-vs-report.md](120-a3-analyze-vs-report.md)
+
+---
+
+## 요청 148 — 리포트 단추 빼기
+
+> 리포트는 빼줘
+
+→ 답변: [121-a3-report-button-removed.md](121-a3-report-button-removed.md)
