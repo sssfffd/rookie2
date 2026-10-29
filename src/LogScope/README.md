@@ -6,8 +6,7 @@
 
 | 화면 | 폴더 | 모양 (XAML) | 글자 | 계산 (같은 폴더) |
 |---|---|---|---|---|
-| 메인 | `Main/` | `MainView.xaml` | `MainTexts.cs` | 분석 기록 저장 `AnalysisRecord` · `HistoryStore` |
-| 저장된 분석 보기 창 | `Main/` | `SavedResultWindow.xaml` | `SavedTexts.cs` | |
+| 메인 | `Main/` | `MainView.xaml` | `MainTexts.cs` | History — 저장 한 번에 칸 셋 요약 `CardSnapshot` · 기록 `AnalysisRecord` · 파일 `HistoryStore` · 줄 `HistoryRowVm` (펼쳐 보기는 `MainVm.ShowSaved`) |
 | 맨 위 메뉴 줄 · 창 틀 | `Shell/` | `ShellWindow.xaml` | `ShellTexts.cs` | |
 | 분석 1 — 대시보드 | `Analysis1/Dashboard/` | `DashboardView.xaml` | `DashboardTexts.cs` | (`Analysis1/Compare/` 의 견주기 결과를 씀) |
 | 분석 1 — 그래프 | `Analysis1/Graph/` | `GraphView.xaml` | `GraphTexts.cs` | 그리기 `GraphCanvas.*` · `Decimator` · `DifferenceSeries` · 선 색 `TraceColors` · 단계 칸 `StepBands` |

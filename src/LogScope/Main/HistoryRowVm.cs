@@ -1,5 +1,8 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using LogScope.Common;
+using LogScope.Settings;
 
 namespace LogScope.Main
 {
@@ -14,6 +17,34 @@ namespace LogScope.Main
         public HistoryRowVm(AnalysisRecord record)
         {
             Record = record;
+
+            // 칸 셋 — 분석 1 / 2 / 3 을 가로로 (1.42). 1.41 까지의 기록은 요약이 없어
+            // 점수만으로 칸을 만듭니다.
+            Cells = new List<HistoryCellVm>();
+            for (int n = 1; n <= AnalysisRecord.AnalysisCount; n++)
+                Cells.Add(new HistoryCellVm(n, record));
+        }
+
+        /// <summary>분석 1 / 2 / 3 의 칸 (가로 셋).</summary>
+        public List<HistoryCellVm> Cells { get; private set; }
+
+        private bool _selected;
+
+        /// <summary>지금 위 칸에 펼쳐 보고 있는 기록인지.</summary>
+        public bool IsSelected
+        {
+            get { return _selected; }
+            set { if (_selected == value) return; _selected = value; Raise("IsSelected"); }
+        }
+
+        /// <summary>저장한 시각. 이름을 붙였으면 이름 옆에 작게.</summary>
+        public string SavedAtText
+        {
+            get
+            {
+                if (Record.Label.Length == 0 || Record.SavedAt == DateTime.MinValue) return string.Empty;
+                return Record.SavedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            }
         }
 
         public string Id { get { return Record.Id; } }
@@ -145,5 +176,51 @@ namespace LogScope.Main
             if (v < 0) return v.ToString("0.#", CultureInfo.InvariantCulture);
             return "±0";
         }
+    }
+
+    /// <summary>
+    /// History 줄 안의 한 칸 — 분석 하나의 그때 요약 (1.42).
+    ///
+    ///   분석 2 이름
+    ///   FAIL  차이 발생 3개        ← HeadText (색) · CountText
+    ///   TEMP_MAX  1 → 2  외 2줄    ← SummaryText
+    ///   a.sql  →  b.sql            ← InputsText
+    /// </summary>
+    public sealed class HistoryCellVm
+    {
+        private readonly CardSnapshot _snap;
+
+        public HistoryCellVm(int number, AnalysisRecord record)
+        {
+            Number = number;
+            _snap = record.CardAt(number);
+            if (_snap == null)
+            {
+                // 1.41 까지의 기록: 점수만 있습니다.
+                _snap = new CardSnapshot();
+                _snap.Number = number;
+                int i = number - 1;
+                _snap.HasScore = i >= 0 && i < record.HasScores.Length && record.HasScores[i];
+                _snap.Score = _snap.HasScore ? record.Scores[i] : 0;
+                _snap.LineNote = "요약 없음 (1.42 전에 저장)";
+                if (number == 1)
+                {
+                    _snap.BeforeName = record.BeforeName;
+                    _snap.AfterName = record.AfterName;
+                }
+            }
+            if (_snap.Title.Length == 0) _snap.Title = AppConfig.Current.Title(number);
+        }
+
+        public int Number { get; private set; }
+        public string Title { get { return _snap.Title; } }
+        public string HeadText { get { return _snap.HeadText; } }
+        public string HeadGrade { get { return _snap.HeadGrade; } }
+        public string CountText { get { return _snap.CountText; } }
+        public string SummaryText { get { return _snap.SummaryText; } }
+        public string InputsText { get { return _snap.InputsText; } }
+
+        /// <summary>칸에 다시 펼칠 요약.</summary>
+        public CardSnapshot Snapshot { get { return _snap; } }
     }
 }

@@ -64,7 +64,13 @@ namespace LogScope.Main
         // ---- 저장된 분석 ----
 
         /// <summary>글</summary>
-        public const string HistoryNoteLabel = "저장된 분석";
+        public const string HistoryNoteLabel = "History";
+        /// <summary>단추 마우스를 올리면 뜨는 설명 — History 한 줄</summary>
+        public const string HistoryRowTip = "누르면 그때의 요약을 위 칸에 펼칩니다. 다시 누르면 지금 결과로 돌아옵니다.";
+        /// <summary>단추 이름 — History 를 펼쳐 보는 중일 때 칸 위 띠</summary>
+        public const string ShowLive = "지금 결과로";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string ShowLiveTip = "History 를 접고 지금 분석 결과를 보여 줍니다.";
         /// <summary>단추 이름</summary>
         public const string SaveResult = "지금 결과 저장";
         /// <summary>글 마우스를 올리면 뜨는 설명</summary>

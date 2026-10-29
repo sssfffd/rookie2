@@ -336,7 +336,15 @@ namespace LogScope.Main
             string id = b.Tag as string;
             if (string.IsNullOrEmpty(id)) return;
 
-            SavedResultWindow.Show(Window.GetWindow(this), vm.SavedById(id));
+            // 위 칸 셋에 그때의 요약을 펼칩니다 (1.42 — 전에는 따로 창을 띄웠음).
+            vm.ShowSaved(id);
+        }
+
+        /// <summary>History 를 접고 지금 결과로 (칸 위 띠의 단추).</summary>
+        private void OnShowLive(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainVm;
+            if (vm != null) vm.ShowLive();
         }
 
         private void OnDeleteSaved(object sender, RoutedEventArgs e)

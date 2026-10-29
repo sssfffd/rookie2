@@ -112,6 +112,7 @@ namespace LogScope.Tests
                 HeatmapNameFilter();
                 HistorySaveAndLoad();
                 HistoryEdgeCases();
+                HistorySnapshots();
                 JsonRoundTrip();
                 SettingsRoundTrip();
                 AppConfigParse();
@@ -4176,6 +4177,100 @@ namespace LogScope.Tests
         /// 주고받으므로, 알림이 <b>한 번만 · 바뀔 때만</b> 울리는지가 중요합니다 —
         /// 두 번 울리면 분석 3 이 두 번 돌고, 켤 때 울리면 켜자마자 돕니다.
         /// </summary>
+        /// <summary>
+        /// History (1.42): 저장 한 번에 칸 셋의 요약을 찍고, 파일로 갔다 와도 그대로이며,
+        /// 다시 칸에 펼치면 같은 글이 보이는지. 1.41 까지의 기록(요약 없음)도 칸 셋을 만듦.
+        /// </summary>
+        private static void HistorySnapshots()
+        {
+            Say("History — 칸 셋 요약 찍기 · 펼치기");
+
+            // 분석 2 칸: 낱말 + 개수 + 요약 줄
+            var c2 = new AnalysisCardVm(2, "DB 비교", "", true);
+            c2.SetVerdict("FAIL", ScoreBands.GradeBad, "", "2");
+            var lines = new List<CardLineVm>();
+            var l1 = new CardLineVm("TEMP_MAX", "1 → 2", ScoreBands.GradeBad, "", "TEMP_MAX");
+            l1.ValueIsChange = true;
+            lines.Add(l1);
+            lines.Add(new CardLineVm("PRES_SET", "5 → 6", ScoreBands.GradeBad, "열 2 개 더"));
+            c2.SetLines(lines, "");
+
+            // 분석 1 칸: 점수 + 그룹 줄
+            var c1 = new AnalysisCardVm(1, "로그 비교", "", true);
+            c1.SetScore(87);
+            c1.SetCount("3");
+            var g = new GroupSummaryVm("밸브", new List<string> { "V1", "V2", "V3" }, 3, 1);
+            g.SetDetail("V2 늦게 열림");
+            c1.SetGroups(new List<GroupSummaryVm> { g });
+
+            // 분석 3 칸: 비어 있음
+            var c3 = new AnalysisCardVm(3, "분석 3", "", true);
+
+            var rec = new AnalysisRecord();
+            rec.SavedAt = new DateTime(2026, 10, 29, 14, 2, 0);
+            rec.Label = "기동 전";
+            foreach (AnalysisCardVm c in new[] { c1, c2, c3 })
+            {
+                CardSnapshot s = c.TakeSnapshot();
+                if (c.Number == 2) { s.BeforeName = "a.sql"; s.AfterName = "b.sql"; }
+                rec.Cards.Add(s);
+            }
+
+            AnalysisRecord back = AnalysisRecord.FromJson(Json.Parse(Json.Write(rec.ToJson())));
+            Check("칸 셋이 다 돌아옴", back.Cards.Count == 3 && back.CardAt(1) != null && back.CardAt(3) != null,
+                  back.Cards.Count.ToString());
+
+            CardSnapshot s2 = back.CardAt(2);
+            Check("분석 2 낱말 · 개수", s2.Word == "FAIL" && s2.Count == "2" && s2.WordGrade == ScoreBands.GradeBad,
+                  s2.Word + "|" + s2.Count);
+            Check("분석 2 줄 둘 · 값 · 빨강 표시", s2.Lines.Count == 2 && s2.Lines[0].Value == "1 → 2"
+                  && s2.Lines[0].ValueIsChange && s2.Lines[0].Target == "TEMP_MAX", s2.Lines.Count.ToString());
+            Check("분석 2 한 칸 글", s2.HeadText == "FAIL" && s2.CountText == "차이 발생 2개"
+                  && s2.SummaryText == "TEMP_MAX  1 → 2  외 1줄" && s2.InputsText == "a.sql  →  b.sql",
+                  s2.HeadText + "|" + s2.SummaryText + "|" + s2.InputsText);
+
+            CardSnapshot s1 = back.CardAt(1);
+            Check("분석 1 점수 · 그룹 · IO 이름", s1.HasScore && s1.Score == 87 && s1.Groups.Count == 1
+                  && s1.Groups[0].Members.Count == 3 && s1.Groups[0].Detail == "V2 늦게 열림",
+                  s1.Groups.Count.ToString());
+            Check("분석 1 한 칸 글", s1.HeadText == "87" && s1.HeadGrade == ScoreBands.GradeOf(87)
+                  && s1.SummaryText == "그룹 1개 중 1개 달라짐", s1.HeadText + "|" + s1.SummaryText);
+
+            // 다시 펼치기
+            var shown = new AnalysisCardVm(2, "DB 비교", "", true);
+            shown.ApplySnapshot(s2);
+            Check("펼치면 낱말 · 개수 · 줄 그대로", shown.ScoreText == "FAIL" && shown.VerdictCount == "2"
+                  && shown.Lines.Count == 2 && shown.Lines[1].Detail == "열 2 개 더" && shown.Grade == ScoreBands.GradeBad,
+                  shown.ScoreText + "|" + shown.Lines.Count);
+            var shown1 = new AnalysisCardVm(1, "로그 비교", "", true);
+            shown1.ApplySnapshot(s1);
+            Check("펼치면 점수 · 그룹 그대로", shown1.ScoreText == "87" && shown1.Groups.Count == 1
+                  && shown1.Groups[0].CountText == g.CountText, shown1.ScoreText);
+
+            // 줄 = 칸 셋 (가로)
+            var row = new HistoryRowVm(back);
+            Check("줄 하나에 칸 셋", row.Cells.Count == 3 && row.Cells[1].HeadText == "FAIL", row.Cells.Count.ToString());
+            Check("이름이 있으면 옆에 시각", row.SavedAtText == "2026-10-29 14:02:00", row.SavedAtText);
+
+            // 1.41 까지의 기록: 요약 없음 → 점수로 칸 셋
+            var old = new AnalysisRecord();
+            old.SetScore(1, true, 100);
+            old.BeforeName = "x.xlsx"; old.AfterName = "y.xlsx";
+            var oldRow = new HistoryRowVm(AnalysisRecord.FromJson(Json.Parse(Json.Write(old.ToJson()))));
+            Check("옛 기록도 칸 셋", oldRow.Cells.Count == 3 && oldRow.Cells[0].HeadText == "100"
+                  && oldRow.Cells[1].HeadText == "-" && oldRow.Cells[0].InputsText == "x.xlsx  →  y.xlsx",
+                  oldRow.Cells[0].HeadText + "|" + oldRow.Cells[1].HeadText);
+            Check("옛 기록 요약 자리 글", oldRow.Cells[2].SummaryText == "요약 없음 (1.42 전에 저장)", oldRow.Cells[2].SummaryText);
+
+            // 파일로 저장 → 읽기
+            string folder = Path.Combine(_dir, "history-snap");
+            string problem;
+            HistoryStore.Save(folder, rec, out problem);
+            List<AnalysisRecord> loaded = HistoryStore.Load(folder);
+            Check("파일로 갔다 와도 칸 셋", problem.Length == 0 && loaded.Count == 1 && loaded[0].Cards.Count == 3
+                  && loaded[0].CardAt(2).Lines.Count == 2, problem);
+        }
+
         private static void Analysis3LinkRules()
         {
             Say("분석 3 — 게시판");

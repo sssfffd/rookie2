@@ -147,9 +147,25 @@ namespace LogScope.Main
             }
         }
 
+        // ---------------- 분석 셋의 요약 (1.42) ----------------
+        //
+        // 저장 한 번에 메인 화면 칸 셋의 요약을 그대로 찍어 둡니다. History 줄을 누르면
+        // 칸에 다시 펼칩니다. 1.41 까지의 기록에는 없습니다 — 그때는 점수만 남았습니다.
+
+        public List<CardSnapshot> Cards = new List<CardSnapshot>();
+
+        /// <summary>분석 n (1 부터) 의 요약. 없으면 null (1.41 까지의 기록).</summary>
+        public CardSnapshot CardAt(int number)
+        {
+            for (int i = 0; i < Cards.Count; i++)
+                if (Cards[i] != null && Cards[i].Number == number) return Cards[i];
+            return null;
+        }
+
         // ---------------- JSON ----------------
 
-        public const int FileVersion = 1;
+        /// <summary>2 = 칸 요약(cards) 이 들어간 기록 (1.42). 1 도 그대로 읽습니다.</summary>
+        public const int FileVersion = 2;
 
         public Dictionary<string, object> ToJson()
         {
@@ -186,6 +202,10 @@ namespace LogScope.Main
             d["toleranceRuleCount"] = (double)ToleranceRuleCount;
             d["alignIo"] = AlignIo ?? string.Empty;
             d["appliedShift"] = AppliedShift;
+
+            var cards = new List<object>();
+            for (int i = 0; i < Cards.Count; i++) if (Cards[i] != null) cards.Add(Cards[i].ToJson());
+            d["cards"] = cards;
             return d;
         }
 
@@ -232,6 +252,13 @@ namespace LogScope.Main
             if (r.ToleranceRuleCount < 0) r.ToleranceRuleCount = 0;
             r.AlignIo = Json.GetString(d, "alignIo", string.Empty);
             r.AppliedShift = Json.GetDouble(d, "appliedShift", 0);
+
+            List<object> cards = Json.GetArray(d, "cards");
+            for (int i = 0; i < cards.Count; i++)
+            {
+                CardSnapshot c = CardSnapshot.FromJson(cards[i]);
+                if (c.Number >= 1 && c.Number <= AnalysisCount) r.Cards.Add(c);
+            }
             return r;
         }
 

@@ -121,10 +121,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Main\SavedResultWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Common\TextInputWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -145,7 +141,6 @@
     <Compile Include="Analysis1\Graph\GraphTexts.cs" />
     <Compile Include="Analysis1\Heatmap\HeatmapTexts.cs" />
     <Compile Include="Main\MainTexts.cs" />
-    <Compile Include="Main\SavedTexts.cs" />
     <Compile Include="Settings\SettingsTexts.cs" />
     <Compile Include="Shell\ShellTexts.cs" />
     <Compile Include="Common\Analysis3Link.cs" />
@@ -198,6 +193,7 @@
     <Compile Include="Common\ValueParse.cs" />
     <Compile Include="Common\XlsxReader.cs" />
     <Compile Include="Main\AnalysisRecord.cs" />
+    <Compile Include="Main\CardSnapshot.cs" />
     <Compile Include="Main\HistoryStore.cs" />
     <Compile Include="Settings\AppConfig.cs" />
     <Compile Include="Settings\AppSettings.cs" />
@@ -271,10 +267,6 @@
     </Compile>
     <Compile Include="Common\LoadingWindow.xaml.cs">
       <DependentUpon>LoadingWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Main\SavedResultWindow.xaml.cs">
-      <DependentUpon>SavedResultWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Common\TextInputWindow.xaml.cs">

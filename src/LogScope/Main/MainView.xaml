@@ -77,7 +77,29 @@
 
             </Border>
 
-            <TextBlock Text="{x:Static t:MainTexts.Heading}" Style="{StaticResource H1}" Margin="2,4,0,8" />
+            <!-- "분석 결과" 와, History 를 펼쳐 보는 중이면 그 띠 (1.42). 칸 셋이 지금 결과가
+                 아니라는 것이 한눈에 보여야 합니다 — 안 그러면 옛 요약을 지금 것으로 읽습니다. -->
+            <Grid Margin="2,4,6,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{x:Static t:MainTexts.Heading}" Style="{StaticResource H1}"
+                           VerticalAlignment="Center" />
+                <Border Grid.Column="1" Background="{DynamicResource Brush.AccentSoft}"
+                        BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
+                        CornerRadius="4" Padding="10,2,4,2" Margin="14,0,0,0"
+                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Visibility="{Binding IsViewingHistory, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ViewingText}" VerticalAlignment="Center" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Accent}" TextTrimming="CharacterEllipsis" />
+                        <Button Content="{x:Static t:MainTexts.ShowLive}" Click="OnShowLive"
+                                ToolTip="{x:Static t:MainTexts.ShowLiveTip}"
+                                Height="24" MinHeight="0" Padding="10,0" Margin="12,0,0,0" FontSize="12" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <!--
               분석 칸. 셋을 <b>가로로</b> 나란히 놓고 폭을 똑같이 나눕니다.
@@ -834,9 +856,9 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- ===== 저장된 분석 =====
-                 지금 결과를 남겨 두고, 다음에 분석했을 때 지난번과 얼마나
-                 달라졌는지 봅니다. -->
+            <!-- ===== History (전 "저장된 분석", 1.42) =====
+                 저장 한 번 = 한 줄 = 분석 1 · 2 · 3 의 그때 요약 셋 (가로). 줄을 누르면
+                 위 칸 셋에 그 요약을 펼칩니다. -->
             <Border Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                     CornerRadius="5" Padding="18,14" Margin="6,14,6,0">
@@ -860,22 +882,17 @@
                     </Grid>
 
                     <!--
-                      세 줄까지만 보이고 그 다음부터는 이 칸 안에서 굴립니다.
-                      기록이 쌓일수록 메인 화면이 끝없이 길어지면 아래 요약
-                      칸이 화면 밖으로 밀려납니다.
-
-                      줄 하나가 약 66 (이름 17 + 파일 15 + 기준 14 + 위아래
-                      여백 16 + 줄 사이 선 1 + 여유 3) 이라 셋이면 198 입니다.
-                      네 번째 줄이 살짝 보여야 "더 있다" 는 것이 눈에 띄므로
-                      210 으로 둡니다.
+                      네 줄쯤까지 보이고 그 다음부터는 이 칸 안에서 굴립니다. 기록이 쌓일수록
+                      메인 화면이 끝없이 길어지지 않게. 줄 하나가 약 90 (이름 18 + 칸 셋 62 +
+                      여백) 이라 380 이면 넷과 다섯 번째가 살짝 보입니다.
                     -->
-                    <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer MaxHeight="380" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   Visibility="{Binding HasHistory, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl ItemsSource="{Binding History}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type main:HistoryRowVm}">
-                                <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
+                                <Border x:Name="RowBox" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
                                         Padding="0,6,0,6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -884,60 +901,67 @@
                                         </Grid.ColumnDefinitions>
 
                                         <!--
-                                          줄 전체가 단추입니다. 누르면 그때의
-                                          기록을 펼쳐 보는 창이 뜹니다.
-                                          [삭제] 는 이 단추 <b>밖</b>에 둡니다 —
-                                          안에 넣으면 삭제를 눌러도 바깥 단추의
-                                          Click 까지 같이 올라갑니다.
+                                          줄 전체가 단추입니다 — 누르면 위 칸 셋에 그때의 요약을 펼칩니다.
+                                          [삭제] 는 이 단추 <b>밖</b>에 둡니다 — 안에 넣으면 삭제를 눌러도
+                                          바깥 단추의 Click 까지 같이 올라갑니다.
                                         -->
                                         <Button Grid.Column="0" Style="{StaticResource RowButton}"
                                                 Click="OnOpenSaved" Tag="{Binding Id}"
-                                                ToolTip="{Binding PathsText}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" MinWidth="200" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-
-                                                <!-- 언제 것인지, 무엇을 견줬는지 -->
-                                                <StackPanel Grid.Column="0" VerticalAlignment="Center"
-                                                            Margin="0,0,14,0">
+                                                ToolTip="{x:Static t:MainTexts.HistoryRowTip}">
+                                            <StackPanel>
+                                                <!-- 이름 (없으면 저장 시각) · 이름이 있으면 옆에 시각 -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                                TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding LogsText}" Style="{StaticResource Muted}"
-                                                               FontSize="11" Margin="0,2,0,0"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding BasisText}" Style="{StaticResource Muted}"
-                                                               FontSize="10" Margin="0,2,0,0"
-                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding SavedAtText}" Style="{StaticResource Muted}"
+                                                               FontSize="11" Margin="10,0,0,0" VerticalAlignment="Bottom" />
                                                 </StackPanel>
 
-                                                <!-- 그때의 점수 셋과 수 -->
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center"
-                                                            Margin="0,0,18,0">
-                                                    <TextBlock Text="{Binding ScoreText}" FontSize="14"
-                                                               FontWeight="SemiBold" HorizontalAlignment="Right"
-                                                               ToolTip="{x:Static t:MainTexts.ScoreTextTip}" />
-                                                    <TextBlock Text="{Binding CountsText}" Style="{StaticResource Muted}"
-                                                               FontSize="11" HorizontalAlignment="Right"
-                                                               Margin="0,2,0,0" />
-                                                </StackPanel>
-
-                                                <!-- 지금 결과와의 차이 -->
-                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="170"
-                                                            Visibility="{Binding HasDelta, Converter={StaticResource BoolToVisibility}}">
-                                                    <TextBlock x:Name="DeltaText" Text="{Binding DeltaText}"
-                                                               FontSize="12" FontWeight="SemiBold"
-                                                               HorizontalAlignment="Right"
-                                                               Foreground="{DynamicResource Brush.Muted}" />
-                                                    <TextBlock Text="{Binding BasisWarning}" Style="{StaticResource Muted}"
-                                                               FontSize="10" HorizontalAlignment="Right"
-                                                               TextWrapping="Wrap" TextAlignment="Right"
-                                                               Margin="0,2,0,0"
-                                                               Visibility="{Binding BasisWarning, Converter={StaticResource TextToVisibility}}" />
-                                                </StackPanel>
-                                            </Grid>
+                                                <!-- 분석 1 / 2 / 3 — 가로 셋, 칸 셋과 같은 차례 -->
+                                                <ItemsControl ItemsSource="{Binding Cells}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <UniformGrid Rows="1" Columns="3" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type main:HistoryCellVm}">
+                                                            <Border Background="{DynamicResource Brush.Window}"
+                                                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                                    CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Muted}"
+                                                                               FontSize="10" TextTrimming="CharacterEllipsis" />
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                                                        <TextBlock x:Name="CellHead" Text="{Binding HeadText}"
+                                                                                   FontSize="14" FontWeight="Bold"
+                                                                                   Foreground="{DynamicResource Brush.Muted}" />
+                                                                        <TextBlock Text="{Binding CountText}" Style="{StaticResource Muted}"
+                                                                                   FontSize="11" Margin="8,0,0,1" VerticalAlignment="Bottom" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="{Binding SummaryText}" FontSize="11" Margin="0,1,0,0"
+                                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding SummaryText}" />
+                                                                    <TextBlock Text="{Binding InputsText}" Style="{StaticResource Muted}"
+                                                                               FontSize="10" Margin="0,1,0,0"
+                                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding InputsText}"
+                                                                               Visibility="{Binding InputsText, Converter={StaticResource TextToVisibility}}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding HeadGrade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                                                                    <Setter TargetName="CellHead" Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding HeadGrade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                                                    <Setter TargetName="CellHead" Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding HeadGrade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                                                    <Setter TargetName="CellHead" Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                         </Button>
 
                                         <Button Grid.Column="1" Content="{x:Static t:MainTexts.DeleteSaved}" Click="OnDeleteSaved"
@@ -947,19 +971,10 @@
                                 </Border>
 
                                 <DataTemplate.Triggers>
-                                    <!-- 달라진 IO 가 늘면 나쁨입니다 — 지난번보다
-                                         어긋난 곳이 많아졌다는 뜻이니까요. -->
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static main:HistoryRowVm.DeltaBad}">
-                                        <Setter TargetName="DeltaText" Property="Foreground"
-                                                Value="{DynamicResource Brush.Bad}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static main:HistoryRowVm.DeltaGood}">
-                                        <Setter TargetName="DeltaText" Property="Foreground"
-                                                Value="{DynamicResource Brush.Good}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding DeltaKind}" Value="{x:Static main:HistoryRowVm.DeltaSame}">
-                                        <Setter TargetName="DeltaText" Property="Foreground"
-                                                Value="{DynamicResource Brush.Text}" />
+                                    <!-- 위 칸에 펼쳐 보고 있는 줄 -->
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter TargetName="RowBox" Property="Background"
+                                                Value="{DynamicResource Brush.AccentSoft}" />
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>

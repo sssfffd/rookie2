@@ -227,6 +227,9 @@ namespace LogScope.Main
             get { return _detail.Length > 0 ? _detail : "미구현"; }
         }
 
+        /// <summary>적어 둔 글 그대로 (비었으면 빈 글자). History 에 찍어 둘 때 씁니다.</summary>
+        public string Detail { get { return _detail; } }
+
         public void SetDetail(string text)
         {
             _detail = text ?? string.Empty;
@@ -588,6 +591,84 @@ namespace LogScope.Main
                 if (!Ready) return "아직 만들지 않았습니다.";
                 return "그룹이 없거나 아직 비교하지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
             }
+        }
+    
+        // ---- History (1.42) — 칸의 요약을 찍어 두고 다시 펼치기 ----
+
+        /// <summary>지금 칸에 보이는 요약을 찍어 둡니다 (저장용).</summary>
+        public CardSnapshot TakeSnapshot()
+        {
+            var s = new CardSnapshot();
+            s.Number = Number;
+            s.Title = Title;
+            s.HasScore = _has;
+            s.Score = _score;
+            s.Word = _word;
+            s.WordGrade = _wordGrade;
+            s.WordNote = _wordNote;
+            s.Count = _verdictCount;
+            s.LineNote = _lineNote;
+
+            for (int i = 0; i < _lines.Count; i++)
+            {
+                CardLineVm l = _lines[i];
+                var ls = new LineSnapshot();
+                ls.Label = l.Label; ls.Value = l.Value; ls.Grade = l.Grade; ls.Detail = l.Detail;
+                ls.Target = l.Target; ls.ValueIsChange = l.ValueIsChange; ls.Card = l.Card;
+                s.Lines.Add(ls);
+            }
+
+            for (int i = 0; i < _groups.Count; i++)
+            {
+                GroupSummaryVm g = _groups[i];
+                var gs = new GroupSnapshot();
+                gs.Name = g.GroupName;
+                gs.Members = new List<string>(g.Members ?? new List<string>());
+                gs.MemberCount = g.MemberCount;
+                gs.ChangedCount = g.ChangedCount;
+                gs.Detail = g.Detail;
+                s.Groups.Add(gs);
+            }
+            return s;
+        }
+
+        /// <summary>
+        /// 찍어 둔 요약을 칸에 펼칩니다 (History 줄을 눌렀을 때). 점수 · 낱말 · 개수 ·
+        /// 요약 줄 · 그룹 줄을 통째로 바꿉니다. 지금 결과로 돌아갈 때는 MainVm.Refresh 가
+        /// 처음부터 다시 적습니다.
+        /// </summary>
+        public void ApplySnapshot(CardSnapshot s)
+        {
+            if (s == null) return;
+            _has = s.HasScore;
+            _score = s.Score;
+            _word = s.Word ?? string.Empty;
+            _wordGrade = s.WordGrade ?? ScoreBands.GradeNone;
+            _wordNote = s.WordNote ?? string.Empty;
+            _verdictCount = s.Count ?? string.Empty;
+            RaiseScore();
+            Raise("HasVerdict"); Raise("VerdictCount");
+
+            var groups = new List<GroupSummaryVm>();
+            for (int i = 0; i < s.Groups.Count; i++)
+            {
+                GroupSnapshot g = s.Groups[i];
+                var vm = new GroupSummaryVm(g.Name, new List<string>(g.Members), g.MemberCount, g.ChangedCount);
+                vm.SetDetail(g.Detail);
+                groups.Add(vm);
+            }
+            SetGroups(groups);
+
+            var lines = new List<CardLineVm>();
+            for (int i = 0; i < s.Lines.Count; i++)
+            {
+                LineSnapshot l = s.Lines[i];
+                var vm = new CardLineVm(l.Label, l.Value, l.Grade, l.Detail, l.Target);
+                vm.ValueIsChange = l.ValueIsChange;
+                vm.Card = l.Card;
+                lines.Add(vm);
+            }
+            SetLines(lines, s.LineNote);
         }
     }
 }

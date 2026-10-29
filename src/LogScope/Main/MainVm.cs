@@ -94,9 +94,14 @@ namespace LogScope.Main
             ShowDbVerdict();
             ShowA3Result();
 
+            // History 를 펼쳐 보는 중이면 지금 결과 위에 그때의 요약을 덮습니다 (1.42).
+            // 지금 결과는 위에서 늘 새로 적으므로 [지금 결과로] 를 누르면 그대로 돌아옵니다.
+            ApplyViewing();
+
             RefreshDeltas();
 
             Raise("HasLogs"); Raise("HasBoth"); Raise("Hint"); Raise("CanSave");
+            Raise("IsViewingHistory"); Raise("ViewingText");
             Raise("BeforeTime"); Raise("AfterTime");
             Raise("BeforeFileName"); Raise("AfterFileName");
             Raise("BeforeText"); Raise("AfterText");
@@ -649,19 +654,79 @@ namespace LogScope.Main
             return null;
         }
 
-        // ---------------- 저장된 분석 ----------------
+        // ---------------- History (전 "저장된 분석") ----------------
         //
-        // 지금 결과를 남겨 두고, 다음에 분석했을 때 지난번과 얼마나 달라졌는지
-        // 를 봅니다. 로그 값 자체는 담지 않습니다 — 요약된 몇 개의 수만 남깁니다.
-        // 왜 그렇게 했는지는 AnalysisRecord 에 적어 뒀습니다.
+        // 저장 한 번에 칸 셋(분석 1 · 2 · 3)의 요약을 찍어 남깁니다 (1.42). 줄을 누르면
+        // 그때의 요약을 칸에 펼쳐 보고, 다시 누르거나 [지금 결과로] 를 누르면 돌아옵니다.
+        // 로그 값 자체는 담지 않습니다 — 칸에 보이는 요약만 (CardSnapshot).
+
+        /// <summary>칸에 펼쳐 보고 있는 기록. 없으면 지금 결과.</summary>
+        private AnalysisRecord _viewing;
+
+        /// <summary>History 기록을 펼쳐 보는 중인지.</summary>
+        public bool IsViewingHistory { get { return _viewing != null; } }
+
+        /// <summary>펼쳐 보는 기록의 이름 (칸 위 띠에 적음).</summary>
+        public string ViewingText
+        {
+            get { return _viewing == null ? string.Empty : "History — " + _viewing.DisplayName; }
+        }
+
+        /// <summary>
+        /// History 줄을 눌렀을 때. 그 기록의 요약을 칸 셋에 펼칩니다. 이미 펼쳐 보던 줄을
+        /// 다시 누르면 지금 결과로 돌아갑니다.
+        /// </summary>
+        public void ShowSaved(string id)
+        {
+            AnalysisRecord rec = SavedById(id);
+            if (rec == null || rec == _viewing) { ShowLive(); return; }
+            _viewing = rec;
+            Refresh();
+        }
+
+        /// <summary>펼쳐 보던 것을 접고 지금 결과로.</summary>
+        public void ShowLive()
+        {
+            if (_viewing == null) return;
+            _viewing = null;
+            Refresh();
+        }
+
+        private void ApplyViewing()
+        {
+            for (int i = 0; i < _history.Count; i++)
+                _history[i].IsSelected = _viewing != null && _history[i].Record == _viewing;
+            if (_viewing == null) return;
+
+            // 줄의 칸이 쓰는 요약을 그대로 펼칩니다 — 1.41 까지의 기록은 칸이 점수만으로
+            // 만든 요약이라, 기록을 직접 읽으면 칸 · 줄이 서로 다른 것을 보입니다.
+            HistoryRowVm row = RowOf(_viewing);
+            for (int i = 0; i < Cards.Count; i++)
+            {
+                CardSnapshot s = row != null && i < row.Cells.Count ? row.Cells[i].Snapshot : _viewing.CardAt(i + 1);
+                if (s != null) Cards[i].ApplySnapshot(s);
+            }
+        }
+
+        private HistoryRowVm RowOf(AnalysisRecord rec)
+        {
+            for (int i = 0; i < _history.Count; i++)
+                if (_history[i].Record == rec) return _history[i];
+            return null;
+        }
 
         private List<HistoryRowVm> _history = new List<HistoryRowVm>();
         public List<HistoryRowVm> History { get { return _history; } }
 
         public bool HasHistory { get { return _history.Count > 0; } }
 
-        /// <summary>견준 결과가 있어야 저장할 것이 있습니다.</summary>
-        public bool CanSave { get { return _state.Comparison != null; } }
+        /// <summary>
+        /// 분석 하나라도 결과가 있어야 저장할 것이 있습니다 (1.42 — 전에는 분석 1 만 봤음).
+        /// </summary>
+        public bool CanSave
+        {
+            get { return _state.Comparison != null || _state.HasDbResult || Analysis3Link.Result != null; }
+        }
 
         /// <summary>저장해 둔 것을 다시 읽습니다. 창을 열 때와 저장·삭제 뒤에 부릅니다.</summary>
         public void ReloadHistory()
@@ -670,6 +735,14 @@ namespace LogScope.Main
             foreach (AnalysisRecord r in HistoryStore.Load(HistoryStore.ResolveFolder()))
                 rows.Add(new HistoryRowVm(r));
             _history = rows;
+
+            // 펼쳐 보던 기록이 다시 읽은 목록에 없으면(지워졌으면) 지금 결과로.
+            if (_viewing != null)
+            {
+                AnalysisRecord again = null;
+                for (int i = 0; i < rows.Count; i++) if (rows[i].Id == _viewing.Id) again = rows[i].Record;
+                _viewing = again;
+            }
             RefreshDeltas();
             Raise("History"); Raise("HasHistory"); Raise("HistoryNote");
         }
@@ -700,9 +773,12 @@ namespace LogScope.Main
         /// </summary>
         public string SaveCurrent(string label)
         {
-            CompareResult r = _state.Comparison;
-            if (r == null) return "비교 결과가 없습니다. Log 파일 두 개를 열고 비교한 후에 저장할 수 있습니다.";
+            if (!CanSave) return "저장할 결과가 없습니다. 분석 1 · 2 · 3 중 하나라도 결과가 나온 뒤에 저장할 수 있습니다.";
 
+            // 펼쳐 보던 기록이 칸에 있으면 그걸 다시 저장하게 됩니다 — 지금 결과로 돌리고 찍습니다.
+            if (_viewing != null) { _viewing = null; Refresh(); }
+
+            CompareResult r = _state.Comparison;
             var rec = new AnalysisRecord();
             rec.SavedAt = _state.ComparedAt != DateTime.MinValue ? _state.ComparedAt : DateTime.Now;
             rec.Label = label ?? string.Empty;
@@ -719,16 +795,29 @@ namespace LogScope.Main
             for (int i = 0; i < Cards.Count && i < AnalysisRecord.AnalysisCount; i++)
                 rec.SetScore(i + 1, Cards[i].HasScore, Cards[i].Score);
 
-            rec.ComparedCount = r.CommonCount;
-            rec.ChangedCount = r.ChangedCount;
-            rec.OneSidedCount = r.OnlyBefore.Count + r.OnlyAfter.Count;
+            // 칸 셋의 요약을 그대로 (1.42). 무엇과 무엇을 견줬는지도 칸마다.
+            for (int i = 0; i < Cards.Count && i < AnalysisRecord.AnalysisCount; i++)
+            {
+                CardSnapshot s = Cards[i].TakeSnapshot();
+                if (i == 0) { s.BeforeName = rec.BeforeName; s.AfterName = rec.AfterName; }
+                else if (i == 1) { s.BeforeName = DbBeforeName; s.AfterName = DbAfterName; }
+                else { s.BeforeName = A3BeforeName; s.AfterName = A3AfterName; }
+                rec.Cards.Add(s);
+            }
+
+            if (r != null)
+            {
+                rec.ComparedCount = r.CommonCount;
+                rec.ChangedCount = r.ChangedCount;
+                rec.OneSidedCount = r.OnlyBefore.Count + r.OnlyAfter.Count;
+                rec.AppliedShift = r.AppliedShift;
+            }
 
             rec.TolerancePercent = _state.Settings.RelativeTolerancePercent;
             rec.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             rec.ToleranceRules = ToleranceSignature();
             rec.ToleranceRuleCount = Table().OverrideCount;
             rec.AlignIo = _state.Settings.AlignIo;
-            rec.AppliedShift = r.AppliedShift;
 
             string problem;
             HistoryStore.Save(HistoryStore.ResolveFolder(), rec, out problem);
@@ -766,7 +855,11 @@ namespace LogScope.Main
         /// <summary>한 건을 지웁니다.</summary>
         public void DeleteSaved(string id)
         {
-            if (HistoryStore.Delete(HistoryStore.ResolveFolder(), id)) ReloadHistory();
+            if (!HistoryStore.Delete(HistoryStore.ResolveFolder(), id)) return;
+            bool viewing = _viewing != null;
+            ReloadHistory();
+            // 펼쳐 보던 것을 지웠으면 칸을 지금 결과로, 다른 것을 지웠으면 고른 줄 표시를 다시.
+            if (viewing) Refresh();
         }
 
         private static string NameOf(string path)
@@ -782,10 +875,8 @@ namespace LogScope.Main
             get
             {
                 if (_history.Count == 0)
-                    return "아직 저장한 것이 없습니다. Log 파일을 비교한 후 [지금 결과 저장] 을 누르면 여기에 쌓입니다.";
-                if (_state.Comparison == null)
-                    return "Log 파일을 비교한 후에는 각 줄에 지금 결과와의 차이가 같이 뜹니다.";
-                return "각 줄의 오른쪽이 지금 결과와의 차이입니다. 달라진 IO 가 늘면 빨강, 줄면 초록입니다.";
+                    return "아직 저장한 것이 없습니다. [지금 결과 저장] 을 누르면 분석 1 · 2 · 3 의 지금 요약이 한 줄로 쌓입니다.";
+                return "줄을 누르면 그때의 요약을 위 칸에 펼칩니다. 다시 누르거나 [지금 결과로] 를 누르면 돌아옵니다.";
             }
         }
 
