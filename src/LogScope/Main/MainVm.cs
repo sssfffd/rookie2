@@ -36,6 +36,7 @@ namespace LogScope.Main
                 // 결과는 Common/Analysis3Link 로 올라옵니다.
                 new AnalysisCardVm(3, names.Title(3), names.Summary(3), true),
             };
+            Llm = new LlmPanelVm();
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();
         }
@@ -100,7 +101,9 @@ namespace LogScope.Main
 
             RefreshDeltas();
 
-            Raise("HasLogs"); Raise("HasBoth"); Raise("Hint"); Raise("CanSave");
+            RefreshLlmChecks();
+
+            Raise("HasLogs"); Raise("HasBoth"); Raise("CanSave");
             Raise("IsViewingHistory"); Raise("ViewingText");
             Raise("BeforeTime"); Raise("AfterTime");
             Raise("BeforeFileName"); Raise("AfterFileName");
@@ -118,9 +121,6 @@ namespace LogScope.Main
             Raise("A3BeforeName"); Raise("A3AfterName");
             Raise("A3BeforeHint"); Raise("A3AfterHint");
             Raise("A3BeforeKind"); Raise("A3AfterKind");
-            Raise("ComparedText");
-            Raise("OverallHeadline"); Raise("OverallGrade");
-            Raise("OverallBasis");
         }
 
         /// <summary>
@@ -562,77 +562,51 @@ namespace LogScope.Main
             return (before ? s.DbBeforePath : s.DbAfterPath) ?? string.Empty;
         }
 
-        /// <summary>
-        /// 지금 보고 있는 결과가 언제 나온 것인지.
-        ///
-        /// 허용 오차나 시간 맞추기를 바꾸고 다시 견주는 일이 잦습니다.
-        /// 이걸 안 적어 두면 옛 결과를 새것으로 착각하게 됩니다.
-        /// </summary>
-        public string ComparedText
-        {
-            get
-            {
-                if (_state.Comparison == null) return string.Empty;
-                if (_state.ComparedAt == DateTime.MinValue) return string.Empty;
-                return "비교 실행  " + _state.ComparedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            }
-        }
-
-        // ---------------- 종합 분석 결과 ----------------
+        // ---------------- 종합 분석 결과 (LLM, 1.45) ----------------
         //
-        // 메인 화면 맨 위, 전에 "열어 둔 로그" 가 있던 자리입니다. 로그 칸은
-        // 분석 1 안으로 들어갔습니다 — 로그를 여는 일은 분석 1 의 준비이고,
-        // 메인 화면이 먼저 답해야 하는 것은 "그래서 결과가 어떤가" 입니다.
+        // 1.44 까지 여기 있던 "달라진 데가 있습니다" 한 줄 · 기준 · 비교 시각 · 안내는 뺐습니다.
+        // 그 자리는 사용자가 만든 LLM 분석의 결과가 차지합니다 (LlmPanelVm · Common/LlmLink).
 
-        /// <summary>한 줄 판정. 메인 화면에서 제일 먼저 읽는 글입니다.</summary>
-        public string OverallHeadline
-        {
-            get
-            {
-                if (!_state.HasBoth) return "아직 비교하지 않았습니다";
-                CompareResult r = _state.Comparison;
-                if (r == null) return "아직 비교하지 않았습니다";
-                if (r.ChangedCount > 0) return "달라진 데가 있습니다";
-                if (r.OnlyBefore.Count + r.OnlyAfter.Count > 0) return "값은 같고, 한쪽에만 있는 IO 가 있습니다";
-                return "다른 데가 없습니다";
-            }
-        }
+        /// <summary>맨 위 종합 분석 결과 (LLM) 칸.</summary>
+        public LlmPanelVm Llm { get; private set; }
 
         /// <summary>
-        /// 판정 옆의 점 색. 점수 색과 <b>같은 뜻</b>으로 씁니다.
-        /// 안 견준 상태는 빈 글자 — 회색으로 둡니다. 안 재 본 것에 색을 칠하면
-        /// 재 본 것으로 읽힙니다.
+        /// 분석 셋이 지금 결과가 있는지 체크 표시를 다시 적습니다. 무엇을 보고 "완료" 로 보는지:
+        ///   분석 1 — 이전 · 이후 로그를 비교한 결과(<c>AppState.Comparison</c>)가 있음
+        ///   분석 2 — 이전 · 이후 DB 를 읽어 견줌(<c>AppState.HasDbResult</c>)
+        ///   분석 3 — 분석 3 이 결과를 올림(<c>Analysis3Link.Result</c>). Publish 를 안 부르면 알 수 없음.
         /// </summary>
-        public string OverallGrade
+        private void RefreshLlmChecks()
         {
-            get
-            {
-                CompareResult r = _state.Comparison;
-                if (!_state.HasBoth || r == null) return string.Empty;
-                if (r.ChangedCount > 0) return "bad";
-                if (r.OnlyBefore.Count + r.OnlyAfter.Count > 0) return "warn";
-                return "good";
-            }
+            AppConfig names = AppConfig.Current;
+            CompareResult r = _state.Comparison;
+            Llm.SetReady(1, names.Title(1), r != null,
+                r != null ? "로그 두 개를 비교함 · 달라진 IO " + r.ChangedCount.ToString("N0") + "개"
+                : (_state.HasBoth ? "비교 결과가 없습니다. [다시 비교] 를 눌러 주세요."
+                                  : "이전 · 이후 로그를 둘 다 열면 비교됩니다."));
+            Llm.SetReady(2, names.Title(2), _state.HasDbResult,
+                _state.HasDbResult ? "DB 를 견줌 · " + DbVerdict.Of(_state.DbChanged) + " · 차이 발생 " + _state.DbChanged.ToString("N0") + "개"
+                                   : "이전 · 이후 DB 를 넣으면 읽고 견줍니다.");
+            bool a3 = Analysis3Link.Result != null;
+            Llm.SetReady(3, names.Title(3), a3,
+                a3 ? "분석 3 이 결과를 보냄 (Analysis3Link.Publish)"
+                   : "분석 3 이 결과를 보내야(Analysis3Link.Publish) 완료로 표시됩니다.");
         }
 
-        /// <summary>
-        /// 어느 기준으로 본 결과인지. 허용 오차를 바꾸고 다시 견주는 일이
-        /// 잦아서, 숫자만 있고 기준이 없으면 무엇과 견준 수인지 알 수 없습니다.
-        /// 저장된 분석에 적는 글과 <b>같은 틀</b>입니다.
-        /// </summary>
-        public string OverallBasis
+        /// <summary>[LLM 분석 실행] 을 누른 순간의 재료. 창이 배경 스레드로 넘깁니다.</summary>
+        public LlmRequest BuildLlmRequest(DbDiffResult dbDiff)
         {
-            get
-            {
-                if (_state.Comparison == null) return string.Empty;
-                AppSettings st = _state.Settings;
-                var rec = new AnalysisRecord();
-                rec.TolerancePercent = st.RelativeTolerancePercent;
-                rec.AbsoluteTolerance = st.AbsoluteTolerance;
-                rec.ToleranceRuleCount = st.Tolerances != null ? st.Tolerances.Count : 0;
-                rec.AlignIo = st.AlignIo ?? string.Empty;
-                return rec.BasisText;
-            }
+            var q = new LlmRequest();
+            q.Use1 = _state.Comparison != null;
+            q.Use2 = _state.HasDbResult;
+            q.Use3 = Analysis3Link.Result != null;
+            for (int i = 0; i < 3; i++) q.Titles[i] = AppConfig.Current.Title(i + 1);
+            q.State = _state;
+            q.DbDiff = q.Use2 ? dbDiff : null;
+            q.Analysis3 = Analysis3Link.Result;
+            q.Analysis3Before = Analysis3Link.BeforePath;
+            q.Analysis3After = Analysis3Link.AfterPath;
+            return q;
         }
 
         /// <summary>
@@ -882,18 +856,5 @@ namespace LogScope.Main
 
         /// <summary>저장 폴더. 화면에서 "어디에 쌓이는지" 를 알려 줍니다.</summary>
         public string HistoryFolder { get { return HistoryStore.ResolveFolder(); } }
-
-        /// <summary>칸 위에 적는 안내.</summary>
-        public string Hint
-        {
-            get
-            {
-                if (!_state.HasAny)
-                    return "위쪽의 [이전 로그 열기] / [이후 로그 열기] 로 파일을 먼저 열어 주세요. 창에 끌어다 놓아도 됩니다.";
-                if (!_state.HasBoth)
-                    return "Log 파일이 하나뿐입니다. 두 개를 다 열어야 비교할 수 있습니다.";
-                return "칸을 누르면 그 분석 화면으로 넘어갑니다.";
-            }
-        }
     }
 }

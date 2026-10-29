@@ -17,64 +17,101 @@
         <!-- 아주 넓은 화면에서 칸이 끝없이 늘어나지 않게 가둡니다. -->
         <StackPanel Margin="20,16,20,22" MaxWidth="1180" HorizontalAlignment="Stretch">
 
-            <!-- ===== 종합 분석 결과 =====
-                 전에 "열어 둔 로그" 가 있던 자리입니다. 로그 칸은 분석 1 안으로
-                 들어갔습니다 : 로그를 여는 일은 분석 1 의 준비이고, 메인 화면이
-                 먼저 답해야 하는 것은 "그래서 결과가 어떤가" 입니다.
+            <!-- ===== 종합 분석 결과 (LLM, 1.45) =====
+                 1.44 까지의 한 줄 판정 · 기준 · 안내를 빼고, 사용자가 만든 LLM 분석의 결과를 보입니다.
 
-                 IO 개수는 여기에 두지 않습니다. 0.59 에 분석 1 칸에서 여기로
-                 옮겼다가 0.63 에 아예 뺐습니다 — 같은 수가 대시보드에도
-                 있어서, 세는 자리는 거기 한 곳이면 됩니다. 이 칸은 "그래서
-                 어떤가" 한 줄과 그 판정의 기준만 적습니다.
-            -->
+                   종합 분석 결과                                    [LLM 분석 실행] [취소]
+                   ● 분석 1 · 로그 비교  완료   ● 분석 2 · DB  안 함   ● 분석 3  완료
+                   [■■■■■□□□□□] 서버에 보내는 중
+                   ┌ 결과 글 ───────────────────────────────────────────────┐
+                   2026-10-29 15:02:10 · 분석 1 · 3 결과로 분석
+
+                 값은 MainVm.Llm (LlmPanelVm), 돌리는 것은 ShellWindow, 꽂는 자리는 Main/LlmSetup.cs.
+                 진행 중에는 DataContext.Llm 이 바뀌지 않으므로 모두 Llm.X 로 묶습니다. -->
             <Border Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                     CornerRadius="5" Padding="18,14" Margin="6,0,6,16">
                 <StackPanel>
-                    <TextBlock Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
-                               Margin="0,0,0,8" />
+                    <!-- 제목 · [LLM 분석 실행] · [취소] -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}"
+                                Content="{x:Static t:MainTexts.LlmRun}" Click="OnLlmRun"
+                                ToolTip="{x:Static t:MainTexts.LlmRunTip}" IsEnabled="{Binding Llm.CanRun}"
+                                Margin="0" />
+                        <Button Grid.Column="2" Content="{x:Static t:MainTexts.LlmCancel}" Click="OnLlmCancel"
+                                ToolTip="{x:Static t:MainTexts.LlmCancelTip}" Margin="6,0,0,0"
+                                Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
 
-                    <!-- 판정 한 줄. 점 색은 점수 색과 같은 뜻입니다. -->
-                    <StackPanel Orientation="Horizontal">
-                        <Border Width="12" Height="12" CornerRadius="6"
-                                VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Border.Style>
-                                <Style TargetType="{x:Type Border}">
-                                    <!-- 안 견준 상태는 회색 그대로. 안 재 본 것에
-                                         색을 칠하면 재 본 것으로 읽힙니다. -->
-                                    <Setter Property="Background" Value="{DynamicResource Brush.Muted}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static main:ScoreBands.GradeGood}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.Good}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static main:ScoreBands.GradeWarn}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.Warn}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding OverallGrade}" Value="{x:Static main:ScoreBands.GradeBad}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.Bad}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                        </Border>
-                        <TextBlock Text="{Binding OverallHeadline}" FontSize="22" FontWeight="Bold"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                    <!-- 분석 1 · 2 · 3 체크 — 지금 결과가 있는지. 마우스를 올리면 무엇을 보고 판단했는지. -->
+                    <ItemsControl ItemsSource="{Binding Llm.Checks}" Margin="0,0,0,8">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type main:LlmCheckVm}">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Background="Transparent"
+                                            ToolTip="{Binding Note}">
+                                    <Border x:Name="CheckDot" Width="10" Height="10" CornerRadius="5"
+                                            VerticalAlignment="Center" Margin="0,0,7,0"
+                                            Background="{DynamicResource Brush.Muted}" />
+                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="CheckState" Text="{Binding StateText}" Margin="8,0,0,0"
+                                               VerticalAlignment="Center" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Muted}" />
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Ready}" Value="True">
+                                        <Setter TargetName="CheckDot" Property="Background" Value="{DynamicResource Brush.Good}" />
+                                        <Setter TargetName="CheckState" Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                    <!-- 어느 기준으로 본 결과인지. 기준이 없으면 "달라진 데가
-                         있다" 가 무엇을 넘었다는 말인지 알 수 없습니다. -->
-                    <TextBlock Text="{Binding OverallBasis}" Style="{StaticResource Muted}"
-                               FontSize="11" Margin="0,12,0,0" TextWrapping="Wrap"
-                               Visibility="{Binding OverallBasis, Converter={StaticResource TextToVisibility}}" />
+                    <!-- 진행 — 돌 때만 -->
+                    <Grid Margin="0,0,0,8"
+                          Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ProgressBar Grid.Column="0" Height="10" Minimum="0" Maximum="100"
+                                     Value="{Binding Llm.Progress, Mode=OneWay}"
+                                     IsIndeterminate="{Binding Llm.ProgressUnknown, Mode=OneWay}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Llm.Message}" Style="{StaticResource Muted}"
+                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </Grid>
 
-                    <TextBlock Text="{Binding ComparedText}" Style="{StaticResource Muted}"
-                               FontSize="11" Margin="0,3,0,0"
-                               Visibility="{Binding ComparedText, Converter={StaticResource TextToVisibility}}" />
+                    <!-- 아직 아무것도 없을 때 -->
+                    <TextBlock Text="{x:Static t:MainTexts.LlmEmpty}" Style="{StaticResource Muted}" TextWrapping="Wrap"
+                               Visibility="{Binding Llm.ShowEmpty, Converter={StaticResource BoolToVisibility}}" />
 
-                    <TextBlock Text="{Binding Hint}" Style="{StaticResource Muted}"
-                               Margin="0,6,0,0" TextWrapping="Wrap" />
+                    <!-- 오류 · 취소 -->
+                    <TextBlock Text="{Binding Llm.ErrorText}" Foreground="{DynamicResource Brush.Bad}" TextWrapping="Wrap"
+                               Margin="0,0,0,6"
+                               Visibility="{Binding Llm.HasError, Converter={StaticResource BoolToVisibility}}" />
+
+                    <!-- 결과 글 — 고르고 복사할 수 있게 읽기 전용 글 상자. 길면 칸 안에서 굴립니다. -->
+                    <TextBox Text="{Binding Llm.ResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto" MaxHeight="360"
+                             BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Brush.Text}"
+                             Padding="0" FontSize="13"
+                             Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding Llm.FinishedText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
+                               Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
-
             </Border>
 
             <!-- "분석 결과" 와, History 를 펼쳐 보는 중이면 그 띠 (1.42). 칸 셋이 지금 결과가

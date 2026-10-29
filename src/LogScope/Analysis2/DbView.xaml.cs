@@ -80,6 +80,9 @@ namespace LogScope.Analysis2
         /// <summary>같은 IO 들의 이전 → 이후 값. 메인 화면 요약이 적습니다.</summary>
         public IList<DbChangedIo> ChangedValues { get { return _vm.ChangedValues; } }
 
+        /// <summary>마지막으로 견준 결과 전체 — LLM 분석 재료(LlmRequest.DbDiff) 로 넘깁니다 (1.45). 안 읽었으면 null.</summary>
+        public DbDiffResult Diff { get { return _vm.Diff; } }
+
         /// <summary>
         /// 그 IO 의 줄을 목록에서 찾아 골라 줍니다 (메인 화면 요약에서
         /// 눌러 넘어왔을 때).

@@ -340,6 +340,24 @@ namespace LogScope.Main
             vm.ShowSaved(id);
         }
 
+        /// <summary>[LLM 분석 실행] (1.45). 돌리는 것은 창이 합니다.</summary>
+        public event EventHandler LlmRunRequested;
+
+        /// <summary>[취소] (1.45).</summary>
+        public event EventHandler LlmCancelRequested;
+
+        private void OnLlmRun(object sender, RoutedEventArgs e)
+        {
+            EventHandler h = LlmRunRequested;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
+        private void OnLlmCancel(object sender, RoutedEventArgs e)
+        {
+            EventHandler h = LlmCancelRequested;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
         /// <summary>History 를 접고 지금 결과로 (칸 위 띠의 단추).</summary>
         private void OnShowLive(object sender, RoutedEventArgs e)
         {

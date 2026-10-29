@@ -144,6 +144,7 @@
     <Compile Include="Settings\SettingsTexts.cs" />
     <Compile Include="Shell\ShellTexts.cs" />
     <Compile Include="Common\Analysis3Link.cs" />
+    <Compile Include="Common\LlmLink.cs" />
     <Compile Include="Common\ObservableObject.cs" />
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Common\CardTag.cs" />
@@ -194,6 +195,8 @@
     <Compile Include="Common\XlsxReader.cs" />
     <Compile Include="Main\AnalysisRecord.cs" />
     <Compile Include="Main\CardSnapshot.cs" />
+    <Compile Include="Main\LlmPanelVm.cs" />
+    <Compile Include="Main\LlmSetup.cs" />
     <Compile Include="LlmExport\LlmSection.cs" />
     <Compile Include="LlmExport\LlmFormat.cs" />
     <Compile Include="LlmExport\LlmExportOptions.cs" />

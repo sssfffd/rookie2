@@ -18,6 +18,18 @@ namespace LogScope.Main
 
         /// <summary>글</summary>
         public const string Label = "종합 분석 결과";
+        /// <summary>단추 이름 — 종합 분석 결과 칸 (1.45)</summary>
+        public const string LlmRun = "LLM 분석 실행";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string LlmRunTip = "결과가 있는 분석(체크 표시)으로 LLM 종합 분석을 돌립니다. 하나만 있어도 됩니다.";
+        /// <summary>단추 이름</summary>
+        public const string LlmCancel = "취소";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string LlmCancelTip = "LLM 분석을 멈춥니다 (분석 기능이 취소를 받아 줄 때).";
+        /// <summary>글 — 아직 결과가 없을 때</summary>
+        public const string LlmEmpty = "분석 1 · 2 · 3 중 하나 이상을 마친 뒤 [LLM 분석 실행] 을 누르면 여기에 종합 분석 결과가 나옵니다.";
+        /// <summary>알림 — LLM 분석 기능이 꽂혀 있지 않을 때</summary>
+        public const string LlmNoAnalyzer = "연결된 LLM 분석 기능이 없습니다.\n\nsrc/LogScope/Main/LlmSetup.cs 의 Register 에서\nLlmLink.Analyzer = new 내분석기(); 를 넣어 주세요.";
         /// <summary>글</summary>
         public const string Heading = "분석 결과";
         /// <summary>단추 이름</summary>

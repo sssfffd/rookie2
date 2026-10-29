@@ -113,6 +113,7 @@ namespace LogScope.Tests
                 HistorySaveAndLoad();
                 HistoryEdgeCases();
                 HistorySnapshots();
+                LlmPanelRules();
                 JsonRoundTrip();
                 SettingsRoundTrip();
                 AppConfigParse();
@@ -4269,6 +4270,47 @@ namespace LogScope.Tests
             List<AnalysisRecord> loaded = HistoryStore.Load(folder);
             Check("파일로 갔다 와도 칸 셋", problem.Length == 0 && loaded.Count == 1 && loaded[0].Cards.Count == 3
                   && loaded[0].CardAt(2).Lines.Count == 2, problem);
+        }
+
+        /// <summary>
+        /// 종합 분석 결과 (LLM) 칸 (1.45): 체크 표시 · 버튼 켜짐 · 진행 · 결과 · 실패 · 취소.
+        /// </summary>
+        private static void LlmPanelRules()
+        {
+            Say("종합 분석 결과 (LLM) 칸");
+
+            var p = new LlmPanelVm();
+            Check("처음엔 버튼 꺼짐 · 안내 보임", !p.CanRun && p.ShowEmpty && p.Checks.Count == 3, "");
+            p.SetReady(2, "DB 비교", true, "DB 를 견줌");
+            Check("하나만 완료여도 버튼 켜짐", p.CanRun && p.Checks[1].Ready && p.Checks[1].StateText == "완료"
+                  && p.Checks[0].StateText == "안 함" && p.Checks[1].Title == "분석 2 · DB 비교", p.Checks[1].Title);
+
+            p.Start();
+            Check("도는 중엔 버튼 꺼짐 · 진행 모름", p.IsRunning && !p.CanRun && p.ProgressUnknown && !p.ShowEmpty, "");
+            p.Report("서버에 보내는 중", 0.4);
+            Check("진행 40 · 글", !p.ProgressUnknown && p.Progress == 40 && p.Message == "서버에 보내는 중", p.Progress.ToString());
+            p.Report(null, 1.7);
+            Check("1 을 넘으면 100 에 붙임 · 글은 그대로", p.Progress == 100 && p.Message == "서버에 보내는 중", "");
+
+            p.Finish("종합 판정: WARNING", LlmPanelVm.UsedText(false, true, false), new DateTime(2026, 10, 29, 15, 2, 10));
+            Check("결과 받음", !p.IsRunning && p.CanRun && p.HasResult && p.ResultText == "종합 판정: WARNING"
+                  && p.FinishedText == "2026-10-29 15:02:10 · 분석 2 결과로 분석", p.FinishedText);
+
+            p.Start();
+            p.Fail("TimeoutException: 응답 없음");
+            Check("실패해도 앞 결과는 남고 오류만", p.HasResult && p.HasError && p.ErrorText.Contains("응답 없음") && !p.IsRunning, p.ErrorText);
+            p.Start();
+            Check("다시 돌리면 오류는 지움", !p.HasError, "");
+            p.Cancelled();
+            Check("취소", !p.IsRunning && p.ErrorText == "취소했습니다." && p.HasResult, "");
+
+            Check("쓴 분석 글", LlmPanelVm.UsedText(true, false, true) == "분석 1 · 3"
+                  && LlmPanelVm.UsedText(false, false, false) == "분석 없음", LlmPanelVm.UsedText(true, false, true));
+
+            var q = new LlmRequest();
+            Check("요청: 아무것도 없으면 Any 거짓", !q.Any, "");
+            q.Use3 = true;
+            Check("요청: 분석 3 만 있어도 Any", q.Any, "");
         }
 
         private static void Analysis3LinkRules()

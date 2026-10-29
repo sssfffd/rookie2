@@ -66,6 +66,11 @@ namespace LogScope.Shell
             Main.A3PickRequested += OnMainA3Pick;
             Main.A3Dropped += OnMainA3Dropped;
             Main.A3AnalyzeRequested += OnMainA3Analyze;
+            Main.LlmRunRequested += OnLlmRun;
+            Main.LlmCancelRequested += OnLlmCancel;
+
+            // LLM 분석 기능을 꽂습니다 (1.45) — Main/LlmSetup.cs 의 한 줄.
+            LlmSetup.Register();
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -468,6 +473,68 @@ namespace LogScope.Shell
         private void OnMainA3Analyze(object sender, EventArgs e)
         {
             if (!Analysis3Link.RequestAnalyze()) SayNoA3Handler("Analysis3Link.AnalyzeRequested");
+        }
+
+        // ---------------- 종합 분석 결과 (LLM, 1.45) ----------------
+        //
+        // [LLM 분석 실행] → LlmRequest 를 만들어 배경 스레드에서 LlmLink.Analyzer.Analyze 를 부르고,
+        // 진행 · 결과 · 오류를 화면 스레드로 넘겨 메인 칸(MainVm.Llm)에 적습니다. 진행 창(모달)을 쓰지 않는
+        // 것은, LLM 이 수십 초~수 분 걸릴 수 있어 그동안 다른 화면을 볼 수 있게 하려는 것입니다.
+
+        private LoadProgress _llmProgress;
+        private int _llmRun;   // 몇 번째 실행인지 — 취소 뒤 늦게 온 결과가 새 실행을 덮지 않게
+
+        private void OnLlmRun(object sender, EventArgs e)
+        {
+            LlmPanelVm panel = _vm.Main.Llm;
+            if (panel.IsRunning) return;
+
+            ILlmAnalyzer analyzer = LlmLink.Analyzer;
+            if (analyzer == null)
+            {
+                MessageBox.Show(this, MainTexts.LlmNoAnalyzer, MainTexts.Label,
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            LlmRequest request = _vm.Main.BuildLlmRequest(Db.Diff);
+            if (!request.Any) return;
+            string used = LlmPanelVm.UsedText(request.Use1, request.Use2, request.Use3);
+
+            int run = ++_llmRun;
+            panel.Start();
+            var progress = new LoadProgress(delegate (string stage, double f)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate { if (run == _llmRun) panel.Report(stage, f); }));
+            });
+            _llmProgress = progress;
+
+            var thread = new System.Threading.Thread(delegate ()
+            {
+                string result = null;
+                Exception error = null;
+                try { result = analyzer.Analyze(request, progress); }
+                catch (Exception ex) { error = ex; }
+
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    if (run != _llmRun) return;
+                    _llmProgress = null;
+                    if (error is OperationCanceledException || (error == null && progress.IsCancelled)) panel.Cancelled();
+                    else if (error != null) panel.Fail(error.GetType().Name + ": " + error.Message);
+                    else panel.Finish(result, used, DateTime.Now);
+                }));
+            });
+            thread.IsBackground = true;
+            thread.Name = "LogScope LLM 분석";
+            thread.Start();
+        }
+
+        /// <summary>[취소] — 분석 기능이 progress.IsCancelled 를 보고 멈춥니다. 안 보면 끝날 때까지 돕니다.</summary>
+        private void OnLlmCancel(object sender, EventArgs e)
+        {
+            if (_llmProgress != null) _llmProgress.Cancel();
+            _vm.Main.Llm.Report("취소하는 중 (분석 기능이 멈출 때까지)", -1);
         }
 
         private void SayNoA3Handler(string eventName)

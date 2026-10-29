@@ -134,3 +134,4 @@
 | `125-llm-summary-input.md` | 사내 LLM 종합 분석 입력 제안 — 분석 1 · 2 에서 무엇을 층(L1~L3)으로, TSV, 분석 사이 IO 연결 표 |
 | `126-llm-export.md` | `src/LogScope/LlmExport/` — 분석 1 · 2 · 3 을 사내 LLM 입력(.md · .json)으로, 메인 [LLM 입력 저장] |
 | `127-llm-export-revert-outside.md` | LlmExport 밖(단추 · 창 · AppState · DbView · 시험)을 1.42 로 되돌림, csproj 등록만 남김 |
+| `128-llm-panel.md` | 메인 종합 분석 결과 → LLM 칸: 분석 셋 체크 · [LLM 분석 실행] · 진행바 · 결과, 꽂는 자리 `ILlmAnalyzer` · `LlmSetup.cs` |
