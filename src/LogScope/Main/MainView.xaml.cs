@@ -210,6 +210,26 @@ namespace LogScope.Main
             Pick(sender, e, A3PickRequested);
         }
 
+        /// <summary>분석 3 칸 머리의 [분석] (1.35). 창이 Analysis3Link 로 넘깁니다.</summary>
+        public event EventHandler A3AnalyzeRequested;
+
+        /// <summary>분석 3 칸 머리의 [리포트] (1.35).</summary>
+        public event EventHandler A3ReportRequested;
+
+        private void OnA3Analyze(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            EventHandler h = A3AnalyzeRequested;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
+        private void OnA3Report(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            EventHandler h = A3ReportRequested;
+            if (h != null) h(this, EventArgs.Empty);
+        }
+
         private void Pick(object sender, MouseButtonEventArgs e, EventHandler<PickEventArgs> h)
         {
             e.Handled = true;

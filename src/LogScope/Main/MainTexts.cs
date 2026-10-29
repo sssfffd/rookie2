@@ -36,6 +36,21 @@ namespace LogScope.Main
         /// <summary>글</summary>
         public const string Text4 = "이후";
 
+        // ---- 분석 3 칸 (1.35) ----
+
+        /// <summary>단추 이름 — 분석 3 칸 머리 (기능은 분석 3 쪽이 Analysis3Link.AnalyzeRequested 로 연결)</summary>
+        public const string A3Analyze = "분석";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string A3AnalyzeTip = "분석 3 을 돌립니다.";
+        /// <summary>단추 이름 — 분석 3 칸 머리 (기능은 Analysis3Link.ReportRequested 로 연결)</summary>
+        public const string A3Report = "리포트";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string A3ReportTip = "분석 3 리포트를 만듭니다.";
+        /// <summary>분석 3 의 이전/이후 칸을 아직 안 정했을 때 칸에 적는 말</summary>
+        public const string A3NoneOnCard = "누르면 폴더 고르기 · 끌어다 놓기";
+        /// <summary>단추에 연결된 기능이 없을 때 알림</summary>
+        public const string A3NoHandler = "분석 3 쪽에 이 단추와 연결된 기능이 아직 없습니다.";
+
         // ---- 이 분석의 요약 (그룹별) ----
 
         /// <summary>글</summary>

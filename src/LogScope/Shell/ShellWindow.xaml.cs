@@ -65,6 +65,8 @@ namespace LogScope.Shell
             Main.DbDropped += OnMainDbDropped;
             Main.A3PickRequested += OnMainA3Pick;
             Main.A3Dropped += OnMainA3Dropped;
+            Main.A3AnalyzeRequested += OnMainA3Analyze;
+            Main.A3ReportRequested += OnMainA3Report;
 
             Graph.Attach(state);
             Heatmap.Attach(state);
@@ -429,28 +431,56 @@ namespace LogScope.Shell
             }
         }
 
-        /// <summary>메인 화면 분석 3 칸을 눌렀을 때 — 파일 고르는 창.</summary>
+        /// <summary>
+        /// 메인 화면 분석 3 칸을 눌렀을 때 — <b>폴더</b> 고르는 창 (1.35, 전에는 파일).
+        ///
+        /// WPF 에는 폴더 고르는 창이 없어 .NET Framework 의 FolderBrowserDialog 를 씁니다
+        /// (설정 창과 같음 — 바깥 라이브러리가 아님). 파일 하나를 쓰려면 칸에 끌어다 놓으면 됩니다.
+        /// </summary>
         private void OnMainA3Pick(object sender, MainView.PickEventArgs e)
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Title = (e.Before ? "이전" : "이후") + " — " + AppConfig.Current.Title(3);
-            dlg.Filter = "모든 파일 (*.*)|*.*";
-            dlg.CheckFileExists = true;
-
             string start = e.Before ? Analysis3Link.BeforePath : Analysis3Link.AfterPath;
-            try
+            using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
             {
-                if (start.Length > 0)
+                dlg.Description = (e.Before ? "이전" : "이후") + " 폴더 — " + AppConfig.Current.Title(3);
+                dlg.ShowNewFolderButton = false;
+                try
                 {
-                    string dir = Directory.Exists(start) ? start : Path.GetDirectoryName(start);
-                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) dlg.InitialDirectory = dir;
+                    // 지난번 자리가 파일이면 그 파일이 든 폴더에서 시작합니다.
+                    if (start.Length > 0)
+                    {
+                        string dir = Directory.Exists(start) ? start : Path.GetDirectoryName(start);
+                        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) dlg.SelectedPath = dir;
+                    }
                 }
-            }
-            catch (ArgumentException) { }
-            catch (PathTooLongException) { }
+                catch (ArgumentException) { }
+                catch (PathTooLongException) { }
 
-            if (dlg.ShowDialog(this) != true) return;
-            Analysis3Link.SetPath(e.Before, dlg.FileName);   // PathsChanged 가 저장 · 다시 그리기
+                if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+                Analysis3Link.SetPath(e.Before, dlg.SelectedPath);   // PathsChanged 가 저장 · 다시 그리기
+            }
+        }
+
+        /// <summary>
+        /// 메인 화면 분석 3 칸의 [분석] (1.35). 무엇을 할지는 분석 3 폴더의 코드가
+        /// Analysis3Link.AnalyzeRequested 에 연결해 정합니다. 아무도 안 들으면 알려 줍니다
+        /// — 눌렀는데 아무 일도 없으면 고장으로 보입니다.
+        /// </summary>
+        private void OnMainA3Analyze(object sender, EventArgs e)
+        {
+            if (!Analysis3Link.RequestAnalyze()) SayNoA3Handler("Analysis3Link.AnalyzeRequested");
+        }
+
+        /// <summary>메인 화면 분석 3 칸의 [리포트] (1.35). [분석] 과 같은 길.</summary>
+        private void OnMainA3Report(object sender, EventArgs e)
+        {
+            if (!Analysis3Link.RequestReport()) SayNoA3Handler("Analysis3Link.ReportRequested");
+        }
+
+        private void SayNoA3Handler(string eventName)
+        {
+            MessageBox.Show(this, MainTexts.A3NoHandler + "\n\n연결할 곳: " + eventName,
+                AppConfig.Current.Title(3), MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         /// <summary>

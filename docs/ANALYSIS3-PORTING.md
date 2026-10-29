@@ -294,7 +294,7 @@ Claude 에게 주세요.
  └──────────────────────────┘
 ```
 
-**메인 칸의 이전 · 이후** — 누르면 파일 고르는 창, 폴더는 끌어다 놓기 (분석 2 칸과 같음).
+**메인 칸의 이전 · 이후** — 누르면 **폴더** 고르는 창 (1.35), 파일 · 폴더 모두 끌어다 놓기도 됨.
 넣은 자리는 설정에 저장되고 다음에 켤 때 되살아납니다 (켤 때는 알림 없이 — 저절로 돌지 않게).
 
 **내 코드에서 쓰는 것** (`using LogScope.Common;`)
@@ -306,6 +306,8 @@ Claude 에게 주세요.
 | `Analysis3Link.SetPath(true/false, 경로)` | 내 화면 안의 [열기] 단추로 골랐을 때 — 메인 칸에도 보이고 저장됨 |
 | `Analysis3Link.Publish(결과)` · `ClearResult()` | 메인 칸에 결과 올리기 · 지우기. 배경 작업 안에서 불러도 됨 |
 | `Analysis3Link.OpenRequested` | 메인 칸 요약 줄을 눌렀을 때 (그 줄의 `Target`) |
+| `Analysis3Link.AnalyzeRequested` | 메인 칸 머리의 **[분석]** 을 눌렀을 때 (1.35). 연결이 없으면 "연결된 기능이 없습니다" 알림 |
+| `Analysis3Link.ReportRequested` | 메인 칸 머리의 **[리포트]** 를 눌렀을 때 (1.35) |
 
 **결과 (`Analysis3Result`)**
 
@@ -439,6 +441,15 @@ Analysis3Link.PathsChanged += (s, e) =>
     OnRunClick(null, null);                    // 내 [분석] 단추 처리를 그대로 부름
 };
 ```
+
+**⑤ 메인 칸의 [분석] · [리포트] 단추 연결** (1.35) — 생성자나 `Attach` 안에서 한 번:
+
+```csharp
+Analysis3Link.AnalyzeRequested += (s, e) => OnRunClick(null, null);   // [분석] → 내 분석
+Analysis3Link.ReportRequested += (s, e) => MakeReport();               // [리포트] → 내 리포트 함수
+```
+단추 이름 · 설명 글은 `src/LogScope/Main/MainTexts.cs` 의 `A3Analyze` · `A3Report` (· `…Tip`).
+단추 자리는 메인 화면 밖이라 사용자가 고치지 않습니다 — 연결은 위 두 줄로 Analysis3 쪽에서.
 
 **④ (선택) 내 화면의 [열기] 로 고른 경로를 메인 칸에도** — 파일을 고른 줄 아래:
 `Analysis3Link.SetPath(true, 고른경로);` (이전) · `Analysis3Link.SetPath(false, 고른경로);` (이후).

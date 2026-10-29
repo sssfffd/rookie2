@@ -4216,6 +4216,21 @@ namespace LogScope.Tests
 
                 Analysis3Link.RequestOpen("항목 A");
                 Check("줄 누름이 실려 옴", opened == "항목 A", opened ?? "null");
+
+                // [분석] · [리포트] (1.35): 아무도 안 들으면 false — 창이 "연결된 기능 없음" 을 띄움.
+                Check("[분석] 연결 없으면 false", !Analysis3Link.RequestAnalyze(), "");
+                Check("[리포트] 연결 없으면 false", !Analysis3Link.RequestReport(), "");
+                int analyze = 0, report = 0;
+                EventHandler onAnalyze = (s, e) => analyze++;
+                EventHandler onReport = (s, e) => report++;
+                Analysis3Link.AnalyzeRequested += onAnalyze;
+                Analysis3Link.ReportRequested += onReport;
+                bool a1 = Analysis3Link.RequestAnalyze();
+                Check("[분석] 은 분석만 한 번", a1 && analyze == 1 && report == 0, analyze + "/" + report);
+                bool r1 = Analysis3Link.RequestReport();
+                Check("[리포트] 는 리포트만 한 번", r1 && report == 1 && analyze == 1, analyze + "/" + report);
+                Analysis3Link.AnalyzeRequested -= onAnalyze;
+                Analysis3Link.ReportRequested -= onReport;
             }
             finally
             {

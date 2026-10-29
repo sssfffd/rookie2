@@ -1548,3 +1548,11 @@
 > ㄴㄴ 너가 shell window만 고쳐주면 될 것 같음
 
 → 답변: [114-attach-in-shell-only.md](114-attach-in-shell-only.md)
+
+---
+
+## 요청 142 — 분석 3 칸: 폴더 고르기 + 분석 · 리포트 단추
+
+> 분석 3 쪽에서 이전 이후 클릭했을 때 파일만 선택하던데 폴더 선택으로 바꿔주고 / 분석 및 리포트 버튼 넣어주셈 버튼이랑 기능 연결은 내가 할게
+
+→ 답변: [115-a3-folder-pick-buttons.md](115-a3-folder-pick-buttons.md)

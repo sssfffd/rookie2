@@ -511,8 +511,9 @@ namespace LogScope.Main
         public string A3AfterPath { get { return Analysis3Link.AfterPath; } }
         public string A3BeforeName { get { return DbPathText.Name(Analysis3Link.BeforePath); } }
         public string A3AfterName { get { return DbPathText.Name(Analysis3Link.AfterPath); } }
-        public string A3BeforeHint { get { return Analysis3Link.BeforePath.Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
-        public string A3AfterHint { get { return Analysis3Link.AfterPath.Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
+        // 분석 3 칸은 누르면 <b>폴더</b>를 고릅니다 (1.35) — 분석 2 칸의 말과 다릅니다.
+        public string A3BeforeHint { get { return Analysis3Link.BeforePath.Length == 0 ? MainTexts.A3NoneOnCard : string.Empty; } }
+        public string A3AfterHint { get { return Analysis3Link.AfterPath.Length == 0 ? MainTexts.A3NoneOnCard : string.Empty; } }
         public string A3BeforeKind { get { return A3Kind(Analysis3Link.BeforePath); } }
         public string A3AfterKind { get { return A3Kind(Analysis3Link.AfterPath); } }
 
