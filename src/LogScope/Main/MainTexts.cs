@@ -20,10 +20,6 @@ namespace LogScope.Main
         public const string Label = "종합 분석 결과";
         /// <summary>글</summary>
         public const string Heading = "분석 결과";
-        /// <summary>단추 이름 — 종합 분석 결과 칸 오른쪽 위 (1.43)</summary>
-        public const string LlmExport = "LLM 입력 저장";
-        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string LlmExportTip = "분석 1 · 2 · 3 결과를 사내 LLM 에 넣을 글(.md)과 구조(.json)로 저장합니다. 보내지는 않습니다.";
         /// <summary>단추 이름</summary>
         public const string CardClick = "↗";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>

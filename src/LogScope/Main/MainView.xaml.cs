@@ -340,15 +340,6 @@ namespace LogScope.Main
             vm.ShowSaved(id);
         }
 
-        /// <summary>[LLM 입력 저장] (1.43). 폴더 고르기 · 만들기는 창이 합니다 (진행 창이 필요해서).</summary>
-        public event EventHandler LlmExportRequested;
-
-        private void OnLlmExport(object sender, RoutedEventArgs e)
-        {
-            EventHandler h = LlmExportRequested;
-            if (h != null) h(this, EventArgs.Empty);
-        }
-
         /// <summary>History 를 접고 지금 결과로 (칸 위 띠의 단추).</summary>
         private void OnShowLive(object sender, RoutedEventArgs e)
         {

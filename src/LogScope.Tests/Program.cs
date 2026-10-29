@@ -10,7 +10,6 @@ using LogScope.Analysis1.Heatmap;
 using LogScope.Analysis1.LogFile;
 using LogScope.Analysis2;
 using LogScope.Common;
-using LogScope.LlmExport;
 using LogScope.Main;
 using LogScope.Settings;
 
@@ -114,7 +113,6 @@ namespace LogScope.Tests
                 HistorySaveAndLoad();
                 HistoryEdgeCases();
                 HistorySnapshots();
-                LlmExportDigests();
                 JsonRoundTrip();
                 SettingsRoundTrip();
                 AppConfigParse();
@@ -4271,133 +4269,6 @@ namespace LogScope.Tests
             List<AnalysisRecord> loaded = HistoryStore.Load(folder);
             Check("파일로 갔다 와도 칸 셋", problem.Length == 0 && loaded.Count == 1 && loaded[0].Cards.Count == 3
                   && loaded[0].CardAt(2).Lines.Count == 2, problem);
-        }
-
-        /// <summary>가짜 로그 하나 — 시간 0..n-1 초, 채널은 (이름, 종류, 값 만드는 식).</summary>
-        private static LogDataset FakeLog(int n, params object[] channels)
-        {
-            var ds = new LogDataset();
-            ds.TimeKind = TimeKind.Number;
-            ds.TimeUnit = "s";
-            ds.Times = new double[n];
-            for (int i = 0; i < n; i++) ds.Times[i] = i;
-            for (int c = 0; c + 2 < channels.Length + 1; c += 3)
-            {
-                var ch = new Channel((string)channels[c], n);
-                ch.Kind = (ChannelKind)channels[c + 1];
-                var fn = (Func<int, float>)channels[c + 2];
-                for (int i = 0; i < n; i++) ch.Values[i] = fn(i);
-                ch.RecomputeRange();
-                ds.Channels.Add(ch);
-            }
-            return ds;
-        }
-
-        /// <summary>
-        /// 사내 LLM 입력 (1.43): 분석 1 · 2 를 표로 줄이고, 연결 표 · 글자 수 한도 · 파일 저장까지.
-        /// 이 표들을 사내 AI 가 읽어 서버 코드를 짤 것이라 섹션 Id 와 열 모양을 지킵니다.
-        /// </summary>
-        private static void LlmExportDigests()
-        {
-            Say("사내 LLM 입력 — 분석 1 · 2 정리");
-
-            // 빈 상태: 담지 못한 까닭이 적혀야 함 ("없음" 과 "괜찮음" 을 가르게).
-            var empty = new AppState();
-            LlmPart e1 = Analysis1Digest.Build(empty, null, null);
-            LlmPart e2 = Analysis2Digest.Build(empty, null, null, null);
-            Check("결과가 없으면 담지 못한 까닭", e1.Missing.Length > 0 && e2.Missing.Length > 0 && e1.Sections.Count == 0, e1.Missing);
-
-            // 분석 1: 200 초 로그. PRES 는 100 초부터 +5, VALVE_1 은 켜지는 때가 50 → 53 초, TEMP 는 같음.
-            LogDataset before = FakeLog(200,
-                "PRES", ChannelKind.Analog, (Func<int, float>)(i => 10f),
-                "VALVE_1", ChannelKind.Digital, (Func<int, float>)(i => i >= 50 && i < 120 ? 1f : 0f),
-                "TEMP", ChannelKind.Analog, (Func<int, float>)(i => 20f),
-                "OLD_ONLY", ChannelKind.Analog, (Func<int, float>)(i => 1f));
-            LogDataset after = FakeLog(200,
-                "PRES", ChannelKind.Analog, (Func<int, float>)(i => i >= 100 ? 15f : 10f),
-                "VALVE_1", ChannelKind.Digital, (Func<int, float>)(i => i >= 53 && i < 120 ? 1f : 0f),
-                "TEMP", ChannelKind.Analog, (Func<int, float>)(i => 20f));
-            var st = new AppState();
-            st.Before = before; st.After = after;
-            st.BeforePath = Path.Combine(_dir, "before.xlsx");
-            st.AfterPath = Path.Combine(_dir, "after.xlsx");
-            st.Settings.Groups = new List<GroupDef> { new GroupDef("밸브") };
-            st.Settings.Groups[0].Members.Add("VALVE_1");
-            st.Recompare(null);
-
-            var opt = new LlmExportOptions();
-            opt.TimeBins = 20;
-            LlmPart p1 = Analysis1Digest.Build(st, opt, null);
-            LlmSection head = p1.Find("a1.head"), ios = p1.Find("a1.ios"), ev = p1.Find("a1.events");
-            Check("분석 1 머리 · 달라진 IO · 사건 · 시간대 · 한쪽 · 모양 섹션",
-                  head != null && ios != null && ev != null && p1.Find("a1.time") != null
-                  && p1.Find("a1.oneside") != null && p1.Find("a1.shape") != null && p1.Find("a1.groups") != null,
-                  p1.Sections.Count.ToString());
-            Check("달라진 IO 수 = 비교 결과", ios != null && ios.TotalRows == st.Comparison.ChangedCount && ios.TotalRows == 2,
-                  ios != null ? ios.TotalRows.ToString() : "null");
-            Check("안 바뀐 TEMP 는 목록에 없음", ios != null && !ios.Rows.Exists(r => r[0] == "TEMP"), "");
-            string[] pres = ios != null ? ios.Rows.Find(r => r[0] == "PRES") : null;
-            Check("PRES 최대차 5 · 처음 달라진 때가 100 초 부근", pres != null && pres[4] == "5"
-                  && pres[10].EndsWith(" s") && Math.Abs(double.Parse(pres[10].Replace(" s", ""), CultureInfo.InvariantCulture) - 100) <= 10,
-                  pres != null ? pres[4] + "|" + pres[10] : "null");
-            string[] on = ev != null ? ev.Rows.Find(r => r[0] == "VALVE_1" && r[2] == "0→1") : null;
-            Check("VALVE_1 켜짐 50 → 53 초 (차 3)", on != null && on[3] == "50 s" && on[4] == "53 s" && on[5] == "3",
-                  on != null ? string.Join("|", on) : "null");
-            LlmSection grp = p1.Find("a1.groups");
-            Check("그룹 밸브: IO 1 · 달라짐 1 · 문제", grp != null && grp.Rows.Exists(r => r[0] == "밸브" && r[1] == "1" && r[2] == "1" && r[3] == "문제"),
-                  grp != null && grp.Rows.Count > 0 ? string.Join("|", grp.Rows[0]) : "null");
-            LlmSection one = p1.Find("a1.oneside");
-            Check("이전에만 있는 OLD_ONLY", one != null && one.Rows.Exists(r => r[0] == "이전에만" && r[1] == "OLD_ONLY"), "");
-
-            // 분석 2: io_param 표의 VALVE_1 limit 5 → 6, VALVE_9 는 새로 생김.
-            string before2 = "CREATE TABLE `io_param` (`io` varchar(32) NOT NULL, `lim` int, PRIMARY KEY (`io`));\n"
-                           + "INSERT INTO `io_param` VALUES ('VALVE_1',5),('TEMP',1);\n";
-            string after2 = "CREATE TABLE `io_param` (`io` varchar(32) NOT NULL, `lim` int, PRIMARY KEY (`io`));\n"
-                          + "INSERT INTO `io_param` VALUES ('VALVE_1',6),('TEMP',1),('VALVE_9',3);\n";
-            var b2 = new DbSnapshot(); SqlDumpReader.Read(WriteText("llm_b.sql", before2), b2, 0);
-            var a2 = new DbSnapshot(); SqlDumpReader.Read(WriteText("llm_a.sql", after2), a2, 0);
-            DbDiffResult diff = DbDiff.Compare(b2, a2);
-            st.HasDbResult = true; st.DbChanged = 1; st.DbAdded = 1; st.DbDiff = diff;
-
-            LlmPart p2 = Analysis2Digest.Build(st, diff, opt, null);
-            LlmSection vals = p2.Find("a2.values");
-            Check("분석 2 값 변화: VALVE_1 lim 5 → 6", vals != null && vals.Rows.Exists(r => r[1] == "VALVE_1" && r[2] == "lim" && r[3] == "5" && r[4] == "6"),
-                  vals != null && vals.Rows.Count > 0 ? string.Join("|", vals.Rows[0]) : "null");
-            LlmSection keys = p2.Find("a2.keys");
-            Check("생긴 행 키 VALVE_9", keys != null && keys.Rows.Exists(r => r[3] == "VALVE_9" || r[2].Contains("VALVE_9")), "");
-            Check("분석 2 판정 · 표별", p2.Find("a2.head") != null && p2.Find("a2.tables") != null
-                  && p2.Find("a2.head").Facts.Exists(kv => kv.Key == "판정" && kv.Value == "WARNING"), "");
-
-            // 연결: VALVE_1 이 양쪽에 — 분석 1 에서도 달라짐.
-            LlmPart link = CrossLink.Build(st, diff, opt);
-            LlmSection lio = link.Find("links.io");
-            Check("연결 VALVE_1: 분석 2 lim 5 → 6 · 분석 1 달라짐",
-                  lio != null && lio.Rows.Exists(r => r[0] == "VALVE_1" && r[1].Contains("lim: 5 → 6") && r[2] == "달라짐"),
-                  lio != null && lio.Rows.Count > 0 ? string.Join("|", lio.Rows[0]) : "null");
-
-            // 문서 한 벌: Markdown · JSON · 한도 · 파일
-            LlmDocument doc = LlmDocument.Build(st, diff, opt, null);
-            string md = doc.ToMarkdown();
-            Check("Markdown 에 섹션 Id 와 요청", md.Contains("a1.ios") && md.Contains("a2.values") && md.Contains("links.io")
-                  && md.Contains("## 요청") && md.Contains("PRES\t"), md.Length.ToString());
-            Dictionary<string, object> back = Json.AsObject(Json.Parse(doc.ToJsonText()));
-            Check("JSON 이 다시 읽히고 parts 넷", back.Count > 0 && Json.GetArray(back, "parts").Count == 4,
-                  Json.GetArray(back, "parts").Count.ToString());
-
-            var small = new LlmExportOptions();
-            small.TimeBins = 200;
-            small.MaxChars = 6000;
-            LlmDocument tight = LlmDocument.Build(st, diff, small, null);
-            Check("한도를 넘으면 L2 · L3 줄을 줄이고 표시", tight.Trimmed && tight.ToMarkdown().Contains("외 "),
-                  tight.ToMarkdown().Length.ToString());
-            LlmSection tightIos = tight.Parts[0].Find("a1.ios");
-            Check("L1 은 줄이지 않음", tightIos != null && tightIos.OmittedRows == 0, "");
-
-            string folder = Path.Combine(_dir, "llm-out");
-            string mdPath = doc.Save(folder);
-            Check("두 파일 저장 (.md · .json)", File.Exists(mdPath) && File.Exists(Path.ChangeExtension(mdPath, ".json")), mdPath);
-            string mdPath2 = doc.Save(folder);
-            Check("같은 이름이면 덮지 않음", mdPath2 != mdPath && File.Exists(mdPath2), mdPath2);
         }
 
         private static void Analysis3LinkRules()
