@@ -4307,22 +4307,10 @@ namespace LogScope.Tests
             Check("쓴 분석 글", LlmPanelVm.UsedText(true, false, true) == "분석 1 · 3"
                   && LlmPanelVm.UsedText(false, false, false) == "분석 없음", LlmPanelVm.UsedText(true, false, true));
 
-            // 꽂기 (1.47): 이름을 몰라도 ILlmAnalyzer 를 맞춘 클래스를 찾아 꽂음.
-            ILlmAnalyzer found = LlmSetup.Find(typeof(Program).Assembly);
-            Check("시험 어셈블리의 FakeAnalyzer 를 찾음", found is FakeAnalyzer, found == null ? "null" : found.GetType().Name);
-            Check("돌려 보면 글이 나옴", found != null && found.Analyze(new LlmRequest(), new LoadProgress(null)) == "가짜 결과", "");
-            Check("null 어셈블리는 null", LlmSetup.Find(null) == null, "");
-
             var q = new LlmRequest();
             Check("요청: 아무것도 없으면 Any 거짓", !q.Any, "");
             q.Use3 = true;
             Check("요청: 분석 3 만 있어도 Any", q.Any, "");
-        }
-
-        /// <summary>LlmSetup.Find 가 찾는지 보려는 가짜 분석기.</summary>
-        private sealed class FakeAnalyzer : ILlmAnalyzer
-        {
-            public string Analyze(LlmRequest request, LoadProgress progress) { return "가짜 결과"; }
         }
 
         private static void Analysis3LinkRules()

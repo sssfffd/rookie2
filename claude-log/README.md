@@ -137,3 +137,4 @@
 | `128-llm-panel.md` | 메인 종합 분석 결과 → LLM 칸: 분석 셋 체크 · [LLM 분석 실행] · 진행바 · 결과, 꽂는 자리 `ILlmAnalyzer` · `LlmSetup.cs` |
 | `129-user-folders-build.md` | Analysis3 폴더는 build.bat 에 저절로 들어감 · LlmExport 도 사용자 폴더로 (tools/LlmExport.targets, 저장소에서 뺌) |
 | `130-llm-auto-register.md` | LLM 분석기 꽂기 — 주석 한 줄 대신 ILlmAnalyzer 를 맞춘 클래스를 찾아 꽂음 |
+| `131-llm-register-uncomment.md` | 1.47 되돌림 — LlmSetup 에 `LlmLink.Analyzer = new LogScope.LlmExport.OverallLlmAnalyzer();` 한 줄 |

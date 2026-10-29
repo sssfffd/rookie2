@@ -39,11 +39,19 @@ mcs -langversion:latest -target:library -out:"$OUT/app/WpfStub.dll" \
     -r:System.dll -r:System.Core.dll -r:System.Xml.dll -nowarn:0067 \
     "$ROOT"/scripts/wpfstub/*.cs
 
+# 사용자 폴더(LlmExport · 저장소에 없음)의 OverallLlmAnalyzer 를 Main/LlmSetup.cs 가 부릅니다 (1.48).
+# 진짜가 없으면 검사 전용 가짜를 같이 컴파일합니다 (scripts/stubs).
+EXTRA=""
+if ! grep -rqs "class OverallLlmAnalyzer" "$ROOT/src/LogScope/LlmExport"; then
+  EXTRA="$ROOT/scripts/stubs/OverallLlmAnalyzer.cs"
+  echo "  (LlmExport 에 OverallLlmAnalyzer 가 없어 scripts/stubs 의 가짜를 씁니다)"
+fi
+
 echo "[2/4] LogScope (화면 · 계산)"
 mcs -langversion:latest -target:library -out:"$OUT/app/LogScope.dll" $REFS \
     -r:"$OUT/app/WpfStub.dll" \
     -nowarn:0067,0414,0169,0649 \
-    $(find "$ROOT/src/LogScope" -name '*.cs' ! -name '*.g.cs') "$OUT/app/XamlStubs.cs"
+    $(find "$ROOT/src/LogScope" -name '*.cs' ! -name '*.g.cs') $EXTRA "$OUT/app/XamlStubs.cs"
 
 echo "[3/4] LogScope.Tests"
 mcs -langversion:latest -target:exe -out:"$OUT/app/LogScope.Tests.exe" $REFS \

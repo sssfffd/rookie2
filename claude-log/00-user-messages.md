@@ -1676,3 +1676,13 @@
 > 아 그리고 log 종합 분석 실행에 주석처리한거 있잖아? 버튼누르면 동작하는거에서 한줄 주석처리한거 그거 풀어줘
 
 → 답변: [130-llm-auto-register.md](130-llm-auto-register.md)
+
+---
+
+## 요청 158 — 주석만 풀기 (OverallLlmAnalyzer)
+
+> 아니 그거 맞춰서 작성한거여가지고 주석만 풀면 될듯?
+>
+> 아 그거 LlmLink.Analyzer = new LogScope.LlmExport.OverallLlmAnalyzer(); 이걸로 작성하면 됨
+
+→ 답변: [131-llm-register-uncomment.md](131-llm-register-uncomment.md)
