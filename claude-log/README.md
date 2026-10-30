@@ -139,4 +139,4 @@
 | `130-llm-auto-register.md` | LLM 분석기 꽂기 — 주석 한 줄 대신 ILlmAnalyzer 를 맞춘 클래스를 찾아 꽂음 |
 | `131-llm-register-uncomment.md` | 1.47 되돌림 — LlmSetup 에 `LlmLink.Analyzer = new LogScope.LlmExport.OverallLlmAnalyzer();` 한 줄 |
 | `132-db-many-rows.md` | 분석 2 상한 (같은 줄 2 만 · 행 차이 5 천 · 목록 5 천/5 만 · 읽기 20 만) → 몇십만 행까지 |
-| `133-analysis1-merge-files.md` | Analysis1 같은 기능 파일 합치기 52 → 32 (GraphCanvas partial 여섯 → 하나 등, 코드 그대로) |
+| `133-analysis1-merge-files.md` | Analysis1 같은 기능 파일 합치기 54 → 32 (GraphCanvas partial 여섯 → 하나 등, 코드 그대로) |
