@@ -144,3 +144,4 @@
 | `135-build-bat-rebuild.md` | build.bat 이 늘 Rebuild (zip 파일 시각 때문에 건너뛰던 것) · out 의 exe 복사 실패를 알림 |
 | `136-sensor-compare-methods.md` | 센서 로그 비교 기법 (DTW · 시간 허용 띠 · 단계 특징값 · 사건 짝짓기 …) 와 추천 순서 — 질문, 코드 안 바꿈 |
 | `137-normal-or-not.md` | 목적이 "정상인가" 일 때의 판정 구성 — 정상 로그 여러 개로 범위 배우기 · 사건 순서 · 단계 특징값 · 곡선 띠 · DTW 는 보조 |
+| `138-judgement-rules.md` | 정상 판정 규칙 제안 — 시간 허용 Δt · 단계 안정화 · 차이 시간 비율로 등급 · 치명 IO 는 짧아도 FAIL |
