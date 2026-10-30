@@ -1758,3 +1758,11 @@
 > 그래서 정상 판정이나 차이 분석을 어떻게 하는게 좋을까 / 지금 여러 정상 로그를 학습시키는거는 공수가 많이들어서 많이 후순위임
 
 → 답변: [140-judgement-plan.md](140-judgement-plan.md)
+
+---
+
+## 요청 168 — 반도체 공정 IO 여도 괜찮은지
+
+> 반도체 공정 io여도 괜찮아?
+
+→ 답변: [141-semiconductor-fit.md](141-semiconductor-fit.md)
