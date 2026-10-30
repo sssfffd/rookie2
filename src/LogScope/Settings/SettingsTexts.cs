@@ -150,6 +150,27 @@ namespace LogScope.Settings
 
         /// <summary>TabItem 머리글</summary>
         public const string TabHeader6 = "정보";
+
+        // ---- LLM 서버 (1.51) ----
+
+        /// <summary>탭 이름</summary>
+        public const string TabHeaderLlm = "LLM 서버";
+        /// <summary>칸 이름</summary>
+        public const string LlmServerLabel = "서버 주소";
+        /// <summary>단추 이름</summary>
+        public const string LlmCheck = "연결 확인";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string LlmCheckTip = "적은 주소로 서버에 닿는지 봅니다 (데이터는 보내지 않음). 닿으면 분석 3 · 종합 분석 결과를 쓸 수 있습니다.";
+        /// <summary>칸 이름</summary>
+        public const string LlmStatusLabel = "상태";
+        /// <summary>글</summary>
+        public const string LlmServerNote = "LLM 서버에 닿을 때만 분석 3 과 메인 화면 종합 분석 결과를 쓸 수 있습니다.\n" +
+            "주소 모양:\n" +
+            "  10.0.0.5                 핑 — 그 PC 가 살아 있는지만\n" +
+            "  10.0.0.5:8000            그 포트로 접속 — 서버 프로그램이 떠 있는지까지 (권장)\n" +
+            "  http://10.0.0.5:8000/v1  주소의 호스트 · 포트로 접속\n" +
+            "프로그램을 켤 때 이 주소로 한 번 저절로 확인합니다. 닿는지만 보고 데이터는 보내지 않습니다.\n" +
+            "인증 토큰 · 비밀번호는 여기 적지 마세요.";
         /// <summary>글</summary>
         public const string LogScopeHeading = "LogScope — IO 로그 그래프 뷰어";
         /// <summary>글</summary>

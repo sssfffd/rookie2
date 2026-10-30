@@ -175,6 +175,20 @@ namespace LogScope.Shell
         public string Analysis2Name { get { return AppConfig.Current.Title(2); } }
         public string Analysis3Name { get { return AppConfig.Current.Title(3); } }
 
+        // ---- 분석 3 화면: LLM 서버에 안 닿으면 회색으로 덮음 (1.51) ----
+
+        public bool A3Blocked { get { return !LlmServer.IsOk; } }
+        public bool A3Usable { get { return LlmServer.IsOk; } }
+        public string A3BlockText { get { return LlmServer.BlockText; } }
+        public string A3BlockDetail { get { return LlmServer.BlockDetail; } }
+
+        /// <summary>LLM 서버 상태가 바뀌었을 때 (창이 화면 스레드에서 부름).</summary>
+        public void RefreshLlmServer()
+        {
+            Raise("A3Blocked"); Raise("A3Usable"); Raise("A3BlockText"); Raise("A3BlockDetail");
+            Main.RefreshLlmServer();
+        }
+
         public void GoMain() { Screen = ScreenMain; }
 
         /// <summary>메인 화면의 칸을 눌렀을 때. 1·2·3 이 그대로 화면 번호입니다.</summary>

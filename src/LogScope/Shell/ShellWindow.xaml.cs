@@ -72,6 +72,10 @@ namespace LogScope.Shell
             // LLM 분석 기능을 꽂습니다 (1.45) — Main/LlmSetup.cs 의 한 줄.
             LlmSetup.Register();
 
+            // LLM 서버에 닿는지 (1.51). 확인은 배경 스레드에서 끝나므로 화면 스레드로 넘겨 다시 그립니다.
+            // 안 닿으면 분석 3 화면 · 메인 분석 3 칸 · 종합 분석 결과가 회색으로 덮입니다.
+            LlmServer.Changed += OnLlmServerChanged;
+
             Graph.Attach(state);
             Heatmap.Attach(state);
 
@@ -116,6 +120,9 @@ namespace LogScope.Shell
         {
             if (_started) return;
             _started = true;
+
+            // 켤 때 한 번, 지금 설정의 주소로 LLM 서버 연결 확인 (1.51) — 막지 않고 뒤에서.
+            LlmServer.CheckAsync(_state.Settings.LlmServer);
 
             if (_startupArgs != null && _startupArgs.Length > 0)
             {
@@ -537,6 +544,12 @@ namespace LogScope.Shell
             _vm.Main.Llm.Report("취소하는 중 (분석 기능이 멈출 때까지)", -1);
         }
 
+        /// <summary>LLM 서버 상태가 바뀜 (1.51) — 배경 스레드에서 올 수 있어 화면 스레드로.</summary>
+        private void OnLlmServerChanged(object sender, EventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(delegate { _vm.RefreshLlmServer(); }));
+        }
+
         private void SayNoA3Handler(string eventName)
         {
             MessageBox.Show(this, MainTexts.A3NoHandler + "\n\n연결할 곳: " + eventName,
@@ -837,12 +850,19 @@ namespace LogScope.Shell
             // 걸 때 이름을 손으로 적지 않고 고를 수 있게.
             // 닫은 뒤에 "단계 IO" 가 바뀌었는지 보려고 적어 둡니다.
             string stepIo = _state.Settings.StepIo ?? string.Empty;
+            string llmServer = _state.Settings.LlmServer ?? string.Empty;
 
             var dlg = new SettingsWindow(_state.Settings, _state.IoNames());
             dlg.Owner = this;
             dlg.ShowDialog();
 
             SaveSettings();
+
+            // LLM 서버 주소를 바꿨으면 그 주소로 다시 확인 (1.51). [연결 확인] 을 안 눌렀어도 —
+            // 바꾼 주소와 화면의 상태가 어긋나지 않게.
+            if ((_state.Settings.LlmServer ?? string.Empty) != llmServer
+                || (_state.Settings.LlmServer ?? string.Empty) != LlmServer.Address)
+                LlmServer.CheckAsync(_state.Settings.LlmServer);
 
             // 단계 IO 를 고쳤으면 <b>그 자리에서</b> 단계를 다시 찾습니다.
             // 로그를 다시 읽지 않습니다 — 이미 메모리에 있는 채널을 한 번

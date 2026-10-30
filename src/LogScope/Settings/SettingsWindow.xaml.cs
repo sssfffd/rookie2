@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
+using LogScope.Common;
 
 namespace LogScope.Settings
 {
@@ -24,6 +25,39 @@ namespace LogScope.Settings
             InitializeComponent();
             _vm = new SettingsVm(settings, ioNames);
             DataContext = _vm;
+
+            // LLM 서버 상태 줄 (1.51) — 확인은 배경 스레드라 화면 스레드로 넘겨 고칩니다.
+            LlmServer.Changed += OnLlmServerChanged;
+            ShowLlmStatus();
+        }
+
+        // ---- LLM 서버 (1.51) ----
+
+        private void OnCheckLlm(object sender, RoutedEventArgs e)
+        {
+            LlmServer.CheckAsync(_vm.LlmServer);
+        }
+
+        private void OnLlmServerChanged(object sender, EventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(ShowLlmStatus));
+        }
+
+        private void ShowLlmStatus()
+        {
+            LlmServerState st = LlmServer.State;
+            string word;
+            string brush;
+            switch (st)
+            {
+                case LlmServerState.Ok: word = "연결됨"; brush = "Brush.Good"; break;
+                case LlmServerState.Fail: word = "연결 안 됨"; brush = "Brush.Bad"; break;
+                case LlmServerState.Checking: word = "확인 중"; brush = "Brush.Warn"; break;
+                default: word = "아직 확인 안 함"; brush = "Brush.Muted"; break;
+            }
+            string d = LlmServer.Detail;
+            LlmStatus.Text = d.Length > 0 && st != LlmServerState.Checking ? word + " — " + d : word;
+            LlmDot.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, brush);
         }
 
         private void OnClose(object sender, RoutedEventArgs e)
@@ -37,6 +71,7 @@ namespace LogScope.Settings
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
+            LlmServer.Changed -= OnLlmServerChanged;
             _vm.PruneTolerances();
             base.OnClosed(e);
         }

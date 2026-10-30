@@ -241,6 +241,13 @@ namespace LogScope.Settings
             set { _s.AiEnabled = value; Raise(); }
         }
 
+        /// <summary>LLM 서버 주소 (1.51).</summary>
+        public string LlmServer
+        {
+            get { return _s.LlmServer ?? string.Empty; }
+            set { _s.LlmServer = (value ?? string.Empty).Trim(); Raise(); }
+        }
+
         public string PythonPath
         {
             get { return _s.PythonPath ?? string.Empty; }

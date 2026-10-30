@@ -102,6 +102,7 @@ namespace LogScope.Main
             RefreshDeltas();
 
             RefreshLlmChecks();
+            RefreshLlmServer();
 
             Raise("HasLogs"); Raise("HasBoth"); Raise("CanSave");
             Raise("IsViewingHistory"); Raise("ViewingText");
@@ -591,6 +592,18 @@ namespace LogScope.Main
             Llm.SetReady(3, names.Title(3), a3,
                 a3 ? "분석 3 이 결과를 보냄 (Analysis3Link.Publish)"
                    : "분석 3 이 결과를 보내야(Analysis3Link.Publish) 완료로 표시됩니다.");
+        }
+
+        /// <summary>
+        /// LLM 서버에 닿는지에 따라 분석 3 칸 · 종합 분석 결과를 덮거나 엽니다 (1.51). 창이 LlmServer.Changed 를
+        /// 받아 화면 스레드에서 부릅니다 (Refresh 안에서도 부름).
+        /// </summary>
+        public void RefreshLlmServer()
+        {
+            bool ok = LlmServer.IsOk;
+            string text = LlmServer.BlockText, detail = LlmServer.BlockDetail;
+            Llm.SetServer(ok, text, detail);
+            if (Cards.Count >= 3) Cards[2].SetBlocked(!ok, text, detail);
         }
 
         /// <summary>[LLM 분석 실행] 을 누른 순간의 재료. 창이 배경 스레드로 넘깁니다.</summary>

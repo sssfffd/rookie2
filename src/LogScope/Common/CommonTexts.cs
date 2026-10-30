@@ -21,6 +21,13 @@ namespace LogScope.Common
         /// <summary>글</summary>
         public const string PlaceholderLogScopeNote = "왼쪽 위 [LogScope] 를 누르면 다른 화면으로 넘어갈 수 있습니다.";
 
+        // ---- LLM 서버에 안 닿을 때 (1.51) — 분석 3 화면 · 메인 분석 3 칸 · 종합 분석 결과 위에 덮는 글 ----
+
+        /// <summary>글</summary>
+        public const string LlmBlocked = "LLM 서버와 접속이 불가능한 환경입니다.\n설정에서 IP 주소 혹은 서버의 상태를 확인하여주시기 바랍니다.";
+        /// <summary>글 — 확인하는 동안</summary>
+        public const string LlmChecking = "LLM 서버 연결을 확인하는 중입니다…";
+
         // ---- LoadingWindow ----
 
         /// <summary>창 제목</summary>

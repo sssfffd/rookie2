@@ -286,6 +286,26 @@ namespace LogScope.Main
         /// </summary>
         public bool HasA3Box { get; private set; }
 
+        // ---- LLM 서버에 안 닿을 때 (1.51) — 분석 3 칸을 회색으로 덮음 ----
+
+        private bool _blocked;
+        private string _blockText = string.Empty;
+        private string _blockDetail = string.Empty;
+
+        /// <summary>칸을 덮어 못 쓰게 하는지 (분석 3 칸, LLM 서버에 안 닿을 때).</summary>
+        public bool IsBlocked { get { return _blocked; } }
+        public bool IsUsable { get { return !_blocked; } }
+        public string BlockText { get { return _blockText; } }
+        public string BlockDetail { get { return _blockDetail; } }
+
+        public void SetBlocked(bool blocked, string text, string detail)
+        {
+            _blocked = blocked;
+            _blockText = text ?? string.Empty;
+            _blockDetail = detail ?? string.Empty;
+            Raise("IsBlocked"); Raise("IsUsable"); Raise("BlockText"); Raise("BlockDetail");
+        }
+
         /// <summary>
         /// 결과가 낱말일 수도 점수일 수도 있는 칸 (분석 3). 결과가 오기 전에는
         /// 판정 칸처럼 아무것도 크게 적지 않고 ("?? / 100" 을 띄우지 않음),

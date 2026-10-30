@@ -31,87 +31,104 @@
             <Border Background="{DynamicResource Brush.Panel}"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                     CornerRadius="5" Padding="18,14" Margin="6,0,6,16">
-                <StackPanel>
-                    <!-- 제목 · [LLM 분석 실행] · [취소] -->
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
-                                   VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}"
-                                Content="{x:Static t:MainTexts.LlmRun}" Click="OnLlmRun"
-                                ToolTip="{x:Static t:MainTexts.LlmRunTip}" IsEnabled="{Binding Llm.CanRun}"
-                                Margin="0" />
-                        <Button Grid.Column="2" Content="{x:Static t:MainTexts.LlmCancel}" Click="OnLlmCancel"
-                                ToolTip="{x:Static t:MainTexts.LlmCancelTip}" Margin="6,0,0,0"
-                                Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}" />
-                    </Grid>
+                <Grid>
+                    <StackPanel IsEnabled="{Binding Llm.ServerOk}">
+                        <!-- 제목 · [LLM 분석 실행] · [취소] -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{x:Static t:MainTexts.Label}" Style="{StaticResource FieldLabel}"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}"
+                                    Content="{x:Static t:MainTexts.LlmRun}" Click="OnLlmRun"
+                                    ToolTip="{x:Static t:MainTexts.LlmRunTip}" IsEnabled="{Binding Llm.CanRun}"
+                                    Margin="0" />
+                            <Button Grid.Column="2" Content="{x:Static t:MainTexts.LlmCancel}" Click="OnLlmCancel"
+                                    ToolTip="{x:Static t:MainTexts.LlmCancelTip}" Margin="6,0,0,0"
+                                    Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}" />
+                        </Grid>
 
-                    <!-- 분석 1 · 2 · 3 체크 — 지금 결과가 있는지. 마우스를 올리면 무엇을 보고 판단했는지. -->
-                    <ItemsControl ItemsSource="{Binding Llm.Checks}" Margin="0,0,0,8">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" Columns="3" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type main:LlmCheckVm}">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Background="Transparent"
-                                            ToolTip="{Binding Note}">
-                                    <Border x:Name="CheckDot" Width="10" Height="10" CornerRadius="5"
-                                            VerticalAlignment="Center" Margin="0,0,7,0"
-                                            Background="{DynamicResource Brush.Muted}" />
-                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock x:Name="CheckState" Text="{Binding StateText}" Margin="8,0,0,0"
-                                               VerticalAlignment="Center" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Brush.Muted}" />
-                                </StackPanel>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Ready}" Value="True">
-                                        <Setter TargetName="CheckDot" Property="Background" Value="{DynamicResource Brush.Good}" />
-                                        <Setter TargetName="CheckState" Property="Foreground" Value="{DynamicResource Brush.Good}" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        <!-- 분석 1 · 2 · 3 체크 — 지금 결과가 있는지. 마우스를 올리면 무엇을 보고 판단했는지. -->
+                        <ItemsControl ItemsSource="{Binding Llm.Checks}" Margin="0,0,0,8">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" Columns="3" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type main:LlmCheckVm}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Background="Transparent"
+                                                ToolTip="{Binding Note}">
+                                        <Border x:Name="CheckDot" Width="10" Height="10" CornerRadius="5"
+                                                VerticalAlignment="Center" Margin="0,0,7,0"
+                                                Background="{DynamicResource Brush.Muted}" />
+                                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock x:Name="CheckState" Text="{Binding StateText}" Margin="8,0,0,0"
+                                                   VerticalAlignment="Center" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Muted}" />
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Ready}" Value="True">
+                                            <Setter TargetName="CheckDot" Property="Background" Value="{DynamicResource Brush.Good}" />
+                                            <Setter TargetName="CheckState" Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                    <!-- 진행 — 돌 때만 -->
-                    <Grid Margin="0,0,0,8"
-                          Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ProgressBar Grid.Column="0" Height="10" Minimum="0" Maximum="100"
-                                     Value="{Binding Llm.Progress, Mode=OneWay}"
-                                     IsIndeterminate="{Binding Llm.ProgressUnknown, Mode=OneWay}" />
-                        <TextBlock Grid.Column="1" Text="{Binding Llm.Message}" Style="{StaticResource Muted}"
-                                   Margin="10,0,0,0" VerticalAlignment="Center" />
-                    </Grid>
+                        <!-- 진행 — 돌 때만 -->
+                        <Grid Margin="0,0,0,8"
+                              Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ProgressBar Grid.Column="0" Height="10" Minimum="0" Maximum="100"
+                                         Value="{Binding Llm.Progress, Mode=OneWay}"
+                                         IsIndeterminate="{Binding Llm.ProgressUnknown, Mode=OneWay}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Llm.Message}" Style="{StaticResource Muted}"
+                                       Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </Grid>
 
-                    <!-- 아직 아무것도 없을 때 -->
-                    <TextBlock Text="{x:Static t:MainTexts.LlmEmpty}" Style="{StaticResource Muted}" TextWrapping="Wrap"
-                               Visibility="{Binding Llm.ShowEmpty, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- 아직 아무것도 없을 때 -->
+                        <TextBlock Text="{x:Static t:MainTexts.LlmEmpty}" Style="{StaticResource Muted}" TextWrapping="Wrap"
+                                   Visibility="{Binding Llm.ShowEmpty, Converter={StaticResource BoolToVisibility}}" />
 
-                    <!-- 오류 · 취소 -->
-                    <TextBlock Text="{Binding Llm.ErrorText}" Foreground="{DynamicResource Brush.Bad}" TextWrapping="Wrap"
-                               Margin="0,0,0,6"
-                               Visibility="{Binding Llm.HasError, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- 오류 · 취소 -->
+                        <TextBlock Text="{Binding Llm.ErrorText}" Foreground="{DynamicResource Brush.Bad}" TextWrapping="Wrap"
+                                   Margin="0,0,0,6"
+                                   Visibility="{Binding Llm.HasError, Converter={StaticResource BoolToVisibility}}" />
 
-                    <!-- 결과 글 — 고르고 복사할 수 있게 읽기 전용 글 상자. 길면 칸 안에서 굴립니다. -->
-                    <TextBox Text="{Binding Llm.ResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto" MaxHeight="360"
-                             BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Brush.Text}"
-                             Padding="0" FontSize="13"
-                             Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
-                    <TextBlock Text="{Binding Llm.FinishedText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
-                               Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
-                </StackPanel>
+                        <!-- 결과 글 — 고르고 복사할 수 있게 읽기 전용 글 상자. 길면 칸 안에서 굴립니다. -->
+                        <TextBox Text="{Binding Llm.ResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto" MaxHeight="360"
+                                 BorderThickness="0" Background="Transparent" Foreground="{DynamicResource Brush.Text}"
+                                 Padding="0" FontSize="13"
+                                 Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Text="{Binding Llm.FinishedText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
+                                   Visibility="{Binding Llm.HasResult, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                    <!-- LLM 서버에 안 닿을 때 회색 반투명 덮개 + 안내 (1.51). 덮개가 누름도 막습니다. -->
+                    <Border Background="{DynamicResource Brush.Muted}" Opacity="0.35" CornerRadius="4" Margin="-18,-14"
+                            Visibility="{Binding Llm.IsBlocked, Converter={StaticResource BoolToVisibility}}" />
+                    <Border Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="4" Padding="14,10" MaxWidth="460"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="{Binding Llm.IsBlocked, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Llm.BlockText}" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                       Foreground="{DynamicResource Brush.Text}" />
+                            <TextBlock Text="{Binding Llm.BlockDetail}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
+                                       TextWrapping="Wrap" TextAlignment="Center"
+                                       Visibility="{Binding Llm.BlockDetail, Converter={StaticResource TextToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <!-- "분석 결과" 와, History 를 펼쳐 보는 중이면 그 띠 (1.42). 칸 셋이 지금 결과가
@@ -180,631 +197,514 @@
                         <Border Background="{DynamicResource Brush.Panel}"
                                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                 CornerRadius="5" Padding="16,12" Margin="6" MinHeight="390">
-                            <StackPanel>
+                            <Grid>
+                                <StackPanel IsEnabled="{Binding IsUsable}">
 
-                                <!-- 번호표 · 이름 · (분석 3: 분석) · 이동 화살표 -->
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                    <!-- 번호표 · 이름 · (분석 3: 분석) · 이동 화살표 -->
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <Border Grid.Column="0" Background="{DynamicResource Brush.AccentSoft}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Badge}" FontSize="11"
-                                                   Foreground="{DynamicResource Brush.Accent}"
-                                                   FontWeight="SemiBold" />
-                                    </Border>
+                                        <Border Grid.Column="0" Background="{DynamicResource Brush.AccentSoft}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="3" Padding="7,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Badge}" FontSize="11"
+                                                       Foreground="{DynamicResource Brush.Accent}"
+                                                       FontWeight="SemiBold" />
+                                        </Border>
 
-                                    <TextBlock Grid.Column="1" Text="{Binding Title}" Style="{StaticResource H2}"
-                                               VerticalAlignment="Center" Margin="9,0,6,0"
-                                               TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Title}" Style="{StaticResource H2}"
+                                                   VerticalAlignment="Center" Margin="9,0,6,0"
+                                                   TextTrimming="CharacterEllipsis" />
 
-                                    <!--
-                                      분석 3 칸의 [분석] (1.35, [리포트] 는 1.39 에 뺌). 누르면 Common/Analysis3Link 의
-                                      AnalyzeRequested 가 울리고, 무엇을 할지는 분석 3
-                                      폴더의 코드가 정합니다 (갈아 끼우는 폴더라 여기서 직접 부르지 않음).
+                                        <!--
+                                          분석 3 칸의 [분석] (1.35, [리포트] 는 1.39 에 뺌). 누르면 Common/Analysis3Link 의
+                                          AnalyzeRequested 가 울리고, 무엇을 할지는 분석 3
+                                          폴더의 코드가 정합니다 (갈아 끼우는 폴더라 여기서 직접 부르지 않음).
 
-                                      머리 줄에 둔 까닭: 칸 셋의 이전/이후 · 요약 줄이 나란히 놓여야
-                                      합니다. 칸 안에 줄을 하나 더 두면 분석 3 칸만 아래로 밀립니다.
-                                      그래서 높이를 화살표 단추와 같은 26 으로 맞추고 (기본 단추는
-                                      MinHeight 28 · 위아래 여백 3) 머리 줄 높이가 변하지 않게 합니다.
-                                    -->
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
-                                                Margin="0,0,6,0"
-                                                Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
-                                        <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
-                                                Click="OnA3Analyze" ToolTip="{x:Static t:MainTexts.A3AnalyzeTip}"
-                                                Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
-                                    </StackPanel>
+                                          머리 줄에 둔 까닭: 칸 셋의 이전/이후 · 요약 줄이 나란히 놓여야
+                                          합니다. 칸 안에 줄을 하나 더 두면 분석 3 칸만 아래로 밀립니다.
+                                          그래서 높이를 화살표 단추와 같은 26 으로 맞추고 (기본 단추는
+                                          MinHeight 28 · 위아래 여백 3) 머리 줄 높이가 변하지 않게 합니다.
+                                        -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
+                                                    Margin="0,0,6,0"
+                                                    Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
+                                            <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
+                                                    Click="OnA3Analyze" ToolTip="{x:Static t:MainTexts.A3AnalyzeTip}"
+                                                    Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
+                                        </StackPanel>
 
-                                    <Button Grid.Column="3" Style="{StaticResource ArrowButton}"
-                                            Content="{x:Static t:MainTexts.CardClick}" Click="OnCardClick" Tag="{Binding Number}"
-                                            VerticalAlignment="Top"
-                                            ToolTip="{x:Static t:MainTexts.CardClickTip}" />
-                                </Grid>
+                                        <Button Grid.Column="3" Style="{StaticResource ArrowButton}"
+                                                Content="{x:Static t:MainTexts.CardClick}" Click="OnCardClick" Tag="{Binding Number}"
+                                                VerticalAlignment="Top"
+                                                ToolTip="{x:Static t:MainTexts.CardClickTip}" />
+                                    </Grid>
 
-                                <!-- 점수 (또는 판정 낱말) — <b>한 줄, 높이 고정</b> (1.09).
+                                    <!-- 점수 (또는 판정 낱말) — <b>한 줄, 높이 고정</b> (1.09).
 
-                                     칸 셋이 나란히 있어서, 점수 자리 높이가 칸마다 다르면
-                                     그 아래 이전/이후 줄이 칸마다 다른 높이에 놓입니다.
-                                     그래서 높이를 정해 두고, 적을 것이 없어도 자리는
-                                     남깁니다 (분석 2 는 DB 를 읽기 전에 아무것도 안 적습니다).
+                                         칸 셋이 나란히 있어서, 점수 자리 높이가 칸마다 다르면
+                                         그 아래 이전/이후 줄이 칸마다 다른 높이에 놓입니다.
+                                         그래서 높이를 정해 두고, 적을 것이 없어도 자리는
+                                         남깁니다 (분석 2 는 DB 를 읽기 전에 아무것도 안 적습니다).
 
-                                     1.06 에는 점수 아래 글(ScoreNote)까지 들어가게 54 로
-                                     잡았는데, 파일을 넣으면 그 글이 비어 이전/이후 위에
-                                     빈 줄 하나가 남았습니다. 이제 그 글은 <b>점수 오른쪽</b>
-                                     에 작게 붙고, 높이는 점수 한 줄(30pt)만큼입니다.
+                                         1.06 에는 점수 아래 글(ScoreNote)까지 들어가게 54 로
+                                         잡았는데, 파일을 넣으면 그 글이 비어 이전/이후 위에
+                                         빈 줄 하나가 남았습니다. 이제 그 글은 <b>점수 오른쪽</b>
+                                         에 작게 붙고, 높이는 점수 한 줄(30pt)만큼입니다.
 
-                                     글자 크기: 분석 1 점수 = 분석 2 판정 낱말 = 차이 개수 =
-                                     30 (ScoreSize). -->
-                                <Grid Height="42">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                                         글자 크기: 분석 1 점수 = 분석 2 판정 낱말 = 차이 개수 =
+                                         30 (ScoreSize). -->
+                                    <Grid Height="42">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom"
-                                            Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
-                                               FontSize="{Binding ScoreSize}" FontWeight="Bold"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Bottom" />
-                                    <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,8"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Bottom" />
-
-                                    <!--
-                                      분석 2: 차이 발생 개수를 <b>낱말 오른쪽에</b> (1.03).
-                                      FAIL 을 보는 눈이 바로 옆의 수로 이어집니다.
-                                    -->
-                                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
-                                                VerticalAlignment="Bottom"
-                                                Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
-                                        <TextBlock Text="{x:Static t:MainTexts.Text}" FontSize="13" VerticalAlignment="Bottom"
-                                                   Margin="0,0,8,6" Foreground="{DynamicResource Brush.Muted}" />
-                                        <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom"
+                                                Visibility="{Binding HasScoreText, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock x:Name="ScoreText" Text="{Binding ScoreText}"
                                                    FontSize="{Binding ScoreSize}" FontWeight="Bold"
-                                                   VerticalAlignment="Bottom"
-                                                   Foreground="{DynamicResource Brush.Text}" />
-                                        <TextBlock Text="{x:Static t:MainTexts.Text2}" FontSize="13" VerticalAlignment="Bottom"
-                                                   Margin="4,0,0,6" Foreground="{DynamicResource Brush.Muted}" />
+                                                   Foreground="{DynamicResource Brush.Muted}"
+                                                   VerticalAlignment="Bottom" />
+                                        <TextBlock Text="{Binding ScoreOutOf}" FontSize="16" Margin="6,0,0,8"
+                                                   Foreground="{DynamicResource Brush.Muted}"
+                                                   VerticalAlignment="Bottom" />
+
+                                        <!--
+                                          분석 2: 차이 발생 개수를 <b>낱말 오른쪽에</b> (1.03).
+                                          FAIL 을 보는 눈이 바로 옆의 수로 이어집니다.
+                                        -->
+                                        <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
+                                                    VerticalAlignment="Bottom"
+                                                    Visibility="{Binding VerdictCount, Converter={StaticResource TextToVisibility}}">
+                                            <TextBlock Text="{x:Static t:MainTexts.Text}" FontSize="13" VerticalAlignment="Bottom"
+                                                       Margin="0,0,8,6" Foreground="{DynamicResource Brush.Muted}" />
+                                            <TextBlock x:Name="VerdictCountText" Text="{Binding VerdictCount}"
+                                                       FontSize="{Binding ScoreSize}" FontWeight="Bold"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{DynamicResource Brush.Text}" />
+                                            <TextBlock Text="{x:Static t:MainTexts.Text2}" FontSize="13" VerticalAlignment="Bottom"
+                                                       Margin="4,0,0,6" Foreground="{DynamicResource Brush.Muted}" />
+                                        </StackPanel>
                                     </StackPanel>
-                                </StackPanel>
 
-                                <!-- 점수 옆 작은 글 ("Log 파일을 비교한 후 점수가 나옵니다" 등).
-                                     좁으면 … 로 자르고 마우스를 올리면 다 보입니다. -->
-                                <TextBlock Grid.Column="1" Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
-                                           FontSize="11" Margin="12,0,0,9" VerticalAlignment="Bottom"
-                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding ScoreNote}"
-                                           Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
-                                </Grid>
+                                    <!-- 점수 옆 작은 글 ("Log 파일을 비교한 후 점수가 나옵니다" 등).
+                                         좁으면 … 로 자르고 마우스를 올리면 다 보입니다. -->
+                                    <TextBlock Grid.Column="1" Text="{Binding ScoreNote}" Style="{StaticResource Muted}"
+                                               FontSize="11" Margin="12,0,0,9" VerticalAlignment="Bottom"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ScoreNote}"
+                                               Visibility="{Binding ScoreNote, Converter={StaticResource TextToVisibility}}" />
+                                    </Grid>
 
-                                <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 점수 바로 아래 (1.04) =====
+                                    <!-- ===== 이 분석이 쓰는 로그 (분석 1) — 점수 바로 아래 (1.04) =====
 
-                                     <b>모양이 둘</b>입니다. 한 자리에 두 Border 를 겹쳐
-                                     두고 하나만 보입니다.
+                                         <b>모양이 둘</b>입니다. 한 자리에 두 Border 를 겹쳐
+                                         두고 하나만 보입니다.
 
-                                       열기 전 : 테두리 친 상자 — "여기 놓으라" 는 자리로
-                                                 보여야 합니다 (0.99 의 모양)
-                                       연 뒤   : 납작한 한 줄 — 이름만 읽히면 됩니다
-                                                 (1.02 의 모양)
+                                           열기 전 : 테두리 친 상자 — "여기 놓으라" 는 자리로
+                                                     보여야 합니다 (0.99 의 모양)
+                                           연 뒤   : 납작한 한 줄 — 이름만 읽히면 됩니다
+                                                     (1.02 의 모양)
 
-                                     두 모양을 Border 하나에 바인딩으로 바꿔 끼우지
-                                     않은 까닭: 끌기가 끝나면 CardTag 가 Tag 에 적힌
-                                     색으로 되돌리는데, Tag 와 색이 바인딩으로 함께
-                                     바뀌면 그 둘이 어긋나는 순간이 생깁니다
-                                     (0.59 · 1.02 에 겪은 모양). 둘로 두면 저마다 Tag 와
-                                     색이 고정이라 검사기가 그 짝을 볼 수 있습니다.
+                                         두 모양을 Border 하나에 바인딩으로 바꿔 끼우지
+                                         않은 까닭: 끌기가 끝나면 CardTag 가 Tag 에 적힌
+                                         색으로 되돌리는데, Tag 와 색이 바인딩으로 함께
+                                         바뀌면 그 둘이 어긋나는 순간이 생깁니다
+                                         (0.59 · 1.02 에 겪은 모양). 둘로 두면 저마다 Tag 와
+                                         색이 고정이라 검사기가 그 짝을 볼 수 있습니다.
 
-                                     자리: 제목 → <b>점수</b> → 파일 → 숫자·요약 (1.04).
-                                     결과가 맨 먼저, 무엇과 무엇을 견줬는지가 바로
-                                     그 아래입니다. 1.02 에는 바닥, 1.03 에는 점수
-                                     위였습니다.
+                                         자리: 제목 → <b>점수</b> → 파일 → 숫자·요약 (1.04).
+                                         결과가 맨 먼저, 무엇과 무엇을 견줬는지가 바로
+                                         그 아래입니다. 1.02 에는 바닥, 1.03 에는 점수
+                                         위였습니다.
 
-                                     위·아래 어느 쪽을 보일지는 Hint / Shown 이 정확히
-                                     엇갈리게 만들어 둬서 겹치거나 둘 다 사라지지
-                                     않습니다. -->
-                                <Grid Margin="0,4,0,0"
-                                      Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="4" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
+                                         위·아래 어느 쪽을 보일지는 Hint / Shown 이 정확히
+                                         엇갈리게 만들어 둬서 겹치거나 둘 다 사라지지
+                                         않습니다. -->
+                                    <Grid Margin="0,4,0,0"
+                                          Visibility="{Binding HasLogBox, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="4" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
 
-                                    <Border Grid.Row="0" Tag="before|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                            MouseLeftButtonUp="OnLogCardClick"
-                                            Visibility="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                        <Border Grid.Row="0" Tag="before|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                                MouseLeftButtonUp="OnLogCardClick"
+                                                Visibility="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                                MouseLeftButtonUp="OnLogCardClick"
+                                                Visibility="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.Before}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.BeforeDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                                MouseLeftButtonUp="OnLogCardClick"
+                                                Visibility="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                            MouseLeftButtonUp="OnLogCardClick"
-                                            Visibility="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.Before}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.BeforeShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.BeforeDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                            MouseLeftButtonUp="OnLogCardClick"
-                                            Visibility="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
+                                                MouseLeftButtonUp="OnLogCardClick"
+                                                Visibility="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.After}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.AfterDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- ===== 이 분석이 견줄 자리 (분석 2) — 분석 1 과 같은 두 모양 =====
+                                         폴더도 파일도 됩니다. 누르면 파일 고르는 창
+                                         (폴더는 끌어다 놓기). 둘 다 차면 바로 읽습니다. -->
+                                    <Grid Margin="0,4,0,0"
+                                          Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="4" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <Border Grid.Row="0" Tag="before|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                                MouseLeftButtonUp="OnDbCardClick"
+                                                Visibility="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnLogDrop"
-                                            MouseLeftButtonUp="OnLogCardClick"
-                                            Visibility="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.After}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.AfterShown, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.AfterDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                </Grid>
-
-                                <!-- ===== 이 분석이 견줄 자리 (분석 2) — 분석 1 과 같은 두 모양 =====
-                                     폴더도 파일도 됩니다. 누르면 파일 고르는 창
-                                     (폴더는 끌어다 놓기). 둘 다 차면 바로 읽습니다. -->
-                                <Grid Margin="0,4,0,0"
-                                      Visibility="{Binding HasDbBox, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="4" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <Border Grid.Row="0" Tag="before|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                            MouseLeftButtonUp="OnDbCardClick"
-                                            Visibility="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                        </Border>
+                                        <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.DbBeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                                MouseLeftButtonUp="OnDbCardClick"
+                                                Visibility="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.Before}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.DbBeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                                MouseLeftButtonUp="OnDbCardClick"
+                                                Visibility="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.DbBeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.DbBeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                            MouseLeftButtonUp="OnDbCardClick"
-                                            Visibility="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.Before}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.DbBeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.DbBeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                            MouseLeftButtonUp="OnDbCardClick"
-                                            Visibility="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.DbAfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
+                                                MouseLeftButtonUp="OnDbCardClick"
+                                                Visibility="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.After}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.DbAfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- ===== 분석 3 의 이전 · 이후 (1.29) — 분석 2 칸과 같은 두 모양 =====
+                                         자리는 Common/Analysis3Link 에 적히고 분석 3 화면이
+                                         거기서 읽습니다. 누르면 파일 고르는 창, 폴더는 끌어다 놓기. -->
+                                    <Grid Margin="0,4,0,0"
+                                          Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="4" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <Border Grid.Row="0" Tag="before|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                                MouseLeftButtonUp="OnA3CardClick"
+                                                Visibility="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.DbAfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.DbAfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnDbDrop"
-                                            MouseLeftButtonUp="OnDbCardClick"
-                                            Visibility="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.After}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.DbAfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.DbAfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                </Grid>
-
-                                <!-- ===== 분석 3 의 이전 · 이후 (1.29) — 분석 2 칸과 같은 두 모양 =====
-                                     자리는 Common/Analysis3Link 에 적히고 분석 3 화면이
-                                     거기서 읽습니다. 누르면 파일 고르는 창, 폴더는 끌어다 놓기. -->
-                                <Grid Margin="0,4,0,0"
-                                      Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="4" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <Border Grid.Row="0" Tag="before|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
-                                            MouseLeftButtonUp="OnA3CardClick"
-                                            Visibility="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.Before}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
+                                        </Border>
+                                        <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.A3BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                                MouseLeftButtonUp="OnA3CardClick"
+                                                Visibility="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.Before}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.A3BeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Window"
+                                                Background="{DynamicResource Brush.Window}"
+                                                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                                CornerRadius="4" Padding="10,7" Cursor="Hand"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                                MouseLeftButtonUp="OnA3CardClick"
+                                                Visibility="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                            Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
+                                                           Text="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.A3BeforeHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="0" Tag="before|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.A3BeforePath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
-                                            MouseLeftButtonUp="OnA3CardClick"
-                                            Visibility="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.Before}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text3}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.Before}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.A3BeforeName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.A3BeforeKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Window"
-                                            Background="{DynamicResource Brush.Window}"
-                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                            CornerRadius="4" Padding="10,7" Cursor="Hand"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
-                                            MouseLeftButtonUp="OnA3CardClick"
-                                            Visibility="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
-                                                        Background="{DynamicResource Brush.After}" Margin="0,0,6,0" />
-                                                <TextBlock Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
+                                        </Border>
+                                        <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
+                                                Background="{DynamicResource Brush.Panel}"
+                                                BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,3" Cursor="Hand"
+                                                ToolTip="{Binding DataContext.A3AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                AllowDrop="True" DragOver="OnDropCardDragOver"
+                                                DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
+                                                MouseLeftButtonUp="OnA3CardClick"
+                                                Visibility="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="34" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        VerticalAlignment="Center" Margin="0,0,6,0"
+                                                        Background="{DynamicResource Brush.After}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
                                                            Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"
-                                                       Text="{Binding DataContext.A3AfterHint, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border Grid.Row="2" Tag="after|Brush.Panel|Brush.Panel"
-                                            Background="{DynamicResource Brush.Panel}"
-                                            BorderBrush="{DynamicResource Brush.Panel}" BorderThickness="1"
-                                            CornerRadius="3" Padding="4,3" Cursor="Hand"
-                                            ToolTip="{Binding DataContext.A3AfterPath, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            AllowDrop="True" DragOver="OnDropCardDragOver"
-                                            DragLeave="OnDropCardDragLeave" Drop="OnA3Drop"
-                                            MouseLeftButtonUp="OnA3CardClick"
-                                            Visibility="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource TextToVisibility}}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
-                                                    VerticalAlignment="Center" Margin="0,0,6,0"
-                                                    Background="{DynamicResource Brush.After}" />
-                                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.Text4}" FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource Brush.After}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
-                                                       Style="{StaticResource Muted}" Margin="8,0,0,0"
-                                                       Text="{Binding DataContext.A3AfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                        </Grid>
-                                    </Border>
-                                </Grid>
+                                                <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DataContext.A3AfterName, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                <TextBlock Grid.Column="3" FontSize="10" VerticalAlignment="Center"
+                                                           Style="{StaticResource Muted}" Margin="8,0,0,0"
+                                                           Text="{Binding DataContext.A3AfterKind, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
 
-                                <!-- 그 분석이 실제로 센 숫자들 -->
-                                <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
-                                              Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <UniformGrid Rows="1" Columns="2" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type main:StatVm}">
-                                            <StackPanel Margin="0,0,8,0">
-                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}"
-                                                           FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding Value}" FontSize="16"
-                                                           FontWeight="SemiBold" Margin="0,2,0,0"
-                                                           Foreground="{DynamicResource Brush.Text}" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    <!-- 그 분석이 실제로 센 숫자들 -->
+                                    <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0"
+                                                  Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Rows="1" Columns="2" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type main:StatVm}">
+                                                <StackPanel Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}"
+                                                               FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Value}" FontSize="16"
+                                                               FontWeight="SemiBold" Margin="0,2,0,0"
+                                                               Foreground="{DynamicResource Brush.Text}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
-                                <!-- ===== 이 분석의 요약 (그룹별) =====
-                                     줄을 누르면 그 그룹의 IO 만 히트맵에 남깁니다. -->
-                                <Border Background="{DynamicResource Brush.Window}"
-                                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                        CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
-                                    <StackPanel>
-                                        <TextBlock Text="{x:Static t:MainTexts.GroupNoteLabel}" Style="{StaticResource FieldLabel}"
-                                                   Margin="0,0,0,5" />
+                                    <!-- ===== 이 분석의 요약 (그룹별) =====
+                                         줄을 누르면 그 그룹의 IO 만 히트맵에 남깁니다. -->
+                                    <Border Background="{DynamicResource Brush.Window}"
+                                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="{x:Static t:MainTexts.GroupNoteLabel}" Style="{StaticResource FieldLabel}"
+                                                       Margin="0,0,0,5" />
 
-                                        <TextBlock Text="{Binding GroupNote}" Style="{StaticResource Muted}"
-                                                   FontSize="11" TextWrapping="Wrap"
-                                                   Visibility="{Binding GroupNote, Converter={StaticResource TextToVisibility}}" />
+                                            <TextBlock Text="{Binding GroupNote}" Style="{StaticResource Muted}"
+                                                       FontSize="11" TextWrapping="Wrap"
+                                                       Visibility="{Binding GroupNote, Converter={StaticResource TextToVisibility}}" />
 
-                                        <!--
-                                          ===== 분석 2 의 요약 줄 =====
+                                            <!--
+                                              ===== 분석 2 의 요약 줄 =====
 
-                                          분석 1 은 아래의 그룹 줄을 쓰고, 분석 2 는
-                                          이 줄을 씁니다 (칸은 하나라서 들어 있는 쪽이
-                                          보입니다). 누르면 그 분석 화면으로 넘어갑니다 —
-                                          그룹 줄과 같은 손놀림입니다.
-                                        -->
-                                        <!-- 높이 한도는 칸마다 (1.41) — 분석 2 는 230 에서 굴리고,
-                                             분석 3 은 문장이 길어 줄을 바꾸므로 한도 없이 다 보입니다
-                                             (230 이면 긴 줄 두어 개에서 나머지가 가려졌음). -->
-                                        <ScrollViewer MaxHeight="{Binding LinesMaxHeight}" VerticalScrollBarVisibility="Auto"
-                                                      HorizontalScrollBarVisibility="Disabled"
-                                                      Visibility="{Binding HasLines, Converter={StaticResource BoolToVisibility}}">
-                                        <ItemsControl ItemsSource="{Binding Lines}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type main:CardLineVm}">
-                                                    <Button x:Name="LineButton" Style="{StaticResource RowButton}"
-                                                            Click="OnCardIoClick" Tag="{Binding Target}"
-                                                            IsEnabled="{Binding CanOpen}"
-                                                            ToolTip="{x:Static t:MainTexts.CardIoClickTip}"
-                                                            Margin="0,1,0,3">
-                                                        <StackPanel>
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-
-                                                                <Border x:Name="LineDot" Grid.Column="0"
-                                                                        Width="8" Height="8" CornerRadius="4"
-                                                                        VerticalAlignment="Center" Margin="0,0,7,0"
-                                                                        Background="{DynamicResource Brush.Muted}" />
-
-                                                                <!--
-                                                                  이름 = 꼬리표 + 나머지 (1.40). "[오류] …" 의 [오류] 만 점과
-                                                                  같은 색. Run.Text 는 기본이 양방향 바인딩이라 읽기 전용
-                                                                  속성에 걸면 오류가 납니다 — 그래서 Mode=OneWay.
-                                                                  분석 3 은 길면 줄을 바꿔 다 보입니다 (아래 Wrap 트리거).
-                                                                -->
-                                                                <TextBlock x:Name="LineLabel" Grid.Column="1"
-                                                                           VerticalAlignment="Center" FontSize="12"
-                                                                           TextTrimming="CharacterEllipsis">
-                                                                    <Run Text="{Binding LabelTag, Mode=OneWay}">
-                                                                        <Run.Style>
-                                                                            <Style TargetType="{x:Type Run}">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
-                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
-                                                                                    </DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
-                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Warn}" />
-                                                                                    </DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
-                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </Run.Style>
-                                                                    </Run><Run Text="{Binding LabelRest, Mode=OneWay}" />
-                                                                </TextBlock>
-
-                                                                <!-- 분석 2 는 여기에 "1 → 2" (1.04). 값이 길면
-                                                                     이름을 밀어내지 않게 자릅니다 — 다 보려면 아래
-                                                                     작은 글이나 분석 2 화면. -->
-                                                                <TextBlock x:Name="LineValue" Grid.Column="2" Text="{Binding Value}"
-                                                                           Style="{StaticResource Muted}" FontSize="11"
-                                                                           MaxWidth="240" TextTrimming="CharacterEllipsis"
-                                                                           VerticalAlignment="Center" Margin="8,0,0,0" />
-                                                            </Grid>
-
-                                                            <!-- 줄 아래 작은 글. 없으면 줄 높이만 차지하지 않게
-                                                                 비어 있을 때는 숨깁니다. -->
-                                                            <TextBlock Text="{Binding Detail}"
-                                                                       Style="{StaticResource Muted}" FontSize="10"
-                                                                       TextWrapping="Wrap" Margin="15,2,0,0"
-                                                                       Visibility="{Binding Detail, Converter={StaticResource TextToVisibility}}" />
-                                                        </StackPanel>
-                                                    </Button>
-
-                                                    <DataTemplate.Triggers>
-                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
-                                                            <Setter TargetName="LineDot" Property="Background"
-                                                                    Value="{DynamicResource Brush.Good}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
-                                                            <Setter TargetName="LineDot" Property="Background"
-                                                                    Value="{DynamicResource Brush.Warn}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
-                                                            <Setter TargetName="LineDot" Property="Background"
-                                                                    Value="{DynamicResource Brush.Bad}" />
-                                                        </DataTrigger>
-                                                        <!-- 분석 2 의 "1 → 2" 는 빨간 글씨로 (1.08). 칸이 좁아
-                                                             "(+1)" 은 안 붙이고 색만 칠합니다. -->
-                                                        <DataTrigger Binding="{Binding ValueIsChange}" Value="True">
-                                                            <Setter TargetName="LineValue" Property="Foreground"
-                                                                    Value="{DynamicResource Brush.Bad}" />
-                                                        </DataTrigger>
-                                                        <!-- 분석 3 의 줄 (1.40): 문장이 길어 자르지 않고 줄을 바꿉니다.
-                                                             여러 줄이 되면 점은 첫 줄 높이에 붙입니다. -->
-                                                        <DataTrigger Binding="{Binding Wrap}" Value="True">
-                                                            <Setter TargetName="LineLabel" Property="TextWrapping" Value="Wrap" />
-                                                            <Setter TargetName="LineLabel" Property="TextTrimming" Value="None" />
-                                                            <Setter TargetName="LineLabel" Property="VerticalAlignment" Value="Top" />
-                                                            <Setter TargetName="LineValue" Property="TextWrapping" Value="Wrap" />
-                                                            <Setter TargetName="LineValue" Property="TextTrimming" Value="None" />
-                                                            <Setter TargetName="LineValue" Property="MaxWidth" Value="140" />
-                                                            <Setter TargetName="LineValue" Property="VerticalAlignment" Value="Top" />
-                                                            <Setter TargetName="LineDot" Property="VerticalAlignment" Value="Top" />
-                                                            <Setter TargetName="LineDot" Property="Margin" Value="0,5,7,0" />
-                                                            <Setter TargetName="LineButton" Property="ToolTip"
-                                                                    Value="{x:Static t:MainTexts.CardA3LineTip}" />
-                                                        </DataTrigger>
-                                                    </DataTemplate.Triggers>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        </ScrollViewer>
-
-                                        <!--
-                                          그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다.
-                                          한 줄이 두 줄짜리가 됐습니다 (이름 17 + 차이 내용 16
-                                          + 위아래 여백 5 = 38). 여섯 줄이 230 이고,
-                                          일곱 번째가 살짝 보여 더 있다는 것이 드러납니다.
-                                          0.59 의 300 에서 줄였습니다 (메인 화면에
-                                          스크롤이 생기지 않게).
-                                        -->
-                                        <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto"
-                                                      HorizontalScrollBarVisibility="Disabled"
-                                                      Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
-                                            <ItemsControl ItemsSource="{Binding Groups}">
+                                              분석 1 은 아래의 그룹 줄을 쓰고, 분석 2 는
+                                              이 줄을 씁니다 (칸은 하나라서 들어 있는 쪽이
+                                              보입니다). 누르면 그 분석 화면으로 넘어갑니다 —
+                                              그룹 줄과 같은 손놀림입니다.
+                                            -->
+                                            <!-- 높이 한도는 칸마다 (1.41) — 분석 2 는 230 에서 굴리고,
+                                                 분석 3 은 문장이 길어 줄을 바꾸므로 한도 없이 다 보입니다
+                                                 (230 이면 긴 줄 두어 개에서 나머지가 가려졌음). -->
+                                            <ScrollViewer MaxHeight="{Binding LinesMaxHeight}" VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          Visibility="{Binding HasLines, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl ItemsSource="{Binding Lines}">
                                                 <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type main:GroupSummaryVm}">
-                                                        <Button Style="{StaticResource RowButton}"
-                                                                Click="OnGroupClick" Tag="{Binding GroupName}"
+                                                    <DataTemplate DataType="{x:Type main:CardLineVm}">
+                                                        <Button x:Name="LineButton" Style="{StaticResource RowButton}"
+                                                                Click="OnCardIoClick" Tag="{Binding Target}"
                                                                 IsEnabled="{Binding CanOpen}"
-                                                                ToolTip="{x:Static t:MainTexts.GroupClickTip}"
+                                                                ToolTip="{x:Static t:MainTexts.CardIoClickTip}"
                                                                 Margin="0,1,0,3">
                                                             <StackPanel>
                                                                 <Grid>
@@ -814,56 +714,190 @@
                                                                         <ColumnDefinition Width="Auto" />
                                                                     </Grid.ColumnDefinitions>
 
-                                                                    <Border x:Name="Dot" Grid.Column="0"
+                                                                    <Border x:Name="LineDot" Grid.Column="0"
                                                                             Width="8" Height="8" CornerRadius="4"
                                                                             VerticalAlignment="Center" Margin="0,0,7,0"
                                                                             Background="{DynamicResource Brush.Muted}" />
 
-                                                                    <TextBlock Grid.Column="1" Text="{Binding GroupName}"
+                                                                    <!--
+                                                                      이름 = 꼬리표 + 나머지 (1.40). "[오류] …" 의 [오류] 만 점과
+                                                                      같은 색. Run.Text 는 기본이 양방향 바인딩이라 읽기 전용
+                                                                      속성에 걸면 오류가 납니다 — 그래서 Mode=OneWay.
+                                                                      분석 3 은 길면 줄을 바꿔 다 보입니다 (아래 Wrap 트리거).
+                                                                    -->
+                                                                    <TextBlock x:Name="LineLabel" Grid.Column="1"
                                                                                VerticalAlignment="Center" FontSize="12"
-                                                                               TextTrimming="CharacterEllipsis" />
+                                                                               TextTrimming="CharacterEllipsis">
+                                                                        <Run Text="{Binding LabelTag, Mode=OneWay}">
+                                                                            <Run.Style>
+                                                                                <Style TargetType="{x:Type Run}">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Run.Style>
+                                                                        </Run><Run Text="{Binding LabelRest, Mode=OneWay}" />
+                                                                    </TextBlock>
 
-                                                                    <TextBlock Grid.Column="2" Text="{Binding CountText}"
+                                                                    <!-- 분석 2 는 여기에 "1 → 2" (1.04). 값이 길면
+                                                                         이름을 밀어내지 않게 자릅니다 — 다 보려면 아래
+                                                                         작은 글이나 분석 2 화면. -->
+                                                                    <TextBlock x:Name="LineValue" Grid.Column="2" Text="{Binding Value}"
                                                                                Style="{StaticResource Muted}" FontSize="11"
+                                                                               MaxWidth="240" TextTrimming="CharacterEllipsis"
                                                                                VerticalAlignment="Center" Margin="8,0,0,0" />
                                                                 </Grid>
 
-                                                                <!--
-                                                                  그룹 줄 아래: 어떤 차이가 났는지.
-                                                                  아직 자리만 잡아 둔 것입니다. 미리 잡아 두는 이유는
-                                                                  나중에 글이 들어올 때 줄 높이가 달라져 목록이 통째로
-                                                                  다시 접히지 않게 하려는 것입니다. 점 자리(15)만큼
-                                                                  들여 써서 그룹 이름 아래에 붙게 합니다.
-                                                                -->
-                                                                <TextBlock Text="{Binding DetailText}"
+                                                                <!-- 줄 아래 작은 글. 없으면 줄 높이만 차지하지 않게
+                                                                     비어 있을 때는 숨깁니다. -->
+                                                                <TextBlock Text="{Binding Detail}"
                                                                            Style="{StaticResource Muted}" FontSize="10"
-                                                                           TextWrapping="Wrap" MinHeight="14"
-                                                                           Margin="15,2,0,0" />
+                                                                           TextWrapping="Wrap" Margin="15,2,0,0"
+                                                                           Visibility="{Binding Detail, Converter={StaticResource TextToVisibility}}" />
                                                             </StackPanel>
                                                         </Button>
 
                                                         <DataTemplate.Triggers>
                                                             <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
-                                                                <Setter TargetName="Dot" Property="Background"
+                                                                <Setter TargetName="LineDot" Property="Background"
                                                                         Value="{DynamicResource Brush.Good}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
-                                                                <Setter TargetName="Dot" Property="Background"
+                                                                <Setter TargetName="LineDot" Property="Background"
                                                                         Value="{DynamicResource Brush.Warn}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
-                                                                <Setter TargetName="Dot" Property="Background"
+                                                                <Setter TargetName="LineDot" Property="Background"
                                                                         Value="{DynamicResource Brush.Bad}" />
+                                                            </DataTrigger>
+                                                            <!-- 분석 2 의 "1 → 2" 는 빨간 글씨로 (1.08). 칸이 좁아
+                                                                 "(+1)" 은 안 붙이고 색만 칠합니다. -->
+                                                            <DataTrigger Binding="{Binding ValueIsChange}" Value="True">
+                                                                <Setter TargetName="LineValue" Property="Foreground"
+                                                                        Value="{DynamicResource Brush.Bad}" />
+                                                            </DataTrigger>
+                                                            <!-- 분석 3 의 줄 (1.40): 문장이 길어 자르지 않고 줄을 바꿉니다.
+                                                                 여러 줄이 되면 점은 첫 줄 높이에 붙입니다. -->
+                                                            <DataTrigger Binding="{Binding Wrap}" Value="True">
+                                                                <Setter TargetName="LineLabel" Property="TextWrapping" Value="Wrap" />
+                                                                <Setter TargetName="LineLabel" Property="TextTrimming" Value="None" />
+                                                                <Setter TargetName="LineLabel" Property="VerticalAlignment" Value="Top" />
+                                                                <Setter TargetName="LineValue" Property="TextWrapping" Value="Wrap" />
+                                                                <Setter TargetName="LineValue" Property="TextTrimming" Value="None" />
+                                                                <Setter TargetName="LineValue" Property="MaxWidth" Value="140" />
+                                                                <Setter TargetName="LineValue" Property="VerticalAlignment" Value="Top" />
+                                                                <Setter TargetName="LineDot" Property="VerticalAlignment" Value="Top" />
+                                                                <Setter TargetName="LineDot" Property="Margin" Value="0,5,7,0" />
+                                                                <Setter TargetName="LineButton" Property="ToolTip"
+                                                                        Value="{x:Static t:MainTexts.CardA3LineTip}" />
                                                             </DataTrigger>
                                                         </DataTemplate.Triggers>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                        </ScrollViewer>
+                                            </ScrollViewer>
+
+                                            <!--
+                                              그룹이 많아도 칸이 늘어나지 않게 여기서 굴립니다.
+                                              한 줄이 두 줄짜리가 됐습니다 (이름 17 + 차이 내용 16
+                                              + 위아래 여백 5 = 38). 여섯 줄이 230 이고,
+                                              일곱 번째가 살짝 보여 더 있다는 것이 드러납니다.
+                                              0.59 의 300 에서 줄였습니다 (메인 화면에
+                                              스크롤이 생기지 않게).
+                                            -->
+                                            <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
+                                                <ItemsControl ItemsSource="{Binding Groups}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type main:GroupSummaryVm}">
+                                                            <Button Style="{StaticResource RowButton}"
+                                                                    Click="OnGroupClick" Tag="{Binding GroupName}"
+                                                                    IsEnabled="{Binding CanOpen}"
+                                                                    ToolTip="{x:Static t:MainTexts.GroupClickTip}"
+                                                                    Margin="0,1,0,3">
+                                                                <StackPanel>
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                        </Grid.ColumnDefinitions>
+
+                                                                        <Border x:Name="Dot" Grid.Column="0"
+                                                                                Width="8" Height="8" CornerRadius="4"
+                                                                                VerticalAlignment="Center" Margin="0,0,7,0"
+                                                                                Background="{DynamicResource Brush.Muted}" />
+
+                                                                        <TextBlock Grid.Column="1" Text="{Binding GroupName}"
+                                                                                   VerticalAlignment="Center" FontSize="12"
+                                                                                   TextTrimming="CharacterEllipsis" />
+
+                                                                        <TextBlock Grid.Column="2" Text="{Binding CountText}"
+                                                                                   Style="{StaticResource Muted}" FontSize="11"
+                                                                                   VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                                    </Grid>
+
+                                                                    <!--
+                                                                      그룹 줄 아래: 어떤 차이가 났는지.
+                                                                      아직 자리만 잡아 둔 것입니다. 미리 잡아 두는 이유는
+                                                                      나중에 글이 들어올 때 줄 높이가 달라져 목록이 통째로
+                                                                      다시 접히지 않게 하려는 것입니다. 점 자리(15)만큼
+                                                                      들여 써서 그룹 이름 아래에 붙게 합니다.
+                                                                    -->
+                                                                    <TextBlock Text="{Binding DetailText}"
+                                                                               Style="{StaticResource Muted}" FontSize="10"
+                                                                               TextWrapping="Wrap" MinHeight="14"
+                                                                               Margin="15,2,0,0" />
+                                                                </StackPanel>
+                                                            </Button>
+
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                                                                    <Setter TargetName="Dot" Property="Background"
+                                                                            Value="{DynamicResource Brush.Good}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                                                    <Setter TargetName="Dot" Property="Background"
+                                                                            Value="{DynamicResource Brush.Warn}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                                                    <Setter TargetName="Dot" Property="Background"
+                                                                            Value="{DynamicResource Brush.Bad}" />
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                    </Border>
+
+                                </StackPanel>
+                                <!-- LLM 서버에 안 닿을 때 회색 반투명 덮개 + 안내 (1.51). 덮개가 누름도 막습니다. -->
+                                <Border Background="{DynamicResource Brush.Muted}" Opacity="0.35" CornerRadius="4" Margin="-16,-12"
+                                        Visibility="{Binding IsBlocked, Converter={StaticResource BoolToVisibility}}" />
+                                <Border Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                        CornerRadius="4" Padding="14,10" MaxWidth="460"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding IsBlocked, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding BlockText}" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                                   Foreground="{DynamicResource Brush.Text}" />
+                                        <TextBlock Text="{Binding BlockDetail}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
+                                                   TextWrapping="Wrap" TextAlignment="Center"
+                                                   Visibility="{Binding BlockDetail, Converter={StaticResource TextToVisibility}}" />
                                     </StackPanel>
                                 </Border>
-
-                            </StackPanel>
+                            </Grid>
                         </Border>
 
                         <DataTemplate.Triggers>

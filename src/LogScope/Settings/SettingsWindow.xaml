@@ -329,6 +329,43 @@
                 </StackPanel>
             </TabItem>
 
+            <!-- ===================== LLM 서버 (1.51) =====================
+                 닿을 때만 분석 3 · 종합 분석 결과를 씁니다 (Common/LlmServer). [연결 확인] 은 적은 주소로
+                 바로 확인하고, 상태 줄은 창 코드가 LlmServer.Changed 를 받아 고칩니다. -->
+            <TabItem Header="{x:Static t:SettingsTexts.TabHeaderLlm}">
+                <StackPanel Margin="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static t:SettingsTexts.LlmServerLabel}"
+                                   Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Margin="0,3"
+                                 Text="{Binding LlmServer, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Row="0" Grid.Column="2" Content="{x:Static t:SettingsTexts.LlmCheck}"
+                                ToolTip="{x:Static t:SettingsTexts.LlmCheckTip}" Click="OnCheckLlm" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static t:SettingsTexts.LlmStatusLabel}"
+                                   Style="{StaticResource FieldLabel}" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,6">
+                            <Border x:Name="LlmDot" Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                    Margin="0,0,8,0" Background="{DynamicResource Brush.Muted}" />
+                            <TextBlock x:Name="LlmStatus" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0" TextWrapping="Wrap"
+                               Text="{x:Static t:SettingsTexts.LlmServerNote}" />
+                </StackPanel>
+            </TabItem>
+
             <!-- ===================== 정보 ===================== -->
             <TabItem Header="{x:Static t:SettingsTexts.TabHeader6}">
                 <StackPanel Margin="14">

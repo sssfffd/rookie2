@@ -114,6 +114,7 @@ namespace LogScope.Tests
                 HistoryEdgeCases();
                 HistorySnapshots();
                 LlmPanelRules();
+                LlmServerRules();
                 JsonRoundTrip();
                 SettingsRoundTrip();
                 AppConfigParse();
@@ -4274,6 +4275,49 @@ namespace LogScope.Tests
         }
 
         /// <summary>
+        /// LLM 서버 연결 확인 (1.51): 주소 읽기 · 포트로 닿는지 · 안 닿을 때 글.
+        /// </summary>
+        private static void LlmServerRules()
+        {
+            Say("LLM 서버 연결 확인");
+            string h, why; int port;
+            Check("IP 만 → 핑", LlmServer.TryParse("10.0.0.5", out h, out port, out why) && h == "10.0.0.5" && port == 0, h + ":" + port);
+            Check("IP:포트", LlmServer.TryParse(" 10.0.0.5:8000 ", out h, out port, out why) && h == "10.0.0.5" && port == 8000, h + ":" + port);
+            Check("http 주소 → 호스트 · 포트", LlmServer.TryParse("http://llm.local/v1", out h, out port, out why) && h == "llm.local" && port == 80, h + ":" + port);
+            Check("https 주소 포트", LlmServer.TryParse("https://llm.local:8443/x", out h, out port, out why) && port == 8443, port.ToString());
+            Check("IPv6 대괄호 포트", LlmServer.TryParse("[::1]:9000", out h, out port, out why) && h == "::1" && port == 9000, h + ":" + port);
+            Check("IPv6 포트 없음 → 핑", LlmServer.TryParse("fe80::1", out h, out port, out why) && h == "fe80::1" && port == 0, h);
+            Check("빈 주소는 안 됨 · 까닭", !LlmServer.TryParse("  ", out h, out port, out why) && why.Contains("비어"), why);
+            Check("포트가 숫자가 아니면 안 됨", !LlmServer.TryParse("10.0.0.5:abc", out h, out port, out why), why);
+
+            // 진짜로 닿는지: 이 PC 에 포트 하나를 열어 두고 확인 → 닫힌 포트도 확인.
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            int open = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+            bool ok;
+            string d = LlmServer.Probe("127.0.0.1:" + open, 2000, out ok);
+            Check("열린 포트 → 연결됨", ok && d.Contains("연결됨"), d);
+            listener.Stop();
+            d = LlmServer.Probe("127.0.0.1:" + open, 2000, out ok);
+            Check("닫힌 포트 → 안 됨 (예외 없이 글)", !ok && d.Length > 0, d);
+            d = LlmServer.Probe("", 2000, out ok);
+            Check("빈 주소 → 안 됨", !ok && d.Contains("비어"), d);
+
+            LlmServer.SetForTest(LlmServerState.Fail, "x — 응답 없음");
+            Check("안 닿으면 덮는 글 = 요청 문구", LlmServer.BlockText == CommonTexts.LlmBlocked && LlmServer.BlockDetail == "x — 응답 없음", LlmServer.BlockText);
+            LlmServer.SetForTest(LlmServerState.Checking, "");
+            Check("확인 중 글", LlmServer.BlockText == CommonTexts.LlmChecking, LlmServer.BlockText);
+            LlmServer.SetForTest(LlmServerState.Ok, "ok");
+            Check("닿으면 덮지 않음", LlmServer.IsOk && LlmServer.BlockText == "", "");
+            LlmServer.SetForTest(LlmServerState.Unknown, "");
+
+            var s = new AppSettings();
+            s.LlmServer = "10.0.0.5:8000";
+            AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("설정에 주소 저장", back.LlmServer == "10.0.0.5:8000", back.LlmServer);
+        }
+
+        /// <summary>
         /// 종합 분석 결과 (LLM) 칸 (1.45): 체크 표시 · 버튼 켜짐 · 진행 · 결과 · 실패 · 취소.
         /// </summary>
         private static void LlmPanelRules()
@@ -4283,6 +4327,8 @@ namespace LogScope.Tests
             var p = new LlmPanelVm();
             Check("처음엔 버튼 꺼짐 · 안내 보임", !p.CanRun && p.ShowEmpty && p.Checks.Count == 3, "");
             p.SetReady(2, "DB 비교", true, "DB 를 견줌");
+            Check("LLM 서버에 안 닿으면 버튼 꺼짐 · 덮음 (1.51)", !p.CanRun && p.IsBlocked, "");
+            p.SetServer(true, "", "");
             Check("하나만 완료여도 버튼 켜짐", p.CanRun && p.Checks[1].Ready && p.Checks[1].StateText == "완료"
                   && p.Checks[0].StateText == "안 함" && p.Checks[1].Title == "분석 2 · DB 비교", p.Checks[1].Title);
 
@@ -4307,6 +4353,14 @@ namespace LogScope.Tests
 
             Check("쓴 분석 글", LlmPanelVm.UsedText(true, false, true) == "분석 1 · 3"
                   && LlmPanelVm.UsedText(false, false, false) == "분석 없음", LlmPanelVm.UsedText(true, false, true));
+
+            p.SetServer(false, CommonTexts.LlmBlocked, "10.0.0.5:8000 — 응답 없음");
+            Check("서버가 끊기면 다시 꺼지고 안내 글", !p.CanRun && p.IsBlocked && p.BlockText.StartsWith("LLM 서버와 접속이 불가능한 환경입니다.")
+                  && p.BlockDetail.Contains("응답 없음"), p.BlockText);
+
+            var card = new AnalysisCardVm(3, "분석 3", "", true);
+            card.SetBlocked(true, CommonTexts.LlmBlocked, "");
+            Check("분석 3 칸 덮음", card.IsBlocked && !card.IsUsable && card.BlockText.Length > 0, "");
 
             var q = new LlmRequest();
             Check("요청: 아무것도 없으면 Any 거짓", !q.Any, "");

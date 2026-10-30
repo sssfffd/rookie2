@@ -43,7 +43,26 @@ namespace LogScope.Main
         }
 
         /// <summary>버튼을 누를 수 있는지 — 하나라도 결과가 있고 돌고 있지 않을 때.</summary>
-        public bool CanRun { get { return AnyReady && !_running; } }
+        public bool CanRun { get { return AnyReady && !_running && _serverOk; } }
+
+        // ---- LLM 서버 (1.51) — 안 닿으면 칸 전체를 회색으로 덮고 버튼도 끔 ----
+
+        private bool _serverOk;
+        private string _blockText = string.Empty;
+        private string _blockDetail = string.Empty;
+
+        public bool ServerOk { get { return _serverOk; } }
+        public bool IsBlocked { get { return !_serverOk; } }
+        public string BlockText { get { return _blockText; } }
+        public string BlockDetail { get { return _blockDetail; } }
+
+        public void SetServer(bool ok, string text, string detail)
+        {
+            _serverOk = ok;
+            _blockText = text ?? string.Empty;
+            _blockDetail = detail ?? string.Empty;
+            Raise("ServerOk"); Raise("IsBlocked"); Raise("BlockText"); Raise("BlockDetail"); Raise("CanRun");
+        }
 
         // ---------------- 진행 ----------------
 

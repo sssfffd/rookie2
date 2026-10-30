@@ -222,11 +222,28 @@
               이름을 적어 두면 그 폴더가 비었을 때 빌드가 깨집니다 — 그 폴더는
               저장소에 없으니 새로 받은 직후가 늘 그렇습니다.
 
-              보이기 여부는 이 ContentControl 이 창의 뷰모델에서 바로 읽습니다.
+              보이기 여부는 감싼 Grid 가 창의 뷰모델에서 바로 읽습니다.
               안에 들어간 화면이 제 DataContext 를 바꿔도 여기에는 닿지 않습니다.
+              LLM 서버에 안 닿으면 (1.51) 회색 덮개와 안내가 위에 놓이고 안은 꺼집니다.
             -->
-            <ContentControl x:Name="A3Host" Focusable="False"
-                            Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}" />
+            <Grid Visibility="{Binding ShowAnalysis3, Converter={StaticResource BoolToVisibility}}">
+                <ContentControl x:Name="A3Host" Focusable="False" IsEnabled="{Binding A3Usable}" />
+                <!-- LLM 서버에 안 닿을 때 회색 반투명 덮개 + 안내 (1.51). 덮개가 누름도 막습니다. -->
+                <Border Background="{DynamicResource Brush.Muted}" Opacity="0.35" CornerRadius="4" Margin="0"
+                        Visibility="{Binding A3Blocked, Converter={StaticResource BoolToVisibility}}" />
+                <Border Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        CornerRadius="4" Padding="14,10" MaxWidth="460"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="{Binding A3Blocked, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding A3BlockText}" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource Brush.Text}" />
+                        <TextBlock Text="{Binding A3BlockDetail}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   Visibility="{Binding A3BlockDetail, Converter={StaticResource TextToVisibility}}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>
