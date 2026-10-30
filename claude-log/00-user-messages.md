@@ -1766,3 +1766,11 @@
 > 반도체 공정 io여도 괜찮아?
 
 → 답변: [141-semiconductor-fit.md](141-semiconductor-fit.md)
+
+---
+
+## 요청 169 — 0.1 초 단위 데이터도 되는지
+
+> 근데 데이터가 0.1초 단위로 넣을껀데 위 기법이랑 분석 1로 가능?
+
+→ 답변: [142-100ms-sampling.md](142-100ms-sampling.md)
