@@ -142,3 +142,4 @@
 | `133-analysis1-merge-files.md` | Analysis1 같은 기능 파일 합치기 54 → 32 (GraphCanvas partial 여섯 → 하나 등, 코드 그대로) |
 | `134-llm-server-check.md` | 설정에 LLM 서버 주소 · [연결 확인], 켤 때 자동 확인, 안 되면 분석 3 · 종합 분석 결과를 회색 덮개 + 안내 |
 | `135-build-bat-rebuild.md` | build.bat 이 늘 Rebuild (zip 파일 시각 때문에 건너뛰던 것) · out 의 exe 복사 실패를 알림 |
+| `136-sensor-compare-methods.md` | 센서 로그 비교 기법 (DTW · 시간 허용 띠 · 단계 특징값 · 사건 짝짓기 …) 와 추천 순서 — 질문, 코드 안 바꿈 |
