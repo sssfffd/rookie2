@@ -163,7 +163,12 @@ rem                   turning them into garbage on a CP949 console.
 if exist "%ERRLOG%" del "%ERRLOG%" >nul 2>nul
 if exist "%FAILLOG%" del "%FAILLOG%" >nul 2>nul
 
-"%MSBUILD%" "%ROOT%LogScope.sln" /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl1 "/flp1:logfile=%LOG%;verbosity=normal;encoding=UTF-8" /fl2 "/flp2:logfile=%ERRLOG%;errorsonly;verbosity=normal"
+rem  /t:Rebuild (1.52): always compile from scratch. An incremental build
+rem  decides by file times, and files unpacked from a downloaded zip can
+rem  carry times OLDER than the last build (zip times have no time zone),
+rem  so MSBuild skipped them and out kept the old exe. The project is
+rem  small; a full rebuild takes seconds.
+"%MSBUILD%" "%ROOT%LogScope.sln" /t:Rebuild /nologo /m /v:minimal /p:Configuration=%CONFIG% /p:Platform="Any CPU" /fl1 "/flp1:logfile=%LOG%;verbosity=normal;encoding=UTF-8" /fl2 "/flp2:logfile=%ERRLOG%;errorsonly;verbosity=normal"
 set "RC=%ERRORLEVEL%"
 call :cp
 
@@ -223,6 +228,7 @@ rem  The build always makes LogScope.exe; the name from config.txt goes on
 rem  here. Renaming on copy keeps MSBuild out of parsing config.txt -- one
 rem  bad line there would stop the whole build.
 copy /y "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe" "%OUT%\!APPNAME!.exe" >nul
+if errorlevel 1 goto :copyfail
 if exist "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe.config" (
   copy /y "%ROOT%src\LogScope\bin\%CONFIG%\LogScope.exe.config" "%OUT%\!APPNAME!.exe.config" >nul
 )
@@ -272,6 +278,15 @@ echo.
 call :hold
 endlocal
 exit /b 1
+
+rem  The exe in out could not be replaced -- almost always because the
+rem  program is still running from out. Before 1.52 this failed silently
+rem  (">nul") and the OLD exe stayed, so a code change looked ignored.
+:copyfail
+echo.
+call :msg "[오류] out 폴더의 exe 를 새것으로 바꾸지 못했습니다." "[error] Could not replace the exe in the out folder."
+call :msg "       프로그램이 켜져 있으면 닫고 다시 build.bat 을 돌려 주세요." "       If the program is running, close it and run build.bat again."
+goto :fail
 
 rem ===================================================================
 rem  Subroutines. They must sit past an "exit /b" so the script cannot

@@ -141,3 +141,4 @@
 | `132-db-many-rows.md` | 분석 2 상한 (같은 줄 2 만 · 행 차이 5 천 · 목록 5 천/5 만 · 읽기 20 만) → 몇십만 행까지 |
 | `133-analysis1-merge-files.md` | Analysis1 같은 기능 파일 합치기 54 → 32 (GraphCanvas partial 여섯 → 하나 등, 코드 그대로) |
 | `134-llm-server-check.md` | 설정에 LLM 서버 주소 · [연결 확인], 켤 때 자동 확인, 안 되면 분석 3 · 종합 분석 결과를 회색 덮개 + 안내 |
+| `135-build-bat-rebuild.md` | build.bat 이 늘 Rebuild (zip 파일 시각 때문에 건너뛰던 것) · out 의 exe 복사 실패를 알림 |
