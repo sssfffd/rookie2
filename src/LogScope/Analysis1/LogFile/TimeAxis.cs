@@ -1,8 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Globalization;
+using System;
+using LogScope.Common;
 
 namespace LogScope.Analysis1.LogFile
 {
+    // 1.50: 시간축 — TimeAxis (만들기) · TimeKind · Orientation · TimeText (시각 글자).
+    //       같은 기능의 파일을 하나로 합쳤습니다. 각 덩어리 앞의 ==== 줄에 전 파일 이름이 있습니다.
+
     /// <summary>
     /// 시간 칸들을 실제로 쓸 수 있는 시간축으로 다듬습니다.
     /// 로그마다 시간 칸을 적는 방식이 달라서, 여기서 다음 네 가지를 처리합니다.
@@ -225,6 +230,110 @@ namespace LogScope.Analysis1.LogFile
                 }
             }
             return changed;
+        }
+    }
+
+    // ======================================================================
+    //  TimeKind.cs — 1.50 에 이 파일로 합침
+    // ======================================================================
+
+    /// <summary>시간축 값이 무엇을 뜻하는지. 눈금 글자를 어떻게 쓸지 정한다.</summary>
+    public enum TimeKind
+    {
+        /// <summary>시간을 읽어내지 못해 샘플 번호를 쓴다.</summary>
+        Index = 0,
+        /// <summary>단위 없는 숫자. TimeUnit 에 단위 글자가 있을 수 있다.</summary>
+        Number = 1,
+        /// <summary>자정 기준 경과 밀리초 (HH:MM:SS.mmm).</summary>
+        ClockMs = 2,
+        /// <summary>1970-01-01 기준 밀리초.</summary>
+        DateMs = 3,
+    }
+
+    /// <summary>시트에서 IO 가 행으로 놓였는지 열로 놓였는지.</summary>
+    public enum Orientation
+    {
+        /// <summary>배치를 자동으로 찾는다.</summary>
+        Auto = 0,
+        /// <summary>각 행이 IO 채널, 한 행이 시간축.</summary>
+        Rows = 1,
+        /// <summary>각 열이 IO 채널, 한 열이 시간축.</summary>
+        Cols = 2,
+    }
+
+    // ======================================================================
+    //  TimeText.cs — 1.50 에 이 파일로 합침
+    // ======================================================================
+
+    /// <summary>
+    /// 시간을 글자로 바꾸는 규칙. <see cref="LogDataset.FormatTime"/> 이
+    /// 쓰고, <b>경과 시간</b>을 적어야 하는 쪽(단계 시작을 0 으로 놓은
+    /// 그래프 가로축)도 씁니다.
+    ///
+    /// 따로 뺀 까닭: 경과 시간을 그 로그의 시간 모양으로 그대로 적으면
+    /// 날짜 로그에서 <b>1970 년</b>이 찍힙니다. 5 초 지났다는 말이
+    /// "1970-01-01 00:00:05" 로 나오는데, 그게 날짜로 읽히면 로그를
+    /// 잘못 읽은 줄 알게 됩니다.
+    /// </summary>
+    public static class TimeText
+    {
+        /// <summary>밀리초를 시:분:초.밀리 로. 음수면 앞에 "-" 가 붙습니다.</summary>
+        public static string Clock(double ms)
+        {
+            if (double.IsNaN(ms) || double.IsInfinity(ms)) return "-";
+
+            bool neg = ms < 0;
+            if (neg) ms = -ms;
+
+            long total = (long)Math.Floor(ms);
+            int msec = (int)(total % 1000);
+            long sec = total / 1000;
+            int s = (int)(sec % 60);
+            long min = sec / 60;
+            int m = (int)(min % 60);
+            long h = min / 60;
+
+            string text = msec != 0
+                ? string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00}:{2:00}.{3:000}", h, m, s, msec)
+                : string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00}:{2:00}", h, m, s);
+            return neg ? "-" + text : text;
+        }
+
+        /// <summary>
+        /// 어떤 시각에서부터 센 <b>경과 시간</b>. 날짜 로그도 날짜가 아니라
+        /// 걸린 시간으로 적습니다.
+        ///
+        /// 부호를 적습니다. 0 자리보다 앞은 "-" 로 나오는데, 그게 안 보이면
+        /// 단계가 시작하기 전의 구간을 단계 안으로 읽습니다.
+        /// </summary>
+        public static string Elapsed(LogDataset ds, double delta)
+        {
+            if (double.IsNaN(delta)) return "-";
+
+            TimeKind kind = ds != null ? ds.TimeKind : TimeKind.Number;
+            switch (kind)
+            {
+                case TimeKind.ClockMs:
+                case TimeKind.DateMs:
+                    // 둘 다 밀리초입니다. 날짜 로그여도 경과 시간은 시계로.
+                    return (delta > 0 ? "+" : string.Empty) + Clock(delta);
+
+                case TimeKind.Index:
+                    return Sign(delta) + Math.Abs(Math.Round(delta)).ToString("0", CultureInfo.InvariantCulture)
+                         + "표본";
+
+                default:
+                    {
+                        string u = ds != null && ds.TimeUnit.Length > 0 ? " " + ds.TimeUnit : string.Empty;
+                        return Sign(delta) + NumberText.Plain(Math.Abs(delta)) + u;
+                    }
+            }
+        }
+
+        private static string Sign(double v)
+        {
+            if (v > 0) return "+";
+            return v < 0 ? "-" : string.Empty;
         }
     }
 }

@@ -3523,7 +3523,7 @@ namespace LogScope.Tests
         /// </summary>
         /// <summary>
         /// 단계 이름에 StepText 의 앞뒤 글을 붙인 꼴 (1.15). 시험이 이걸 거쳐
-        /// 견주므로 StepText.cs 에서 글을 바꿔도 시험이 깨지지 않습니다.
+        /// 견주므로 LogSteps.cs (StepText) 에서 글을 바꿔도 시험이 깨지지 않습니다.
         /// </summary>
         private static string Lb(string name)
         {

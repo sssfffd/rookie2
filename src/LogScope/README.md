@@ -9,8 +9,8 @@
 | 메인 | `Main/` | `MainView.xaml` | `MainTexts.cs` | History — 저장 한 번에 칸 셋 요약 `CardSnapshot` · 기록 `AnalysisRecord` · 파일 `HistoryStore` · 줄 `HistoryRowVm` (펼쳐 보기는 `MainVm.ShowSaved`) |
 | 맨 위 메뉴 줄 · 창 틀 | `Shell/` | `ShellWindow.xaml` | `ShellTexts.cs` | |
 | 분석 1 — 대시보드 | `Analysis1/Dashboard/` | `DashboardView.xaml` | `DashboardTexts.cs` | (`Analysis1/Compare/` 의 견주기 결과를 씀) |
-| 분석 1 — 그래프 | `Analysis1/Graph/` | `GraphView.xaml` | `GraphTexts.cs` | 그리기 `GraphCanvas.*` · `Decimator` · `DifferenceSeries` · 선 색 `TraceColors` · 단계 칸 `StepBands` |
-| 분석 1 — 히트맵 | `Analysis1/Heatmap/` | `HeatmapView.xaml` | `HeatmapTexts.cs` | 칸 세기 `HeatmapBuilder` · `HeatBuckets` · `HeatTypes` · 그룹/검색 `HeatLayout` |
+| 분석 1 — 그래프 | `Analysis1/Graph/` | `GraphView.xaml` | `GraphTexts.cs` | 그리기 `GraphCanvas.cs` · 그릴 값 계산 `GraphSeries.cs` (Decimator · DifferenceSeries · 선 색 TraceColors) · 단계 `StepVm.cs` (StepBands) · IO 목록 `ChannelListVm.cs` |
+| 분석 1 — 히트맵 | `Analysis1/Heatmap/` | `HeatmapView.xaml` | `HeatmapTexts.cs` | 계산 `HeatmapBuilder.cs` (칸 세기 · HeatTypes · 칸 자르기 HeatBuckets · 그룹/검색 HeatLayout) · 그리기 `HeatmapCanvas.cs` |
 | 분석 1 — 시간 맞추기 판 | `Analysis1/Align/` | `AlignPanel.xaml` | `AlignTexts.cs` | `TriggerAlign` |
 | 분석 1 — 여러 화면이 같이 씀 | `Analysis1/LogFile/` · `Analysis1/Compare/` | — | — | 로그 읽기 · 자료 · 단계 이름(`StepText`) / 두 로그 견주기 `DiffEngine` · 단계 짝 `StepPairs` |
 | 분석 2 — DB 비교 | `Analysis2/` | `DbView.xaml` | `DbTexts.cs` | DB 읽기 · 견주기 · 판정 · SQL (`Db…`) |
@@ -60,7 +60,7 @@
 
 | 무엇 | 파일 |
 |---|---|
-| 단계 이름 앞뒤에 붙는 글 ("1단계" 의 "단계") | `src/LogScope/Analysis1/LogFile/StepText.cs` |
+| 단계 이름 앞뒤에 붙는 글 ("1단계" 의 "단계") | `src/LogScope/Analysis1/LogFile/LogSteps.cs (StepText)` |
 | 분석 2 판정 낱말 (PASS · WARNING · FAIL) · 판정 문장 | `src/LogScope/Analysis2/DbVerdict.cs` |
 | 분석 2 목록 머리 (IO명 · 이전 value · 이후 value) | `src/LogScope/Analysis2/DbNames.cs` |
 | 메인 화면 카드 안 글 (점수 옆 안내 · 요약 줄) | `src/LogScope/Main/AnalysisCardVm.cs` · `MainVm.cs` |

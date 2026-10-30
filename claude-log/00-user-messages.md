@@ -1694,3 +1694,11 @@
 > 아 그리고 분석 2 2만개 까지면 안됨 / 이거 몇만~ 몇십만개 있을 수 있음
 
 → 답변: [132-db-many-rows.md](132-db-many-rows.md)
+
+---
+
+## 요청 160 — Analysis1 파일을 같은 기능끼리 합치기
+
+> 그 analysis1 폴더가 화면별로 나눈건 좋았는데 너무 파일들이 여러개로 나눠진 거 같음 / 동일 기능으로 파일들만 통합할 수 있는거 통합해줘
+
+→ 답변: [133-analysis1-merge-files.md](133-analysis1-merge-files.md)

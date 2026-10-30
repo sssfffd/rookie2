@@ -813,7 +813,7 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
   켜고 끄는 단추, [전체 구간 ▼] 는 목록(전체 구간 · 1 · 2 · …)입니다.
   - 단추 글자: `src/LogScope/Analysis1/Graph/GraphTexts.cs` 의 `StepCaption` · `StepEach` ·
     `StepWhole` (1.18 부터, 화면 글자 파일 — 아래 "화면 글자" 참고)
-  - 단계 이름 앞뒤에 붙는 글: `src/LogScope/Analysis1/LogFile/StepText.cs`
+  - 단계 이름 앞뒤에 붙는 글: `src/LogScope/Analysis1/LogFile/LogSteps.cs (StepText)`
 
   ```csharp
   public const string LabelBefore = "";         // 단계 이름 앞 ("S" → S1, S2)
@@ -912,7 +912,7 @@ IO 를 수십 개씩 묶는데, PC 마다 손으로 다시 하는 것은 할 일
 
 **2. 로그 모양이 달라 IO 하나로 안 되면 (여기만 코딩)**
 
-`src/LogScope/Analysis1/LogFile/StepRead.cs` 의 `Mine()` 한 곳입니다. 지금은 `null` 을
+`src/LogScope/Analysis1/LogFile/LogSteps.cs (StepRead)` 의 `Mine()` 한 곳입니다. 지금은 `null` 을
 돌려줘서 아무것도 안 넣습니다.
 
 ```csharp
@@ -974,12 +974,12 @@ private static StepTable Mine(LogDataset ds)
 | 무엇 | 어디 |
 |---|---|
 | 단계 하나 · 단계 목록 · 규칙(겹침·상한) | `src/LogScope/Analysis1/LogFile/LogSteps.cs` |
-| **직접 파싱해 넣는 자리** | `src/LogScope/Analysis1/LogFile/StepRead.cs` (`Mine`) |
+| **직접 파싱해 넣는 자리** | `src/LogScope/Analysis1/LogFile/LogSteps.cs (StepRead)` (`Mine`) |
 | 두 로그의 단계 짝짓기 · 보여 줄 구간 | `src/LogScope/Analysis1/Compare/StepPairs.cs` |
-| 히트맵의 칸 자르기 (시간 / 단계) | `src/LogScope/Analysis1/Heatmap/HeatBuckets.cs` |
+| 히트맵의 칸 자르기 (시간 / 단계) | `src/LogScope/Analysis1/Heatmap/HeatmapBuilder.cs (HeatBuckets)` |
 | 그래프 도구 줄의 단계 고르기·나눠 보기 | `src/LogScope/Analysis1/Graph/StepVm.cs` |
-| 나눠 보기의 칸과 폭 나누기 | `src/LogScope/Analysis1/Graph/StepBands.cs` |
-| 칸으로 나눠 그리기 | `src/LogScope/Analysis1/Graph/GraphCanvas.Lane.cs` (`DrawLaneInBands`) |
+| 나눠 보기의 칸과 폭 나누기 | `src/LogScope/Analysis1/Graph/StepVm.cs (StepBands)` |
+| 칸으로 나눠 그리기 | `src/LogScope/Analysis1/Graph/GraphCanvas.cs` (`DrawLaneInBands`) |
 | 가로축 0 자리 (눈금 글자만) | `src/LogScope/Analysis1/Graph/GraphCanvas.cs` (`ZeroAt`) |
 
 ---
@@ -1673,7 +1673,7 @@ IO 이름                퍼센트 (%)    값 (절대)
   [히트맵 다시 계산] 을 따로 눌러야 했음).
 - **검색** 칸은 **IO 이름 칸 바로 위**에 있습니다 (1.10, 전에는 도구 줄).
   그래프 검색과 같습니다 (이름에 그 글자가 들면, 대소문자 안 가림). 치는 대로 바로 걸러지고, 맞는 IO 가 없는 그룹은 사라집니다.
-- 규칙은 `src/LogScope/Analysis1/Heatmap/HeatLayout.cs` 한 곳입니다.
+- 규칙은 `src/LogScope/Analysis1/Heatmap/HeatmapBuilder.cs (HeatLayout)` 한 곳입니다.
 
 ### 히트맵 칸의 숫자
 
@@ -1901,7 +1901,7 @@ IO 를 가리킵니다** — 모두 파랑·빨강으로 그리면 어느 선이
 `[레인]` 으로 보면 IO 마다 칸이 따로라 색으로 IO 를 가릴 일이 없습니다 —
 거기서는 늘 파랑·빨강입니다.
 
-이 규칙은 `src/LogScope/Analysis1/Graph/TraceColors.cs` 한 곳에 있습니다. 선을 그리는
+이 규칙은 `src/LogScope/Analysis1/Graph/GraphSeries.cs (TraceColors)` 한 곳에 있습니다. 선을 그리는
 쪽과 범례를 적는 쪽이 각자 판단하면, 조건을 한쪽만 고친 날부터 범례가 거짓이
 됩니다.
 

@@ -415,7 +415,7 @@
                       목록이 다시 필요하다고 하셔서 [전체 구간] 을 목록으로 바꿨습니다.
 
                       <b>글자는 여기 적지 않습니다.</b> src/LogScope/Analysis1/LogFile/
-                      StepText.cs 한 곳에 있고, 단계 이름 앞뒤에 붙는 글도 거기서
+                      LogSteps.cs (StepText) 한 곳에 있고, 단계 이름 앞뒤에 붙는 글도 거기서
                       고칩니다.
                     -->
                     <Border Style="{StaticResource ToolGroup}">

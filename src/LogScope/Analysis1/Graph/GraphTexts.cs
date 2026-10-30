@@ -17,7 +17,7 @@ namespace LogScope.Analysis1.Graph
         // ---- 정렬 (단계) — 도구 줄의 단계 묶음 ----
         //
         // 단계 이름 앞뒤에 붙는 글("1단계" 의 "단계")은 여기가 아니라
-        // src/LogScope/Analysis1/LogFile/StepText.cs 입니다 — 그 이름은 히트맵도 써서
+        // src/LogScope/Analysis1/LogFile/LogSteps.cs (StepText) 입니다 — 그 이름은 히트맵도 써서
         // 화면 쪽이 아닌 Core 에 있어야 합니다.
 
         /// <summary>단계 묶음의 맨 왼쪽 이름</summary>
