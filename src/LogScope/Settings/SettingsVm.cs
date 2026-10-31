@@ -31,6 +31,39 @@ namespace LogScope.Settings
             var rows = new ObservableCollection<ToleranceRowVm>();
             for (int i = 0; i < _s.Tolerances.Count; i++) rows.Add(new ToleranceRowVm(_s.Tolerances[i]));
             Tolerances = rows;
+
+            AllowRules = new ObservableCollection<AllowRuleRowVm>();
+            ReloadAllowRules();
+        }
+
+        // ---------------- 허용한 오차 (1.59) ----------------
+        //
+        // 메인 분석 1 칸의 오차 줄에서 [앞으로도 허용] 을 누른 것. 여기서는 보고 지우기만 합니다 —
+        // 더하는 것은 그 오차 줄에서 (본 크기를 알아야 하므로). 창을 닫으면 판정을 다시 냅니다.
+
+        public ObservableCollection<AllowRuleRowVm> AllowRules { get; private set; }
+        public bool HasAllowRules { get { return AllowRules.Count > 0; } }
+        public bool NoAllowRules { get { return AllowRules.Count == 0; } }
+
+        public void RemoveAllowRule(AllowRuleRowVm row)
+        {
+            if (row == null || row.Index < 0 || row.Index >= _s.AllowRules.Count) return;
+            _s.AllowRules.RemoveAt(row.Index);
+            ReloadAllowRules();
+        }
+
+        private void ReloadAllowRules()
+        {
+            AllowRules.Clear();
+            for (int i = 0; i < _s.AllowRules.Count; i++)
+            {
+                // 길이는 시각 로그(ms) 로 적습니다. 시각이 아닌 로그에서 만든 규칙은 숫자가 그 축 단위입니다.
+                string text = _s.AllowRules[i].Describe(
+                    delegate (double d) { return LogScope.Analysis1.Judge.JudgeEngine.DurationText(d, true, string.Empty); },
+                    delegate (double v) { return LogScope.Common.NumberText.Plain(v); });
+                AllowRules.Add(new AllowRuleRowVm(i, text));
+            }
+            Raise("AllowRules"); Raise("HasAllowRules"); Raise("NoAllowRules");
         }
 
         // 로그 세트(쌍을 여러 개 골라 가며 보기)는 없앴습니다. 설정은 그대로

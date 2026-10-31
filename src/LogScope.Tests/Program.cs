@@ -4703,6 +4703,20 @@ namespace LogScope.Tests
                   order != null ? order.Detail : "없음");
             Check("차례는 앞으로도 허용 못 함", order != null && !order.CanAllowAlways, "");
 
+            // 메인 칸: 공정 단계 오차는 맨 위 "공정 단계" 줄에 모임 (1.59)
+            var st = new AppState();
+            st.Before = dsA; st.After = dsB;
+            st.Recompare(null);
+            var main = new MainVm(st);
+            GroupSummaryVm steps = main.Cards[0].Groups.Count > 0 ? main.Cards[0].Groups[0] : null;
+            Check("맨 위 공정 단계 줄", steps != null && steps.GroupName == "공정 단계" && steps.IsPseudo && !steps.CanGraph
+                  && steps.CountOverride == "오차 2" && steps.Grade == ScoreBands.GradeBad, steps != null ? steps.CountText : "없음");
+            main.ToggleGroup("공정 단계");
+            steps = main.Cards[0].Groups[0];
+            Check("누르면 오차 줄 둘 · 차례는 앞으로도 허용 단추 없음", steps.ShowDirect && steps.DirectItems.Count == 2
+                  && !steps.DirectItems[0].CanAllowAlways && steps.DirectItems[0].IsOpen, steps.DirectItems.Count.ToString());
+            Check("공정 단계 줄은 History 에 안 남김", main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count - 1, "");
+
             // 단계가 하나 없어지면
             var c = new StringBuilder("Time,STEP,PV\n");
             for (int i = 0; i < 40; i++)
@@ -4741,42 +4755,76 @@ namespace LogScope.Tests
                   && main.Cards[0].Grade == ScoreBands.GradeBad && main.Cards[0].ScoreOutOf.Length == 0,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].VerdictCount);
 
-            var vm = new JudgeVm(st);
+            // ---- 메인 분석 1 칸: 그룹 → IO → 구간별 오차 → 그 자리에서 허용 (1.59) ----
             int changed = 0;
-            vm.Changed += delegate { changed++; };
-            vm.Refresh();
-            Check("목록 줄 넷 · 낱말 · 요약", vm.Rows.Count == 4 && vm.Word == "FAIL" && vm.Summary.Contains("오차 4 개")
-                  && vm.Grade == ScoreBands.GradeBad && vm.HasReasons && vm.NoRules, vm.Summary);
+            main.AllowChanged += delegate { changed++; };
+            List<GroupSummaryVm> gs = main.Cards[0].Groups;
+            GroupSummaryVm rest = null;
+            foreach (GroupSummaryVm x in gs) if (x.GroupName == "묶지 않은 IO") rest = x;
+            Check("그룹 줄 — 판정 기준 달라짐 4 / 6 · 빨강 · 접힘", rest != null && rest.ChangedCount == 4 && rest.MemberCount == 6
+                  && rest.Grade == ScoreBands.GradeBad && rest.CanExpand && !rest.IsExpanded && rest.Ios.Count == 0
+                  && main.Cards[0].GroupsMaxHeight == 230, rest != null ? rest.CountText : "없음");
+            Check("그룹 아래 글 = 가장 긴 오차", rest != null && rest.DetailText.StartsWith("가장 긴 오차: BIG"), rest != null ? rest.DetailText : "");
 
-            JudgeItem big = null, spike = null;
-            foreach (JudgeRowVm row in vm.Rows)
-            {
-                if (row.Item.Io == "BIG") big = row.Item;
-                if (row.Item.Io == "SPIKE") spike = row.Item;
-            }
-            Check("FAIL 줄은 빨강", vm.Rows[0].Grade == ScoreBands.GradeBad && vm.Rows[0].Word == "FAIL", vm.Rows[0].Word);
+            main.ToggleGroup("묶지 않은 IO");
+            rest = null;
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
+            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저 · 칸 높이 520", rest != null && rest.IsExpanded && rest.Ios.Count == 6
+                  && rest.Ios[0].Name == "BIG" && rest.Ios[0].Grade == ScoreBands.GradeBad
+                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].CanExpand
+                  && main.Cards[0].GroupsMaxHeight == 520, rest != null && rest.Ios.Count > 0 ? rest.Ios[0].Summary : "");
 
-            vm.Apply(big, AllowChoice.IoOnce);
-            main.Refresh();
-            Check("BIG 모두 이번만 허용 → WARNING · 메인 칸도", vm.Word == "WARNING" && changed == 1
-                  && main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "3", vm.Word + " / " + main.Cards[0].VerdictCount);
-            JudgeRowVm last = vm.Rows[vm.Rows.Count - 1];
-            Check("허용된 줄은 회색 · 낱말 없음 · 이번만", last.Item == big && last.IsAllowed && last.Word.Length == 0
-                  && last.Grade == ScoreBands.GradeNone && last.AllowText == JudgeTexts.AllowedOnce, last.AllowText);
+            GroupIoVm spikeIo = null;
+            foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
+            main.ToggleIo(spikeIo.Key);
+            rest = null;
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
+            spikeIo = null;
+            foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
+            Check("IO 누르면 구간별 오차", spikeIo != null && spikeIo.IsExpanded && spikeIo.Items.Count == 1
+                  && spikeIo.Items[0].Text.Contains("12:00:40.1") && spikeIo.Items[0].IsOpen && spikeIo.Items[0].CanGraph
+                  && spikeIo.Items[0].CanAllowAlways, spikeIo != null && spikeIo.Items.Count > 0 ? spikeIo.Items[0].Text : "");
 
-            vm.Apply(spike, AllowChoice.Always);
-            Check("앞으로도 허용 → 규칙 하나 · 규칙 줄", st.Settings.AllowRules.Count == 1 && vm.Rules.Count == 1
-                  && spike.Allowed == AllowState.Rule && vm.Rules[0].Text.StartsWith("SPIKE"), vm.Rules.Count > 0 ? vm.Rules[0].Text : "");
+            JudgeItem spike = spikeIo.Items[0].Item;
+            main.Allow(spike, AllowChoice.Always);
+            Check("앞으로도 허용 → 규칙 하나 · WARNING 유지 · 메인 칸 3", st.Settings.AllowRules.Count == 1 && spike.Allowed == AllowState.Rule
+                  && main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "3" && changed == 1, main.Cards[0].VerdictCount);
+            rest = null;
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
+            spikeIo = null;
+            foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
+            Check("허용 뒤에도 펼친 채 · 허용됨 글 · 풀기 단추", rest.IsExpanded && spikeIo.IsExpanded && spikeIo.Items[0].IsAllowed
+                  && spikeIo.Items[0].Word == "허용됨 · 규칙" && spikeIo.Summary.StartsWith("허용됨") && rest.ChangedCount == 3, spikeIo.Summary);
 
-            vm.Apply(spike, AllowChoice.Unallow);
+            GroupIoVm bigIo = rest.Ios[0];
+            main.ToggleIo(bigIo.Key);
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
+            JudgeItem big = rest.Ios[0].Items[0].Item;
+            main.Allow(big, AllowChoice.Once);
+            Check("BIG 이번만 허용 → WARNING", main.Cards[0].ScoreText == "WARNING" && big.Allowed == AllowState.Once
+                  && main.Cards[0].VerdictCount == "2" && changed == 2, main.Cards[0].ScoreText);
+
+            main.Allow(spike, AllowChoice.Unallow);
             Check("허용 풀기 → 규칙도 지움", st.Settings.AllowRules.Count == 0 && spike.Allowed == AllowState.None, "");
 
-            vm.Apply(spike, AllowChoice.Always);
-            vm.RemoveRule(0);
-            Check("[지우기] 로 규칙 지움", st.Settings.AllowRules.Count == 0 && !spike.IsAllowed, "");
+            main.Allow(spike, AllowChoice.Always);
+            JudgeAllow.RemoveRule(st, 0);
+            Check("규칙 지우기 (설정 창이 부름)", st.Settings.AllowRules.Count == 0 && !spike.IsAllowed, "");
 
-            vm.Apply(spike, AllowChoice.Cancel);
+            main.Allow(spike, AllowChoice.Always);
+            var svm = new SettingsVm(st.Settings, null);
+            Check("설정 창 [허용한 오차] 에 한 줄", svm.AllowRules.Count == 1 && svm.HasAllowRules
+                  && svm.AllowRules[0].Text.StartsWith("SPIKE") && svm.AllowRules[0].Text.Contains("0.1초"),
+                  svm.AllowRules.Count > 0 ? svm.AllowRules[0].Text : "");
+            svm.RemoveAllowRule(svm.AllowRules[0]);
+            st.Regrade();
+            Check("설정 창에서 지우면 규칙 없음 · 판정 다시", st.Settings.AllowRules.Count == 0 && svm.NoAllowRules && !spike.IsAllowed, "");
+
+            main.Allow(spike, AllowChoice.Cancel);
             Check("취소는 아무것도 안 바꿈", changed == 5, changed.ToString());
+
+            main.ToggleGroup("묶지 않은 IO");
+            Check("다시 누르면 접힘", main.Cards[0].GroupsMaxHeight == 230, "");
 
             // 로그를 바꾸면 (창이 AllowOnce 를 비움) 다시 찾음
             st.AllowOnce.Clear();
@@ -4785,8 +4833,8 @@ namespace LogScope.Tests
             st.Recompare(null);
             Check("같은 로그끼리 → PASS", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Pass
                   && st.Judgement.Items.Count == 0, st.Judgement != null ? st.Judgement.Items.Count.ToString() : "없음");
-            vm.Refresh();
-            Check("오차 없음 글", vm.NoItems && vm.Rows.Count == 0, "");
+            main.Refresh();
+            Check("같은 로그끼리 → 메인 칸 PASS · 0", main.Cards[0].ScoreText == "PASS" && main.Cards[0].VerdictCount == "0", main.Cards[0].ScoreText);
         }
 
         /// <summary>정상 판정 — 상태(글자) IO 와 IO 가 없어짐 (1.56).</summary>

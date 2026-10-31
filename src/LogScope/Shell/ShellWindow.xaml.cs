@@ -58,6 +58,7 @@ namespace LogScope.Shell
             _vm.ScreenChanged += OnScreenChanged;
             Main.AnalysisOpened += OnAnalysisOpened;
             Main.GroupOpened += OnGroupOpened;
+            Main.GraphRequested += OnMainGraphRequested;
             Main.IoOpened += OnMainIoOpened;
             Main.LogPickRequested += OnMainLogPick;
             Main.DbPickRequested += OnMainDbPick;
@@ -107,7 +108,7 @@ namespace LogScope.Shell
             Db.Attach(_state);
             Db.PathsChanged += OnDbPathsChanged;
             Db.ResultChanged += OnDbResultChanged;
-            _vm.Judge.Changed += OnJudgeChanged;
+            _vm.Main.AllowChanged += OnAllowChanged;
 
             // 분석 3 은 갈아 끼우는 폴더라 그 안의 클래스를 직접 부르지 않고
             // Common/Analysis3Link 게시판으로만 주고받습니다 (1.29).
@@ -788,13 +789,12 @@ namespace LogScope.Shell
         /// 바뀔 때와 같은 방식입니다.
         /// </summary>
         /// <summary>
-        /// 오차 목록에서 허용을 바꿨을 때 (1.56). "앞으로도 허용" 은 설정에 있으므로 저장하고,
-        /// 메인 칸의 판정 · 개수를 다시 그립니다.
+        /// 메인 분석 1 칸에서 오차 허용을 바꿨을 때 (1.59). "앞으로도 허용" 은 설정에 있으므로 저장합니다.
+        /// 칸은 MainVm 이 이미 다시 그렸습니다.
         /// </summary>
-        private void OnJudgeChanged(object sender, EventArgs e)
+        private void OnAllowChanged(object sender, EventArgs e)
         {
             SaveSettings();
-            _vm.Main.Refresh();
         }
 
         private void OnDbResultChanged(object sender, EventArgs e)
@@ -945,6 +945,25 @@ namespace LogScope.Shell
             Graph.FocusOnGroup(e.GroupName, e.Members);
         }
 
+        /// <summary>
+        /// 메인 분석 1 칸에 펼친 IO · 오차 줄의 [그래프] (1.59). 그 IO 만 켜고, 오차 구간이면
+        /// 그 구간을 앞뒤로 넉넉히 (구간 길이만큼, 최소 2 초 · 시각 로그) 넓혀 보여 줍니다.
+        /// </summary>
+        private void OnMainGraphRequested(object sender, MainView.GraphEventArgs e)
+        {
+            if (!_state.HasBoth) return;
+            _vm.Screen = ShellVm.ScreenAnalysis1;
+            _vm.GoGraph();
+            Graph.FocusOnIo(e.Io);
+            if (double.IsNaN(e.Start) || double.IsNaN(e.End)) return;
+
+            double len = Math.Max(0, e.End - e.Start);
+            LogDataset ds = _state.TimeReference;
+            bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
+            double pad = Math.Max(len, clock ? 2000.0 : len * 0.5 + 1e-9);
+            Graph.SetTimeRange(e.Start - pad, e.End + pad);
+        }
+
         private void OnDashboardIoActivated(object sender, DashboardView.IoEventArgs e)
         {
             _vm.GoGraph();
@@ -1008,6 +1027,10 @@ namespace LogScope.Shell
             _vm.Graph.Reload();
             Graph.OnDataChanged();
             Graph.ApplyStep();
+
+            // [허용한 오차] 에서 지웠을 수 있습니다 (1.59) — 판정만 다시 (오차를 다시 찾지는 않음).
+            _state.Regrade();
+            _vm.Main.Refresh();
         }
 
         private void SaveSettings()
@@ -1043,7 +1066,6 @@ namespace LogScope.Shell
                 case Key.F1: _vm.GoDashboard(); e.Handled = true; break;
                 case Key.F2: _vm.GoGraph(); e.Handled = true; break;
                 case Key.F3: _vm.GoHeatmap(); e.Handled = true; break;
-                case Key.F4: _vm.GoJudge(); e.Handled = true; break;
                 case Key.Escape:
                     if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
                     break;

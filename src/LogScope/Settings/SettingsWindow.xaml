@@ -330,6 +330,34 @@
                 </StackPanel>
             </TabItem>
 
+            <!-- ===================== 허용한 오차 (1.59) =====================
+                 메인 분석 1 칸에서 [앞으로도 허용] 한 것. 보고 지우기만 — 더하는 것은 오차 줄에서. -->
+            <TabItem Header="{x:Static t:SettingsTexts.TabHeaderAllow}">
+                <DockPanel Margin="14">
+                    <TextBlock DockPanel.Dock="Top" Text="{x:Static t:SettingsTexts.AllowNote}" Style="{StaticResource Muted}"
+                               TextWrapping="Wrap" Margin="0,0,0,10" />
+                    <TextBlock DockPanel.Dock="Top" Text="{x:Static t:SettingsTexts.AllowEmpty}" Style="{StaticResource Muted}"
+                               Visibility="{Binding NoAllowRules, Converter={StaticResource BoolToVisibility}}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding AllowRules}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Margin="8,0,0,0" Content="{x:Static t:SettingsTexts.RemoveAllow}"
+                                                Click="OnRemoveAllowRule" Tag="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
             <!-- ===================== 정보 ===================== -->
             <TabItem Header="{x:Static t:SettingsTexts.TabHeader6}">
                 <StackPanel Margin="14">

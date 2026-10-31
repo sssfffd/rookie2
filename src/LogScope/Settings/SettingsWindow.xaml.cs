@@ -81,6 +81,13 @@ namespace LogScope.Settings
             _vm.AddTolerance();
         }
 
+        /// <summary>[허용한 오차] 의 [지우기] (1.59).</summary>
+        private void OnRemoveAllowRule(object sender, RoutedEventArgs e)
+        {
+            var b = sender as FrameworkElement;
+            if (b != null) _vm.RemoveAllowRule(b.Tag as AllowRuleRowVm);
+        }
+
         private void OnRemoveTolerance(object sender, RoutedEventArgs e)
         {
             var b = sender as FrameworkElement;

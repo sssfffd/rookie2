@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using LogScope.Analysis1.Judge;
 using LogScope.Common;
 
 namespace LogScope.Main
@@ -191,16 +192,46 @@ namespace LogScope.Main
         {
             get
             {
+                if (CountOverride.Length > 0) return CountOverride;
                 if (MemberCount == 0) return "IO 없음";
                 return ChangedCount.ToString("N0") + " / " + MemberCount.ToString("N0") + " 달라짐";
             }
         }
+
+        // ---- 판정으로 채우는 것 · 펼치기 (1.59) ----
+        //
+        // 메인 분석 1 칸에서 그룹을 누르면 IO 들이, IO 를 누르면 구간별 오차가 펼쳐지고,
+        // 오차 줄의 단추로 그 자리에서 허용합니다 (따로 뜨는 창 없음). MainVm 이 누를 때마다
+        // 그룹 목록을 새로 짓습니다 — 그래서 여기 값들은 지을 때 한 번 정해집니다.
+
+        /// <summary>판정이 정한 색. 비었으면 위 비율로.</summary>
+        public string GradeOverride = string.Empty;
+
+        /// <summary>개수 글을 바꿔 적을 때 (공정 단계 · 한쪽에만 있는 IO 줄).</summary>
+        public string CountOverride = string.Empty;
+
+        /// <summary>공정 단계 · 한쪽에만 있는 IO 처럼 그룹이 아닌 줄 (그래프 단추 없음, History 에 안 남김).</summary>
+        public bool IsPseudo;
+
+        /// <summary>펼칠 것이 있는지 (판정이 있어야 펼침).</summary>
+        public bool CanExpand;
+        public bool IsExpanded;
+
+        /// <summary>펼쳤을 때의 IO 줄들 (그룹) 또는 오차 줄들 (공정 단계 · 한쪽에만 있는 IO).</summary>
+        public List<GroupIoVm> Ios = new List<GroupIoVm>();
+        public List<ErrorRowVm> DirectItems = new List<ErrorRowVm>();
+
+        public bool ShowIos { get { return IsExpanded && Ios.Count > 0; } }
+        public bool ShowDirect { get { return IsExpanded && DirectItems.Count > 0; } }
+        public string ExpandGlyph { get { return !CanExpand ? string.Empty : IsExpanded ? "▾" : "▸"; } }
+        public bool CanGraph { get { return !IsPseudo && MemberCount > 0; } }
 
         /// <summary>색을 가르는 값. 하나도 안 달라졌으면 초록입니다.</summary>
         public string Grade
         {
             get
             {
+                if (GradeOverride.Length > 0) return GradeOverride;
                 if (MemberCount == 0) return ScoreBands.GradeNone;
                 if (ChangedCount == 0) return ScoreBands.GradeGood;
                 // 절반 넘게 어긋났으면 빨강. 몇 개만이면 노랑.
@@ -208,7 +239,7 @@ namespace LogScope.Main
             }
         }
 
-        public bool CanOpen { get { return MemberCount > 0; } }
+        public bool CanOpen { get { return MemberCount > 0 || CanExpand; } }
 
         // ---- 그룹 줄 아래: 어떤 차이가 났는지 --------------------------
         //
@@ -233,6 +264,72 @@ namespace LogScope.Main
         public void SetDetail(string text)
         {
             _detail = text ?? string.Empty;
+        }
+    }
+
+    /// <summary>메인 분석 1 칸에서 그룹을 펼쳤을 때의 IO 한 줄 (1.59).</summary>
+    public sealed class GroupIoVm
+    {
+        public string Group = string.Empty;
+        public string Name = string.Empty;
+
+        /// <summary>"오차 2 · 가장 긴 8분 3초 · 2 · 3" / "오차 없음" / "허용됨 2".</summary>
+        public string Summary = string.Empty;
+        public string Grade = ScoreBands.GradeNone;
+
+        public bool CanExpand;
+        public bool IsExpanded;
+        public List<ErrorRowVm> Items = new List<ErrorRowVm>();
+
+        public bool ShowItems { get { return IsExpanded && Items.Count > 0; } }
+        public string ExpandGlyph { get { return !CanExpand ? string.Empty : IsExpanded ? "▾" : "▸"; } }
+
+        /// <summary>단추 Tag 로 넘기는 열쇠 — "그룹\nIO".</summary>
+        public string Key { get { return Group + "\n" + Name; } }
+    }
+
+    /// <summary>메인 분석 1 칸에 펼친 오차 한 줄 (1.59) — 그 자리에서 허용 단추를 누릅니다.</summary>
+    public sealed class ErrorRowVm
+    {
+        public ErrorRowVm(JudgeItem item, string text)
+        {
+            Item = item;
+            Text = text ?? string.Empty;
+        }
+
+        public JudgeItem Item { get; private set; }
+
+        /// <summary>"2 단계 · 12:10:00 · 8분 3초 · 최대 3.1".</summary>
+        public string Text { get; private set; }
+
+        /// <summary>그 순간의 값 · 범위 · 이 단계 오차 비율.</summary>
+        public string Detail { get { return Item.Detail; } }
+
+        public bool IsAllowed { get { return Item.IsAllowed; } }
+        public bool IsOpen { get { return !Item.IsAllowed; } }
+        public bool CanAllowAlways { get { return !Item.IsAllowed && Item.CanAllowAlways; } }
+
+        /// <summary>그래프로 그 구간을 볼 수 있는지 (값 오차만).</summary>
+        public bool CanGraph { get { return Item.Kind == JudgeKind.Value && Item.Io.Length > 0; } }
+
+        /// <summary>왼쪽 낱말 — 허용됐으면 "허용됨".</summary>
+        public string Word
+        {
+            get
+            {
+                if (Item.Allowed == AllowState.Once) return "허용됨 · 이번만";
+                if (Item.Allowed == AllowState.Rule) return "허용됨 · 규칙";
+                return JudgeResult.WordOf(Item.Grade);
+            }
+        }
+
+        public string Grade
+        {
+            get
+            {
+                if (Item.IsAllowed) return ScoreBands.GradeNone;
+                return Item.Grade == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+            }
         }
     }
 
@@ -581,7 +678,20 @@ namespace LogScope.Main
         public void SetGroups(List<GroupSummaryVm> groups)
         {
             _groups = groups ?? new List<GroupSummaryVm>();
-            Raise("Groups"); Raise("HasGroups"); Raise("GroupNote");
+            Raise("Groups"); Raise("HasGroups"); Raise("GroupNote"); Raise("GroupsMaxHeight");
+        }
+
+        /// <summary>
+        /// 그룹 칸 높이 상한. 접혀 있으면 230 (여섯 줄 남짓), 하나라도 펼쳤으면 520 (1.59) —
+        /// IO · 오차 줄이 그 안에서 굴러갑니다.
+        /// </summary>
+        public double GroupsMaxHeight
+        {
+            get
+            {
+                for (int i = 0; i < _groups.Count; i++) if (_groups[i].IsExpanded) return 520.0;
+                return 230.0;
+            }
         }
 
         public bool HasGroups { get { return _groups.Count > 0; } }
@@ -658,6 +768,7 @@ namespace LogScope.Main
             for (int i = 0; i < _groups.Count; i++)
             {
                 GroupSummaryVm g = _groups[i];
+                if (g.IsPseudo) continue;   // 공정 단계 · 한쪽에만 있는 IO 줄은 그때의 판정 글이라 안 남김
                 var gs = new GroupSnapshot();
                 gs.Name = g.GroupName;
                 gs.Members = new List<string>(g.Members ?? new List<string>());

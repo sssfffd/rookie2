@@ -69,7 +69,7 @@ namespace LogScope.Main
                 JudgeResult judge = _state.Judgement;
                 if (judge != null)
                 {
-                    Cards[0].SetVerdict(judge.Word, JudgeVm.GradeOf(judge.Grade), string.Empty,
+                    Cards[0].SetVerdict(judge.Word, JudgeGradeOf(judge.Grade), string.Empty,
                                         judge.OpenCount.ToString("N0"));
                 }
                 else
@@ -364,16 +364,54 @@ namespace LogScope.Main
         /// <b>"묶지 않은 IO"</b> 라는 줄을 하나 더 붙입니다 — 그걸 빼 버리면
         /// 칸의 "달라진 IO 12개" 와 요약의 합이 안 맞아서, 어느 쪽이 틀린 건지
         /// 알 수가 없게 됩니다.
+        ///
+        /// 1.59: 판정이 있으면 <b>판정 기준</b>으로 셉니다 — 허용 안 된 값 오차가 있는 IO 가 "달라짐".
+        /// (그 전에는 대시보드와 같은 예전 비교 — 같은 시각끼리 한 점이라도 넘으면 — 였습니다.)
+        /// 그룹 · IO 를 누르면 펼쳐지고 (ToggleGroup · ToggleIo), 공정 단계 · 한쪽에만 있는 IO
+        /// 오차는 맨 위 줄 둘에 모입니다.
         /// </summary>
         private List<GroupSummaryVm> BuildGroups(CompareResult r)
         {
             var list = new List<GroupSummaryVm>();
             if (r == null) return list;
 
+            JudgeResult judge = _state.Judgement;
+
+            // IO 마다 판정 오차 (이름은 느슨한 열쇠로 — 그룹에 적힌 이름과 대소문자 · 밑줄이 달라도).
+            var byIo = new Dictionary<string, List<JudgeItem>>(StringComparer.Ordinal);
+            if (judge != null)
+            {
+                foreach (JudgeItem it in judge.Items)
+                {
+                    if (it.Kind != JudgeKind.Value) continue;
+                    string k = LogDataset.LooseKey(it.Io);
+                    List<JudgeItem> l;
+                    if (!byIo.TryGetValue(k, out l)) { l = new List<JudgeItem>(); byIo[k] = l; }
+                    l.Add(it);
+                }
+                AddPseudo(list, judge, "공정 단계", delegate (JudgeItem it)
+                {
+                    return it.Kind == JudgeKind.StepLength || it.Kind == JudgeKind.StepMissing
+                        || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder;
+                });
+                AddPseudo(list, judge, "한쪽에만 있는 IO", delegate (JudgeItem it)
+                {
+                    return it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
+                });
+            }
+
             // 달라진 IO 를 빨리 찾을 수 있게 이름을 모아 둡니다.
             var changed = new HashSet<string>(StringComparer.Ordinal);
-            for (int i = 0; i < r.Items.Count; i++)
-                if (r.Items[i].Changed) changed.Add(LogDataset.LooseKey(r.Items[i].Name));
+            if (judge != null)
+            {
+                foreach (KeyValuePair<string, List<JudgeItem>> kv in byIo)
+                    if (OpenCount(kv.Value) > 0) changed.Add(kv.Key);
+            }
+            else
+            {
+                for (int i = 0; i < r.Items.Count; i++)
+                    if (r.Items[i].Changed) changed.Add(LogDataset.LooseKey(r.Items[i].Name));
+            }
 
             // 견준 IO 전체. 그룹에 안 담긴 것을 가려내는 데 씁니다.
             var rest = new HashSet<string>(StringComparer.Ordinal);
@@ -400,7 +438,7 @@ namespace LogScope.Main
                     rest.Remove(key);
                 }
 
-                list.Add(new GroupSummaryVm(def.Name, members, members.Count, changedHere));
+                list.Add(GroupRow(def.Name, members, changedHere, judge, byIo));
             }
 
             // 어느 그룹에도 안 담긴 IO. 하나라도 남으면 줄을 붙입니다.
@@ -415,10 +453,197 @@ namespace LogScope.Main
                     left.Add(restNames[i]);
                     if (changed.Contains(key)) changedLeft++;
                 }
-                list.Add(new GroupSummaryVm("묶지 않은 IO", left, left.Count, changedLeft));
+                list.Add(GroupRow("묶지 않은 IO", left, changedLeft, judge, byIo));
             }
 
             return list;
+        }
+
+        /// <summary>그룹 한 줄 — 판정이 있으면 색 · 아래 글 · 펼친 IO 줄까지.</summary>
+        private GroupSummaryVm GroupRow(string name, List<string> members, int changedHere,
+                                        JudgeResult judge, Dictionary<string, List<JudgeItem>> byIo)
+        {
+            var g = new GroupSummaryVm(name, members, members.Count, changedHere);
+            if (judge == null) return g;
+
+            g.CanExpand = members.Count > 0;
+            g.IsExpanded = g.CanExpand && _openGroups.Contains(name);
+
+            // 색: 그룹 안 IO 의 허용 안 된 오차 중 가장 나쁜 것
+            JudgeGrade worst = JudgeGrade.Pass;
+            bool anyOpen = false;
+            JudgeItem longest = null;
+            var ios = new List<GroupIoVm>();
+            for (int m = 0; m < members.Count; m++)
+            {
+                List<JudgeItem> items;
+                byIo.TryGetValue(LogDataset.LooseKey(members[m]), out items);
+                GroupIoVm io = IoRow(name, members[m], items);
+                ios.Add(io);
+                if (items == null) continue;
+                foreach (JudgeItem it in items)
+                {
+                    if (it.IsAllowed) continue;
+                    anyOpen = true;
+                    if (it.Grade > worst) worst = it.Grade;
+                    if (longest == null || it.Duration > longest.Duration) longest = it;
+                }
+            }
+            g.GradeOverride = members.Count == 0 ? ScoreBands.GradeNone
+                            : !anyOpen ? ScoreBands.GradeGood
+                            : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+
+            // 그룹 이름 아래 글 (1.06 부터 "미구현" 으로 비워 둔 자리) — 가장 긴 오차 하나.
+            g.SetDetail(longest == null ? (members.Count > 0 ? "오차 없음" : string.Empty)
+                : "가장 긴 오차: " + longest.Io + " · " + JudgeEngine.DurationText(longest.Duration, judge.Clock, judge.TimeUnit)
+                  + (longest.Step.Length > 0 ? " · " + longest.Step : string.Empty));
+
+            if (g.IsExpanded)
+            {
+                // 오차 있는 IO 먼저 (나쁜 것 → 긴 것), 오차 없는 IO 는 뒤에
+                ios.Sort(delegate (GroupIoVm a, GroupIoVm b)
+                {
+                    int c = Rank(b.Grade).CompareTo(Rank(a.Grade));
+                    return c != 0 ? c : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                });
+                if (ios.Count > MaxIoRows) ios.RemoveRange(MaxIoRows, ios.Count - MaxIoRows);
+                g.Ios = ios;
+            }
+            return g;
+        }
+
+        /// <summary>펼친 그룹 하나에 싣는 IO 줄 상한.</summary>
+        private const int MaxIoRows = 300;
+
+        /// <summary>판정 → 칸 색.</summary>
+        public static string JudgeGradeOf(JudgeGrade g)
+        {
+            return g == JudgeGrade.Fail ? ScoreBands.GradeBad
+                 : g == JudgeGrade.Warning ? ScoreBands.GradeWarn
+                 : ScoreBands.GradeGood;
+        }
+
+        private static int Rank(string grade)
+        {
+            return grade == ScoreBands.GradeBad ? 3 : grade == ScoreBands.GradeWarn ? 2 : grade == ScoreBands.GradeGood ? 1 : 0;
+        }
+
+        private GroupIoVm IoRow(string group, string name, List<JudgeItem> items)
+        {
+            var io = new GroupIoVm();
+            io.Group = group;
+            io.Name = name;
+            JudgeResult judge = _state.Judgement;
+            if (items == null || items.Count == 0)
+            {
+                io.Summary = "오차 없음";
+                io.Grade = ScoreBands.GradeGood;
+                return io;
+            }
+
+            int open = OpenCount(items);
+            JudgeGrade worst = JudgeGrade.Pass;
+            double longest = 0;
+            var steps = new List<string>();
+            foreach (JudgeItem it in items)
+            {
+                if (it.IsAllowed) continue;
+                if (it.Grade > worst) worst = it.Grade;
+                if (it.Duration > longest) longest = it.Duration;
+                if (it.Step.Length > 0 && !steps.Contains(it.Step)) steps.Add(it.Step);
+            }
+            io.Summary = open == 0
+                ? "허용됨 " + items.Count.ToString("N0")
+                : "오차 " + open.ToString("N0")
+                  + " · 가장 긴 " + JudgeEngine.DurationText(longest, judge.Clock, judge.TimeUnit)
+                  + (steps.Count > 0 ? " · " + string.Join(" · ", steps.ToArray()) : string.Empty)
+                  + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
+            io.Grade = open == 0 ? ScoreBands.GradeGood
+                     : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+            io.CanExpand = true;
+            io.IsExpanded = _openIos.Contains(io.Key);
+            if (io.IsExpanded)
+            {
+                var sorted = new List<JudgeItem>(items);
+                sorted.Sort(delegate (JudgeItem a, JudgeItem b) { return a.Start.CompareTo(b.Start); });
+                foreach (JudgeItem it in sorted) io.Items.Add(new ErrorRowVm(it, ItemText(it)));
+            }
+            return io;
+        }
+
+        /// <summary>공정 단계 · 한쪽에만 있는 IO — 그룹이 아닌 줄. 오차가 있을 때만.</summary>
+        private void AddPseudo(List<GroupSummaryVm> list, JudgeResult judge, string name, Predicate<JudgeItem> pick)
+        {
+            var items = new List<JudgeItem>();
+            foreach (JudgeItem it in judge.Items) if (pick(it)) items.Add(it);
+            if (items.Count == 0) return;
+
+            int open = OpenCount(items);
+            JudgeGrade worst = JudgeGrade.Pass;
+            foreach (JudgeItem it in items) if (!it.IsAllowed && it.Grade > worst) worst = it.Grade;
+
+            var g = new GroupSummaryVm(name, new List<string>(), 0, 0);
+            g.IsPseudo = true;
+            g.CanExpand = true;
+            g.IsExpanded = _openGroups.Contains(name);
+            g.CountOverride = "오차 " + open.ToString("N0") + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
+            g.GradeOverride = open == 0 ? ScoreBands.GradeGood
+                            : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+            g.SetDetail(items[0].What);
+            if (g.IsExpanded)
+                foreach (JudgeItem it in items) g.DirectItems.Add(new ErrorRowVm(it, it.What));
+            list.Add(g);
+        }
+
+        private static int OpenCount(List<JudgeItem> items)
+        {
+            int n = 0;
+            foreach (JudgeItem it in items) if (!it.IsAllowed) n++;
+            return n;
+        }
+
+        /// <summary>오차 줄 글 — "2 단계 · 12:10:00 · 8분 3초 · 최대 3.1".</summary>
+        private string ItemText(JudgeItem it)
+        {
+            JudgeResult judge = _state.Judgement;
+            string at = _state.Before != null ? _state.Before.FormatTime(it.Start) : NumberText.Plain(it.Start);
+            return (it.Step.Length > 0 ? it.Step + " · " : string.Empty)
+                 + at + " · " + JudgeEngine.DurationText(it.Duration, judge != null && judge.Clock, judge != null ? judge.TimeUnit : string.Empty)
+                 + " · 최대 " + NumberText.Plain(it.MaxExcess);
+        }
+
+        // ---------------- 펼치기 · 허용 (1.59) ----------------
+
+        private readonly HashSet<string> _openGroups = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _openIos = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>오차 허용을 바꿨을 때 — 창이 설정을 저장합니다 ("앞으로도 허용" 은 설정에 있음).</summary>
+        public event EventHandler AllowChanged;
+
+        /// <summary>그룹 줄을 눌렀을 때 — IO 들을 펼치거나 접습니다. History 를 펼쳐 보는 중이면 그대로.</summary>
+        public void ToggleGroup(string name)
+        {
+            if (IsViewingHistory || string.IsNullOrEmpty(name) || _state.Judgement == null) return;
+            if (!_openGroups.Remove(name)) _openGroups.Add(name);
+            Cards[0].SetGroups(BuildGroups(_state.Comparison));
+        }
+
+        /// <summary>IO 줄을 눌렀을 때 — 그 IO 의 구간별 오차를 펼치거나 접습니다.</summary>
+        public void ToggleIo(string key)
+        {
+            if (IsViewingHistory || string.IsNullOrEmpty(key) || _state.Judgement == null) return;
+            if (!_openIos.Remove(key)) _openIos.Add(key);
+            Cards[0].SetGroups(BuildGroups(_state.Comparison));
+        }
+
+        /// <summary>오차 줄의 [이번만 허용] · [앞으로도 허용] · [허용 풀기].</summary>
+        public void Allow(JudgeItem item, AllowChoice choice)
+        {
+            if (IsViewingHistory) return;
+            if (!JudgeAllow.Apply(_state, item, choice)) return;
+            Refresh();
+            EventHandler h = AllowChanged;
+            if (h != null) h(this, EventArgs.Empty);
         }
 
         // ---------------- 지금 열어 둔 로그 ----------------

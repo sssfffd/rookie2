@@ -171,19 +171,6 @@
         </Setter>
     </Style>
 
-    <!--
-      분석 1 안의 화면 고르기 · 할 일 단추 — 위와 같고 옆 여백만 좁게 (1.58).
-      [오차 목록] 이 더해지면서 메뉴 줄이 두 줄로 넘어가서, 글자는 그대로 두고 여백을 줄였습니다.
-    -->
-    <Style x:Key="SubNavButton" TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource NavButton}">
-        <Setter Property="Padding" Value="9,5" />
-        <Setter Property="Margin" Value="2,3" />
-    </Style>
-    <Style x:Key="SubTopBarButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopBarButton}">
-        <Setter Property="Padding" Value="8,5" />
-        <Setter Property="Margin" Value="2,3" />
-    </Style>
-
     <!-- 켜기/끄기 버튼 (도구 줄) -->
     <Style x:Key="ToolToggle" TargetType="{x:Type ToggleButton}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />

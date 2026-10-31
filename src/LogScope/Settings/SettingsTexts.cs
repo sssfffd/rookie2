@@ -109,7 +109,7 @@ namespace LogScope.Settings
         /// <summary>단추 이름</summary>
         public const string AddTolerance = "IO 추가";
         /// <summary>글</summary>
-        public const string Note8 = "오차는 그 순간의 값끼리 견줍니다.\n\n    오차(%) = |이후 − 이전| / |이전| x 100\n\n위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,\n히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.\n어느 채널이든 같은 잣대입니다.\n\n이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).\n0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면\n절대 오차를 함께 걸어 두세요.\n\n이 값은 대시보드 · 그래프 차이 영역 표시 · 히트맵이 모두 함께 씁니다.\n여기서 바꾼 값은 위 메뉴의 [다시 비교] 를 눌러야 반영됩니다.";
+        public const string Note8 = "오차는 그 순간의 값끼리 견줍니다.\n\n    오차(%) = |이후 − 이전| / |이전| x 100\n\n위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,\n히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.\n어느 채널이든 같은 잣대입니다.\n\n이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).\n0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면\n절대 오차를 함께 걸어 두세요.\n\n이 값은 대시보드 · 그래프 차이 영역 표시 · 히트맵이 모두 함께 씁니다.\n여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다.";
 
         // ---- DB 도구 ----
 
@@ -138,6 +138,17 @@ namespace LogScope.Settings
 
         /// <summary>탭 이름</summary>
         public const string TabHeaderLlm = "LLM 서버";
+
+        // ---- 허용한 오차 (1.59) ----
+
+        /// <summary>탭 이름</summary>
+        public const string TabHeaderAllow = "허용한 오차";
+        /// <summary>설명</summary>
+        public const string AllowNote = "메인 화면 분석 1 칸의 오차 줄에서 [앞으로도 허용] 을 누른 것입니다.\n같은 IO · 같은 단계에서 적힌 크기(길이 · 벗어난 값)까지는 판정에서 빠집니다. 더 크면 다시 오차로 뜹니다.\n지우면 창을 닫을 때 판정을 다시 냅니다.";
+        /// <summary>없을 때</summary>
+        public const string AllowEmpty = "아직 없습니다.";
+        /// <summary>단추 이름</summary>
+        public const string RemoveAllow = "지우기";
         /// <summary>칸 이름</summary>
         public const string LlmServerLabel = "서버 주소";
         /// <summary>단추 이름</summary>

@@ -5,7 +5,6 @@
         xmlns:dash="clr-namespace:LogScope.Analysis1.Dashboard"
         xmlns:graph="clr-namespace:LogScope.Analysis1.Graph"
         xmlns:heat="clr-namespace:LogScope.Analysis1.Heatmap"
-        xmlns:judge="clr-namespace:LogScope.Analysis1.Judge"
         xmlns:main="clr-namespace:LogScope.Main"
         xmlns:t="clr-namespace:LogScope.Shell"
         xmlns:common="clr-namespace:LogScope.Common"
@@ -130,28 +129,24 @@
                       있습니다. 다른 화면에서도 보이면 눌러 놓고 왜 안 바뀌나
                       하게 됩니다.
                     -->
-                    <RadioButton GroupName="nav" Style="{StaticResource SubNavButton}" Content="{x:Static t:ShellTexts.ShowDashboard}"
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowDashboard}"
                                  IsChecked="{Binding ShowDashboard, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                                  ToolTip="{x:Static t:ShellTexts.ShowDashboardTip}" />
-                    <RadioButton GroupName="nav" Style="{StaticResource SubNavButton}" Content="{x:Static t:ShellTexts.ShowGraph}"
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowGraph}"
                                  IsChecked="{Binding ShowGraph, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                                  ToolTip="{x:Static t:ShellTexts.ShowGraphTip}" />
-                    <RadioButton GroupName="nav" Style="{StaticResource SubNavButton}" Content="{x:Static t:ShellTexts.ShowHeatmap}"
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowHeatmap}"
                                  IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                                  ToolTip="{x:Static t:ShellTexts.ShowHeatmapTip}" />
-                    <RadioButton GroupName="nav" Style="{StaticResource SubNavButton}" Content="{x:Static t:ShellTexts.ShowJudge}"
-                                 IsChecked="{Binding ShowJudge, Mode=TwoWay}"
-                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
-                                 ToolTip="{x:Static t:ShellTexts.ShowJudgeTip}" />
 
-                    <Button Style="{StaticResource SubTopBarButton}" Content="{x:Static t:ShellTexts.OpenBefore}"
-                            Click="OnOpenBefore" Margin="8,3,2,3" ToolTip="{x:Static t:ShellTexts.OpenBeforeTip}"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.OpenBefore}"
+                            Click="OnOpenBefore" Margin="10,3,3,3"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
-                    <Button Style="{StaticResource SubTopBarButton}" Content="{x:Static t:ShellTexts.OpenAfter}"
-                            Click="OnOpenAfter" ToolTip="{x:Static t:ShellTexts.OpenAfterTip}"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.OpenAfter}"
+                            Click="OnOpenAfter"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
                     <!--
                       [다시 읽기] 를 없애고 이것만 남겼습니다. 둘이 하는 일이
@@ -160,12 +155,12 @@
                       놓으면 되고, 허용 오차를 고친 뒤에 눌러야 하는 것은
                       이쪽입니다.
                     -->
-                    <Button Style="{StaticResource SubTopBarButton}" Content="{x:Static t:ShellTexts.Recompare}"
+                    <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.Recompare}"
                             Click="OnRecompare" ToolTip="{x:Static t:ShellTexts.RecompareTip}"
                             Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}" />
 
                     <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.Settings}"
-                            Click="OnSettings" Margin="8,3,3,3" />
+                            Click="OnSettings" Margin="10,3,3,3" />
                 </WrapPanel>
 
             </Grid>
@@ -200,12 +195,6 @@
 
                 <heat:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
                                Visibility="{Binding DataContext.ShowHeatmap,
-                                            RelativeSource={RelativeSource AncestorType=Window},
-                                            Converter={StaticResource BoolToVisibility}}" />
-
-                <!-- 오차 목록 (1.56) — 정상 판정과 허용 -->
-                <judge:JudgeView x:Name="Judge" DataContext="{Binding Judge}"
-                               Visibility="{Binding DataContext.ShowJudge,
                                             RelativeSource={RelativeSource AncestorType=Window},
                                             Converter={StaticResource BoolToVisibility}}" />
             </Grid>

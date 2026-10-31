@@ -3,6 +3,7 @@ using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LogScope.Analysis1.Judge;
 using LogScope.Common;
 
 namespace LogScope.Main
@@ -295,8 +296,8 @@ namespace LogScope.Main
         }
 
         /// <summary>
-        /// 요약의 그룹 줄. 그 그룹의 IO 만 히트맵에 남기고 그리로 넘어갑니다.
-        /// 어디로 어떻게 넘어갈지는 창(ShellWindow)이 정합니다.
+        /// 요약의 그룹 줄 (1.59 부터). 판정이 있으면 그 자리에서 IO 들을 펼치고 접습니다.
+        /// 판정이 없으면 (History 를 펼쳐 보는 중 등) 예전처럼 그래프로 넘어갑니다.
         /// </summary>
         private void OnGroupClick(object sender, RoutedEventArgs e)
         {
@@ -312,8 +313,87 @@ namespace LogScope.Main
             GroupSummaryVm g = vm.FindGroup(name);
             if (g == null || !g.CanOpen) return;
 
+            if (g.CanExpand && !vm.IsViewingHistory) { vm.ToggleGroup(name); return; }
+            RaiseGroupOpened(g);
+        }
+
+        /// <summary>그룹 줄 오른쪽 [그래프] — 그 그룹의 IO 만 켜고 그래프로 (1.58 까지 줄을 누르면 하던 일).</summary>
+        private void OnGroupGraph(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var vm = DataContext as MainVm;
+            var b = sender as Button;
+            if (vm == null || b == null) return;
+            GroupSummaryVm g = vm.FindGroup(b.Tag as string);
+            if (g != null && g.MemberCount > 0) RaiseGroupOpened(g);
+        }
+
+        private void RaiseGroupOpened(GroupSummaryVm g)
+        {
             EventHandler<GroupEventArgs> h = GroupOpened;
             if (h != null) h(this, new GroupEventArgs(g.GroupName, g.Members));
+        }
+
+        // ---- 분석 1 칸 펼치기 · 허용 (1.59) ----
+
+        /// <summary>IO · 오차 구간을 그래프로 보고 싶을 때. Start · End 가 NaN 이면 IO 만.</summary>
+        public event EventHandler<GraphEventArgs> GraphRequested;
+
+        public sealed class GraphEventArgs : EventArgs
+        {
+            public readonly string Io;
+            public readonly double Start;
+            public readonly double End;
+
+            public GraphEventArgs(string io, double start, double end) { Io = io ?? string.Empty; Start = start; End = end; }
+        }
+
+        private void RaiseGraph(string io, double start, double end)
+        {
+            if (string.IsNullOrEmpty(io)) return;
+            EventHandler<GraphEventArgs> h = GraphRequested;
+            if (h != null) h(this, new GraphEventArgs(io, start, end));
+        }
+
+        private void OnIoToggle(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var vm = DataContext as MainVm;
+            var b = sender as FrameworkElement;
+            if (vm != null && b != null) vm.ToggleIo(b.Tag as string);
+        }
+
+        private void OnIoGraph(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var b = sender as FrameworkElement;
+            if (b != null) RaiseGraph(b.Tag as string, double.NaN, double.NaN);
+        }
+
+        /// <summary>오차 줄의 단추 — 어느 오차인지는 줄의 DataContext(ErrorRowVm)로 압니다.</summary>
+        private static ErrorRowVm RowOf(object sender)
+        {
+            var b = sender as FrameworkElement;
+            return b != null ? b.DataContext as ErrorRowVm : null;
+        }
+
+        private void OnErrorGraph(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            ErrorRowVm row = RowOf(sender);
+            if (row != null) RaiseGraph(row.Item.Io, row.Item.Start, row.Item.End);
+        }
+
+        private void OnAllowOnce(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Once); }
+        private void OnAllowAlways(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Always); }
+        private void OnUnallow(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Unallow); }
+
+        private void Allow(object sender, RoutedEventArgs e, AllowChoice choice)
+        {
+            e.Handled = true;
+            var vm = DataContext as MainVm;
+            ErrorRowVm row = RowOf(sender);
+            if (vm != null && row != null) vm.Allow(row.Item, choice);
         }
 
         /// <summary>

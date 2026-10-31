@@ -82,7 +82,32 @@ namespace LogScope.Main
         /// <summary>단추 마우스를 올리면 뜨는 설명 — 분석 3 칸의 요약 줄 (1.40)</summary>
         public const string CardA3LineTip = "분석 3 화면으로 넘어갑니다.";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string GroupClickTip = "이 그룹의 IO 만 히트맵에서 봅니다.";
+        public const string GroupClickTip = "누르면 이 그룹의 IO 를 펼칩니다 (다시 누르면 접음). IO 를 누르면 구간별 오차가 나옵니다.";
+
+        // ---- 분석 1 칸 펼치기 · 허용 (1.59) ----
+
+        /// <summary>단추 이름 — 그룹 · IO · 오차 줄 오른쪽</summary>
+        public const string ShowGraph = "그래프";
+        /// <summary>단추 설명</summary>
+        public const string GroupGraphTip = "이 그룹의 IO 만 켜고 그래프로 갑니다.";
+        /// <summary>단추 설명</summary>
+        public const string IoGraphTip = "이 IO 만 켜고 그래프로 갑니다.";
+        /// <summary>단추 설명</summary>
+        public const string ErrorGraphTip = "이 오차 구간을 그래프로 봅니다.";
+        /// <summary>IO 줄 설명</summary>
+        public const string IoClickTip = "누르면 이 IO 의 구간별 오차를 펼칩니다 (다시 누르면 접음).";
+        /// <summary>단추 이름</summary>
+        public const string AllowOnce = "이번만 허용";
+        /// <summary>단추 설명</summary>
+        public const string AllowOnceTip = "이 로그 짝에서만 이 오차를 판정에서 뺍니다. 로그를 바꾸면 풀립니다.";
+        /// <summary>단추 이름</summary>
+        public const string AllowAlways = "앞으로도 허용";
+        /// <summary>단추 설명</summary>
+        public const string AllowAlwaysTip = "같은 IO · 같은 단계에서 이번에 본 크기(길이 · 벗어난 값)까지는 다음 비교에서도 저절로 허용합니다. 더 크면 다시 오차로 뜹니다. 설정 창 [허용한 오차] 에서 지웁니다.";
+        /// <summary>단추 이름</summary>
+        public const string Unallow = "허용 풀기";
+        /// <summary>단추 설명</summary>
+        public const string UnallowTip = "다시 오차로 셉니다. 이 오차를 덮는 \"앞으로도 허용\" 도 지웁니다.";
 
         // ---- 저장된 분석 ----
 
