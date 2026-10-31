@@ -107,6 +107,7 @@ namespace LogScope.Shell
             Db.Attach(_state);
             Db.PathsChanged += OnDbPathsChanged;
             Db.ResultChanged += OnDbResultChanged;
+            _vm.Judge.Changed += OnJudgeChanged;
 
             // 분석 3 은 갈아 끼우는 폴더라 그 안의 클래스를 직접 부르지 않고
             // Common/Analysis3Link 게시판으로만 주고받습니다 (1.29).
@@ -227,6 +228,8 @@ namespace LogScope.Shell
             // 그래프가 움직입니다.
             _state.ForgetSteps();
             _state.StepPick = -1;
+            // "이번만 허용" 은 그 로그 짝에서만 (1.56).
+            _state.AllowOnce.Clear();
 
             LogSet set = _state.Settings.ActiveLogSet;
             if (before) { _state.Before = ds; _state.BeforePath = path; set.BeforePath = path; }
@@ -784,6 +787,16 @@ namespace LogScope.Shell
         /// 뷰모델이 상태를 직접 만지지 않고 창이 옮기는 것은 자리가
         /// 바뀔 때와 같은 방식입니다.
         /// </summary>
+        /// <summary>
+        /// 오차 목록에서 허용을 바꿨을 때 (1.56). "앞으로도 허용" 은 설정에 있으므로 저장하고,
+        /// 메인 칸의 판정 · 개수를 다시 그립니다.
+        /// </summary>
+        private void OnJudgeChanged(object sender, EventArgs e)
+        {
+            SaveSettings();
+            _vm.Main.Refresh();
+        }
+
         private void OnDbResultChanged(object sender, EventArgs e)
         {
             // 읽고 견줬으면 메인 칸의 "분석 대기" 를 지웁니다 (1.53). 못 읽었으면 남깁니다.
@@ -1030,6 +1043,7 @@ namespace LogScope.Shell
                 case Key.F1: _vm.GoDashboard(); e.Handled = true; break;
                 case Key.F2: _vm.GoGraph(); e.Handled = true; break;
                 case Key.F3: _vm.GoHeatmap(); e.Handled = true; break;
+                case Key.F4: _vm.GoJudge(); e.Handled = true; break;
                 case Key.Escape:
                     if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
                     break;

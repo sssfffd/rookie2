@@ -133,6 +133,7 @@ namespace System.Windows
         public double ActualWidth { get { return 0; } }
         public double ActualHeight { get { return 0; } }
         public double Width, Height, MinWidth, MinHeight, MaxWidth, MaxHeight;
+        public double Opacity;
         public Thickness Margin;
         public bool Focusable, IsEnabled, IsLoaded, IsVisible, ClipToBounds, SnapsToDevicePixels;
         public object Tag, DataContext, ToolTip, Style, Cursor;
@@ -189,6 +190,9 @@ namespace System.Windows
         public bool ShowInTaskbar, Topmost;
         public bool? DialogResult;
         public object Content, Icon;
+        public System.Windows.Media.Brush Background, Foreground;
+        public System.Windows.Media.FontFamily FontFamily;
+        public double FontSize;
         public double Left, Top;
         public event EventHandler Activated;
         public event EventHandler Closed;

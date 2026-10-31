@@ -338,7 +338,9 @@ namespace LogScope.Main
         /// </summary>
         public bool UsesVerdict
         {
-            get { return Number == 2 || (_scoreOptional && !_has); }
+            // 1.56: 분석 1 도 판정 칸 (점수 100 고정을 정상 판정으로 바꿈). 점수가 들어 있으면
+            // 점수 칸 — 1.55 까지 저장한 History 를 펼치면 그때의 점수가 그대로 보이게.
+            get { return Number == 2 || ((_scoreOptional || Number == 1) && !_has); }
         }
 
         public AnalysisCardVm(int number, string title, string summary, bool ready)

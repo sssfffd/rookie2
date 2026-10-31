@@ -23,7 +23,8 @@ namespace System.Windows.Controls
     public class Panel : FrameworkElement { public UIElementCollection Children = new UIElementCollection(); public Brush Background; }
     public class UIElementCollection : List<FrameworkElement> { }
     public class Grid : Panel { }
-    public class StackPanel : Panel { }
+    public enum Orientation { Horizontal, Vertical }
+    public class StackPanel : Panel { public Orientation Orientation; }
     public class WrapPanel : Panel { }
     public class DockPanel : Panel { }
     public class Canvas : Panel { }
@@ -42,6 +43,7 @@ namespace System.Windows.Controls
         public string Text;
         public Brush Foreground, Background;
         public double FontSize;
+        public FontWeight FontWeight;
         public TextWrapping TextWrapping;
         public TextTrimming TextTrimming;
     }
@@ -53,7 +55,7 @@ namespace System.Windows.Controls
         public event EventHandler TextChanged;
         public void SelectAll() { }
     }
-    public class Button : ContentControl { public event RoutedEventHandler Click; }
+    public class Button : ContentControl { public bool IsDefault, IsCancel; public event RoutedEventHandler Click; }
     public class ScrollBar : Control
     {
         public double Minimum, Maximum, Value, ViewportSize, SmallChange, LargeChange;

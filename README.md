@@ -3,7 +3,7 @@
 엑셀(.xlsx) / CSV 로 뽑은 IO 로그를 열어 그래프로 보고, 개조 전/후 로그 두 개를
 견주는 윈도우 데스크톱 프로그램입니다.
 
-화면은 셋입니다. 위 메뉴에서 오갑니다 (**F1 / F2 / F3**).
+분석 1 화면은 넷입니다. 위 메뉴에서 오갑니다 (**F1 / F2 / F3 / F4**).
 
 - **대시보드** — 켜면 먼저 나옵니다. 이전/이후를 견준 요약 네모 칸과
   차이가 난 IO 목록. 목록에서 IO 를 누르면 그 IO 만 켜진 채로 그래프로 넘어갑니다.
@@ -11,6 +11,10 @@
 - **히트맵** — 시간을 1 분씩 잘라 "어느 IO 가 어느 시간대에 벌어졌는지" 를
   한눈에. 칸을 누르면 그 IO 와 그 시간대로 그래프가 열립니다. 줄은 **그래프와
   같은 그룹**으로 나뉘고, IO 이름 칸 바로 위의 검색 칸으로 찾습니다 (1.07, 1.10).
+- **오차 목록** (1.56) — 정상 판정(PASS · WARNING · FAIL)과 그 근거인 오차들. 오차를
+  누르면 "허용 안 함 · 이번만 허용 · 앞으로도 허용(본 크기까지)" 을 고릅니다. 허용한 오차는
+  판정에서 빠지고, 메인 화면 분석 1 칸의 낱말과 개수도 따라 바뀝니다.
+  판정 기준은 `docs/ANALYSIS1-JUDGEMENT-GUIDE.md` (입문자용 설명).
 
 ---
 
@@ -274,7 +278,7 @@ out\LogScope.exe
   **로그 열기는 분석 1 에서만** 보입니다. 메인 화면에는 이전/이후 칸이 있어
   거기에 끌어다 놓으면 되고, 분석 2·3 에는 아직 아무것도 없습니다.
   **[설정]** 만 어느 화면에서든 보입니다.
-- `F1` `F2` `F3` 은 어디에 있든 분석 1 의 대시보드 / 그래프 / 히트맵으로
+- `F1` `F2` `F3` `F4` 는 어디에 있든 분석 1 의 대시보드 / 그래프 / 히트맵 / 오차 목록으로
   데려갑니다. `Esc` 는 메인으로 돌아갑니다.
 
 아래 설명은 대부분 **분석 1** 이야기입니다.
@@ -368,6 +372,7 @@ src/LogScope/                      프로그램 (LogScope.exe) — 이것 하나
     Dashboard/           대시보드 화면
     Graph/               그래프 화면 — IO 목록 · 그룹 · 정렬(단계) · 그래프 그리기(GraphCanvas · Decimator …)
     Heatmap/             히트맵 화면 — 칸 세기(HeatmapBuilder · HeatBuckets …) 까지
+    Judge/               오차 목록 화면 — 정상 판정(JudgeEngine) · 허용 고르는 창(AllowPrompt) (1.56)
     Align/               시간 맞추기 판 — 맞추는 계산(TriggerAlign) 까지
     LogFile/             분석 1 화면들이 같이 쓰는 것: 로그 파일 읽기 · 자료(LogDataset · Channel · 단계)
     Compare/             분석 1 화면들이 같이 쓰는 것: 두 로그 견주기(DiffEngine) · 단계 짝(StepPairs)
@@ -598,7 +603,7 @@ git 이 PATH 에 없으면 이 줄들은 그냥 나오지 않습니다.
 |---|---|
 | 메인 · 저장된 분석 창 | `Main/MainTexts.cs` · `Main/SavedTexts.cs` |
 | 맨 위 메뉴 줄 | `Shell/ShellTexts.cs` |
-| 분석 1 대시보드 · 그래프 · 히트맵 · 시간 맞추기 판 | `Analysis1/Dashboard/DashboardTexts.cs` · `Analysis1/Graph/GraphTexts.cs` · `Analysis1/Heatmap/HeatmapTexts.cs` · `Analysis1/Align/AlignTexts.cs` |
+| 분석 1 대시보드 · 그래프 · 히트맵 · 오차 목록 · 시간 맞추기 판 | `Analysis1/Dashboard/DashboardTexts.cs` · `Analysis1/Graph/GraphTexts.cs` · `Analysis1/Heatmap/HeatmapTexts.cs` · `Analysis1/Judge/JudgeTexts.cs` · `Analysis1/Align/AlignTexts.cs` |
 | 분석 2 | `Analysis2/DbTexts.cs` |
 | 설정 창 · 작은 창들 | `Settings/SettingsTexts.cs` · `Common/CommonTexts.cs` |
 
@@ -1935,7 +1940,7 @@ IO 를 가리킵니다** — 모두 파랑·빨강으로 그리면 어느 선이
 | 커서 지우기 (A · B 둘 다) | **Delete** (그래프를 한 번 누른 뒤) |
 | 전체 구간 | **Home** 또는 `Time Scale` 의 [초기화] |
 | 값 배율 되돌리기 | `Value Scale` 의 [초기화] |
-| 화면 전환 (분석 1 안) | **F1** 대시보드 / **F2** 그래프 / **F3** 히트맵 |
+| 화면 전환 (분석 1 안) | **F1** 대시보드 / **F2** 그래프 / **F3** 히트맵 / **F4** 오차 목록 |
 | 큰 화면 전환 | 위 줄 **왼쪽 칸의 화면 단추**. **Esc** 는 메인으로 |
 | 로그 열기 | **Ctrl+O** 이전 / **Ctrl+Shift+O** 이후 |
 | 비교 다시 하기 | **F5** |

@@ -32,6 +32,10 @@ namespace LogScope.Shell
         public const string ShowHeatmap = "히트맵";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
         public const string ShowHeatmapTip = "시간 구간별로 어디서 차이가 났는지 한눈에 봅니다 (F3).";
+        /// <summary>고르기 단추 이름 (1.56)</summary>
+        public const string ShowJudge = "오차 목록";
+        /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
+        public const string ShowJudgeTip = "정상 판정(PASS · WARNING · FAIL)과 오차를 봅니다. 오차를 눌러 허용할 수 있습니다 (F4).";
         /// <summary>단추 이름</summary>
         public const string OpenBefore = "이전 로그 열기";
         /// <summary>단추 이름</summary>

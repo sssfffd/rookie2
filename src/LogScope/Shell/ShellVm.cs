@@ -4,6 +4,7 @@ using LogScope.Analysis1.Align;
 using LogScope.Analysis1.Dashboard;
 using LogScope.Analysis1.Graph;
 using LogScope.Analysis1.Heatmap;
+using LogScope.Analysis1.Judge;
 using LogScope.Common;
 using LogScope.Main;
 using LogScope.Settings;
@@ -21,6 +22,9 @@ namespace LogScope.Shell
         public DashboardVm Dashboard { get; private set; }
         public GraphVm Graph { get; private set; }
         public HeatmapVm Heatmap { get; private set; }
+
+        /// <summary>분석 1 오차 목록 (1.56) — 정상 판정과 허용.</summary>
+        public JudgeVm Judge { get; private set; }
 
         /// <summary>
         /// 가로축과 시간 맞추기. 그래프 화면과 히트맵 화면이 <b>같은 것</b>을
@@ -43,6 +47,7 @@ namespace LogScope.Shell
             Dashboard = new DashboardVm(state);
             Graph = new GraphVm(state, Align, Step);
             Heatmap = new HeatmapVm(state, Align);
+            Judge = new JudgeVm(state);
         }
 
         public string VersionText { get { return "v" + BuildInfo.Version; } }
@@ -202,6 +207,7 @@ namespace LogScope.Shell
         public const int PageDashboard = 0;
         public const int PageGraph = 1;
         public const int PageHeatmap = 2;
+        public const int PageJudge = 3;
 
         private int _page = PageDashboard;
 
@@ -213,7 +219,7 @@ namespace LogScope.Shell
                 if (_page == value) return;
                 _page = value;
                 Raise("Page");
-                Raise("ShowDashboard"); Raise("ShowGraph"); Raise("ShowHeatmap");
+                Raise("ShowDashboard"); Raise("ShowGraph"); Raise("ShowHeatmap"); Raise("ShowJudge");
                 EventHandler h = PageChanged;
                 if (h != null) h(this, EventArgs.Empty);
             }
@@ -240,12 +246,19 @@ namespace LogScope.Shell
             set { if (value) Page = PageHeatmap; }
         }
 
+        public bool ShowJudge
+        {
+            get { return _page == PageJudge; }
+            set { if (value) Page = PageJudge; }
+        }
+
         // 셋 다 "분석 1 을 이 모습으로 보여 달라" 는 뜻입니다. 다른 화면에
         // 있을 때 눌러도 분석 1 로 넘어가 줘야 합니다 — 아무 일도 안 일어나면
         // 단축키가 고장 난 것처럼 보입니다.
         public void GoDashboard() { Screen = ScreenAnalysis1; Page = PageDashboard; }
         public void GoGraph() { Screen = ScreenAnalysis1; Page = PageGraph; }
         public void GoHeatmap() { Screen = ScreenAnalysis1; Page = PageHeatmap; }
+        public void GoJudge() { Screen = ScreenAnalysis1; Page = PageJudge; }
 
         // 로그 세트(여러 쌍을 골라 가며 보기)는 없앴습니다. 쓰이지 않는데
         // 위 줄에서 자리를 제일 많이 차지했습니다. 기억된 경로와 기본 폴더는
@@ -262,6 +275,7 @@ namespace LogScope.Shell
             Graph.Reload();
             Heatmap.Reload();
             Dashboard.Refresh();
+            Judge.Refresh();
             Main.Refresh();
         }
     }

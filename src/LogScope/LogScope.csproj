@@ -113,6 +113,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Analysis1\Judge\JudgeView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Settings\SettingsWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -243,6 +247,15 @@
       <DependentUpon>HeatmapView.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Analysis1\Judge\JudgeView.xaml.cs">
+      <DependentUpon>JudgeView.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Analysis1\Judge\JudgeEngine.cs" />
+    <Compile Include="Analysis1\Judge\JudgeVm.cs" />
+    <Compile Include="Analysis1\Judge\JudgeTexts.cs" />
+    <Compile Include="Analysis1\Judge\AllowPrompt.cs" />
+    <Compile Include="Settings\AllowRule.cs" />
     <Compile Include="Settings\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

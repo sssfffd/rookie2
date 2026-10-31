@@ -1,0 +1,153 @@
+﻿<UserControl x:Class="LogScope.Analysis1.Judge.JudgeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:LogScope.Analysis1.Judge"
+             xmlns:main="clr-namespace:LogScope.Main"
+             Background="{DynamicResource Brush.Window}"
+             Foreground="{DynamicResource Brush.Text}"
+             FontFamily="Segoe UI" FontSize="12">
+
+    <!--
+      분석 1 — 오차 목록 (1.56). 판정 기준은 docs/ANALYSIS1-JUDGEMENT-GUIDE.md.
+      줄을 누르면 JudgeView.xaml.cs 가 AllowPrompt 를 띄워 허용을 고르게 합니다.
+    -->
+    <Grid Margin="10,8,10,4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 머리 줄 -->
+        <WrapPanel Grid.Row="0" Margin="6,4,6,2">
+            <TextBlock Text="{x:Static t:JudgeTexts.Heading}" Style="{StaticResource H1}" Margin="0,0,16,0"
+                       VerticalAlignment="Center" />
+            <TextBlock Text="{x:Static t:JudgeTexts.HeadingNote}" Style="{StaticResource Muted}"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+        </WrapPanel>
+
+        <!-- 판정 낱말 + 요약 -->
+        <WrapPanel Grid.Row="1" Margin="6,6,6,2"
+                   Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{x:Static t:JudgeTexts.VerdictLabel}" Style="{StaticResource FieldLabel}"
+                       VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Text="{Binding Word}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock.Style>
+                    <Style TargetType="{x:Type TextBlock}">
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}" VerticalAlignment="Center" />
+        </WrapPanel>
+
+        <!-- 알아 둘 점 · 판정이 없을 때 -->
+        <StackPanel Grid.Row="2" Margin="6,2,6,2">
+            <TextBlock Text="{Binding Note}" Foreground="{DynamicResource Brush.Warn}" TextWrapping="Wrap"
+                       Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{x:Static t:JudgeTexts.Empty}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Visibility="{Binding NoResult, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{x:Static t:JudgeTexts.NoItems}" Foreground="{DynamicResource Brush.Good}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Visibility="{Binding NoItems, Converter={StaticResource BoolToVisibility}}" />
+        </StackPanel>
+
+        <!-- 판정 까닭 -->
+        <StackPanel Grid.Row="3" Margin="6,4,6,6"
+                    Visibility="{Binding HasReasons, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{x:Static t:JudgeTexts.ReasonsLabel}" Style="{StaticResource FieldLabel}" />
+            <TextBlock Text="{Binding Reasons}" TextWrapping="Wrap" Margin="0,3,0,0" />
+        </StackPanel>
+
+        <!-- 오차 목록. 줄을 누르면 허용 고르기 (PreviewMouseLeftButtonUp — 같은 줄을 다시 눌러도 뜨게) -->
+        <ListBox Grid.Row="4" x:Name="ItemList" ItemsSource="{Binding Rows}"
+                 PreviewMouseLeftButtonUp="OnRowClick"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingStackPanel.IsVirtualizing="True"
+                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                 Background="{DynamicResource Brush.Panel}"
+                 Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource PlainRow}">
+                    <Setter Property="Cursor" Value="Hand" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type t:JudgeRowVm}">
+                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="8,5,8,5"
+                            Background="Transparent">
+                    <Grid x:Name="Row">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="78" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="WordText" Grid.Column="0" Text="{Binding Word}" FontWeight="Bold"
+                                   VerticalAlignment="Top" Foreground="{DynamicResource Brush.Muted}" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding What}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{DynamicResource Brush.Muted}" Margin="0,1,0,0" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding AllowText}" Margin="12,0,4,0" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource Brush.Muted}" />
+                    </Grid>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                            <Setter TargetName="WordText" Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                            <Setter TargetName="WordText" Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsAllowed}" Value="True">
+                            <Setter TargetName="Row" Property="Opacity" Value="0.55" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- 아래: 다 싣지 못한 줄 · 앞으로도 허용한 것 -->
+        <StackPanel Grid.Row="5" Margin="6,6,6,4">
+            <TextBlock Text="{Binding MoreText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,6"
+                       Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{x:Static t:JudgeTexts.RulesLabel}" Style="{StaticResource FieldLabel}" />
+            <TextBlock Text="{x:Static t:JudgeTexts.RulesEmpty}" Style="{StaticResource Muted}" Margin="0,3,0,0"
+                       Visibility="{Binding NoRules, Converter={StaticResource BoolToVisibility}}" />
+            <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding HasRules, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl ItemsSource="{Binding Rules}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type t:AllowRuleRowVm}">
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Content="{x:Static t:JudgeTexts.RemoveRule}" Click="OnRemoveRule"
+                                        Tag="{Binding Index}" ToolTip="{x:Static t:JudgeTexts.RemoveRuleTip}"
+                                        Margin="8,0,0,0" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </Grid>
+</UserControl>

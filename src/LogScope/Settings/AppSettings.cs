@@ -71,6 +71,15 @@ namespace LogScope.Settings
 
         /// <summary>IO 별 규칙을 너무 많이 들고 있지 않게. 설정 파일이 감당할 만큼입니다.</summary>
         public const int MaxToleranceRules = 500;
+
+        /// <summary>
+        /// 분석 1 오차 목록에서 "앞으로도 허용" 한 것 (1.56). 같은 종류 · IO · 단계의 오차가
+        /// 이 크기 이하면 다음 비교에서 저절로 허용됩니다. 오차 목록 아래에서 지울 수 있습니다.
+        /// </summary>
+        public List<AllowRule> AllowRules = new List<AllowRule>();
+
+        /// <summary>허용 규칙 상한.</summary>
+        public const int MaxAllowRules = 2000;
         public DiffMetric SortMetric = DiffMetric.MaxAbs;
 
         /// <summary>목록 정렬 방향. 참이면 큰 값이 위로.</summary>
@@ -288,6 +297,22 @@ namespace LogScope.Settings
                 tols.Add(one);
             }
             root["tolerances"] = tols;
+
+            var allows = new List<object>();
+            for (int i = 0; i < AllowRules.Count; i++)
+            {
+                AllowRule a = AllowRules[i];
+                if (a == null || string.IsNullOrEmpty(a.Kind)) continue;
+                var one = new Dictionary<string, object>();
+                one["kind"] = a.Kind;
+                one["io"] = a.Io ?? string.Empty;
+                one["step"] = a.Step ?? string.Empty;
+                one["maxDuration"] = a.MaxDuration;
+                one["maxExcess"] = a.MaxExcess;
+                one["at"] = a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+                allows.Add(one);
+            }
+            root["allowRules"] = allows;
             root["sortMetric"] = (double)(int)SortMetric;
             root["sortDescending"] = SortDescending;
             root["sortColumn"] = (double)SortColumn;
@@ -396,6 +421,27 @@ namespace LogScope.Settings
                 if (t.HasAbsolute && t.Absolute < 0) t.Absolute = double.NaN;
 
                 if (!t.IsEmpty) s.Tolerances.Add(t);
+            }
+
+            List<object> allows = Json.GetArray(root, "allowRules");
+            for (int i = 0; i < allows.Count && s.AllowRules.Count < MaxAllowRules; i++)
+            {
+                Dictionary<string, object> one = Json.AsObject(allows[i]);
+                if (one == null) continue;
+                var a = new AllowRule();
+                a.Kind = Json.GetString(one, "kind", string.Empty);
+                a.Io = Json.GetString(one, "io", string.Empty);
+                a.Step = Json.GetString(one, "step", string.Empty);
+                a.MaxDuration = Json.GetDouble(one, "maxDuration", 0);
+                a.MaxExcess = Json.GetDouble(one, "maxExcess", 0);
+                System.DateTime at;
+                a.CreatedAt = System.DateTime.TryParseExact(Json.GetString(one, "at", string.Empty),
+                    "yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out at) ? at : System.DateTime.MinValue;
+                // 손으로 고친 설정 파일: 종류가 없거나 크기가 말이 안 되면 그 줄만 버립니다.
+                if (a.Kind.Length == 0 || a.MaxDuration < 0 || a.MaxExcess < 0
+                    || double.IsNaN(a.MaxDuration) || double.IsNaN(a.MaxExcess)) continue;
+                s.AllowRules.Add(a);
             }
             int metric = Json.GetInt(root, "sortMetric", 0);
             if (metric < 0 || metric > 7) metric = 0;

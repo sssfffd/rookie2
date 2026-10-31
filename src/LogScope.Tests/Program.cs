@@ -7,6 +7,7 @@ using LogScope.Analysis1.Align;
 using LogScope.Analysis1.Compare;
 using LogScope.Analysis1.Graph;
 using LogScope.Analysis1.Heatmap;
+using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Analysis2;
 using LogScope.Common;
@@ -147,6 +148,10 @@ namespace LogScope.Tests
                 Analysis3LinkRules();
                 Analysis3AttachRules();
                 MainAnalyzeWaitRules();
+                JudgeBandRules();
+                JudgeStepRules();
+                JudgeStateRules();
+                JudgeScreenRules();
                 Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
@@ -4529,6 +4534,288 @@ namespace LogScope.Tests
         private sealed class A3Throws
         {
             public void Attach(AppState state) { throw new InvalidOperationException("설정 없음"); }
+        }
+
+        /// <summary>0.1 초 간격 시각 글 ("12:00:03.4").</summary>
+        private static string Clock01(int i)
+        {
+            int tenth = i % 10, sec = i / 10;
+            return "12:" + (sec / 60).ToString("00") + ":" + (sec % 60).ToString("00") + "." + tenth;
+        }
+
+        private static JudgeItem FindItem(JudgeResult r, JudgeKind kind, string io)
+        {
+            foreach (JudgeItem it in r.Items)
+                if (it.Kind == kind && it.Io == io) return it;
+            return null;
+        }
+
+        private static int CountItems(JudgeResult r, string io)
+        {
+            int n = 0;
+            foreach (JudgeItem it in r.Items) if (it.Io == io) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// 정상 판정 — 시간 여유 띠 (1.56). 60 초 · 0.1 초 간격, 단계 없음.
+        /// 시간 여유 = 60 초 × 2 % = 1.2 초.
+        /// </summary>
+        private static void JudgeBandRules()
+        {
+            Say("판정 — 시간 여유 띠");
+            var a = new StringBuilder("Time,FLAT,RAMP,LATE,SPIKE,PULSE,BIG\n");
+            var b = new StringBuilder("Time,FLAT,RAMP,LATE,SPIKE,PULSE,BIG\n");
+            for (int i = 0; i < 600; i++)
+            {
+                double t = i / 10.0;
+                // 이전
+                double ramp = t < 20 ? 20 : 80;
+                double vPulse = (i >= 300 && i < 303) ? 90 : 50;      // 0.3 초 펄스
+                a.Append(Clock01(i)).Append(",50,").Append(ramp).Append(',').Append(ramp)
+                 .Append(",50,").Append(vPulse).Append(",50\n");
+                // 이후
+                double rampLate = t < 20.3 ? 20 : 80;                // 0.3 초 늦음 → 여유 안
+                double vLate = t < 23 ? 20 : 80;                      // 3 초 늦음 → 오차
+                double vSpike = i == 401 ? 300 : 50;                  // 0.1 초 아킹
+                double vBig = (t >= 10 && t < 30) ? 60 : 50;          // 20 초 (33 %)
+                b.Append(Clock01(i)).Append(",50,").Append(rampLate).Append(',').Append(vLate)
+                 .Append(',').Append(vSpike).Append(",50,").Append(vBig).Append("\n");
+            }
+            LogDataset dsA = Open(WriteCsv("judge_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("judge_b.csv", b.ToString()), Orientation.Auto);
+
+            var opt = new JudgeOptions();
+            opt.Tolerances = ToleranceTable.From(0.1, 0, new List<ToleranceOverride>());
+            opt.Once = new HashSet<string>();
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+
+            Check("시각 로그", r.Clock && !r.ByStep, r.Note);
+            Check("같은 IO 는 오차 없음", CountItems(r, "FLAT") == 0, CountItems(r, "FLAT").ToString());
+            Check("0.3 초 늦은 상승은 여유 안", CountItems(r, "RAMP") == 0, CountItems(r, "RAMP").ToString());
+
+            JudgeItem late = FindItem(r, JudgeKind.Value, "LATE");
+            Check("3 초 늦은 상승은 오차", late != null && CountItems(r, "LATE") == 1, CountItems(r, "LATE").ToString());
+            if (late != null)
+                Check("늦은 구간 전체 (20~23 초, 두 방향을 합침)", late.Duration > 2900 && late.Duration < 3200,
+                      late.Duration.ToString(CultureInfo.InvariantCulture));
+
+            JudgeItem spike = FindItem(r, JudgeKind.Value, "SPIKE");
+            Check("0.1 초 아킹도 잡음", spike != null && CountItems(r, "SPIKE") == 1, CountItems(r, "SPIKE").ToString());
+            if (spike != null)
+            {
+                Near("아킹 크기 (300 − 50)", spike.MaxExcess, 250, 1e-6);
+                Check("아킹 길이는 한 칸 (0.1 초)", spike.Duration > 50 && spike.Duration < 150,
+                      spike.Duration.ToString(CultureInfo.InvariantCulture));
+                Check("아킹은 WARNING (단계 비율 작음)", spike.Grade == JudgeGrade.Warning, spike.Grade.ToString());
+            }
+
+            JudgeItem pulse = FindItem(r, JudgeKind.Value, "PULSE");
+            Check("이전에 있던 짧은 펄스가 이후에 없으면 오차 (거꾸로 봄)",
+                  pulse != null && pulse.MissingInAfter, pulse != null ? pulse.Detail : "없음");
+
+            JudgeItem big = FindItem(r, JudgeKind.Value, "BIG");
+            Check("20 초 다름 = 33 % → FAIL", big != null && big.Grade == JudgeGrade.Fail,
+                  big != null ? big.StepRatio.ToString(CultureInfo.InvariantCulture) : "없음");
+            Check("전체 FAIL", r.Grade == JudgeGrade.Fail && r.Word == "FAIL", r.Word);
+            Check("허용 안 된 오차 수", r.OpenCount == 4 && r.AllowedCount == 0, r.OpenCount + " / " + r.AllowedCount);
+            Check("FAIL 이 목록 맨 위", r.Items.Count > 0 && r.Items[0].Io == "BIG", r.Items.Count > 0 ? r.Items[0].Io : "");
+            Check("까닭 다섯 이하 · FAIL 먼저", r.Reasons.Count == 4 && r.Reasons[0].StartsWith("FAIL"), string.Join(" / ", r.Reasons.ToArray()));
+
+            JudgeIo io = null;
+            foreach (JudgeIo x in r.Ios) if (x.Name == "BIG") io = x;
+            Check("IO 정도 — 가장 긴 오차 20 초 남짓", io != null && io.LongestRun > 19000 && io.LongestRun < 22000,
+                  io != null ? io.LongestRun.ToString(CultureInfo.InvariantCulture) : "없음");
+
+            // ---- 허용 ----
+            opt.Once.Add(big.Key);
+            JudgeEngine.Regrade(r, opt);
+            Check("BIG 이번만 허용 → WARNING", r.Grade == JudgeGrade.Warning && big.Allowed == AllowState.Once
+                  && r.OpenCount == 3 && r.AllowedCount == 1, r.Word);
+            Check("허용된 것은 목록 아래로", r.Items[r.Items.Count - 1] == big, "");
+
+            AllowRule rule = JudgeEngine.RuleFor(spike);
+            opt.Rules.Add(rule);
+            JudgeEngine.Regrade(r, opt);
+            Check("SPIKE 앞으로도 허용 → 규칙으로 허용됨", spike.Allowed == AllowState.Rule, spike.Allowed.ToString());
+
+            var bigger = new JudgeItem();
+            bigger.Kind = JudgeKind.Value; bigger.Io = "SPIKE"; bigger.Step = spike.Step;
+            bigger.Duration = spike.Duration; bigger.MaxExcess = spike.MaxExcess + 1;
+            Check("본 크기보다 크면 허용 안 됨", !JudgeEngine.Matches(bigger, rule), "");
+            bigger.MaxExcess = spike.MaxExcess; bigger.Duration = spike.Duration * 3;
+            Check("본 길이보다 길면 허용 안 됨", !JudgeEngine.Matches(bigger, rule), "");
+            bigger.Duration = spike.Duration * 0.5; bigger.MaxExcess = spike.MaxExcess * 0.5;
+            Check("작으면 허용", JudgeEngine.Matches(bigger, rule), "");
+            bigger.Io = "OTHER";
+            Check("다른 IO 는 허용 안 됨", !JudgeEngine.Matches(bigger, rule), "");
+
+            opt.Once.Clear(); opt.Rules.Clear();
+            JudgeEngine.Regrade(r, opt);
+            Check("허용을 풀면 다시 FAIL", r.Grade == JudgeGrade.Fail && r.AllowedCount == 0, r.Word);
+
+            // 설정 파일로 오가는지
+            var s = new AppSettings();
+            s.AllowRules.Add(rule);
+            AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("허용 규칙이 설정 파일로 오감", back.AllowRules.Count == 1 && back.AllowRules[0].Io == "SPIKE"
+                  && back.AllowRules[0].Kind == "Value" && Math.Abs(back.AllowRules[0].MaxExcess - rule.MaxExcess) < 1e-9
+                  && Math.Abs(back.AllowRules[0].MaxDuration - rule.MaxDuration) < 1e-9, "");
+
+            Check("길이 글", JudgeEngine.DurationText(100, true, "") == "0.1초"
+                  && JudgeEngine.DurationText(483000, true, "") == "8분 3초"
+                  && JudgeEngine.DurationText(3720000, true, "") == "1시간 2분",
+                  JudgeEngine.DurationText(483000, true, ""));
+        }
+
+        /// <summary>정상 판정 — 단계 (1.56). 단계 길이는 늘이지 않고 오차로, 차례가 바뀌면 FAIL.</summary>
+        private static void JudgeStepRules()
+        {
+            Say("판정 — 단계");
+            // 이전: A(0~19) B(20~39) C(40~59), 1 초 간격
+            var a = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 60; i++)
+                a.Append(i).Append(',').Append(i < 20 ? "A" : i < 40 ? "B" : "C").Append(",1\n");
+            // 이후: A(0~19) C(20~39) B(40~64) — 차례가 바뀌고 B 가 5 초 김
+            var b = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 65; i++)
+                b.Append(i).Append(',').Append(i < 20 ? "A" : i < 40 ? "C" : "B").Append(",1\n");
+            LogDataset dsA = OpenWithSteps(WriteCsv("judge_sa.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("judge_sb.csv", b.ToString()), "STEP");
+
+            var opt = new JudgeOptions();
+            opt.Once = new HashSet<string>();
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+
+            Check("단계별로 견줌", r.ByStep && r.StepCount == 3, r.StepCount + " " + r.Note);
+            Check("값은 같아 값 오차 없음", CountItems(r, "PV") == 0, CountItems(r, "PV").ToString());
+
+            JudgeItem len = null, order = null;
+            foreach (JudgeItem it in r.Items)
+            {
+                if (it.Kind == JudgeKind.StepLength) len = it;
+                if (it.Kind == JudgeKind.StepOrder) order = it;
+            }
+            Check("B 가 5 초 김 → 단계 길이 오차 (늘이지 않음)", len != null && len.Step == "B" && Math.Abs(len.MaxExcess - 5) < 1e-9,
+                  len != null ? len.What : "없음");
+            Check("단계 길이는 WARNING", len != null && len.Grade == JudgeGrade.Warning, "");
+            Check("차례가 바뀌면 FAIL", order != null && order.Grade == JudgeGrade.Fail && r.Grade == JudgeGrade.Fail,
+                  order != null ? order.Detail : "없음");
+            Check("차례는 앞으로도 허용 못 함", order != null && !order.CanAllowAlways, "");
+
+            // 단계가 하나 없어지면
+            var c = new StringBuilder("Time,STEP,PV\n");
+            for (int i = 0; i < 40; i++)
+                c.Append(i).Append(',').Append(i < 20 ? "A" : "B").Append(",1\n");
+            LogDataset dsC = OpenWithSteps(WriteCsv("judge_sc.csv", c.ToString()), "STEP");
+            JudgeResult r2 = JudgeEngine.Run(dsA, dsC, StepPairList.Build(dsA, dsC), opt, null);
+            bool missing = false;
+            foreach (JudgeItem it in r2.Items) if (it.Kind == JudgeKind.StepMissing && it.Step == "C") missing = true;
+            Check("이후에 없는 단계 → FAIL", missing && r2.Grade == JudgeGrade.Fail, r2.Word);
+
+            // 같은 로그끼리면 PASS
+            JudgeResult r3 = JudgeEngine.Run(dsA, dsA, StepPairList.Build(dsA, dsA), opt, null);
+            Check("같은 로그끼리는 PASS · 오차 없음", r3.Grade == JudgeGrade.Pass && r3.Items.Count == 0, r3.Items.Count.ToString());
+        }
+
+        /// <summary>
+        /// 오차 목록 화면 · 메인 칸 (1.56). JudgeBandRules 가 쓴 파일을 다시 엽니다.
+        /// </summary>
+        private static void JudgeScreenRules()
+        {
+            Say("판정 — 오차 목록 화면 · 메인 칸");
+            var st = new AppState();
+            st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            st.Recompare(null);
+            Check("견주면 판정도 나옴", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Fail,
+                  st.Judgement != null ? st.Judgement.Word : "없음");
+
+            JudgeResult first = st.Judgement;
+            st.StepPick = -1;
+            st.Recompare(null);
+            Check("판정에 쓰는 것이 그대로면 다시 찾지 않음", ReferenceEquals(first, st.Judgement), "");
+
+            var main = new MainVm(st);
+            Check("메인 분석 1 칸 = 판정 낱말 · 오차 수", main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "4"
+                  && main.Cards[0].Grade == ScoreBands.GradeBad && main.Cards[0].ScoreOutOf.Length == 0,
+                  main.Cards[0].ScoreText + " / " + main.Cards[0].VerdictCount);
+
+            var vm = new JudgeVm(st);
+            int changed = 0;
+            vm.Changed += delegate { changed++; };
+            vm.Refresh();
+            Check("목록 줄 넷 · 낱말 · 요약", vm.Rows.Count == 4 && vm.Word == "FAIL" && vm.Summary.Contains("오차 4 개")
+                  && vm.Grade == ScoreBands.GradeBad && vm.HasReasons && vm.NoRules, vm.Summary);
+
+            JudgeItem big = null, spike = null;
+            foreach (JudgeRowVm row in vm.Rows)
+            {
+                if (row.Item.Io == "BIG") big = row.Item;
+                if (row.Item.Io == "SPIKE") spike = row.Item;
+            }
+            Check("FAIL 줄은 빨강", vm.Rows[0].Grade == ScoreBands.GradeBad && vm.Rows[0].Word == "FAIL", vm.Rows[0].Word);
+
+            vm.Apply(big, AllowChoice.IoOnce);
+            main.Refresh();
+            Check("BIG 모두 이번만 허용 → WARNING · 메인 칸도", vm.Word == "WARNING" && changed == 1
+                  && main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "3", vm.Word + " / " + main.Cards[0].VerdictCount);
+            JudgeRowVm last = vm.Rows[vm.Rows.Count - 1];
+            Check("허용된 줄은 회색 · 낱말 없음 · 이번만", last.Item == big && last.IsAllowed && last.Word.Length == 0
+                  && last.Grade == ScoreBands.GradeNone && last.AllowText == JudgeTexts.AllowedOnce, last.AllowText);
+
+            vm.Apply(spike, AllowChoice.Always);
+            Check("앞으로도 허용 → 규칙 하나 · 규칙 줄", st.Settings.AllowRules.Count == 1 && vm.Rules.Count == 1
+                  && spike.Allowed == AllowState.Rule && vm.Rules[0].Text.StartsWith("SPIKE"), vm.Rules.Count > 0 ? vm.Rules[0].Text : "");
+
+            vm.Apply(spike, AllowChoice.Unallow);
+            Check("허용 풀기 → 규칙도 지움", st.Settings.AllowRules.Count == 0 && spike.Allowed == AllowState.None, "");
+
+            vm.Apply(spike, AllowChoice.Always);
+            vm.RemoveRule(0);
+            Check("[지우기] 로 규칙 지움", st.Settings.AllowRules.Count == 0 && !spike.IsAllowed, "");
+
+            vm.Apply(spike, AllowChoice.Cancel);
+            Check("취소는 아무것도 안 바꿈", changed == 5, changed.ToString());
+
+            // 로그를 바꾸면 (창이 AllowOnce 를 비움) 다시 찾음
+            st.AllowOnce.Clear();
+            st.After = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.ForgetSteps();
+            st.Recompare(null);
+            Check("같은 로그끼리 → PASS", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Pass
+                  && st.Judgement.Items.Count == 0, st.Judgement != null ? st.Judgement.Items.Count.ToString() : "없음");
+            vm.Refresh();
+            Check("오차 없음 글", vm.NoItems && vm.Rows.Count == 0, "");
+        }
+
+        /// <summary>정상 판정 — 상태(글자) IO 와 IO 가 없어짐 (1.56).</summary>
+        private static void JudgeStateRules()
+        {
+            Say("판정 — 상태 IO");
+            var a = new StringBuilder("Time,MODE,ONLY_A\n");
+            var b = new StringBuilder("Time,MODE,ONLY_B\n");
+            for (int i = 0; i < 600; i++)
+            {
+                double t = i / 10.0;
+                a.Append(Clock01(i)).Append(',').Append(t < 30 ? "RUN" : "STOP").Append(",1\n");
+                string m = t < 30.3 ? "RUN" : "STOP";                // 0.3 초 늦게 바뀜 → 여유 안
+                if (t >= 45 && t < 47) m = "IDLE";                   // 2 초 엉뚱한 상태 → 오차
+                b.Append(Clock01(i)).Append(',').Append(m).Append(",1\n");
+            }
+            LogDataset dsA = Open(WriteCsv("judge_ma.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("judge_mb.csv", b.ToString()), Orientation.Auto);
+            var opt = new JudgeOptions();
+            opt.Once = new HashSet<string>();
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+
+            Check("상태 IO 로 읽힘", dsA.Channels[dsA.FindChannel("MODE")].Kind == ChannelKind.State, "");
+            JudgeItem m1 = FindItem(r, JudgeKind.Value, "MODE");
+            Check("0.3 초 늦은 바뀜은 여유 안 · IDLE 2 초만 오차", m1 != null && CountItems(r, "MODE") == 1
+                  && m1.Duration > 1500 && m1.Duration < 2600, m1 != null ? m1.What + " / " + m1.Detail : "없음");
+            Check("IDLE 이 설명에 보임", m1 != null && m1.Detail.Contains("IDLE"), m1 != null ? m1.Detail : "");
+            Check("이전에만 있는 IO", FindItem(r, JudgeKind.IoMissing, "ONLY_A") != null, "");
+            Check("이후에만 있는 IO", FindItem(r, JudgeKind.IoExtra, "ONLY_B") != null, "");
         }
 
         /// <summary>

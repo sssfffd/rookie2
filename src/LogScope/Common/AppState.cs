@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using LogScope.Analysis1.Align;
 using LogScope.Analysis1.Compare;
+using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Analysis2;
 using LogScope.Settings;
@@ -216,6 +217,90 @@ namespace LogScope.Common
                 ? DiffEngine.Compare(Before, After, BuildDiffOptions(), prog)
                 : null;
             ComparedAt = Comparison != null ? DateTime.Now : DateTime.MinValue;
+            Rejudge(prog);
+        }
+
+        // ---------------- 정상 판정 (1.56) ----------------
+        //
+        // 분석 1 의 PASS · WARNING · FAIL 과 오차 목록. 견줄 때마다 같이 돕니다 — 단, 판정에 쓰는
+        // 것(두 로그 · 단계 · 허용 오차 · 단계 없을 때의 밀기 값)이 그대로면 다시 찾지 않습니다.
+        // 그래프에서 단계를 고를 때마다 견주기가 다시 도는데, 판정은 단계를 고른 것과 상관없습니다.
+
+        /// <summary>판정 결과. 두 로그가 다 있어야 있습니다.</summary>
+        public JudgeResult Judgement;
+
+        /// <summary>"이번만 허용" 한 오차 (JudgeItem.Key). 로그를 바꾸면 비웁니다.</summary>
+        public HashSet<string> AllowOnce = new HashSet<string>(StringComparer.Ordinal);
+
+        private string _judgeSig = string.Empty;
+        private LogDataset _judgeBefore, _judgeAfter;
+        private StepPairList _judgePairs;
+
+        /// <summary>판정에 넘길 옵션 — 허용 오차 · 허용 규칙 · 이번만 허용 · 단계 없을 때의 밀기 값.</summary>
+        public JudgeOptions BuildJudgeOptions()
+        {
+            var o = new JudgeOptions();
+            o.Tolerances = ToleranceTable.From(Settings.RelativeTolerancePercent,
+                                               Settings.AbsoluteTolerance,
+                                               Settings.Tolerances);
+            o.Shift = Comparison != null ? Comparison.AppliedShift : 0.0;
+            o.Rules = Settings.AllowRules;
+            o.Once = AllowOnce;
+            return o;
+        }
+
+        private void Rejudge(LoadProgress prog)
+        {
+            if (Before == null || After == null || Comparison == null)
+            {
+                Judgement = null;
+                _judgeSig = string.Empty;
+                return;
+            }
+
+            JudgeOptions o = BuildJudgeOptions();
+            StepPairList pairs = StepPairs();
+            bool bySteps = pairs.UsableCount > 0 && Before.HasSteps && After.HasSteps;
+            string sig = JudgeSignature(pairs, bySteps ? 0.0 : o.Shift);
+            if (Judgement != null && sig == _judgeSig && ReferenceEquals(Before, _judgeBefore)
+                && ReferenceEquals(After, _judgeAfter) && ReferenceEquals(pairs, _judgePairs))
+            {
+                // 그대로면 허용만 다시 (허용 규칙이 바뀌었을 수 있음)
+                JudgeEngine.Regrade(Judgement, o);
+                return;
+            }
+
+            Judgement = JudgeEngine.Run(Before, After, pairs, o, prog);
+            _judgeSig = sig;
+            _judgeBefore = Before;
+            _judgeAfter = After;
+            _judgePairs = pairs;
+        }
+
+        /// <summary>판정에 쓰는 것이 그대로인지 가르는 글 (로그 · 단계는 따로 참조로 가립니다).</summary>
+        private string JudgeSignature(StepPairList pairs, double shift)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append(pairs.Count).Append('|')
+              .Append(Before.Times.Length).Append('|').Append(After.Times.Length).Append('|')
+              .Append(shift.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
+              .Append(Settings.RelativeTolerancePercent.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
+              .Append(Settings.AbsoluteTolerance.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+            for (int i = 0; i < Settings.Tolerances.Count; i++)
+            {
+                ToleranceOverride t = Settings.Tolerances[i];
+                if (t == null) continue;
+                sb.Append('|').Append(t.Io).Append(':')
+                  .Append(t.Percent.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(':')
+                  .Append(t.Absolute.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>허용을 바꾼 뒤 — 오차를 다시 찾지 않고 판정만 다시.</summary>
+        public void Regrade()
+        {
+            if (Judgement != null) JudgeEngine.Regrade(Judgement, BuildJudgeOptions());
         }
 
         /// <summary>값이 달라졌거나 한쪽에만 있는 IO 이름들.</summary>

@@ -5,6 +5,7 @@
         xmlns:dash="clr-namespace:LogScope.Analysis1.Dashboard"
         xmlns:graph="clr-namespace:LogScope.Analysis1.Graph"
         xmlns:heat="clr-namespace:LogScope.Analysis1.Heatmap"
+        xmlns:judge="clr-namespace:LogScope.Analysis1.Judge"
         xmlns:main="clr-namespace:LogScope.Main"
         xmlns:t="clr-namespace:LogScope.Shell"
         xmlns:common="clr-namespace:LogScope.Common"
@@ -141,6 +142,10 @@
                                  IsChecked="{Binding ShowHeatmap, Mode=TwoWay}"
                                  Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
                                  ToolTip="{x:Static t:ShellTexts.ShowHeatmapTip}" />
+                    <RadioButton GroupName="nav" Style="{StaticResource NavButton}" Content="{x:Static t:ShellTexts.ShowJudge}"
+                                 IsChecked="{Binding ShowJudge, Mode=TwoWay}"
+                                 Visibility="{Binding ShowAnalysis1, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTip="{x:Static t:ShellTexts.ShowJudgeTip}" />
 
                     <Button Style="{StaticResource TopBarButton}" Content="{x:Static t:ShellTexts.OpenBefore}"
                             Click="OnOpenBefore" Margin="10,3,3,3"
@@ -195,6 +200,12 @@
 
                 <heat:HeatmapView x:Name="Heatmap" DataContext="{Binding Heatmap}"
                                Visibility="{Binding DataContext.ShowHeatmap,
+                                            RelativeSource={RelativeSource AncestorType=Window},
+                                            Converter={StaticResource BoolToVisibility}}" />
+
+                <!-- 오차 목록 (1.56) — 정상 판정과 허용 -->
+                <judge:JudgeView x:Name="Judge" DataContext="{Binding Judge}"
+                               Visibility="{Binding DataContext.ShowJudge,
                                             RelativeSource={RelativeSource AncestorType=Window},
                                             Converter={StaticResource BoolToVisibility}}" />
             </Grid>

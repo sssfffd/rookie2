@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using LogScope.Analysis1.Compare;
+using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Analysis2;
 using LogScope.Common;
@@ -56,29 +57,41 @@ namespace LogScope.Main
             if (r == null)
             {
                 Cards[0].ClearScore();
+                Cards[0].ClearVerdict();
                 Cards[0].SetCount(string.Empty);
                 Cards[0].SetStats(new List<StatVm>());
             }
             else
             {
-                Cards[0].SetScore(AnalysisCardVm.MaxScore);   // ← 진짜 점수가 들어갈 자리
-
-                // 견준 결과를 칸에 적습니다.
-                //
-                // 0.85 에 뺐던 것을 0.92 에 되넣었습니다. 뺀 까닭은 같은 수가
-                // 세 군데(칸 · 종합 · 대시보드)에 적혀 있던 것이었는데, 파일을
-                // <b>끌어다 놓자마자</b> 읽고 견주는 흐름에서는 칸이 그대로
-                // 있으면 "넣었는데 아무 일도 안 했다" 로 보입니다. 메인 화면만
-                // 보고도 견줘졌다는 것을 알아야 합니다.
-                //
-                // 종합 칸의 수와 같은 값을 씁니다 (둘 다 CompareResult 를
-                // 그대로 읽습니다) — 따로 셈하면 두 수가 어긋납니다.
-                //
-                // 1.21: 차이 난 IO 개수는 <b>점수 오른쪽</b>으로 옮겼습니다 (분석 2 의
-                // "FAIL 차이 발생 N 개" 와 같은 자리 · 같은 크기 — 줄 맞춤이 그대로).
-                // "한쪽에만 있는 IO" 는 뺐습니다 (대시보드에 목록으로 있음).
-                // 그래서 숫자 칸(Stats)은 비고, 비면 그 줄째 안 보입니다.
-                Cards[0].SetCount(r.ChangedCount.ToString("N0"));
+                // 1.56: 100 점 고정 자리에 <b>정상 판정</b> (PASS · WARNING · FAIL) 과 허용 안 된 오차 수.
+                // 판정과 오차 목록은 분석 1 의 [오차 목록] 화면 (Analysis1/Judge).
+                Cards[0].ClearScore();
+                JudgeResult judge = _state.Judgement;
+                if (judge != null)
+                {
+                    Cards[0].SetVerdict(judge.Word, JudgeVm.GradeOf(judge.Grade), string.Empty,
+                                        judge.OpenCount.ToString("N0"));
+                }
+                else
+                {
+                    Cards[0].ClearVerdict();
+                    // 견준 결과를 칸에 적습니다.
+                    //
+                    // 0.85 에 뺐던 것을 0.92 에 되넣었습니다. 뺀 까닭은 같은 수가
+                    // 세 군데(칸 · 종합 · 대시보드)에 적혀 있던 것이었는데, 파일을
+                    // <b>끌어다 놓자마자</b> 읽고 견주는 흐름에서는 칸이 그대로
+                    // 있으면 "넣었는데 아무 일도 안 했다" 로 보입니다. 메인 화면만
+                    // 보고도 견줘졌다는 것을 알아야 합니다.
+                    //
+                    // 종합 칸의 수와 같은 값을 씁니다 (둘 다 CompareResult 를
+                    // 그대로 읽습니다) — 따로 셈하면 두 수가 어긋납니다.
+                    //
+                    // 1.21: 차이 난 IO 개수는 <b>점수 오른쪽</b>으로 옮겼습니다 (분석 2 의
+                    // "FAIL 차이 발생 N 개" 와 같은 자리 · 같은 크기 — 줄 맞춤이 그대로).
+                    // "한쪽에만 있는 IO" 는 뺐습니다 (대시보드에 목록으로 있음).
+                    // 그래서 숫자 칸(Stats)은 비고, 비면 그 줄째 안 보입니다.
+                    Cards[0].SetCount(r.ChangedCount.ToString("N0"));
+                }
                 Cards[0].SetStats(new List<StatVm>());
             }
 
@@ -143,7 +156,7 @@ namespace LogScope.Main
             {
                 card.ClearVerdict();
                 card.SetLines(new List<CardLineVm>(),
-                    "아직 읽지 않았습니다. 위 칸에 견줄 자리를 넣으면 그 자리에서 읽습니다.");
+                    "아직 읽지 않았습니다. 위 칸에 견줄 자리를 넣고 [분석] 을 누르면 읽습니다.");
                 return;
             }
 
