@@ -151,3 +151,4 @@
 | `142-100ms-sampling.md` | 0.1 초 단위 데이터 — 시각 읽기 · 양 · 새 기법 계산 확인, Δt 하한 · 1 샘플 튐 |
 | `143-analyze-buttons.md` | 1.53 — 분석 1 · 2 도 메인 칸 [분석] 을 눌러야 돎, 고르거나 놓으면 "분석 대기" |
 | `144-llm-select.md` | 1.54 — LLM 에 보낼 분석 1 · 2 · 3 체크해서 고르기, 사용자 코드에서 Use1~3 보기, 메인 맨 아래 안내 뺌 |
+| `145-easy-judgement-guide.md` | 분석 1 판정 기법을 입문자용 말로 — docs/ANALYSIS1-JUDGEMENT-GUIDE.md (해결 · 부작용 · 막는 장치) |
