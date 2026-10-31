@@ -212,16 +212,15 @@ namespace LogScope.Settings
         public string ValueScaleMode = ScaleRaw;    // ScaleRaw | ScaleDelta
         public bool FitVisible;                     // 보이는 구간에 세로 배율 맞춤
 
-        // 선택 기능 (파이썬 AI 모듈)
-        public bool AiEnabled;
-        public string PythonPath = string.Empty;
+        // 파이썬 AI 모듈 (AiEnabled · PythonPath · AiScriptPath) 은 1.57 에 뺐습니다 — LLM 종합 분석으로
+        // 바뀌었습니다. 옛 settings.json 에 남은 "aiEnabled" · "pythonPath" · "aiScriptPath" 는 읽지 않고,
+        // 다음 저장 때 사라집니다.
 
         /// <summary>
         /// LLM 서버 주소 (1.51) — IP · 호스트[:포트] · http(s) 주소. 켤 때와 설정의 [연결 확인] 에서 닿는지 보고,
         /// 닿을 때만 분석 3 · 종합 분석 결과를 씁니다 (Common/LlmServer). 인증 정보는 적지 않습니다.
         /// </summary>
         public string LlmServer = string.Empty;
-        public string AiScriptPath = string.Empty;
 
         // 창 상태
         public int WindowWidth = 1360;
@@ -344,10 +343,7 @@ namespace LogScope.Settings
             root["valueScaleMode"] = ValueScaleMode ?? ScaleRaw;
             root["fitVisible"] = FitVisible;
 
-            root["aiEnabled"] = AiEnabled;
-            root["pythonPath"] = PythonPath ?? string.Empty;
             root["llmServer"] = LlmServer ?? string.Empty;
-            root["aiScriptPath"] = AiScriptPath ?? string.Empty;
 
             root["windowWidth"] = (double)WindowWidth;
             root["windowHeight"] = (double)WindowHeight;
@@ -497,10 +493,7 @@ namespace LogScope.Settings
             if (s.ValueScaleMode != ScaleDelta) s.ValueScaleMode = ScaleRaw;
             s.FitVisible = Json.GetBool(root, "fitVisible", false);
 
-            s.AiEnabled = Json.GetBool(root, "aiEnabled", false);
-            s.PythonPath = Json.GetString(root, "pythonPath", string.Empty);
             s.LlmServer = Json.GetString(root, "llmServer", string.Empty);
-            s.AiScriptPath = Json.GetString(root, "aiScriptPath", string.Empty);
 
             s.WindowWidth = Json.GetInt(root, "windowWidth", 1360);
             s.WindowHeight = Json.GetInt(root, "windowHeight", 860);

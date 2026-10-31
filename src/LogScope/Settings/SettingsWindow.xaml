@@ -247,7 +247,6 @@
               </ScrollViewer>
             </TabItem>
 
-            <!-- ===================== AI 모듈 ===================== -->
             <!-- ===================== DB 도구 ===================== -->
             <TabItem Header="{x:Static t:SettingsTexts.TabHeader4}">
                 <StackPanel Margin="14">
@@ -292,42 +291,7 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="{x:Static t:SettingsTexts.TabHeader5}">
-                <StackPanel Margin="14">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static t:SettingsTexts.AiEnabledLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <CheckBox Grid.Row="0" Grid.Column="1" Content="{x:Static t:SettingsTexts.AiEnabled}"
-                                  IsChecked="{Binding AiEnabled, Mode=TwoWay}" />
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static t:SettingsTexts.PythonPathLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding PythonPath, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="{x:Static t:SettingsTexts.PickPython}" Click="OnPickPython" />
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Static t:SettingsTexts.AiScriptPathLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="2" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding AiScriptPath, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Row="2" Grid.Column="2" Content="{x:Static t:SettingsTexts.PickScript}" Click="OnPickScript" />
-                    </Grid>
-
-                    <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
-                               Text="{x:Static t:SettingsTexts.Note9}" />
-                </StackPanel>
-            </TabItem>
+            <!-- AI 모듈 (선택) 탭은 1.57 에 뺐습니다 — LLM 종합 분석으로 바뀜. -->
 
             <!-- ===================== LLM 서버 (1.51) =====================
                  닿을 때만 분석 3 · 종합 분석 결과를 씁니다 (Common/LlmServer). [연결 확인] 은 적은 주소로

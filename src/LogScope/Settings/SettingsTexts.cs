@@ -129,23 +129,6 @@ namespace LogScope.Settings
         public const string PickIbd2Sdi = "파일 고르기";
         /// <summary>글</summary>
         public const string MysqldumpFrmNote = "전부 비워 두어도 됩니다. 비워 두면 DB 화면은 폴더·파일만 읽습니다.\n\nmysqldump 는 돌고 있는 서버에 접속해서 뽑습니다 — 멈춘 데이터 폴더(.frm/.ibd)만으로는 뽑을 수 없습니다.\n덤프 인수에 암호를 적으면 작업 관리자에 그대로 보입니다. --login-path 나 --defaults-extra-file 을 쓰세요.\n여기 적은 실행 파일을 자식 프로세스로 띄웁니다. 남이 고쳐 쓸 수 있는 폴더를 가리키지 마세요.\n\nibd2sdi 는 멈춘 .ibd 에서 표와 열 이름만 꺼냅니다 (값은 못 꺼냅니다). MySQL 8.0 의 .ibd 에만 통합니다.";
-        /// <summary>TabItem 머리글</summary>
-        public const string TabHeader5 = "AI 모듈 (선택)";
-        /// <summary>글</summary>
-        public const string AiEnabledLabel = "사용 여부";
-        /// <summary>체크 이름</summary>
-        public const string AiEnabled = "파이썬 분석 모듈 사용";
-        /// <summary>글</summary>
-        public const string PythonPathLabel = "python.exe 경로";
-        /// <summary>단추 이름</summary>
-        public const string PickPython = "파일 고르기";
-        /// <summary>글</summary>
-        public const string AiScriptPathLabel = "분석 스크립트 경로";
-        /// <summary>단추 이름</summary>
-        public const string PickScript = "파일 고르기";
-        /// <summary>글</summary>
-        public const string Note9 = "기본은 꺼져 있습니다. 켜면 지정한 파이썬을 자식 프로세스로 띄워\n비교 결과 요약(채널 이름과 숫자)만 넘기고 소견 글을 받아 옵니다.\n로그 파일 자체나 파일 경로는 넘기지 않고, 네트워크로 내보내는 코드도 없습니다.\n스크립트가 무엇을 하는지는 그 파일을 직접 열어 확인하세요.\n남이 고쳐 쓸 수 있는 폴더의 파이썬을 지정하지 마세요.";
-
         // ---- 정보 ----
 
         /// <summary>TabItem 머리글</summary>

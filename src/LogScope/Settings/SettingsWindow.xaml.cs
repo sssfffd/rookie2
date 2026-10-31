@@ -128,18 +128,6 @@ namespace LogScope.Settings
 
         // ---- 파일 고르기 ----
 
-        private void OnPickPython(object sender, RoutedEventArgs e)
-        {
-            string picked = PickFile("실행 파일 (*.exe)|*.exe|모든 파일 (*.*)|*.*", _vm.PythonPath);
-            if (picked != null) _vm.PythonPath = picked;
-        }
-
-        private void OnPickScript(object sender, RoutedEventArgs e)
-        {
-            string picked = PickFile("파이썬 (*.py)|*.py|모든 파일 (*.*)|*.*", _vm.AiScriptPath);
-            if (picked != null) _vm.AiScriptPath = picked;
-        }
-
         private void OnPickMysqlDump(object sender, RoutedEventArgs e)
         {
             string picked = PickFile("실행 파일 (*.exe)|*.exe|모든 파일 (*.*)|*.*", _vm.MysqlDumpPath);

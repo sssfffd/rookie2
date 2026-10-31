@@ -233,25 +233,13 @@ namespace LogScope.Settings
             }
         }
 
-        // ---------------- AI 모듈 (선택) ----------------
-
-        public bool AiEnabled
-        {
-            get { return _s.AiEnabled; }
-            set { _s.AiEnabled = value; Raise(); }
-        }
+        // ---------------- LLM 서버 ----------------
 
         /// <summary>LLM 서버 주소 (1.51).</summary>
         public string LlmServer
         {
             get { return _s.LlmServer ?? string.Empty; }
             set { _s.LlmServer = (value ?? string.Empty).Trim(); Raise(); }
-        }
-
-        public string PythonPath
-        {
-            get { return _s.PythonPath ?? string.Empty; }
-            set { _s.PythonPath = value ?? string.Empty; Raise(); }
         }
 
         /// <summary>
@@ -280,12 +268,6 @@ namespace LogScope.Settings
         {
             get { return _s.DbDumpAfter ?? string.Empty; }
             set { _s.DbDumpAfter = value ?? string.Empty; Raise(); }
-        }
-
-        public string AiScriptPath
-        {
-            get { return _s.AiScriptPath ?? string.Empty; }
-            set { _s.AiScriptPath = value ?? string.Empty; Raise(); }
         }
 
         // ---------------- 정보 ----------------

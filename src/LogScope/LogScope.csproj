@@ -155,7 +155,6 @@
     <Compile Include="Common\CardTag.cs" />
     <Compile Include="Common\Converters.cs" />
     <Compile Include="Analysis1\Align\TriggerAlign.cs" />
-    <Compile Include="Analysis1\Compare\AiBridge.cs" />
     <Compile Include="Analysis1\Compare\DiffEngine.cs" />
     <Compile Include="Analysis1\Compare\StepPairs.cs" />
     <Compile Include="Analysis1\Heatmap\HeatmapBuilder.cs" />

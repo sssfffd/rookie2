@@ -154,3 +154,4 @@
 | `145-easy-judgement-guide.md` | 분석 1 판정 기법을 입문자용 말로 — docs/ANALYSIS1-JUDGEMENT-GUIDE.md (해결 · 부작용 · 막는 장치) |
 | `146-allow-errors.md` | 1.55 — 히트맵 10 초 칸, 판정 계획 고침: 늘이기 · 튐 지우기 뺌, 오차 눌러서 허용, ③ 다시 설명 |
 | `147-judge-built.md` | 1.56 — 분석 1 정상 판정 · 오차 목록(F4) · 눌러서 허용, 메인 분석 1 칸 판정 |
+| `148-remove-ai-module.md` | 1.57 — 설정의 파이썬 AI 모듈 탭 · AiBridge · ai/ 뺌 (LLM 종합 분석으로 대체) |

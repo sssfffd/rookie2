@@ -393,7 +393,6 @@ src/LogScope.Tests/                시험 (콘솔)
 그 밖의 폴더:
 
 ```
-ai/                      선택 기능인 파이썬 분석 모듈 (없어도 됩니다)
 claude-log/              작업 대화 기록
 docs/                    보안 메모, 구조 설명
 ```
@@ -1460,7 +1459,7 @@ ibd2sdi 경로     C:\Program Files\MySQL\MySQL Server 8.0\bin\ibd2sdi.exe
   작업 관리자에 그대로 보이므로 `--login-path` 나
   `--defaults-extra-file` 을 쓰세요.
 - 적어 둔 실행 파일을 **자식 프로세스로 띄웁니다.** 남이 바꿔 쓸 수 있는
-  폴더를 가리키지 마세요. (파이썬 모듈과 같은 주의입니다.)
+  폴더를 가리키지 마세요.
 
 ### 무엇을 알려 주나 — 세 단계
 
