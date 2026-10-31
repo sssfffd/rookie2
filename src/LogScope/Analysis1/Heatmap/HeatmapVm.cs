@@ -33,7 +33,9 @@ namespace LogScope.Analysis1.Heatmap
 
         public IEnumerable<string> BucketChoices
         {
-            get { return new[] { "자동 (시각이면 1분)", "1분", "5분", "10분", "30분", "1시간" }; }
+            // 1.55: "10초" 를 더했습니다. 0.1 초 기록에서 1 분 칸은 600 표본이 한 칸에 묶여
+            // 아킹 같은 짧은 튐이 어느 순간인지 가늠하기 어렵습니다.
+            get { return new[] { "자동 (시각이면 1분)", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
         }
 
         private int _bucketIndex;
@@ -54,11 +56,12 @@ namespace LogScope.Analysis1.Heatmap
 
                 switch (_bucketIndex)
                 {
-                    case 1: return 60000.0;
-                    case 2: return 5 * 60000.0;
-                    case 3: return 10 * 60000.0;
-                    case 4: return 30 * 60000.0;
-                    case 5: return 60 * 60000.0;
+                    case 1: return 10000.0;
+                    case 2: return 60000.0;
+                    case 3: return 5 * 60000.0;
+                    case 4: return 10 * 60000.0;
+                    case 5: return 30 * 60000.0;
+                    case 6: return 60 * 60000.0;
                     default: return 0;
                 }
             }
@@ -75,7 +78,7 @@ namespace LogScope.Analysis1.Heatmap
                 LogDataset ds = _state.TimeReference;
                 bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
                 return clock
-                    ? "시간축이 시각이라 분 단위로 자를 수 있습니다."
+                    ? "시간축이 시각이라 초 · 분 단위로 자를 수 있습니다. 칸이 4000 개를 넘으면 폭을 넓힙니다."
                     : "시간축이 시각이 아니라(샘플 번호 또는 단위 없는 숫자) 전체를 60 칸으로 나눕니다.";
             }
         }

@@ -1055,6 +1055,13 @@ namespace LogScope.Tests
             five.BucketSpan = 5 * 60000.0;      // 5 분
             HeatmapResult r5 = HeatmapBuilder.Build(dsA, dsB, five, null);
 
+            var ten = new HeatmapOptions();
+            ten.BucketSpan = 10000.0;           // 10 초 (1.55)
+            HeatmapResult r10 = HeatmapBuilder.Build(dsA, dsB, ten, null);
+            Check("10초 칸 이름", r10.BucketLabel == "10초", r10.BucketLabel);
+            Check("10초 칸 수가 1분의 6배쯤", r10.BucketCount >= r1.BucketCount * 5 && r10.BucketCount <= r1.BucketCount * 6 + 1,
+                  "10초 " + r10.BucketCount + ", 1분 " + r1.BucketCount);
+
             Check("두 폭 모두 세 줄", r1.Rows.Count == 3 && r5.Rows.Count == 3,
                   "1분 " + r1.Rows.Count + ", 5분 " + r5.Rows.Count);
             if (r1.Rows.Count != 3 || r5.Rows.Count != 3) return;
