@@ -70,7 +70,9 @@ namespace LogScope.Analysis1.Graph
         private void PushOptions()
         {
             if (_vm == null) return;
-            Plot.LaneMode = _vm.LaneMode;
+            // 갤러리도 IO 마다 세로 눈금이 따로라 레인처럼 다룹니다 (1.60).
+            Plot.LaneMode = _vm.LaneMode || _vm.GalleryMode;
+            Plot.GalleryMode = _vm.GalleryMode;
             Plot.Scale = _vm.ScaleDelta ? ValueScaleMode.Delta : ValueScaleMode.Raw;
             Plot.FitVisible = _vm.FitVisible;
             Plot.ShadeDifference = _vm.ShadeDifference;

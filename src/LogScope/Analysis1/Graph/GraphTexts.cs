@@ -94,6 +94,10 @@ namespace LogScope.Analysis1.Graph
         public const string OverlayMode = "Overlay";
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
         public const string OverlayModeTip = "한 판에 겹쳐 그리고 세로 눈금을 같이 씁니다. 값 크기가 비슷한 IO 끼리 견줄 때 씁니다.";
+        /// <summary>단추 이름 (1.60)</summary>
+        public const string GalleryMode = "갤러리";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string GalleryModeTip = "IO 하나씩 작은 그래프로 가로 3 칸씩 늘어놓습니다. 시간 구간은 모든 칸이 같아서, 한 칸에서 확대 · 이동하면 모두 같이 움직입니다.";
         /// <summary>글</summary>
         public const string ScaleRawCaption = "세로 눈금";
         /// <summary>고르기 단추 이름</summary>

@@ -199,6 +199,7 @@ namespace LogScope.Settings
 
         // 그래프 기본값
         public bool LaneMode = true;                // true = 레인, false = 겹쳐보기
+        public bool GalleryMode;                    // 1.60: 참이면 갤러리 (가로 3 칸) — LaneMode 보다 먼저 봄
         /// <summary>
         /// 세로 눈금. raw = 값 그대로, delta = 이웃 표본과의 차이(차분).
         ///
@@ -340,6 +341,7 @@ namespace LogScope.Settings
             root["showAfter"] = ShowAfter;
 
             root["laneMode"] = LaneMode;
+            root["galleryMode"] = GalleryMode;
             root["valueScaleMode"] = ValueScaleMode ?? ScaleRaw;
             root["fitVisible"] = FitVisible;
 
@@ -489,6 +491,7 @@ namespace LogScope.Settings
             if (!s.ShowBefore && !s.ShowAfter) { s.ShowBefore = true; s.ShowAfter = true; }
 
             s.LaneMode = Json.GetBool(root, "laneMode", true);
+            s.GalleryMode = Json.GetBool(root, "galleryMode", false);
             s.ValueScaleMode = Json.GetString(root, "valueScaleMode", ScaleRaw);
             if (s.ValueScaleMode != ScaleDelta) s.ValueScaleMode = ScaleRaw;
             s.FitVisible = Json.GetBool(root, "fitVisible", false);

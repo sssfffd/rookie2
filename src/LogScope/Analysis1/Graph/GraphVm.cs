@@ -52,28 +52,51 @@ namespace LogScope.Analysis1.Graph
 
         // ---------------- 보기 방식 ----------------
 
+        // 셋 중 하나 (1.60 에 갤러리를 더함). 갤러리는 S.GalleryMode 가 먼저입니다 —
+        // 켜져 있으면 Lane · Overlay 는 둘 다 꺼진 것으로 보입니다.
+
         public bool LaneMode
         {
-            get { return S.LaneMode; }
+            get { return S.LaneMode && !S.GalleryMode; }
             set
             {
-                if (!value || S.LaneMode == value) return;   // 라디오는 켤 때만 반응
+                if (!value || LaneMode) return;   // 라디오는 켤 때만 반응
                 S.LaneMode = true;
-                Raise("LaneMode"); Raise("OverlayMode");
+                S.GalleryMode = false;
+                RaiseModes();
                 Changed();
             }
         }
 
         public bool OverlayMode
         {
-            get { return !S.LaneMode; }
+            get { return !S.LaneMode && !S.GalleryMode; }
             set
             {
-                if (!value || !S.LaneMode) return;
+                if (!value || OverlayMode) return;
                 S.LaneMode = false;
-                Raise("LaneMode"); Raise("OverlayMode");
+                S.GalleryMode = false;
+                RaiseModes();
                 Changed();
             }
+        }
+
+        /// <summary>갤러리 — 가로 3 칸 격자로 IO 하나씩 (1.60).</summary>
+        public bool GalleryMode
+        {
+            get { return S.GalleryMode; }
+            set
+            {
+                if (!value || S.GalleryMode) return;
+                S.GalleryMode = true;
+                RaiseModes();
+                Changed();
+            }
+        }
+
+        private void RaiseModes()
+        {
+            Raise("LaneMode"); Raise("OverlayMode"); Raise("GalleryMode");
         }
 
         // ---------------- 세로 눈금 ----------------
@@ -399,7 +422,7 @@ namespace LogScope.Analysis1.Graph
         public void Reload()
         {
             List.Rebuild(_state.Before, _state.After, _state.ChangedNames());
-            Raise("LaneMode"); Raise("OverlayMode");
+            RaiseModes();
             Raise("ScaleRaw"); Raise("ScaleDelta"); Raise("FitVisible"); Raise("ShadeDifference"); Raise("SeparateTraces");
             Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");
         }

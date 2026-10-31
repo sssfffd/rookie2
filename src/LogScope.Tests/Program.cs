@@ -152,6 +152,7 @@ namespace LogScope.Tests
                 JudgeStepRules();
                 JudgeStateRules();
                 JudgeScreenRules();
+                GalleryModeRules();
                 Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
@@ -4835,6 +4836,26 @@ namespace LogScope.Tests
                   && st.Judgement.Items.Count == 0, st.Judgement != null ? st.Judgement.Items.Count.ToString() : "없음");
             main.Refresh();
             Check("같은 로그끼리 → 메인 칸 PASS · 0", main.Cards[0].ScoreText == "PASS" && main.Cards[0].VerdictCount == "0", main.Cards[0].ScoreText);
+        }
+
+        /// <summary>그래프 보기 셋 — Lane · Overlay · 갤러리 (1.60). 하나만 켜지고 설정에 남음.</summary>
+        private static void GalleryModeRules()
+        {
+            Say("그래프 — 갤러리 보기");
+            var st = new AppState();
+            var g = new GraphVm(st, new AlignVm(st), new StepVm(st));
+            Check("처음엔 Lane", g.LaneMode && !g.OverlayMode && !g.GalleryMode, "");
+            g.GalleryMode = true;
+            Check("갤러리 켜면 둘은 꺼짐", g.GalleryMode && !g.LaneMode && !g.OverlayMode && st.Settings.GalleryMode, "");
+            g.OverlayMode = true;
+            Check("겹쳐보기로 바꾸면 갤러리 꺼짐", g.OverlayMode && !g.GalleryMode && !g.LaneMode, "");
+            g.GalleryMode = true;
+            g.LaneMode = true;
+            Check("Lane 으로 돌아옴", g.LaneMode && !g.GalleryMode && !g.OverlayMode, "");
+            g.GalleryMode = true;
+            AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(st.Settings.ToJson())));
+            Check("설정 파일로 오감", back.GalleryMode && back.LaneMode, "");
+            Check("한 줄 칸 수 3", GraphCanvas.GalleryColumns == 3, "");
         }
 
         /// <summary>정상 판정 — 상태(글자) IO 와 IO 가 없어짐 (1.56).</summary>

@@ -159,6 +159,109 @@ namespace LogScope.Analysis1.Graph
             set { if (_laneMode != value) { _laneMode = value; ResetValueZoom(); } }
         }
 
+        // ---------------- 갤러리 (1.60) ----------------
+        //
+        // 가로 3 칸 격자로 IO 하나씩 (작은 그래프 여러 개). Lane 처럼 IO 마다 세로 눈금이 따로이고,
+        // 가로(시간)는 <b>모든 칸이 같은 구간</b>입니다 — 한 칸에서 휠 · 끌기 · 네모 확대를 하면
+        // 모든 칸이 같이 움직입니다. 마우스 자리는 Pos() 가 "그 칸 안의 위치 → 판 전체 위치" 로
+        // 바꿔서, 확대 · 이동 · 커서 코드는 Lane 과 같은 것을 그대로 씁니다.
+
+        private bool _galleryMode;
+        public bool GalleryMode
+        {
+            get { return _galleryMode; }
+            set { if (_galleryMode != value) { _galleryMode = value; ResetValueZoom(); } }
+        }
+
+        /// <summary>갤러리 한 줄의 칸 수.</summary>
+        public const int GalleryColumns = 3;
+        private const double GalleryMinH = 170;   // 칸 하나의 최소 높이
+        private const double GalleryGap = 8;       // 칸 사이 틈
+        private const double CellGutter = 52;      // 칸 안 왼쪽 세로 눈금 자리
+        private const double CellTimeH = 14;       // 칸 아래 시각 글 자리
+
+        /// <summary>마우스가 마지막으로 가리킨 칸 (갤러리). 칸 밖이면 -1.</summary>
+        private int _hitCell = -1;
+
+        /// <summary>누르고 끄는 동안 붙잡아 둔 칸 — 끌다가 옆 칸으로 넘어가도 그 칸 기준으로.</summary>
+        private int _captureCell = -1;
+
+        /// <summary>세로 눈금 글자의 오른쪽 끝과 폭 (갤러리는 칸마다 바꿈).</summary>
+        private double _tickRight = GutterW - 8;
+        private double _tickMaxW = GutterW - 10;
+
+        /// <summary>갤러리 칸들이 놓이는 자리 — 판 전체 폭 (왼쪽 눈금 자리를 칸 안으로 옮김).</summary>
+        private Rect GalleryArea(Rect plot)
+        {
+            return new Rect(6, plot.Top, Math.Max(10, ActualWidth - 12), plot.Height);
+        }
+
+        private void GalleryLayout(Rect plot, out double cellW, out double cellH, out double needed)
+        {
+            Rect area = GalleryArea(plot);
+            int rows = (_channels.Count + GalleryColumns - 1) / GalleryColumns;
+            cellW = area.Width / GalleryColumns;
+            cellH = Math.Max(GalleryMinH, plot.Height / Math.Max(1, rows));
+            needed = cellH * Math.Max(1, rows);
+        }
+
+        /// <summary>i 번째 칸 (틈을 뺀 자리). 굴린 만큼 위로.</summary>
+        private Rect GalleryCell(int i, Rect plot)
+        {
+            double cellW, cellH, needed;
+            GalleryLayout(plot, out cellW, out cellH, out needed);
+            double scrollY = needed > plot.Height ? VerticalOffset : 0;
+            Rect area = GalleryArea(plot);
+            int row = i / GalleryColumns, col = i % GalleryColumns;
+            double x = area.Left + col * cellW, y = plot.Top + row * cellH - scrollY;
+            return new Rect(x + GalleryGap * 0.5, y + GalleryGap * 0.5,
+                            Math.Max(10, cellW - GalleryGap), Math.Max(10, cellH - GalleryGap));
+        }
+
+        /// <summary>칸 안에서 그래프가 그려지는 가로 자리 (왼쪽 눈금 자리를 뺀 것).</summary>
+        private static Rect CellPlot(Rect cell)
+        {
+            return new Rect(cell.Left + CellGutter, cell.Top, Math.Max(4, cell.Width - CellGutter), cell.Height);
+        }
+
+        /// <summary>그 자리가 몇 번째 칸인지. 칸 밖(틈)이면 -1.</summary>
+        private int GalleryCellAt(Point at, Rect plot)
+        {
+            if (at.Y < plot.Top || at.Y > plot.Bottom) return -1;
+            for (int i = 0; i < _channels.Count; i++)
+            {
+                Rect c = GalleryCell(i, plot);
+                if (c.Bottom < plot.Top || c.Top > plot.Bottom) continue;
+                if (c.Contains(at)) return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// 마우스 자리. 갤러리면 <b>그 칸 안의 가로 위치를 판 전체의 가로 위치로</b> 바꿉니다 —
+        /// 그래서 시간 계산(XToTime)과 확대 · 이동 코드가 Lane 과 같습니다. 세로는 그대로.
+        /// </summary>
+        private Point Pos(MouseEventArgs e)
+        {
+            Point raw = e.GetPosition(this);
+            if (!_galleryMode || _channels.Count == 0) return raw;
+
+            Rect plot = PlotArea;
+            int idx = _captureCell >= 0 ? _captureCell : GalleryCellAt(raw, plot);
+            _hitCell = idx;
+            if (idx < 0) return new Point(plot.Left + plot.Width * 0.5, raw.Y);
+
+            Rect cp = CellPlot(GalleryCell(idx, plot));
+            double f = (raw.X - cp.Left) / Math.Max(1e-9, cp.Width);
+            return new Point(plot.Left + f * plot.Width, raw.Y);
+        }
+
+        /// <summary>판 전체의 가로 위치 → 그 칸 안의 가로 위치 (커서 · 네모를 칸에 그릴 때).</summary>
+        private static double ToCellX(double x, Rect plot, Rect cellPlot)
+        {
+            return cellPlot.Left + (x - plot.Left) / Math.Max(1e-9, plot.Width) * cellPlot.Width;
+        }
+
         private ValueScaleMode _scale = ValueScaleMode.Raw;
         public ValueScaleMode Scale
         {
@@ -892,6 +995,11 @@ namespace LogScope.Analysis1.Graph
             }
 
             Rect plot = PlotArea;
+            if (_galleryMode)
+            {
+                DrawGallery(dc, p, plot);
+                return;
+            }
             int lanes = _laneMode ? _channels.Count : 1;
             double laneH = _laneMode ? Math.Max(MinLaneH, plot.Height / Math.Max(1, lanes)) : plot.Height;
             double needed = _laneMode ? laneH * lanes : plot.Height;
@@ -931,6 +1039,76 @@ namespace LogScope.Analysis1.Graph
             DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
             DrawLegend(dc, p, plot);
             DrawBand(dc, p, plot);
+        }
+
+        /// <summary>
+        /// 갤러리 (1.60) — 가로 3 칸 격자, 칸마다 IO 하나. 칸마다 왼쪽에 세로 눈금, 아래에 시작 · 끝 시각.
+        /// 가로(시간)는 모든 칸이 같아서, 판 아래 시간 띠에는 그 구간 하나만 적습니다.
+        /// </summary>
+        private void DrawGallery(DrawingContext dc, Palette p, Rect plot)
+        {
+            double cellW, cellH, needed;
+            GalleryLayout(plot, out cellW, out cellH, out needed);
+            UpdateScrollInfo(needed, plot.Height);
+
+            RefreshPixelsPerDip();
+            int columns = (int)Math.Max(1, Math.Floor(Math.Max(4, cellW - GalleryGap - CellGutter) * _pixelsPerDip));
+            EnsureBuffers(Math.Max(columns, (int)Math.Max(1, Math.Floor(plot.Width * _pixelsPerDip))));
+
+            LogDataset refDs = _state != null ? _state.TimeReference : null;
+            dc.PushClip(new RectangleGeometry(new Rect(0, plot.Top, ActualWidth, plot.Height)));
+            for (int i = 0; i < _channels.Count; i++)
+            {
+                Rect cell = GalleryCell(i, plot);
+                if (cell.Bottom < plot.Top || cell.Top > plot.Bottom) continue;
+
+                _tickRight = cell.Left + CellGutter - 4;
+                _tickMaxW = CellGutter - 6;
+                var lane = new Rect(cell.Left, cell.Top, cell.Width, Math.Max(20, cell.Height - CellTimeH));
+                DrawLane(dc, p, lane, new[] { _channels[i] }, _channels[i].Name, columns, CellGutter);
+
+                // 칸 아래: 시작 · 끝 시각 (단계로 나눠 보는 중이면 생략 — 칸 안에서 단계마다 시간이 따로)
+                Rect cp = CellPlot(cell);
+                if (!StepMode)
+                {
+                    FormattedText a = Text(TimeLabel(refDs, _t0), FontSmall, p.MutedBrush);
+                    FormattedText b = Text(TimeLabel(refDs, _t1), FontSmall, p.MutedBrush);
+                    double ty = lane.Bottom + 1;
+                    dc.DrawText(a, new Point(cp.Left, ty));
+                    if (cp.Right - b.Width > cp.Left + a.Width + 8) dc.DrawText(b, new Point(cp.Right - b.Width, ty));
+                }
+
+                // 커서 A · B 를 칸마다
+                DrawCellCursor(dc, plot, cp, lane, _cursorA, p.CursorAPen);
+                DrawCellCursor(dc, plot, cp, lane, _cursorB, p.CursorBPen);
+            }
+            dc.Pop();
+            _tickRight = GutterW - 8;
+            _tickMaxW = GutterW - 10;
+
+            if (!Diffing && !_showBefore && !_showAfter) DrawBothOff(dc, p, plot);
+
+            // 판 아래 띠: 모든 칸이 같은 시간 구간이라는 것 하나만
+            var strip = new Rect(0, plot.Bottom, ActualWidth, AxisH);
+            dc.DrawRectangle(p.AxisStripBrush, null, strip);
+            dc.DrawLine(p.BorderPen, new Point(0, strip.Top), new Point(strip.Right, strip.Top));
+            string range = StepMode ? "단계로 나눠 보는 중 — 칸마다 같은 단계 칸"
+                         : "모든 칸 같은 구간  " + TimeLabel(refDs, _t0) + "  ~  " + TimeLabel(refDs, _t1);
+            dc.DrawText(Text(range, FontSmall, p.MutedBrush), new Point(10, strip.Top + 5));
+
+            DrawLegend(dc, p, plot);
+            DrawBand(dc, p, plot);
+        }
+
+        private void DrawCellCursor(DrawingContext dc, Rect plot, Rect cellPlot, Rect lane, double t, Pen pen)
+        {
+            if (double.IsNaN(t)) return;
+            if (!StepMode && (t < _t0 || t > _t1)) return;
+            double x = TimeToX(t);
+            if (double.IsNaN(x)) return;
+            double cx = Snap(ToCellX(x, plot, cellPlot));
+            if (cx < cellPlot.Left || cx > cellPlot.Right) return;
+            dc.DrawLine(pen, new Point(cx, lane.Top + HeaderH), new Point(cx, lane.Bottom - 2));
         }
 
         /// <summary>
@@ -1067,6 +1245,15 @@ namespace LogScope.Analysis1.Graph
             Rect r = BandRect(plot);
             if (r.Width < 1 && r.Height < 1) return;
 
+            // 갤러리: 네모는 판 전체 가로로 적혀 있으니 시작한 칸 안으로 옮겨 그립니다 (1.60).
+            if (_galleryMode)
+            {
+                if (_captureCell < 0) return;
+                Rect cp = CellPlot(GalleryCell(_captureCell, plot));
+                double x0 = ToCellX(r.Left, plot, cp), x1 = ToCellX(r.Right, plot, cp);
+                r = new Rect(x0, r.Top, Math.Max(0, x1 - x0), r.Height);
+            }
+
             var fill = new SolidColorBrush(p.Accent);
             fill.Opacity = 0.16;
             fill.Freeze();
@@ -1173,12 +1360,18 @@ namespace LogScope.Analysis1.Graph
         /// <summary>레인 하나(겹쳐보기면 전체)를 그립니다.</summary>
         private void DrawLane(DrawingContext dc, Palette p, Rect rect, IoRowVm[] ios, string laneKey, int columns)
         {
+            DrawLane(dc, p, rect, ios, laneKey, columns, 0);
+        }
+
+        /// <param name="gutter">레인 안 왼쪽에 둘 세로 눈금 자리 (갤러리 칸, 1.60). Lane · 겹쳐보기는 0 — 눈금이 판 왼쪽에.</param>
+        private void DrawLane(DrawingContext dc, Palette p, Rect rect, IoRowVm[] ios, string laneKey, int columns, double gutter)
+        {
             // 칸으로 나눠 그릴 때는 레인 바탕을 <b>창 색</b>으로 둡니다.
             // 그러면 칸 사이의 틈이 그 색으로 비어서 칸이 따로따로 보입니다.
             // 그림 색으로 두면 틈과 칸이 같은 색이라 띄운 뜻이 사라집니다.
             dc.DrawRectangle(StepMode ? Frozen(p.Window) : p.PlotBrush, p.BorderPen, rect);
 
-            var inner = new Rect(rect.X, rect.Y + HeaderH, rect.Width,
+            var inner = new Rect(rect.X + gutter, rect.Y + HeaderH, Math.Max(4, rect.Width - gutter),
                                  Math.Max(8, rect.Height - HeaderH - 4));
 
             double lo, hi;
@@ -2151,7 +2344,7 @@ namespace LogScope.Analysis1.Graph
             dc.DrawLine(p.GridPen, new Point(inner.Left + 1, gy), new Point(inner.Right - 2, gy));
 
             FormattedText ft = Text(label, FontSmall, p.MutedBrush);
-            ft.MaxTextWidth = GutterW - 10;
+            ft.MaxTextWidth = Math.Max(10, _tickMaxW);
             ft.MaxLineCount = 1;
             ft.Trimming = TextTrimming.CharacterEllipsis;
 
@@ -2160,7 +2353,8 @@ namespace LogScope.Analysis1.Graph
             if (ty < inner.Top) ty = inner.Top;
             if (ty + ft.Height > inner.Bottom) ty = inner.Bottom - ft.Height;
 
-            dc.DrawText(ft, new Point(Math.Max(2, GutterW - 8 - ft.Width), ty));
+            // 갤러리 칸이면 그 칸의 왼쪽 눈금 자리에 (_tickRight · _tickMaxW, 1.60).
+            dc.DrawText(ft, new Point(Math.Max(2, _tickRight - ft.Width), ty));
             return true;
         }
 
@@ -2432,7 +2626,7 @@ namespace LogScope.Analysis1.Graph
 
             // 한 칸에 너무 많이 커지지 않게 아주 조금씩 바꿉니다. (요구사항 2번)
             double factor = Math.Pow(1.14, notches);
-            Point at = e.GetPosition(this);
+            Point at = Pos(e);
 
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) ZoomValueAt(at, factor);
             else if (StepMode)
@@ -2492,6 +2686,18 @@ namespace LogScope.Analysis1.Graph
             Rect plot = PlotArea;
             if (!plot.Contains(at) || _channels.Count == 0) return false;
 
+            // 갤러리: 칸은 Pos() 가 적어 둔 것 (_hitCell). 가로는 판 전체로 (at 이 그렇게 바뀌어 있음).
+            if (_galleryMode)
+            {
+                if (_hitCell < 0 || _hitCell >= _channels.Count) return false;
+                Rect cell = GalleryCell(_hitCell, plot);
+                key = _channels[_hitCell].Name;
+                inner = new Rect(plot.Left, cell.Top + HeaderH, plot.Width,
+                                 Math.Max(8, cell.Height - CellTimeH - HeaderH - 4));
+                ios = new[] { _channels[_hitCell] };
+                return true;
+            }
+
             if (!_laneMode)
             {
                 inner = new Rect(plot.Left, plot.Top + HeaderH, plot.Width,
@@ -2523,7 +2729,7 @@ namespace LogScope.Analysis1.Graph
             // 칸 머리(단계 이름)를 눌렀으면 그 단계만 봅니다 (1.16).
             // 그림을 누르는 것(커서 찍기 · 끌기)과는 자리가 따로라 섞이지
             // 않습니다.
-            int head = StepHeadAt(e.GetPosition(this));
+            int head = StepHeadAt(Pos(e));
             if (head >= 0)
             {
                 EventHandler<int> h = StepHeadClicked;
@@ -2534,7 +2740,8 @@ namespace LogScope.Analysis1.Graph
 
             _dragging = true;
             _moved = false;
-            _dragPoint = e.GetPosition(this);
+            _dragPoint = Pos(e);
+            _captureCell = _hitCell;   // 갤러리: 끄는 동안 이 칸 기준 (1.60)
             _dragLast = _dragPoint;
             _dragT0 = _t0; _dragT1 = _t1;
 
@@ -2559,7 +2766,7 @@ namespace LogScope.Analysis1.Graph
         /// <summary>그 자리가 몇 번째 칸의 머리인지. 머리가 아니면 -1.</summary>
         private int StepHeadAt(Point at)
         {
-            if (!StepMode || at.Y < 0 || at.Y >= StepHeadH) return -1;
+            if (!StepMode || _galleryMode || at.Y < 0 || at.Y >= StepHeadH) return -1;
             double left, width;
             return StepAt(at.X, PlotArea, out left, out width);
         }
@@ -2570,18 +2777,18 @@ namespace LogScope.Analysis1.Graph
 
             // 칸 머리 위에서는 손 모양 — 누를 수 있다는 표시입니다.
             if (!_dragging && !_band)
-                Cursor = StepHeadAt(e.GetPosition(this)) >= 0 ? Cursors.Hand : null;
+                Cursor = StepHeadAt(Pos(e)) >= 0 ? Cursors.Hand : null;
 
             if (_band)
             {
-                _bandTo = e.GetPosition(this);
+                _bandTo = Pos(e);
                 InvalidateVisual();
                 return;
             }
 
             if (!_dragging) return;
 
-            Point now = e.GetPosition(this);
+            Point now = Pos(e);
             double dx = now.X - _dragPoint.X, dy = now.Y - _dragPoint.Y;
             if (!_moved && Math.Abs(dx) < 3 && Math.Abs(dy) < 3) return;
             _moved = true;
@@ -2596,7 +2803,7 @@ namespace LogScope.Analysis1.Graph
                 int k = StepAt(_dragPoint.X, plot, out left, out width);
                 if (k >= 0 && width > 0)
                 {
-                    double moved = e.GetPosition(this).X - _dragLast.X;
+                    double moved = Pos(e).X - _dragLast.X;
                     PanStep(k, -moved / width);
                 }
             }
@@ -2608,7 +2815,7 @@ namespace LogScope.Analysis1.Graph
                 _t1 = _dragT1 + shift;
             }
 
-            _dragLast = e.GetPosition(this);
+            _dragLast = Pos(e);
 
             if (_dragLane != null)
             {
@@ -2635,12 +2842,16 @@ namespace LogScope.Analysis1.Graph
         {
             base.OnMouseLeftButtonUp(e);
             if (!_dragging) return;
+            Point upAt = Pos(e);
+            _captureCell = -1;
             _dragging = false;
             ReleaseMouseCapture();
             if (_moved) return;
+            // 갤러리에서 칸 사이 틈을 누른 것은 커서가 아닙니다.
+            if (_galleryMode && _hitCell < 0) return;
 
             // 끌지 않고 그냥 눌렀으면 커서를 놓습니다.
-            double t = XToTime(e.GetPosition(this).X);
+            double t = XToTime(upAt.X);
             // 칸 사이의 금을 누르면 가리키는 시각이 없습니다 (NaN).
             // 커서를 거기 두면 값이 전부 "-" 로 나오니 그냥 둡니다.
             if (double.IsNaN(t)) return;
@@ -2665,10 +2876,12 @@ namespace LogScope.Analysis1.Graph
             Focus();
             if (_state == null || _channels.Count == 0) return;
 
-            Point at = e.GetPosition(this);
+            Point at = Pos(e);
             Rect plot = PlotArea;
             if (at.X < plot.Left || at.X > plot.Right || at.Y < plot.Top || at.Y > plot.Bottom) return;
+            if (_galleryMode && _hitCell < 0) return;   // 칸 사이 틈
 
+            _captureCell = _hitCell;
             _band = true;
             _bandFrom = at;
             _bandTo = at;
@@ -2692,7 +2905,8 @@ namespace LogScope.Analysis1.Graph
             e.Handled = true;
 
             Rect plot = PlotArea;
-            _bandTo = e.GetPosition(this);
+            _bandTo = Pos(e);
+            _captureCell = -1;   // _hitCell 은 시작한 칸 그대로 (세로 확대가 그 칸에)
             Rect r = BandRect(plot);
 
             // 손이 떨린 정도는 확대가 아닙니다. 그냥 누른 것으로 봅니다.

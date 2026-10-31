@@ -313,6 +313,9 @@
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
                                          Content="{x:Static t:GraphTexts.OverlayMode}" IsChecked="{Binding OverlayMode, Mode=TwoWay}"
                                          ToolTip="{x:Static t:GraphTexts.OverlayModeTip}" />
+                            <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
+                                         Content="{x:Static t:GraphTexts.GalleryMode}" IsChecked="{Binding GalleryMode, Mode=TwoWay}"
+                                         ToolTip="{x:Static t:GraphTexts.GalleryModeTip}" />
                         </StackPanel>
                     </Border>
 
