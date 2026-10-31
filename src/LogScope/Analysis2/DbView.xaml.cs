@@ -178,14 +178,23 @@ namespace LogScope.Analysis2
         /// 폴더는 여기서 못 고릅니다 (창이 파일용입니다). 메인 화면에서는
         /// 폴더를 끌어다 놓으면 되고, 분석 2 화면에는 [폴더] 단추가 있습니다.
         /// 칸 아래 작은 글이 그 말을 합니다.
+        ///
+        /// 1.53: 자리만 적고 <b>읽지 않습니다</b>. 메인 칸 머리의 [분석] 이 읽습니다
+        /// (<see cref="ReadNow"/>). 고른 쪽 줄에는 "분석 대기" 가 붙습니다 — 1.03 처럼
+        /// 이름은 보이는데 결과가 그대로인 까닭을 모르는 일이 없게. 골랐으면 true.
         /// </summary>
-        public void PickFileFor(bool before)
+        public bool PickFileFor(bool before)
         {
-            // 둘 다 차면 <b>바로 읽습니다</b> (1.04) — 끌어다 놓을 때
-            // (TakePaths) 와 같습니다. 1.03 까지는 눌러서 고르면 자리만
-            // 적고 안 읽어서, 메인 칸에 두 파일 이름이 다 보이는데
-            // 결과는 "아직 읽지 않았습니다" 였습니다.
-            if (PickFile(before) && _vm.HasPaths) Read();
+            return PickFile(before);
+        }
+
+        /// <summary>
+        /// 메인 칸의 [분석] (1.53). 분석 2 화면의 [읽기] 와 같습니다 — 자리가 비었으면
+        /// 그렇다고 알리고, 둘 다 차 있으면 읽고 견줍니다.
+        /// </summary>
+        public void ReadNow()
+        {
+            OnRead(this, new RoutedEventArgs());
         }
 
         private void OnClearSearch(object sender, RoutedEventArgs e)
@@ -256,12 +265,9 @@ namespace LogScope.Analysis2
         /// <b>메인 화면 칸에 놓은 것</b>을 받습니다. 분석 2 화면을 열지
         /// 않고도 자리가 들어가야 해서 밖으로 열어 둔 길입니다.
         ///
-        /// 자리가 둘 다 차면 <b>바로 읽습니다.</b> 분석 1 이 그렇게
-        /// 동작하기 때문입니다 — 로그를 놓으면 묻지 않고 읽고 견줘서 메인
-        /// 칸의 점수가 바뀝니다. DB 만 "이제 분석 2 로 가서 [데이터 읽기] 를
-        /// 누르세요" 가 되면, 놓고 나서 메인 칸이 그대로인 까닭을 알 수가
-        /// 없습니다. 오래 걸리는 동안은 진행 창이 뜨고, 거기서 멈출 수
-        /// 있습니다.
+        /// 1.52 까지는 자리가 둘 다 차면 바로 읽었습니다. 1.53 부터는 자리만 적고,
+        /// 메인 칸 머리의 [분석] 이 읽습니다 (<see cref="ReadNow"/>) — 분석 1 · 3 과 같은
+        /// 흐름입니다. 메인 칸 줄에 "분석 대기" 가 붙어서 왜 결과가 그대로인지 보입니다.
         /// </summary>
         public void TakePaths(IList<string> paths, bool before)
         {
@@ -269,8 +275,6 @@ namespace LogScope.Analysis2
 
             _vm.SetPath(before, paths[0]);   // SetPath 가 PathsChanged 를 알립니다
             Said(paths, 1);
-
-            if (_vm.HasPaths) Read();
         }
 
         /// <summary>끌어온 것이 파일·폴더면 그 목록, 아니면 null.</summary>

@@ -286,6 +286,21 @@ namespace LogScope.Main
         /// </summary>
         public bool HasA3Box { get; private set; }
 
+        /// <summary>
+        /// 칸 머리 [분석] 의 설명 (1.53). 1.52 까지는 분석 3 칸에만 단추가 있었고,
+        /// 이제 칸 셋 모두에 있습니다 — 메인 칸에서 고르거나 놓기만 하면 읽지 않고,
+        /// 이 단추를 눌러야 돌아갑니다.
+        /// </summary>
+        public string AnalyzeTip
+        {
+            get
+            {
+                if (Number == 1) return MainTexts.LogAnalyzeTip;
+                if (Number == 2) return MainTexts.DbAnalyzeTip;
+                return MainTexts.A3AnalyzeTip;
+            }
+        }
+
         // ---- LLM 서버에 안 닿을 때 (1.51) — 분석 3 칸을 회색으로 덮음 ----
 
         private bool _blocked;

@@ -210,13 +210,27 @@ namespace LogScope.Main
             Pick(sender, e, A3PickRequested);
         }
 
+        /// <summary>분석 1 칸 머리의 [분석] (1.53). 창이 기다리던 로그를 읽고 견줍니다.</summary>
+        public event EventHandler LogAnalyzeRequested;
+
+        /// <summary>분석 2 칸 머리의 [분석] (1.53). 창이 분석 2 화면의 [읽기] 로 넘깁니다.</summary>
+        public event EventHandler DbAnalyzeRequested;
+
         /// <summary>분석 3 칸 머리의 [분석] (1.35). 창이 Analysis3Link 로 넘깁니다.</summary>
         public event EventHandler A3AnalyzeRequested;
 
-        private void OnA3Analyze(object sender, RoutedEventArgs e)
+        /// <summary>칸 머리의 [분석]. 어느 칸인지는 Tag 의 칸 번호(1 · 2 · 3)로 압니다.</summary>
+        private void OnCardAnalyze(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
-            EventHandler h = A3AnalyzeRequested;
+
+            var b = sender as FrameworkElement;
+            int number = b != null && b.Tag is int ? (int)b.Tag : 0;
+
+            EventHandler h = number == 1 ? LogAnalyzeRequested
+                           : number == 2 ? DbAnalyzeRequested
+                           : number == 3 ? A3AnalyzeRequested
+                           : null;
             if (h != null) h(this, EventArgs.Empty);
         }
 

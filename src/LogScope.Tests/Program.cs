@@ -146,6 +146,7 @@ namespace LogScope.Tests
                 DbPathNames();
                 Analysis3LinkRules();
                 Analysis3AttachRules();
+                MainAnalyzeWaitRules();
                 Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
@@ -4492,6 +4493,45 @@ namespace LogScope.Tests
         private sealed class A3Throws
         {
             public void Attach(AppState state) { throw new InvalidOperationException("설정 없음"); }
+        }
+
+        /// <summary>
+        /// 메인 칸 [분석] 을 기다리는 자리 (1.53). 고르거나 놓으면 읽지 않고 이름과
+        /// "분석 대기" 만 보이고, 읽은 뒤 지우면 원래대로 돌아옵니다.
+        /// </summary>
+        private static void MainAnalyzeWaitRules()
+        {
+            Say("메인 — [분석] 기다리기");
+
+            var state = new AppState();
+            var vm = new MainVm(state);
+
+            Check("처음엔 안내 글", vm.BeforeHint.Length > 0 && vm.BeforeShown.Length == 0, vm.BeforeHint);
+            Check("처음엔 빈 쪽", !vm.HasLogFor(true) && !vm.HasLogFor(false), "");
+
+            string p = System.IO.Path.Combine("C:\\logs", "2026-03-14_A.csv");
+            vm.SetWaitingLog(true, p);
+            Check("고르면 이름이 보임", vm.BeforeShown == "2026-03-14_A.csv" && vm.BeforeHint.Length == 0, vm.BeforeShown);
+            Check("고르면 분석 대기", vm.BeforeDetail == MainTexts.Waiting, vm.BeforeDetail);
+            Check("풍선 도움말도 기다리는 경로", vm.BeforePath == p, vm.BeforePath);
+            Check("기다리는 것도 찬 자리", vm.HasLogFor(true) && !vm.HasLogFor(false), "");
+            Check("상태는 그대로 (안 읽음)", state.Before == null && string.IsNullOrEmpty(state.BeforePath), "");
+            Check("이후는 영향 없음", vm.AfterDetail.Length == 0 && vm.AfterHint.Length > 0, vm.AfterDetail);
+
+            vm.ForgetWaitingLog(true);
+            Check("지우면 안내 글로", vm.BeforeShown.Length == 0 && vm.BeforeHint.Length > 0 && vm.WaitingLog(true).Length == 0, vm.BeforeShown);
+
+            state.Settings.DbBeforePath = "C:\\db\\before.sql";
+            Check("DB 자리 덧글 (대기 전)", vm.DbBeforeKind != MainTexts.Waiting, vm.DbBeforeKind);
+            vm.SetDbWaiting(true);
+            Check("DB 분석 대기", vm.DbBeforeKind == MainTexts.Waiting, vm.DbBeforeKind);
+            Check("DB 빈 쪽은 덧글 없음", vm.DbAfterKind.Length == 0, vm.DbAfterKind);
+            vm.ClearDbWaiting();
+            Check("DB 읽은 뒤 대기 지움", vm.DbBeforeKind != MainTexts.Waiting, vm.DbBeforeKind);
+
+            Check("칸마다 [분석] 설명", vm.Cards[0].AnalyzeTip == MainTexts.LogAnalyzeTip
+                  && vm.Cards[1].AnalyzeTip == MainTexts.DbAnalyzeTip
+                  && vm.Cards[2].AnalyzeTip == MainTexts.A3AnalyzeTip, "");
         }
 
         /// <summary>

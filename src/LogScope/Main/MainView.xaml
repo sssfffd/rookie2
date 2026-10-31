@@ -222,9 +222,12 @@
                                                    TextTrimming="CharacterEllipsis" />
 
                                         <!--
-                                          분석 3 칸의 [분석] (1.35, [리포트] 는 1.39 에 뺌). 누르면 Common/Analysis3Link 의
-                                          AnalyzeRequested 가 울리고, 무엇을 할지는 분석 3
-                                          폴더의 코드가 정합니다 (갈아 끼우는 폴더라 여기서 직접 부르지 않음).
+                                          칸 머리의 [분석] — 1.35 에 분석 3 칸에만, 1.53 부터 칸 셋 모두.
+                                          메인 칸에서 고르거나 놓기만 하면 읽지 않고, 이 단추를 눌러야 돕니다.
+                                            분석 1 : 창이 기다리던 로그를 읽고 견줌 (ShellWindow.OnMainLogAnalyze)
+                                            분석 2 : 분석 2 화면의 [읽기] 와 같음 (DbView.ReadNow)
+                                            분석 3 : Common/Analysis3Link 의 AnalyzeRequested 가 울리고, 무엇을 할지는
+                                                     분석 3 폴더의 코드가 정합니다 (갈아 끼우는 폴더라 여기서 직접 부르지 않음).
 
                                           머리 줄에 둔 까닭: 칸 셋의 이전/이후 · 요약 줄이 나란히 놓여야
                                           합니다. 칸 안에 줄을 하나 더 두면 분석 3 칸만 아래로 밀립니다.
@@ -232,10 +235,9 @@
                                           MinHeight 28 · 위아래 여백 3) 머리 줄 높이가 변하지 않게 합니다.
                                         -->
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
-                                                    Margin="0,0,6,0"
-                                                    Visibility="{Binding HasA3Box, Converter={StaticResource BoolToVisibility}}">
+                                                    Margin="0,0,6,0">
                                             <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
-                                                    Click="OnA3Analyze" ToolTip="{x:Static t:MainTexts.A3AnalyzeTip}"
+                                                    Click="OnCardAnalyze" Tag="{Binding Number}" ToolTip="{Binding AnalyzeTip}"
                                                     Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
                                         </StackPanel>
 

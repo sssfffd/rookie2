@@ -462,9 +462,68 @@ namespace LogScope.Main
                  + "  ·  표본 " + ds.SampleCount.ToString("N0");
         }
 
-        /// <summary>풍선 도움말에 띄울 전체 경로. 이름을 잘라 보여 주므로 필요합니다.</summary>
-        public string BeforePath { get { return _state.BeforePath; } }
-        public string AfterPath { get { return _state.AfterPath; } }
+        /// <summary>
+        /// 풍선 도움말에 띄울 전체 경로. 이름을 잘라 보여 주므로 필요합니다.
+        /// [분석] 을 기다리는 파일이 있으면 그 경로입니다 (1.53) — 줄에 보이는 이름과 맞춥니다.
+        /// </summary>
+        public string BeforePath { get { return HasText(_waitBefore) ? _waitBefore : _state.BeforePath; } }
+        public string AfterPath { get { return HasText(_waitAfter) ? _waitAfter : _state.AfterPath; } }
+
+        // ---- [분석] 을 기다리는 자리 (1.53) ----
+        //
+        // 메인 칸에서 고르거나 놓은 것은 바로 읽지 않고 여기에 적어만 둡니다. 칸 머리의
+        // [분석] 을 누르면 창(ShellWindow)이 이 자리를 읽고 견줍니다 — 분석 3 과 같은 흐름.
+        // 1.52 까지는 놓자마자 읽고 견줘서, 큰 로그는 이전만 바꿔도 한참 기다려야 했습니다.
+        //
+        // 분석 1 · 2 화면 안의 [열기] · [읽기] · 끌어다 놓기는 지금처럼 바로 돕니다.
+        // 그 화면은 결과를 보려고 들어간 곳이라 기다릴 까닭이 없습니다.
+
+        private string _waitBefore = string.Empty;
+        private string _waitAfter = string.Empty;
+        private bool _dbWaitBefore, _dbWaitAfter;
+
+        private static bool HasText(string s) { return !string.IsNullOrEmpty(s); }
+
+        /// <summary>[분석] 을 기다리는 로그 경로. 없으면 빈 글자.</summary>
+        public string WaitingLog(bool before) { return before ? _waitBefore : _waitAfter; }
+
+        /// <summary>로그 자리를 적어 둡니다. 빈 글자면 지웁니다 (읽은 뒤).</summary>
+        public void SetWaitingLog(bool before, string path)
+        {
+            if (before) _waitBefore = path ?? string.Empty;
+            else _waitAfter = path ?? string.Empty;
+            Refresh();
+        }
+
+        /// <summary>
+        /// 그 쪽을 읽었으면 기다리던 자리를 지웁니다. 다시 그리지는 않습니다 — 읽은 뒤에
+        /// 창이 어차피 다시 그립니다 (AfterLoad).
+        /// </summary>
+        public void ForgetWaitingLog(bool before)
+        {
+            if (before) _waitBefore = string.Empty;
+            else _waitAfter = string.Empty;
+        }
+
+        /// <summary>그 쪽에 로그가 (읽었든 기다리든) 있는지.</summary>
+        public bool HasLogFor(bool before)
+        {
+            return HasText(WaitingLog(before)) || (before ? _state.Before : _state.After) != null;
+        }
+
+        /// <summary>DB 자리를 메인 칸에서 바꿨는데 아직 안 읽었다고 적습니다.</summary>
+        public void SetDbWaiting(bool before)
+        {
+            if (before) _dbWaitBefore = true;
+            else _dbWaitAfter = true;
+            Refresh();
+        }
+
+        /// <summary>분석 2 가 읽고 나면 지웁니다.</summary>
+        public void ClearDbWaiting()
+        {
+            _dbWaitBefore = _dbWaitAfter = false;
+        }
 
         // ---- 카드 아래 파일 줄 (1.02) ----
         //
@@ -473,8 +532,8 @@ namespace LogScope.Main
         // (빈 줄로 두면 "열었는데 이름이 없다" 와 가릴 수 없습니다).
 
         /// <summary>안 열었을 때 이름 자리에 흐리게 적는 말. 열었으면 빈 글자.</summary>
-        public string BeforeHint { get { return _state.Before == null ? LogHint : string.Empty; } }
-        public string AfterHint { get { return _state.After == null ? LogHint : string.Empty; } }
+        public string BeforeHint { get { return _state.Before == null && !HasText(_waitBefore) ? LogHint : string.Empty; } }
+        public string AfterHint { get { return _state.After == null && !HasText(_waitAfter) ? LogHint : string.Empty; } }
 
         /// <summary>
         /// 연 뒤의 파일 이름. <b>안 열었으면 빈 글자</b> — 위 Hint 와 정확히
@@ -485,12 +544,21 @@ namespace LogScope.Main
         /// 에서 나오고 Hint 는 데이터셋에서 나와서, 둘이 어긋나는 순간
         /// 두 모양이 겹치거나 둘 다 사라집니다.
         /// </summary>
-        public string BeforeShown { get { return _state.Before == null ? string.Empty : BeforeFileName; } }
-        public string AfterShown { get { return _state.After == null ? string.Empty : AfterFileName; } }
+        public string BeforeShown { get { return Shown(_waitBefore, _state.Before, BeforeFileName); } }
+        public string AfterShown { get { return Shown(_waitAfter, _state.After, AfterFileName); } }
 
-        /// <summary>오른쪽 작은 덧글 — IO 수와 표본 수. 안 열었으면 빈 글자.</summary>
-        public string BeforeDetail { get { return Detail(_state.Before); } }
-        public string AfterDetail { get { return Detail(_state.After); } }
+        private static string Shown(string waiting, LogDataset ds, string openName)
+        {
+            if (HasText(waiting)) return NameOf(waiting);
+            return ds == null ? string.Empty : openName;
+        }
+
+        /// <summary>
+        /// 오른쪽 작은 덧글 — IO 수와 표본 수. 안 열었으면 빈 글자.
+        /// [분석] 을 기다리는 중이면 "분석 대기" (1.53).
+        /// </summary>
+        public string BeforeDetail { get { return HasText(_waitBefore) ? MainTexts.Waiting : Detail(_state.Before); } }
+        public string AfterDetail { get { return HasText(_waitAfter) ? MainTexts.Waiting : Detail(_state.After); } }
 
         private const string LogHint = "누르거나 끌어다 놓아 여세요";
 
@@ -528,8 +596,15 @@ namespace LogScope.Main
         public string DbAfterHint { get { return DbPath(false).Length == 0 ? DbPathText.NoneOnCard : string.Empty; } }
 
         /// <summary>오른쪽 작은 덧글 — 폴더 · 파일 · 없는 자리. 안 정했으면 빈 글자.</summary>
-        public string DbBeforeKind { get { return DbPath(true).Length == 0 ? string.Empty : DbPathText.Note(DbPath(true)); } }
-        public string DbAfterKind { get { return DbPath(false).Length == 0 ? string.Empty : DbPathText.Note(DbPath(false)); } }
+        public string DbBeforeKind { get { return DbKind(true, _dbWaitBefore); } }
+        public string DbAfterKind { get { return DbKind(false, _dbWaitAfter); } }
+
+        private string DbKind(bool before, bool waiting)
+        {
+            string p = DbPath(before);
+            if (p.Length == 0) return string.Empty;
+            return waiting ? MainTexts.Waiting : DbPathText.Note(p);
+        }
 
         public string DbAfterNote
         {

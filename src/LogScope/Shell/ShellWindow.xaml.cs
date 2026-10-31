@@ -66,6 +66,8 @@ namespace LogScope.Shell
             Main.A3PickRequested += OnMainA3Pick;
             Main.A3Dropped += OnMainA3Dropped;
             Main.A3AnalyzeRequested += OnMainA3Analyze;
+            Main.LogAnalyzeRequested += OnMainLogAnalyze;
+            Main.DbAnalyzeRequested += OnMainDbAnalyze;
             Main.LlmRunRequested += OnLlmRun;
             Main.LlmCancelRequested += OnLlmCancel;
 
@@ -154,6 +156,20 @@ namespace LogScope.Shell
 
         private void OpenLog(bool before)
         {
+            string path = ChooseLog(before);
+            if (path == null) return;
+            if (!LoadInto(path, before)) return;
+
+            AfterLoad();
+            SaveSettings();
+        }
+
+        /// <summary>
+        /// 로그 고르는 창. 고른 경로, 안 골랐으면 null. 바로 읽는 [이전 로그 열기] 와
+        /// 자리만 적는 메인 칸 (1.53) 이 같이 씁니다 — 고르는 규칙이 한 곳.
+        /// </summary>
+        private string ChooseLog(bool before)
+        {
             LogSet set = _state.Settings.ActiveLogSet;
 
             var dlg = new Microsoft.Win32.OpenFileDialog();
@@ -173,11 +189,8 @@ namespace LogScope.Shell
             }
             if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) dlg.InitialDirectory = start;
 
-            if (dlg.ShowDialog(this) != true) return;
-            if (!LoadInto(dlg.FileName, before)) return;
-
-            AfterLoad();
-            SaveSettings();
+            if (dlg.ShowDialog(this) != true) return null;
+            return dlg.FileName;
         }
 
         /// <summary>파일 하나를 배경 스레드에서 읽습니다. 성공하면 true.</summary>
@@ -218,6 +231,11 @@ namespace LogScope.Shell
             LogSet set = _state.Settings.ActiveLogSet;
             if (before) { _state.Before = ds; _state.BeforePath = path; set.BeforePath = path; }
             else { _state.After = ds; _state.AfterPath = path; set.AfterPath = path; }
+
+            // 메인 칸에 [분석] 을 기다리던 파일이 있었으면 이제 읽었으니 지웁니다 (1.53).
+            // 분석 1 화면에서 다른 파일을 바로 열었어도 지웁니다 — 남겨 두면 나중에 [분석] 이
+            // 방금 연 것을 옛 자리로 덮습니다.
+            _vm.Main.ForgetWaitingLog(before);
             return true;
         }
 
@@ -239,7 +257,8 @@ namespace LogScope.Shell
         private void OnFileDrop(object sender, DragEventArgs e)
         {
             e.Handled = true;
-            TakeFiles(Dropped(e), null);
+            // 메인 화면이면 자리만 적고 [분석] 을 기다립니다 (1.53). 다른 화면은 바로 읽습니다.
+            TakeFiles(Dropped(e), null, _vm.Screen == ShellVm.ScreenMain);
         }
 
         /// <summary>
@@ -258,7 +277,13 @@ namespace LogScope.Shell
 
             var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (paths == null) return list;
+            return Readable(paths);
+        }
 
+        /// <summary>읽을 수 있는 로그 파일만, 이름 순으로 (위 설명).</summary>
+        private static List<string> Readable(IEnumerable<string> paths)
+        {
+            var list = new List<string>();
             foreach (string p in paths)
             {
                 if (string.IsNullOrEmpty(p)) continue;
@@ -282,31 +307,34 @@ namespace LogScope.Shell
         ///
         /// 둘 다 차 있을 때 말없이 한쪽을 덮으면, 방금 덮인 것이 무엇이었는지
         /// 알 수가 없습니다. 짐작하지 않고 묻습니다.
+        ///
+        /// <paramref name="wait"/> 이면 (메인 화면, 1.53) 읽지 않고 자리만 적습니다 —
+        /// 칸 머리의 [분석] 이 읽습니다. 비어 있는 자리는 기다리는 파일까지 보고 셉니다.
         /// </summary>
-        private void TakeFiles(List<string> files, bool? slot)
+        private void TakeFiles(List<string> files, bool? slot, bool wait)
         {
             if (files.Count == 0) return;
 
             bool any = false;
             if (slot.HasValue)
             {
-                any = LoadInto(files[0], slot.Value);
+                any = Put(files[0], slot.Value, wait);
                 // 자리를 정해 놓고 두 개를 놓았으면 둘째는 반대쪽입니다.
                 // 버리면 왜 하나만 들어왔는지 알 수가 없습니다.
-                if (files.Count >= 2) any |= LoadInto(files[1], !slot.Value);
+                if (files.Count >= 2) any |= Put(files[1], !slot.Value, wait);
             }
             else if (files.Count >= 2)
             {
-                any = LoadInto(files[0], true);
-                any |= LoadInto(files[1], false);
+                any = Put(files[0], true, wait);
+                any |= Put(files[1], false, wait);
             }
-            else if (_state.Before == null)
+            else if (!Filled(true, wait))
             {
-                any = LoadInto(files[0], true);
+                any = Put(files[0], true, wait);
             }
-            else if (_state.After == null)
+            else if (!Filled(false, wait))
             {
-                any = LoadInto(files[0], false);
+                any = Put(files[0], false, wait);
             }
             else
             {
@@ -315,12 +343,27 @@ namespace LogScope.Shell
                     + "[예] 이전 로그      [아니오] 이후 로그",
                     "로그 넣기", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (r == MessageBoxResult.Cancel) return;
-                any = LoadInto(files[0], r == MessageBoxResult.Yes);
+                any = Put(files[0], r == MessageBoxResult.Yes, wait);
             }
 
-            if (!any) return;
+            if (!any || wait) return;
             AfterLoad();
             SaveSettings();
+        }
+
+        /// <summary>읽거나 (wait 아님) 메인 칸에 자리만 적습니다 (wait).</summary>
+        private bool Put(string path, bool before, bool wait)
+        {
+            if (!wait) return LoadInto(path, before);
+            _vm.Main.SetWaitingLog(before, path);
+            return true;
+        }
+
+        /// <summary>그 자리가 차 있는지. wait 면 [분석] 을 기다리는 파일도 찬 것으로 봅니다.</summary>
+        private bool Filled(bool before, bool wait)
+        {
+            if (wait) return _vm.Main.HasLogFor(before);
+            return (before ? _state.Before : _state.After) != null;
         }
 
         /// <summary>
@@ -329,7 +372,54 @@ namespace LogScope.Shell
         /// </summary>
         private void OnMainLogPick(object sender, MainView.PickEventArgs e)
         {
-            OpenLog(e.Before);
+            // 1.53: 고르기만 하고 읽지 않습니다 — 칸 머리의 [분석] 이 읽습니다.
+            string path = ChooseLog(e.Before);
+            if (path != null) _vm.Main.SetWaitingLog(e.Before, path);
+        }
+
+        /// <summary>
+        /// 분석 1 칸 머리의 [분석] (1.53). 기다리던 로그를 읽고 견줍니다.
+        ///
+        ///   기다리는 파일이 있음  → 그 쪽(들)만 읽고 견줌 (이미 읽은 쪽은 다시 안 읽음)
+        ///   둘 다 이미 읽었음     → 다시 견주기만 (분석 1 화면의 [다시 비교] 와 같음)
+        ///   한쪽이라도 비었음     → 알리고 끝
+        ///
+        /// 못 읽은 쪽은 기다리는 자리를 그대로 둡니다 — 파일을 고친 뒤 다시 누르면 됩니다.
+        /// </summary>
+        private void OnMainLogAnalyze(object sender, EventArgs e)
+        {
+            if (!_vm.Main.HasLogFor(true) || !_vm.Main.HasLogFor(false))
+            {
+                MessageBox.Show(this, MainTexts.LogNeedBoth, MainTexts.Label,
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            bool waited = false, any = false;
+            foreach (bool before in new[] { true, false })
+            {
+                string path = _vm.Main.WaitingLog(before);
+                if (path.Length == 0) continue;
+                waited = true;
+                if (LoadInto(path, before)) any = true;
+            }
+
+            if (any)
+            {
+                AfterLoad();
+                SaveSettings();
+            }
+            else if (!waited)
+            {
+                OnRecompare(this, null);
+            }
+            _vm.Main.Refresh();
+        }
+
+        /// <summary>분석 2 칸 머리의 [분석] (1.53). 분석 2 화면의 [읽기] 와 같습니다.</summary>
+        private void OnMainDbAnalyze(object sender, EventArgs e)
+        {
+            Db.ReadNow();
         }
 
         /// <summary>
@@ -338,13 +428,25 @@ namespace LogScope.Shell
         /// </summary>
         private void OnMainDbPick(object sender, MainView.PickEventArgs e)
         {
-            Db.PickFileFor(e.Before);
+            // 1.53: 자리만 적습니다. 칸 머리의 [분석] 이 읽습니다.
+            if (Db.PickFileFor(e.Before)) _vm.Main.SetDbWaiting(e.Before);
         }
 
-        /// <summary>메인 화면의 이전/이후 줄에 놓았을 때.</summary>
+        /// <summary>
+        /// 메인 화면의 이전/이후 줄에 놓았을 때. 1.53 부터는 자리만 적고 [분석] 을 기다립니다.
+        /// 읽을 수 있는 로그만 고릅니다 — 1.52 까지는 바로 읽어서 못 읽는 파일이면 그 자리에서
+        /// 오류가 났는데, 이제는 [분석] 을 누를 때까지 모르게 되므로 놓을 때 거릅니다.
+        /// </summary>
         private void OnLogDropped(object sender, MainView.FileDropEventArgs e)
         {
-            TakeFiles(e.Files, e.Before);
+            List<string> files = Readable(e.Files);
+            if (files.Count == 0)
+            {
+                MessageBox.Show(this, MainTexts.LogNotSupported, MainTexts.Label,
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            TakeFiles(files, e.Before, true);
         }
 
         /// <summary>
@@ -358,6 +460,7 @@ namespace LogScope.Shell
         private void OnMainDbDropped(object sender, MainView.FileDropEventArgs e)
         {
             Db.TakePaths(e.Files, e.Before);
+            if (e.Files.Count > 0) _vm.Main.SetDbWaiting(e.Before);
         }
 
         // ---------------- 분석 3 (1.29) ----------------
@@ -683,6 +786,8 @@ namespace LogScope.Shell
         /// </summary>
         private void OnDbResultChanged(object sender, EventArgs e)
         {
+            // 읽고 견줬으면 메인 칸의 "분석 대기" 를 지웁니다 (1.53). 못 읽었으면 남깁니다.
+            if (Db.HasTally) _vm.Main.ClearDbWaiting();
             _state.HasDbResult = Db.HasTally;
             _state.DbChanged = Db.Tally.Changed;
             _state.DbGone = Db.Tally.Gone;

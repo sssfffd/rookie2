@@ -54,6 +54,17 @@ namespace LogScope.Main
         public const string A3Analyze = "분석";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
         public const string A3AnalyzeTip = "분석 3 을 돌립니다.";
+        /// <summary>단추 설명 — 분석 1 칸 [분석] (1.53)</summary>
+        public const string LogAnalyzeTip = "이전 · 이후 로그를 읽고 분석 1 을 돌립니다.";
+        /// <summary>단추 설명 — 분석 2 칸 [분석] (1.53)</summary>
+        public const string DbAnalyzeTip = "이전 · 이후 DB 를 읽고 분석 2 를 돌립니다.";
+        /// <summary>메인 칸에서 고르거나 놓기만 하고 아직 [분석] 을 안 눌렀을 때 줄 오른쪽에 적는 말 (1.53)</summary>
+        public const string Waiting = "분석 대기";
+        /// <summary>분석 1 [분석] 을 눌렀는데 이전 · 이후 중 빈 쪽이 있을 때</summary>
+        public const string LogNeedBoth = "이전 · 이후 로그를 둘 다 넣은 뒤 [분석] 을 눌러 주세요.\n\n칸을 누르거나 파일을 끌어다 놓으면 됩니다.";
+        /// <summary>분석 1 칸에 놓은 것 중 읽을 수 있는 로그가 없을 때</summary>
+        public const string LogNotSupported = "읽을 수 있는 로그 파일이 아닙니다.";
+
         /// <summary>분석 3 의 이전/이후 칸을 아직 안 정했을 때 칸에 적는 말</summary>
         public const string A3NoneOnCard = "누르면 폴더 고르기 · 끌어다 놓기";
         /// <summary>단추에 연결된 기능이 없을 때 알림</summary>
