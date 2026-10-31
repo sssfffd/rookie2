@@ -200,26 +200,29 @@ namespace LogScope.Main
 
         // ---- 판정으로 채우는 것 · 펼치기 (1.59) ----
         //
+        // 화면이 묶는 값은 <b>모두 속성</b>이어야 합니다 (1.61). 1.59 에 필드로 적었다가 WPF 가 필드를
+        // 못 읽어서, 그룹을 눌러도 IO 줄이 안 나왔습니다 (시험은 C# 로 읽어 지나감 → 시험에 "필드 없음" 검사를 더함).
+        //
         // 메인 분석 1 칸에서 그룹을 누르면 IO 들이, IO 를 누르면 구간별 오차가 펼쳐지고,
         // 오차 줄의 단추로 그 자리에서 허용합니다 (따로 뜨는 창 없음). MainVm 이 누를 때마다
         // 그룹 목록을 새로 짓습니다 — 그래서 여기 값들은 지을 때 한 번 정해집니다.
 
         /// <summary>판정이 정한 색. 비었으면 위 비율로.</summary>
-        public string GradeOverride = string.Empty;
+        public string GradeOverride { get; set; } = string.Empty;
 
         /// <summary>개수 글을 바꿔 적을 때 (공정 단계 · 한쪽에만 있는 IO 줄).</summary>
-        public string CountOverride = string.Empty;
+        public string CountOverride { get; set; } = string.Empty;
 
         /// <summary>공정 단계 · 한쪽에만 있는 IO 처럼 그룹이 아닌 줄 (그래프 단추 없음, History 에 안 남김).</summary>
-        public bool IsPseudo;
+        public bool IsPseudo { get; set; }
 
         /// <summary>펼칠 것이 있는지 (판정이 있어야 펼침).</summary>
-        public bool CanExpand;
-        public bool IsExpanded;
+        public bool CanExpand { get; set; }
+        public bool IsExpanded { get; set; }
 
         /// <summary>펼쳤을 때의 IO 줄들 (그룹) 또는 오차 줄들 (공정 단계 · 한쪽에만 있는 IO).</summary>
-        public List<GroupIoVm> Ios = new List<GroupIoVm>();
-        public List<ErrorRowVm> DirectItems = new List<ErrorRowVm>();
+        public List<GroupIoVm> Ios { get; set; } = new List<GroupIoVm>();
+        public List<ErrorRowVm> DirectItems { get; set; } = new List<ErrorRowVm>();
 
         public bool ShowIos { get { return IsExpanded && Ios.Count > 0; } }
         public bool ShowDirect { get { return IsExpanded && DirectItems.Count > 0; } }
@@ -270,16 +273,16 @@ namespace LogScope.Main
     /// <summary>메인 분석 1 칸에서 그룹을 펼쳤을 때의 IO 한 줄 (1.59).</summary>
     public sealed class GroupIoVm
     {
-        public string Group = string.Empty;
-        public string Name = string.Empty;
+        public string Group { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>"오차 2 · 가장 긴 8분 3초 · 2 · 3" / "오차 없음" / "허용됨 2".</summary>
-        public string Summary = string.Empty;
-        public string Grade = ScoreBands.GradeNone;
+        public string Summary { get; set; } = string.Empty;
+        public string Grade { get; set; } = ScoreBands.GradeNone;
 
-        public bool CanExpand;
-        public bool IsExpanded;
-        public List<ErrorRowVm> Items = new List<ErrorRowVm>();
+        public bool CanExpand { get; set; }
+        public bool IsExpanded { get; set; }
+        public List<ErrorRowVm> Items { get; set; } = new List<ErrorRowVm>();
 
         public bool ShowItems { get { return IsExpanded && Items.Count > 0; } }
         public string ExpandGlyph { get { return !CanExpand ? string.Empty : IsExpanded ? "▾" : "▸"; } }
@@ -678,20 +681,7 @@ namespace LogScope.Main
         public void SetGroups(List<GroupSummaryVm> groups)
         {
             _groups = groups ?? new List<GroupSummaryVm>();
-            Raise("Groups"); Raise("HasGroups"); Raise("GroupNote"); Raise("GroupsMaxHeight");
-        }
-
-        /// <summary>
-        /// 그룹 칸 높이 상한. 접혀 있으면 230 (여섯 줄 남짓), 하나라도 펼쳤으면 520 (1.59) —
-        /// IO · 오차 줄이 그 안에서 굴러갑니다.
-        /// </summary>
-        public double GroupsMaxHeight
-        {
-            get
-            {
-                for (int i = 0; i < _groups.Count; i++) if (_groups[i].IsExpanded) return 520.0;
-                return 230.0;
-            }
+            Raise("Groups"); Raise("HasGroups"); Raise("GroupNote");
         }
 
         public bool HasGroups { get { return _groups.Count > 0; } }

@@ -878,9 +878,10 @@
                                             <!--
                                               1.59: 그룹 줄을 누르면 IO 들이, IO 줄을 누르면 그 IO 의 구간별 오차가 펼쳐지고,
                                               오차 줄의 단추로 그 자리에서 허용합니다 (따로 뜨는 창 없음 — MainVm.ToggleGroup · ToggleIo · Allow).
-                                              그래프로 보려면 줄 오른쪽 [그래프]. 하나라도 펼치면 칸 높이 상한이 230 → 520 (GroupsMaxHeight).
+                                              그래프로 보려면 줄 오른쪽 [그래프]. 펼쳐도 칸 높이는 230 그대로 — IO · 오차 줄은 이 안에서 굴립니다
+                                              (1.61: 1.59 에 520 까지 늘였더니 메인 화면 전체가 길어졌습니다).
                                             -->
-                                            <ScrollViewer MaxHeight="{Binding GroupsMaxHeight}" VerticalScrollBarVisibility="Auto"
+                                            <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           Visibility="{Binding HasGroups, Converter={StaticResource BoolToVisibility}}">
                                                 <ItemsControl ItemsSource="{Binding Groups}">
@@ -1089,18 +1090,17 @@
                     </Grid>
 
                     <!--
-                      네 줄쯤까지 보이고 그 다음부터는 이 칸 안에서 굴립니다. 기록이 쌓일수록
-                      메인 화면이 끝없이 길어지지 않게. 줄 하나가 약 90 (이름 18 + 칸 셋 62 +
-                      여백) 이라 380 이면 넷과 다섯 번째가 살짝 보입니다.
+                      기록이 쌓일수록 메인 화면이 끝없이 길어지지 않게 이 칸 안에서 굴립니다.
+                      1.61: 칸을 두 줄로 줄였습니다 (줄 하나 약 90 → 56). 300 이면 다섯 줄과 여섯 번째가 살짝 보입니다.
                     -->
-                    <ScrollViewer MaxHeight="380" VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   Visibility="{Binding HasHistory, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl ItemsSource="{Binding History}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type main:HistoryRowVm}">
                                 <Border x:Name="RowBox" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
-                                        Padding="0,6,0,6">
+                                        Padding="0,3,0,3">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -1117,7 +1117,7 @@
                                                 ToolTip="{x:Static t:MainTexts.HistoryRowTip}">
                                             <StackPanel>
                                                 <!-- 이름 (없으면 저장 시각) · 이름이 있으면 옆에 시각 -->
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                                TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding SavedAtText}" Style="{StaticResource Muted}"
@@ -1133,25 +1133,28 @@
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type main:HistoryCellVm}">
+                                                            <!--
+                                                              1.61: 네 줄 → 두 줄. 윗줄 = 분석 이름 · 판정/점수 · 개수,
+                                                              아랫줄 = 요약. 무엇을 견줬는지(InputsText)는 마우스를 올리면.
+                                                            -->
                                                             <Border Background="{DynamicResource Brush.Window}"
                                                                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                                                                    CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                                                                    CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                                                                    ToolTip="{Binding InputsText}">
                                                                 <StackPanel>
-                                                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Muted}"
-                                                                               FontSize="10" TextTrimming="CharacterEllipsis" />
-                                                                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                                                        <TextBlock x:Name="CellHead" Text="{Binding HeadText}"
-                                                                                   FontSize="14" FontWeight="Bold"
+                                                                    <DockPanel LastChildFill="True">
+                                                                        <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" Style="{StaticResource Muted}"
+                                                                                   FontSize="10" VerticalAlignment="Center" MaxWidth="90"
+                                                                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                                                        <TextBlock DockPanel.Dock="Left" x:Name="CellHead" Text="{Binding HeadText}"
+                                                                                   FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
                                                                                    Foreground="{DynamicResource Brush.Muted}" />
                                                                         <TextBlock Text="{Binding CountText}" Style="{StaticResource Muted}"
-                                                                                   FontSize="11" Margin="8,0,0,1" VerticalAlignment="Bottom" />
-                                                                    </StackPanel>
-                                                                    <TextBlock Text="{Binding SummaryText}" FontSize="11" Margin="0,1,0,0"
+                                                                                   FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                    </DockPanel>
+                                                                    <TextBlock Text="{Binding SummaryText}" FontSize="10"
                                                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding SummaryText}" />
-                                                                    <TextBlock Text="{Binding InputsText}" Style="{StaticResource Muted}"
-                                                                               FontSize="10" Margin="0,1,0,0"
-                                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding InputsText}"
-                                                                               Visibility="{Binding InputsText, Converter={StaticResource TextToVisibility}}" />
                                                                 </StackPanel>
                                                             </Border>
                                                             <DataTemplate.Triggers>

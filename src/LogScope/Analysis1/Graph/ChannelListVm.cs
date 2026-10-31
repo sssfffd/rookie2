@@ -21,7 +21,7 @@ namespace LogScope.Analysis1.Graph
     {
         private readonly AppState _state;
 
-        public List<IoRowVm> All = new List<IoRowVm>();
+        public List<IoRowVm> All { get; set; } = new List<IoRowVm>();
 
         private ObservableCollection<object> _rows = new ObservableCollection<object>();
         /// <summary>그룹 이름 줄(GroupRowVm)과 IO 줄(IoRowVm)이 섞여 있습니다.</summary>

@@ -153,6 +153,7 @@ namespace LogScope.Tests
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
+                VmHaveNoFields();
                 Analysis3CardRules();
                 StepsFromChannel();
                 StepPairing();
@@ -4763,17 +4764,17 @@ namespace LogScope.Tests
             GroupSummaryVm rest = null;
             foreach (GroupSummaryVm x in gs) if (x.GroupName == "묶지 않은 IO") rest = x;
             Check("그룹 줄 — 판정 기준 달라짐 4 / 6 · 빨강 · 접힘", rest != null && rest.ChangedCount == 4 && rest.MemberCount == 6
-                  && rest.Grade == ScoreBands.GradeBad && rest.CanExpand && !rest.IsExpanded && rest.Ios.Count == 0
-                  && main.Cards[0].GroupsMaxHeight == 230, rest != null ? rest.CountText : "없음");
+                  && rest.Grade == ScoreBands.GradeBad && rest.CanExpand && !rest.IsExpanded && rest.Ios.Count == 0,
+                  rest != null ? rest.CountText : "없음");
             Check("그룹 아래 글 = 가장 긴 오차", rest != null && rest.DetailText.StartsWith("가장 긴 오차: BIG"), rest != null ? rest.DetailText : "");
 
             main.ToggleGroup("묶지 않은 IO");
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저 · 칸 높이 520", rest != null && rest.IsExpanded && rest.Ios.Count == 6
+            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
                   && rest.Ios[0].Name == "BIG" && rest.Ios[0].Grade == ScoreBands.GradeBad
-                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].CanExpand
-                  && main.Cards[0].GroupsMaxHeight == 520, rest != null && rest.Ios.Count > 0 ? rest.Ios[0].Summary : "");
+                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].CanExpand,
+                  rest != null && rest.Ios.Count > 0 ? rest.Ios[0].Summary : "");
 
             GroupIoVm spikeIo = null;
             foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
@@ -4825,7 +4826,9 @@ namespace LogScope.Tests
             Check("취소는 아무것도 안 바꿈", changed == 5, changed.ToString());
 
             main.ToggleGroup("묶지 않은 IO");
-            Check("다시 누르면 접힘", main.Cards[0].GroupsMaxHeight == 230, "");
+            bool anyOpen = false;
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.IsExpanded) anyOpen = true;
+            Check("다시 누르면 접힘", !anyOpen, "");
 
             // 로그를 바꾸면 (창이 AllowOnce 를 비움) 다시 찾음
             st.AllowOnce.Clear();
@@ -4836,6 +4839,26 @@ namespace LogScope.Tests
                   && st.Judgement.Items.Count == 0, st.Judgement != null ? st.Judgement.Items.Count.ToString() : "없음");
             main.Refresh();
             Check("같은 로그끼리 → 메인 칸 PASS · 0", main.Cards[0].ScoreText == "PASS" && main.Cards[0].VerdictCount == "0", main.Cards[0].ScoreText);
+        }
+
+        /// <summary>
+        /// 화면이 묶는 뷰모델에 <b>공개 필드가 없는지</b> (1.61). WPF 는 필드를 못 읽어서, 1.59 에 그룹 · IO 줄의
+        /// 값을 필드로 적었더니 그룹을 눌러도 IO 줄이 안 나왔습니다. C# 로 읽는 시험은 그걸 못 잡아서 여기서 막습니다.
+        /// 이름이 "Vm" 으로 끝나는 프로그램 쪽 형식 전부.
+        /// </summary>
+        private static void VmHaveNoFields()
+        {
+            Say("뷰모델 — 화면이 묶는 값은 속성");
+            var bad = new List<string>();
+            int seen = 0;
+            foreach (Type t in typeof(MainVm).Assembly.GetTypes())
+            {
+                if (!t.IsClass || !t.Name.EndsWith("Vm", StringComparison.Ordinal)) continue;
+                seen++;
+                foreach (System.Reflection.FieldInfo fi in t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+                    bad.Add(t.Name + "." + fi.Name);
+            }
+            Check("뷰모델 " + seen + " 개에 공개 필드 없음", seen > 10 && bad.Count == 0, string.Join(", ", bad.ToArray()));
         }
 
         /// <summary>그래프 보기 셋 — Lane · Overlay · 갤러리 (1.60). 하나만 켜지고 설정에 남음.</summary>
