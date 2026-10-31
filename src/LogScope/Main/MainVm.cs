@@ -367,7 +367,7 @@ namespace LogScope.Main
         ///
         /// 1.59: 판정이 있으면 <b>판정 기준</b>으로 셉니다 — 허용 안 된 값 오차가 있는 IO 가 "달라짐".
         /// (그 전에는 대시보드와 같은 예전 비교 — 같은 시각끼리 한 점이라도 넘으면 — 였습니다.)
-        /// 그룹 · IO 를 누르면 펼쳐지고 (ToggleGroup · ToggleIo), 공정 단계 · 한쪽에만 있는 IO
+        /// 그룹을 누르면 IO 들이 펼쳐지고 (ToggleGroup), IO 를 누르면 오차 창 (1.62), 공정 단계 · 한쪽에만 있는 IO
         /// 오차는 맨 위 줄 둘에 모입니다.
         /// </summary>
         private List<GroupSummaryVm> BuildGroups(CompareResult r)
@@ -389,12 +389,12 @@ namespace LogScope.Main
                     if (!byIo.TryGetValue(k, out l)) { l = new List<JudgeItem>(); byIo[k] = l; }
                     l.Add(it);
                 }
-                AddPseudo(list, judge, "공정 단계", delegate (JudgeItem it)
+                AddPseudo(list, judge, PseudoSteps, delegate (JudgeItem it)
                 {
                     return it.Kind == JudgeKind.StepLength || it.Kind == JudgeKind.StepMissing
                         || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder;
                 });
-                AddPseudo(list, judge, "한쪽에만 있는 IO", delegate (JudgeItem it)
+                AddPseudo(list, judge, PseudoIos, delegate (JudgeItem it)
                 {
                     return it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
                 });
@@ -472,7 +472,6 @@ namespace LogScope.Main
             // 색: 그룹 안 IO 의 허용 안 된 오차 중 가장 나쁜 것
             JudgeGrade worst = JudgeGrade.Pass;
             bool anyOpen = false;
-            JudgeItem longest = null;
             var ios = new List<GroupIoVm>();
             for (int m = 0; m < members.Count; m++)
             {
@@ -486,17 +485,12 @@ namespace LogScope.Main
                     if (it.IsAllowed) continue;
                     anyOpen = true;
                     if (it.Grade > worst) worst = it.Grade;
-                    if (longest == null || it.Duration > longest.Duration) longest = it;
                 }
             }
             g.GradeOverride = members.Count == 0 ? ScoreBands.GradeNone
                             : !anyOpen ? ScoreBands.GradeGood
                             : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
-
-            // 그룹 이름 아래 글 (1.06 부터 "미구현" 으로 비워 둔 자리) — 가장 긴 오차 하나.
-            g.SetDetail(longest == null ? (members.Count > 0 ? "오차 없음" : string.Empty)
-                : "가장 긴 오차: " + longest.Io + " · " + JudgeEngine.DurationText(longest.Duration, judge.Clock, judge.TimeUnit)
-                  + (longest.Step.Length > 0 ? " · " + longest.Step : string.Empty));
+            // 그룹 이름 아래 글은 1.62 에 뺐습니다 (사용자 요청 — "가장 긴 오차" 같은 글 없이 이름 · 개수만).
 
             if (g.IsExpanded)
             {
@@ -533,7 +527,6 @@ namespace LogScope.Main
             var io = new GroupIoVm();
             io.Group = group;
             io.Name = name;
-            JudgeResult judge = _state.Judgement;
             if (items == null || items.Count == 0)
             {
                 io.Summary = "오차 없음";
@@ -543,31 +536,16 @@ namespace LogScope.Main
 
             int open = OpenCount(items);
             JudgeGrade worst = JudgeGrade.Pass;
-            double longest = 0;
-            var steps = new List<string>();
             foreach (JudgeItem it in items)
-            {
-                if (it.IsAllowed) continue;
-                if (it.Grade > worst) worst = it.Grade;
-                if (it.Duration > longest) longest = it.Duration;
-                if (it.Step.Length > 0 && !steps.Contains(it.Step)) steps.Add(it.Step);
-            }
+                if (!it.IsAllowed && it.Grade > worst) worst = it.Grade;
+            // 1.62: 개수만 ("가장 긴 …" 같은 글은 뺌 — 자세한 것은 누르면 뜨는 창에)
             io.Summary = open == 0
                 ? "허용됨 " + items.Count.ToString("N0")
                 : "오차 " + open.ToString("N0")
-                  + " · 가장 긴 " + JudgeEngine.DurationText(longest, judge.Clock, judge.TimeUnit)
-                  + (steps.Count > 0 ? " · " + string.Join(" · ", steps.ToArray()) : string.Empty)
                   + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
             io.Grade = open == 0 ? ScoreBands.GradeGood
                      : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
-            io.CanExpand = true;
-            io.IsExpanded = _openIos.Contains(io.Key);
-            if (io.IsExpanded)
-            {
-                var sorted = new List<JudgeItem>(items);
-                sorted.Sort(delegate (JudgeItem a, JudgeItem b) { return a.Start.CompareTo(b.Start); });
-                foreach (JudgeItem it in sorted) io.Items.Add(new ErrorRowVm(it, ItemText(it)));
-            }
+            io.HasErrors = true;
             return io;
         }
 
@@ -584,14 +562,10 @@ namespace LogScope.Main
 
             var g = new GroupSummaryVm(name, new List<string>(), 0, 0);
             g.IsPseudo = true;
-            g.CanExpand = true;
-            g.IsExpanded = _openGroups.Contains(name);
+            g.CanExpand = true;   // 누르면 오차 창 (펼치지 않음)
             g.CountOverride = "오차 " + open.ToString("N0") + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
             g.GradeOverride = open == 0 ? ScoreBands.GradeGood
                             : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
-            g.SetDetail(items[0].What);
-            if (g.IsExpanded)
-                foreach (JudgeItem it in items) g.DirectItems.Add(new ErrorRowVm(it, it.What));
             list.Add(g);
         }
 
@@ -602,10 +576,11 @@ namespace LogScope.Main
             return n;
         }
 
-        /// <summary>오차 줄 글 — "2 단계 · 12:10:00 · 8분 3초 · 최대 3.1".</summary>
-        private string ItemText(JudgeItem it)
+        /// <summary>오차 줄 글 — "2 단계 · 12:10:00 · 8분 3초 · 최대 3.1". 값 오차가 아니면 판정 글 그대로.</summary>
+        public string ItemText(JudgeItem it)
         {
             JudgeResult judge = _state.Judgement;
+            if (it.Kind != JudgeKind.Value) return it.What;
             string at = _state.Before != null ? _state.Before.FormatTime(it.Start) : NumberText.Plain(it.Start);
             return (it.Step.Length > 0 ? it.Step + " · " : string.Empty)
                  + at + " · " + JudgeEngine.DurationText(it.Duration, judge != null && judge.Clock, judge != null ? judge.TimeUnit : string.Empty)
@@ -615,7 +590,6 @@ namespace LogScope.Main
         // ---------------- 펼치기 · 허용 (1.59) ----------------
 
         private readonly HashSet<string> _openGroups = new HashSet<string>(StringComparer.Ordinal);
-        private readonly HashSet<string> _openIos = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>오차 허용을 바꿨을 때 — 창이 설정을 저장합니다 ("앞으로도 허용" 은 설정에 있음).</summary>
         public event EventHandler AllowChanged;
@@ -628,13 +602,41 @@ namespace LogScope.Main
             Cards[0].SetGroups(BuildGroups(_state.Comparison));
         }
 
-        /// <summary>IO 줄을 눌렀을 때 — 그 IO 의 구간별 오차를 펼치거나 접습니다.</summary>
-        public void ToggleIo(string key)
+        /// <summary>
+        /// IO 를 눌렀을 때 뜨는 창(IoErrorsWindow, 1.62)에 실을 오차 — 그 IO 의 값 오차 · IO 없어짐을 시각 차례로.
+        /// 판정이 없거나 History 를 보는 중이면 빈 목록.
+        /// </summary>
+        public List<JudgeItem> ItemsOfIo(string io)
         {
-            if (IsViewingHistory || string.IsNullOrEmpty(key) || _state.Judgement == null) return;
-            if (!_openIos.Remove(key)) _openIos.Add(key);
-            Cards[0].SetGroups(BuildGroups(_state.Comparison));
+            var list = new List<JudgeItem>();
+            JudgeResult judge = _state.Judgement;
+            if (judge == null || IsViewingHistory || string.IsNullOrEmpty(io)) return list;
+            string key = LogDataset.LooseKey(io);
+            foreach (JudgeItem it in judge.Items)
+                if (it.Io.Length > 0 && LogDataset.LooseKey(it.Io) == key) list.Add(it);
+            list.Sort(delegate (JudgeItem a, JudgeItem b) { return a.Start.CompareTo(b.Start); });
+            return list;
         }
+
+        /// <summary>공정 단계 · 한쪽에만 있는 IO 줄을 눌렀을 때 뜨는 창에 실을 오차.</summary>
+        public List<JudgeItem> ItemsOfPseudo(string name)
+        {
+            var list = new List<JudgeItem>();
+            JudgeResult judge = _state.Judgement;
+            if (judge == null || IsViewingHistory) return list;
+            foreach (JudgeItem it in judge.Items)
+            {
+                bool step = it.Kind == JudgeKind.StepLength || it.Kind == JudgeKind.StepMissing
+                         || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder;
+                bool io = it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
+                if ((name == PseudoSteps && step) || (name == PseudoIos && io)) list.Add(it);
+            }
+            return list;
+        }
+
+        /// <summary>그룹이 아닌 줄 이름 (공정 단계 오차 · 한쪽에만 있는 IO).</summary>
+        public const string PseudoSteps = "공정 단계";
+        public const string PseudoIos = "한쪽에만 있는 IO";
 
         /// <summary>오차 줄의 [이번만 허용] · [앞으로도 허용] · [허용 풀기].</summary>
         public void Allow(JudgeItem item, AllowChoice choice)
@@ -934,6 +936,10 @@ namespace LogScope.Main
             q.Analysis3 = q.Use3 ? Analysis3Link.Result : null;
             q.Analysis3Before = q.Use3 ? Analysis3Link.BeforePath : string.Empty;
             q.Analysis3After = q.Use3 ? Analysis3Link.AfterPath : string.Empty;
+            // 1.62: 분석 1 판정 · 허용 — 허용한 오차를 LLM 이 정상 변동으로 읽게 (JudgeText)
+            q.Judgement = q.Use1 ? _state.Judgement : null;
+            q.Analysis1Judgement = q.Use1 && _state.Judgement != null
+                ? JudgeText.ForLlm(_state.Judgement, _state.Before) : string.Empty;
             return q;
         }
 

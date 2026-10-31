@@ -203,9 +203,9 @@ namespace LogScope.Main
         // 화면이 묶는 값은 <b>모두 속성</b>이어야 합니다 (1.61). 1.59 에 필드로 적었다가 WPF 가 필드를
         // 못 읽어서, 그룹을 눌러도 IO 줄이 안 나왔습니다 (시험은 C# 로 읽어 지나감 → 시험에 "필드 없음" 검사를 더함).
         //
-        // 메인 분석 1 칸에서 그룹을 누르면 IO 들이, IO 를 누르면 구간별 오차가 펼쳐지고,
-        // 오차 줄의 단추로 그 자리에서 허용합니다 (따로 뜨는 창 없음). MainVm 이 누를 때마다
-        // 그룹 목록을 새로 짓습니다 — 그래서 여기 값들은 지을 때 한 번 정해집니다.
+        // 메인 분석 1 칸에서 그룹을 누르면 바로 아래에 IO 들이 펼쳐지고, IO 를 누르면 <b>작은 창</b>
+        // (IoErrorsWindow, 1.62)이 떠서 그 IO 의 구간별 오차를 보고 허용합니다. 공정 단계 · 한쪽에만
+        // 있는 IO 줄은 누르면 바로 그 창. MainVm 이 누를 때마다 그룹 목록을 새로 짓습니다.
 
         /// <summary>판정이 정한 색. 비었으면 위 비율로.</summary>
         public string GradeOverride { get; set; } = string.Empty;
@@ -216,17 +216,23 @@ namespace LogScope.Main
         /// <summary>공정 단계 · 한쪽에만 있는 IO 처럼 그룹이 아닌 줄 (그래프 단추 없음, History 에 안 남김).</summary>
         public bool IsPseudo { get; set; }
 
-        /// <summary>펼칠 것이 있는지 (판정이 있어야 펼침).</summary>
+        /// <summary>누를 것이 있는지 (판정이 있어야 — 그룹은 펼침, 공정 단계 줄은 창).</summary>
         public bool CanExpand { get; set; }
         public bool IsExpanded { get; set; }
 
-        /// <summary>펼쳤을 때의 IO 줄들 (그룹) 또는 오차 줄들 (공정 단계 · 한쪽에만 있는 IO).</summary>
+        /// <summary>펼쳤을 때의 IO 줄들.</summary>
         public List<GroupIoVm> Ios { get; set; } = new List<GroupIoVm>();
-        public List<ErrorRowVm> DirectItems { get; set; } = new List<ErrorRowVm>();
 
         public bool ShowIos { get { return IsExpanded && Ios.Count > 0; } }
-        public bool ShowDirect { get { return IsExpanded && DirectItems.Count > 0; } }
-        public string ExpandGlyph { get { return !CanExpand ? string.Empty : IsExpanded ? "▾" : "▸"; } }
+        public string ExpandGlyph
+        {
+            get
+            {
+                if (!CanExpand) return string.Empty;
+                if (IsPseudo) return "›";   // 누르면 창
+                return IsExpanded ? "▾" : "▸";
+            }
+        }
         public bool CanGraph { get { return !IsPseudo && MemberCount > 0; } }
 
         /// <summary>색을 가르는 값. 하나도 안 달라졌으면 초록입니다.</summary>
@@ -280,18 +286,15 @@ namespace LogScope.Main
         public string Summary { get; set; } = string.Empty;
         public string Grade { get; set; } = ScoreBands.GradeNone;
 
-        public bool CanExpand { get; set; }
-        public bool IsExpanded { get; set; }
-        public List<ErrorRowVm> Items { get; set; } = new List<ErrorRowVm>();
-
-        public bool ShowItems { get { return IsExpanded && Items.Count > 0; } }
-        public string ExpandGlyph { get { return !CanExpand ? string.Empty : IsExpanded ? "▾" : "▸"; } }
+        /// <summary>오차가 (허용된 것까지) 하나라도 있는지 — 누르면 구간별 오차 창 (1.62).</summary>
+        public bool HasErrors { get; set; }
+        public string OpenGlyph { get { return HasErrors ? "›" : string.Empty; } }
 
         /// <summary>단추 Tag 로 넘기는 열쇠 — "그룹\nIO".</summary>
         public string Key { get { return Group + "\n" + Name; } }
     }
 
-    /// <summary>메인 분석 1 칸에 펼친 오차 한 줄 (1.59) — 그 자리에서 허용 단추를 누릅니다.</summary>
+    /// <summary>오차 한 줄 (1.59) — 1.62 부터 IO 를 누르면 뜨는 창(IoErrorsWindow)에 늘어놓고 허용 단추를 누릅니다.</summary>
     public sealed class ErrorRowVm
     {
         public ErrorRowVm(JudgeItem item, string text)

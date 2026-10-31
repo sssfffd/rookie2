@@ -1,4 +1,5 @@
 ﻿using System;
+using LogScope.Analysis1.Judge;
 using LogScope.Analysis2;
 
 namespace LogScope.Common
@@ -77,6 +78,19 @@ namespace LogScope.Common
         /// <summary>분석 3 의 이전 · 이후 자리.</summary>
         public string Analysis3Before = string.Empty;
         public string Analysis3After = string.Empty;
+
+        /// <summary>
+        /// 분석 1 정상 판정 (1.62). Use1 이 거짓이면 null. 오차마다 <c>IsAllowed</c> · <c>Allowed</c> 로
+        /// <b>사용자가 허용한 것</b>을 알 수 있습니다.
+        /// </summary>
+        public JudgeResult Judgement;
+
+        /// <summary>
+        /// 위 판정을 LLM 에 그대로 넣을 수 있게 만든 글 (Markdown 표, 1.62) — 판정 · 비교 방법 · 허용 안 된 오차 ·
+        /// <b>사용자가 허용한 오차</b> (정상으로 판단됨 — 이상의 근거로 쓰지 말라는 말까지). Use1 이 거짓이면 빈 글자.
+        /// <b>허용을 LLM 분석에 반영하려면 분석기(LlmExport) 가 이 글을 보내는 글에 넣어야 합니다.</b>
+        /// </summary>
+        public string Analysis1Judgement = string.Empty;
 
         /// <summary>누른 시각.</summary>
         public DateTime RequestedAt = DateTime.Now;

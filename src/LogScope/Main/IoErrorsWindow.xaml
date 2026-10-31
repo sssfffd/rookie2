@@ -1,0 +1,91 @@
+﻿<Window x:Class="LogScope.Main.IoErrorsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:main="clr-namespace:LogScope.Main"
+        xmlns:t="clr-namespace:LogScope.Main"
+        Title="{Binding Title}" Width="720" Height="460" MinWidth="480" MinHeight="260"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Window}"
+        Foreground="{DynamicResource Brush.Text}"
+        FontFamily="Segoe UI" FontSize="12">
+
+    <!--
+      메인 분석 1 칸에서 IO (또는 공정 단계 · 한쪽에만 있는 IO 줄) 를 눌렀을 때 뜨는 창 (1.62).
+      그 IO 의 구간별 오차를 시각 차례로 늘어놓고, 줄마다 [이번만 허용] · [앞으로도 허용] · [허용 풀기] ·
+      [그래프]. 허용하면 메인 칸의 판정 · 개수 · 색이 그 자리에서 바뀝니다 (MainVm.Allow).
+    -->
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="16,12,16,8">
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Muted}" Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource Brush.Panel}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="10,8">
+            <Button Content="{x:Static t:MainTexts.IoErrorsClose}" HorizontalAlignment="Right" MinWidth="100"
+                    IsCancel="True" Style="{StaticResource PrimaryButton}" Click="OnClose" />
+        </Border>
+
+        <Grid Margin="16,0,16,8">
+            <TextBlock Text="{x:Static t:MainTexts.IoErrorsNone}" Style="{StaticResource Muted}"
+                       Visibility="{Binding NoRows, Converter={StaticResource BoolToVisibility}}" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type main:ErrorRowVm}">
+                            <Border x:Name="Row" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="0,5,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="Word" Grid.Column="0" Text="{Binding Word}" FontSize="11" FontWeight="Bold"
+                                               MinWidth="96" Margin="0,1,8,0" VerticalAlignment="Top"
+                                               Foreground="{DynamicResource Brush.Muted}" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Detail}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource Brush.Muted}" />
+                                    </StackPanel>
+                                    <WrapPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0" MaxWidth="290"
+                                               HorizontalAlignment="Right">
+                                        <Button Content="{x:Static t:MainTexts.ShowGraph}" Click="OnErrorGraph"
+                                                ToolTip="{x:Static t:MainTexts.ErrorGraphTip}"
+                                                Visibility="{Binding CanGraph, Converter={StaticResource BoolToVisibility}}"
+                                                MinHeight="0" Padding="7,2" Margin="2" />
+                                        <Button Content="{x:Static t:MainTexts.AllowOnce}" Click="OnAllowOnce"
+                                                ToolTip="{x:Static t:MainTexts.AllowOnceTip}"
+                                                Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}"
+                                                MinHeight="0" Padding="7,2" Margin="2" />
+                                        <Button Content="{x:Static t:MainTexts.AllowAlways}" Click="OnAllowAlways"
+                                                ToolTip="{x:Static t:MainTexts.AllowAlwaysTip}"
+                                                Visibility="{Binding CanAllowAlways, Converter={StaticResource BoolToVisibility}}"
+                                                MinHeight="0" Padding="7,2" Margin="2" />
+                                        <Button Content="{x:Static t:MainTexts.Unallow}" Click="OnUnallow"
+                                                ToolTip="{x:Static t:MainTexts.UnallowTip}"
+                                                Visibility="{Binding IsAllowed, Converter={StaticResource BoolToVisibility}}"
+                                                MinHeight="0" Padding="7,2" Margin="2" />
+                                    </WrapPanel>
+                                </Grid>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                                    <Setter TargetName="Word" Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                                    <Setter TargetName="Word" Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsAllowed}" Value="True">
+                                    <Setter TargetName="Row" Property="Opacity" Value="0.6" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -95,7 +95,11 @@ namespace LogScope.Main
         /// <summary>단추 설명</summary>
         public const string ErrorGraphTip = "이 오차 구간을 그래프로 봅니다.";
         /// <summary>IO 줄 설명</summary>
-        public const string IoClickTip = "누르면 이 IO 의 구간별 오차를 펼칩니다 (다시 누르면 접음).";
+        public const string IoClickTip = "누르면 이 IO 의 구간별 오차가 작은 창으로 뜹니다. 거기서 허용합니다.";
+        /// <summary>오차 창 (1.62) — 닫기 단추</summary>
+        public const string IoErrorsClose = "닫기";
+        /// <summary>오차 창 — 오차가 없을 때</summary>
+        public const string IoErrorsNone = "오차가 없습니다.";
         /// <summary>단추 이름</summary>
         public const string AllowOnce = "이번만 허용";
         /// <summary>단추 설명</summary>

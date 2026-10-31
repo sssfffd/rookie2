@@ -313,6 +313,8 @@ namespace LogScope.Main
             GroupSummaryVm g = vm.FindGroup(name);
             if (g == null || !g.CanOpen) return;
 
+            // 공정 단계 · 한쪽에만 있는 IO 줄은 펼치지 않고 바로 오차 창 (1.62)
+            if (g.IsPseudo) { OpenErrors(name, delegate { return vm.ItemsOfPseudo(name); }); return; }
             if (g.CanExpand && !vm.IsViewingHistory) { vm.ToggleGroup(name); return; }
             RaiseGroupOpened(g);
         }
@@ -355,12 +357,28 @@ namespace LogScope.Main
             if (h != null) h(this, new GraphEventArgs(io, start, end));
         }
 
-        private void OnIoToggle(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// IO 줄을 눌렀을 때 (1.62) — 그 IO 의 구간별 오차를 작은 창에 띄웁니다. 창에서 허용하면 메인 칸이
+        /// 그 자리에서 바뀌고, 창의 [그래프] 를 누르면 창을 닫고 그 구간을 그래프로 봅니다.
+        /// </summary>
+        private void OnIoOpen(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
             var vm = DataContext as MainVm;
             var b = sender as FrameworkElement;
-            if (vm != null && b != null) vm.ToggleIo(b.Tag as string);
+            string io = b != null ? b.Tag as string : null;
+            if (vm == null || string.IsNullOrEmpty(io)) return;
+            OpenErrors(io, delegate { return vm.ItemsOfIo(io); });
+        }
+
+        private void OpenErrors(string title, Func<List<JudgeItem>> source)
+        {
+            var vm = DataContext as MainVm;
+            if (vm == null) return;
+            var w = new IoErrorsWindow(new IoErrorsVm(vm, title, source));
+            w.Owner = Window.GetWindow(this);
+            w.ShowDialog();
+            if (w.GraphItem != null) RaiseGraph(w.GraphItem.Io, w.GraphItem.Start, w.GraphItem.End);
         }
 
         private void OnIoGraph(object sender, RoutedEventArgs e)
@@ -368,32 +386,6 @@ namespace LogScope.Main
             e.Handled = true;
             var b = sender as FrameworkElement;
             if (b != null) RaiseGraph(b.Tag as string, double.NaN, double.NaN);
-        }
-
-        /// <summary>오차 줄의 단추 — 어느 오차인지는 줄의 DataContext(ErrorRowVm)로 압니다.</summary>
-        private static ErrorRowVm RowOf(object sender)
-        {
-            var b = sender as FrameworkElement;
-            return b != null ? b.DataContext as ErrorRowVm : null;
-        }
-
-        private void OnErrorGraph(object sender, RoutedEventArgs e)
-        {
-            e.Handled = true;
-            ErrorRowVm row = RowOf(sender);
-            if (row != null) RaiseGraph(row.Item.Io, row.Item.Start, row.Item.End);
-        }
-
-        private void OnAllowOnce(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Once); }
-        private void OnAllowAlways(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Always); }
-        private void OnUnallow(object sender, RoutedEventArgs e) { Allow(sender, e, AllowChoice.Unallow); }
-
-        private void Allow(object sender, RoutedEventArgs e, AllowChoice choice)
-        {
-            e.Handled = true;
-            var vm = DataContext as MainVm;
-            ErrorRowVm row = RowOf(sender);
-            if (vm != null && row != null) vm.Allow(row.Item, choice);
         }
 
         /// <summary>

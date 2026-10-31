@@ -4713,10 +4713,10 @@ namespace LogScope.Tests
             GroupSummaryVm steps = main.Cards[0].Groups.Count > 0 ? main.Cards[0].Groups[0] : null;
             Check("맨 위 공정 단계 줄", steps != null && steps.GroupName == "공정 단계" && steps.IsPseudo && !steps.CanGraph
                   && steps.CountOverride == "오차 2" && steps.Grade == ScoreBands.GradeBad, steps != null ? steps.CountText : "없음");
-            main.ToggleGroup("공정 단계");
-            steps = main.Cards[0].Groups[0];
-            Check("누르면 오차 줄 둘 · 차례는 앞으로도 허용 단추 없음", steps.ShowDirect && steps.DirectItems.Count == 2
-                  && !steps.DirectItems[0].CanAllowAlways && steps.DirectItems[0].IsOpen, steps.DirectItems.Count.ToString());
+            var pop = new IoErrorsVm(main, "공정 단계", delegate { return main.ItemsOfPseudo(MainVm.PseudoSteps); });
+            Check("누르면 오차 창에 둘 · 차례는 앞으로도 허용 단추 없음", pop.Rows.Count == 2
+                  && pop.Summary == "오차 2" && pop.Rows[0].Item.Kind == JudgeKind.StepOrder
+                  && !pop.Rows[0].CanAllowAlways && pop.Rows[0].IsOpen && pop.Rows[1].CanAllowAlways, pop.Rows.Count.ToString());
             Check("공정 단계 줄은 History 에 안 남김", main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count - 1, "");
 
             // 단계가 하나 없어지면
@@ -4757,54 +4757,56 @@ namespace LogScope.Tests
                   && main.Cards[0].Grade == ScoreBands.GradeBad && main.Cards[0].ScoreOutOf.Length == 0,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].VerdictCount);
 
-            // ---- 메인 분석 1 칸: 그룹 → IO → 구간별 오차 → 그 자리에서 허용 (1.59) ----
+            // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----
             int changed = 0;
             main.AllowChanged += delegate { changed++; };
-            List<GroupSummaryVm> gs = main.Cards[0].Groups;
             GroupSummaryVm rest = null;
-            foreach (GroupSummaryVm x in gs) if (x.GroupName == "묶지 않은 IO") rest = x;
-            Check("그룹 줄 — 판정 기준 달라짐 4 / 6 · 빨강 · 접힘", rest != null && rest.ChangedCount == 4 && rest.MemberCount == 6
-                  && rest.Grade == ScoreBands.GradeBad && rest.CanExpand && !rest.IsExpanded && rest.Ios.Count == 0,
-                  rest != null ? rest.CountText : "없음");
-            Check("그룹 아래 글 = 가장 긴 오차", rest != null && rest.DetailText.StartsWith("가장 긴 오차: BIG"), rest != null ? rest.DetailText : "");
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
+            Check("그룹 줄 — 판정 기준 달라짐 4 / 6 · 빨강 · 접힘 · 아래 글 없음", rest != null && rest.ChangedCount == 4 && rest.MemberCount == 6
+                  && rest.Grade == ScoreBands.GradeBad && rest.CanExpand && !rest.IsExpanded && rest.Ios.Count == 0
+                  && rest.Detail.Length == 0, rest != null ? rest.CountText : "없음");
 
             main.ToggleGroup("묶지 않은 IO");
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
-                  && rest.Ios[0].Name == "BIG" && rest.Ios[0].Grade == ScoreBands.GradeBad
-                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].CanExpand,
+            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저 · 개수만", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
+                  && rest.Ios[0].Name == "BIG" && rest.Ios[0].Grade == ScoreBands.GradeBad && rest.Ios[0].Summary == "오차 1"
+                  && rest.Ios[0].HasErrors && rest.Ios[0].OpenGlyph == "›"
+                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].HasErrors,
                   rest != null && rest.Ios.Count > 0 ? rest.Ios[0].Summary : "");
 
+            var spikePop = new IoErrorsVm(main, "SPIKE", delegate { return main.ItemsOfIo("SPIKE"); });
+            Check("IO 누르면 오차 창 — 구간 하나", spikePop.Rows.Count == 1 && spikePop.Title == "SPIKE"
+                  && spikePop.Rows[0].Text.Contains("12:00:40.1") && spikePop.Rows[0].IsOpen && spikePop.Rows[0].CanGraph
+                  && spikePop.Rows[0].CanAllowAlways, spikePop.Rows.Count > 0 ? spikePop.Rows[0].Text : "");
+
+            JudgeItem spike = spikePop.Rows[0].Item;
+            spikePop.Allow(spikePop.Rows[0], AllowChoice.Always);
+            Check("창에서 앞으로도 허용 → 규칙 · 창 글 · 메인 칸 3", st.Settings.AllowRules.Count == 1 && spike.Allowed == AllowState.Rule
+                  && spikePop.Summary == "오차 0 · 허용됨 1" && spikePop.Rows[0].IsAllowed && spikePop.Rows[0].Word == "허용됨 · 규칙"
+                  && main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "3" && changed == 1, spikePop.Summary);
+            rest = null;
+            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
             GroupIoVm spikeIo = null;
             foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
-            main.ToggleIo(spikeIo.Key);
-            rest = null;
-            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            spikeIo = null;
-            foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
-            Check("IO 누르면 구간별 오차", spikeIo != null && spikeIo.IsExpanded && spikeIo.Items.Count == 1
-                  && spikeIo.Items[0].Text.Contains("12:00:40.1") && spikeIo.Items[0].IsOpen && spikeIo.Items[0].CanGraph
-                  && spikeIo.Items[0].CanAllowAlways, spikeIo != null && spikeIo.Items.Count > 0 ? spikeIo.Items[0].Text : "");
+            Check("허용 뒤에도 그룹 펼친 채 · IO 줄 허용됨", rest.IsExpanded && spikeIo.Summary == "허용됨 1" && rest.ChangedCount == 3, spikeIo.Summary);
 
-            JudgeItem spike = spikeIo.Items[0].Item;
-            main.Allow(spike, AllowChoice.Always);
-            Check("앞으로도 허용 → 규칙 하나 · WARNING 유지 · 메인 칸 3", st.Settings.AllowRules.Count == 1 && spike.Allowed == AllowState.Rule
-                  && main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "3" && changed == 1, main.Cards[0].VerdictCount);
-            rest = null;
-            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            spikeIo = null;
-            foreach (GroupIoVm x in rest.Ios) if (x.Name == "SPIKE") spikeIo = x;
-            Check("허용 뒤에도 펼친 채 · 허용됨 글 · 풀기 단추", rest.IsExpanded && spikeIo.IsExpanded && spikeIo.Items[0].IsAllowed
-                  && spikeIo.Items[0].Word == "허용됨 · 규칙" && spikeIo.Summary.StartsWith("허용됨") && rest.ChangedCount == 3, spikeIo.Summary);
+            // LLM 입력에 허용이 실림
+            LlmRequest lq = main.BuildLlmRequest(null);
+            Check("LLM 요청에 판정 · 허용 글", lq.Use1 && lq.Judgement == st.Judgement
+                  && lq.Analysis1Judgement.Contains("사용자가 허용한 오차") && lq.Analysis1Judgement.Contains("| 앞으로도 (규칙) | 값 | SPIKE |")
+                  && lq.Analysis1Judgement.Contains("**FAIL**"), lq.Analysis1Judgement.Length.ToString());
+            main.Llm.Checks[0].Selected = false;
+            lq = main.BuildLlmRequest(null);
+            Check("분석 1 을 안 고르면 판정 글 없음", !lq.Use1 && lq.Judgement == null && lq.Analysis1Judgement.Length == 0, "");
+            main.Llm.Checks[0].Selected = true;
 
-            GroupIoVm bigIo = rest.Ios[0];
-            main.ToggleIo(bigIo.Key);
-            foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            JudgeItem big = rest.Ios[0].Items[0].Item;
-            main.Allow(big, AllowChoice.Once);
+            var bigPop = new IoErrorsVm(main, "BIG", delegate { return main.ItemsOfIo("BIG"); });
+            JudgeItem big = bigPop.Rows[0].Item;
+            bigPop.Allow(bigPop.Rows[0], AllowChoice.Once);
             Check("BIG 이번만 허용 → WARNING", main.Cards[0].ScoreText == "WARNING" && big.Allowed == AllowState.Once
                   && main.Cards[0].VerdictCount == "2" && changed == 2, main.Cards[0].ScoreText);
+            Check("LLM 글에 이번만 허용", main.BuildLlmRequest(null).Analysis1Judgement.Contains("| 이번만 | 값 | BIG |"), "");
 
             main.Allow(spike, AllowChoice.Unallow);
             Check("허용 풀기 → 규칙도 지움", st.Settings.AllowRules.Count == 0 && spike.Allowed == AllowState.None, "");
