@@ -1104,7 +1104,7 @@ namespace LogScope.Analysis1.Graph
         {
             string msg = (_state != null && _state.HasAny)
                 ? "왼쪽 목록에서 IO 를 골라 주세요."
-                : "위쪽 메뉴의 '이전 로그 열기' / '이후 로그 열기' 로 파일을 열어 주세요.";
+                : "위쪽 메뉴의 '이전 열기' / '이후 열기' 로 파일을 열어 주세요.";
             FormattedText ft = Text(msg, FontNormal, p.MutedBrush);
             ft.MaxTextWidth = Math.Max(100, ActualWidth - 48);
             dc.DrawText(ft, new Point(24, 24));

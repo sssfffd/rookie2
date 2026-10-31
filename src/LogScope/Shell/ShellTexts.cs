@@ -37,11 +37,15 @@ namespace LogScope.Shell
         /// <summary>고르기 단추 마우스를 올리면 뜨는 설명</summary>
         public const string ShowJudgeTip = "정상 판정(PASS · WARNING · FAIL)과 오차를 봅니다. 오차를 눌러 허용할 수 있습니다 (F4).";
         /// <summary>단추 이름</summary>
-        public const string OpenBefore = "이전 로그 열기";
+        public const string OpenBefore = "이전 열기";
+        /// <summary>단추 마우스를 올리면 뜨는 설명 (1.58 — 단추 글을 줄이면서)</summary>
+        public const string OpenBeforeTip = "이전 로그 파일을 골라 바로 읽고 견줍니다 (Ctrl+O).";
         /// <summary>단추 이름</summary>
-        public const string OpenAfter = "이후 로그 열기";
+        public const string OpenAfter = "이후 열기";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string OpenAfterTip = "이후 로그 파일을 골라 바로 읽고 견줍니다 (Ctrl+Shift+O).";
         /// <summary>단추 이름</summary>
-        public const string Recompare = "비교 다시 하기";
+        public const string Recompare = "다시 비교";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
         public const string RecompareTip = "허용 오차 등을 바꾼 뒤 누르세요 (F5).";
         /// <summary>단추 이름</summary>
