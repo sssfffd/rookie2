@@ -658,11 +658,11 @@ namespace LogScope.Main
             CompareResult r = _state.Comparison;
             Llm.SetReady(1, names.Title(1), r != null,
                 r != null ? "로그 두 개를 비교함 · 달라진 IO " + r.ChangedCount.ToString("N0") + "개"
-                : (_state.HasBoth ? "비교 결과가 없습니다. [다시 비교] 를 눌러 주세요."
-                                  : "이전 · 이후 로그를 둘 다 열면 비교됩니다."));
+                : (_state.HasBoth ? "비교 결과가 없습니다. 분석 1 칸의 [분석] 을 눌러 주세요."
+                                  : "이전 · 이후 로그를 넣고 분석 1 칸의 [분석] 을 누르면 비교됩니다."));
             Llm.SetReady(2, names.Title(2), _state.HasDbResult,
                 _state.HasDbResult ? "DB 를 견줌 · " + DbVerdict.Of(_state.DbChanged) + " · 차이 발생 " + _state.DbChanged.ToString("N0") + "개"
-                                   : "이전 · 이후 DB 를 넣으면 읽고 견줍니다.");
+                                   : "이전 · 이후 DB 를 넣고 분석 2 칸의 [분석] 을 누르면 읽고 견줍니다.");
             bool a3 = Analysis3Link.Result != null;
             Llm.SetReady(3, names.Title(3), a3,
                 a3 ? "분석 3 이 결과를 보냄 (Analysis3Link.Publish)"
@@ -684,24 +684,20 @@ namespace LogScope.Main
         /// <summary>[LLM 분석 실행] 을 누른 순간의 재료. 창이 배경 스레드로 넘깁니다.</summary>
         public LlmRequest BuildLlmRequest(DbDiffResult dbDiff)
         {
+            // 1.54: 결과가 있고 <b>체크한</b> 분석만 참. 안 고른 분석 2 · 3 의 재료는 비워서 넘깁니다.
+            // 분석 1 은 State 안에 있어 비울 수 없습니다 (설정도 State 에 있음) — 받는 쪽이 Use1 을 봐야 합니다.
             var q = new LlmRequest();
-            q.Use1 = _state.Comparison != null;
-            q.Use2 = _state.HasDbResult;
-            q.Use3 = Analysis3Link.Result != null;
+            q.Use1 = _state.Comparison != null && Llm.Checks[0].Selected;
+            q.Use2 = _state.HasDbResult && Llm.Checks[1].Selected;
+            q.Use3 = Analysis3Link.Result != null && Llm.Checks[2].Selected;
             for (int i = 0; i < 3; i++) q.Titles[i] = AppConfig.Current.Title(i + 1);
             q.State = _state;
             q.DbDiff = q.Use2 ? dbDiff : null;
-            q.Analysis3 = Analysis3Link.Result;
-            q.Analysis3Before = Analysis3Link.BeforePath;
-            q.Analysis3After = Analysis3Link.AfterPath;
+            q.Analysis3 = q.Use3 ? Analysis3Link.Result : null;
+            q.Analysis3Before = q.Use3 ? Analysis3Link.BeforePath : string.Empty;
+            q.Analysis3After = q.Use3 ? Analysis3Link.AfterPath : string.Empty;
             return q;
         }
-
-        /// <summary>
-        /// 화면 오른쪽 아래의 색 설명. 점수를 어느 색으로 칠하는지와 그 색이
-        /// 무슨 뜻인지 알려 줍니다. 칸의 점수 색과 <b>같은 값</b>을 봅니다.
-        /// </summary>
-        public List<BandVm> Bands { get { return ScoreBands.Legend(); } }
 
         /// <summary>요약에서 누른 그룹을 찾습니다. 분석 1 의 것만 있습니다.</summary>
         public GroupSummaryVm FindGroup(string groupName)
@@ -806,7 +802,7 @@ namespace LogScope.Main
                 _viewing = again;
             }
             RefreshDeltas();
-            Raise("History"); Raise("HasHistory"); Raise("HistoryNote");
+            Raise("History"); Raise("HasHistory");
         }
 
         /// <summary>줄마다 "지금 결과와 얼마나 다른지" 를 다시 셉니다.</summary>
@@ -929,17 +925,6 @@ namespace LogScope.Main
             if (string.IsNullOrEmpty(path)) return string.Empty;
             try { return Path.GetFileName(path); }
             catch (ArgumentException) { return string.Empty; }
-        }
-
-        /// <summary>목록 위에 적는 안내.</summary>
-        public string HistoryNote
-        {
-            get
-            {
-                if (_history.Count == 0)
-                    return "아직 저장한 것이 없습니다. [지금 결과 저장] 을 누르면 분석 1 · 2 · 3 의 지금 요약이 한 줄로 쌓입니다.";
-                return "줄을 누르면 그때의 요약을 위 칸에 펼칩니다. 다시 누르거나 [지금 결과로] 를 누르면 돌아옵니다.";
-            }
         }
 
         /// <summary>저장 폴더. 화면에서 "어디에 쌓이는지" 를 알려 줍니다.</summary>

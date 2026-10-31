@@ -9,7 +9,7 @@ namespace LogScope.Main
     ///
     /// <code>
     ///   종합 분석 결과                                   [LLM 분석 실행] [취소]
-    ///   ● 분석 1 로그 비교  완료   ● 분석 2 DB  안 함   ● 분석 3  완료      ← Checks
+    ///   ☑● 분석 1 로그 비교  완료  ☐● 분석 2 DB  안 함  ☑● 분석 3  완료      ← Checks (1.54 부터 고를 수 있음)
     ///   [■■■■■■□□□□] 서버에 보내는 중                                     ← 돌 때만
     ///   ┌ 결과 글 (고를 수 있음 · 길면 칸 안에서 굴림) ────────────────┐
     ///   └─────────────────────────────────────────────────────────────┘
@@ -21,12 +21,16 @@ namespace LogScope.Main
     {
         public LlmPanelVm()
         {
-            Checks = new List<LlmCheckVm> { new LlmCheckVm(1), new LlmCheckVm(2), new LlmCheckVm(3) };
+            Action changed = delegate { Raise("AnyUse"); Raise("CanRun"); };
+            Checks = new List<LlmCheckVm> { new LlmCheckVm(1, changed), new LlmCheckVm(2, changed), new LlmCheckVm(3, changed) };
         }
 
         // ---------------- 분석 셋의 체크 표시 ----------------
 
-        /// <summary>분석 1 · 2 · 3 — 지금 결과가 있는지.</summary>
+        /// <summary>
+        /// 분석 1 · 2 · 3 — 지금 결과가 있는지 (Ready) 와 LLM 에 보낼지 (Selected, 1.54).
+        /// 결과가 있고 체크한 것만 보냅니다 (<see cref="LlmCheckVm.Use"/>).
+        /// </summary>
         public List<LlmCheckVm> Checks { get; private set; }
 
         /// <summary>체크 표시를 다시 적습니다 (MainVm.Refresh 가 부름).</summary>
@@ -34,7 +38,7 @@ namespace LogScope.Main
         {
             if (number < 1 || number > Checks.Count) return;
             Checks[number - 1].Set(title, ready, note);
-            Raise("AnyReady"); Raise("CanRun");
+            Raise("AnyReady"); Raise("AnyUse"); Raise("CanRun");
         }
 
         public bool AnyReady
@@ -42,8 +46,20 @@ namespace LogScope.Main
             get { for (int i = 0; i < Checks.Count; i++) if (Checks[i].Ready) return true; return false; }
         }
 
-        /// <summary>버튼을 누를 수 있는지 — 하나라도 결과가 있고 돌고 있지 않을 때.</summary>
-        public bool CanRun { get { return AnyReady && !_running && _serverOk; } }
+        /// <summary>보낼 분석이 하나라도 있는지 — 결과가 있고 체크한 것 (1.54).</summary>
+        public bool AnyUse
+        {
+            get { for (int i = 0; i < Checks.Count; i++) if (Checks[i].Use) return true; return false; }
+        }
+
+        /// <summary>그 분석을 보낼지 (결과가 있고 체크함). 번호는 1 · 2 · 3.</summary>
+        public bool Uses(int number)
+        {
+            return number >= 1 && number <= Checks.Count && Checks[number - 1].Use;
+        }
+
+        /// <summary>버튼을 누를 수 있는지 — 보낼 분석이 하나라도 있고 돌고 있지 않을 때.</summary>
+        public bool CanRun { get { return AnyUse && !_running && _serverOk; } }
 
         // ---- LLM 서버 (1.51) — 안 닿으면 칸 전체를 회색으로 덮고 버튼도 끔 ----
 
@@ -172,16 +188,54 @@ namespace LogScope.Main
         }
     }
 
-    /// <summary>체크 표시 하나 — "● 분석 1 로그 비교  완료".</summary>
+    /// <summary>체크 표시 하나 — "☑ ● 분석 1 로그 비교  완료".</summary>
     public sealed class LlmCheckVm : ObservableObject
     {
-        public LlmCheckVm(int number) { Number = number; }
+        private readonly Action _changed;
+
+        public LlmCheckVm(int number) : this(number, null) { }
+
+        public LlmCheckVm(int number, Action changed)
+        {
+            Number = number;
+            _changed = changed;
+        }
 
         public int Number { get; private set; }
 
         private string _title = string.Empty;
         private bool _ready;
         private string _note = string.Empty;
+        private bool _selected = true;
+
+        /// <summary>
+        /// 사용자가 체크했는지 (1.54). 처음엔 모두 체크. 결과가 없는 동안 꺼져 보여도 고른 것은
+        /// 그대로 남습니다 — 결과가 생기면 고른 대로 돌아옵니다.
+        /// </summary>
+        public bool Selected
+        {
+            get { return _selected; }
+            set
+            {
+                if (_selected == value) return;
+                _selected = value;
+                Raise("Selected"); Raise("Checked"); Raise("Use");
+                if (_changed != null) _changed();
+            }
+        }
+
+        /// <summary>
+        /// 화면의 체크 상자. 결과가 없으면 꺼져 보이고 누를 수 없습니다 (IsEnabled = Ready).
+        /// 누르면 <see cref="Selected"/> 를 바꿉니다.
+        /// </summary>
+        public bool Checked
+        {
+            get { return _ready && _selected; }
+            set { if (_ready) Selected = value; }
+        }
+
+        /// <summary>LLM 에 보낼지 — 결과가 있고 체크했을 때.</summary>
+        public bool Use { get { return _ready && _selected; } }
 
         /// <summary>"분석 1 · 로그 비교".</summary>
         public string Title { get { return _title; } }
@@ -200,6 +254,7 @@ namespace LogScope.Main
             _ready = ready;
             _note = note ?? string.Empty;
             Raise("Title"); Raise("Ready"); Raise("StateText"); Raise("Note");
+            Raise("Checked"); Raise("Use");
         }
     }
 }

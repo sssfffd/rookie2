@@ -31,7 +31,10 @@ namespace LogScope.Common
         /// - 진행: <c>progress.Report("서버로 보내는 중", 0.4)</c>. 0~1, 모르면 음수(-1 → 진행바가 왔다갔다).
         /// - 취소: [취소] 를 누르면 <c>progress.IsCancelled</c> 가 참. 틈틈이 <c>progress.ThrowIfCancelled()</c>.
         /// - 실패: 예외를 던지면 그 메시지가 칸에 빨갛게 나옵니다 (프로그램은 계속 돕니다).
-        /// - 무엇을 넣을지는 <paramref name="request"/> 의 Use1~3 (체크 표시와 같음) 을 보고 고르세요.
+        /// - 무엇을 넣을지는 <paramref name="request"/> 의 Use1~3 을 보고 고르세요 — 결과가 있고 사용자가
+        ///   <b>체크한</b> 분석만 참입니다 (1.54). 안 고른 분석 2 · 3 의 재료(DbDiff · Analysis3)는 null 로 오지만,
+        ///   분석 1 은 State 안에 있어 비울 수 없고, 분석 3 의 Analysis3Link.Result 는 정적이라 늘 읽힙니다.
+        ///   그러니 <b>Use1~3 을 보고 넣을지 정하는 일은 이 분석기 쪽</b>이 해야 합니다.
         ///   예: <c>LlmExport.LlmDocument.Build(request.State, request.DbDiff, 옵션, progress).ToMarkdown()</c>
         /// </summary>
         string Analyze(LlmRequest request, LoadProgress progress);
@@ -40,14 +43,18 @@ namespace LogScope.Common
     /// <summary>[LLM 분석 실행] 을 누른 그 순간의 재료 (1.45).</summary>
     public sealed class LlmRequest
     {
-        /// <summary>분석 1 (로그 비교) 결과가 있는지 — 이전 · 이후 로그를 둘 다 열고 비교했으면 참.</summary>
+        /// <summary>
+        /// 분석 1 (로그 비교) 을 보낼지 — 이전 · 이후 로그를 비교했고 <b>체크했으면</b> 참 (1.54).
+        /// 거짓이어도 State.Before · After · Comparison 은 그대로 들어 있습니다 — 이 값을 보고 빼세요.
+        /// </summary>
         public bool Use1;
 
-        /// <summary>분석 2 (DB 비교) 결과가 있는지 — 이전 · 이후 DB 를 읽어 견줬으면 참.</summary>
+        /// <summary>분석 2 (DB 비교) 를 보낼지 — 이전 · 이후 DB 를 견줬고 체크했으면 참. 거짓이면 DbDiff 는 null.</summary>
         public bool Use2;
 
         /// <summary>
-        /// 분석 3 결과가 있는지 — 분석 3 화면이 <see cref="Analysis3Link.Publish"/> 로 결과를 올렸으면 참.
+        /// 분석 3 을 보낼지 — 분석 3 화면이 <see cref="Analysis3Link.Publish"/> 로 결과를 올렸고 체크했으면 참.
+        /// 거짓이면 Analysis3 는 null, Analysis3Before · After 는 빈 글자.
         /// <b>Publish 를 안 부르면 이 프로그램은 분석 3 이 됐는지 알 수 없습니다.</b>
         /// </summary>
         public bool Use3;
@@ -74,7 +81,7 @@ namespace LogScope.Common
         /// <summary>누른 시각.</summary>
         public DateTime RequestedAt = DateTime.Now;
 
-        /// <summary>하나라도 결과가 있는지 (없으면 버튼이 꺼져 있음).</summary>
+        /// <summary>보낼 분석이 하나라도 있는지 (없으면 버튼이 꺼져 있음).</summary>
         public bool Any { get { return Use1 || Use2 || Use3; } }
     }
 

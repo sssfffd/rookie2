@@ -51,7 +51,8 @@
                                     Visibility="{Binding Llm.IsRunning, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
 
-                        <!-- 분석 1 · 2 · 3 체크 — 지금 결과가 있는지. 마우스를 올리면 무엇을 보고 판단했는지. -->
+                        <!-- 분석 1 · 2 · 3 체크 — 지금 결과가 있는지 (점 · 완료/안 함) 와 LLM 에 보낼지 (체크 상자, 1.54).
+                             결과가 없으면 체크 상자가 꺼집니다. 마우스를 올리면 무엇을 보고 판단했는지. -->
                         <ItemsControl ItemsSource="{Binding Llm.Checks}" Margin="0,0,0,8">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -61,7 +62,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type main:LlmCheckVm}">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Background="Transparent"
-                                                ToolTip="{Binding Note}">
+                                                ToolTip="{Binding Note}" ToolTipService.ShowOnDisabled="True">
+                                        <CheckBox IsChecked="{Binding Checked, Mode=TwoWay}" IsEnabled="{Binding Ready}"
+                                                  VerticalAlignment="Center" Margin="0,0,6,0" />
                                         <Border x:Name="CheckDot" Width="10" Height="10" CornerRadius="5"
                                                 VerticalAlignment="Center" Margin="0,0,7,0"
                                                 Background="{DynamicResource Brush.Muted}" />
@@ -942,10 +945,9 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0">
+                        <!-- 1.54: 이름 아래의 안내 글 (HistoryNote) 을 뺐습니다. 줄 설명은 줄의 풍선 도움말에 남아 있습니다. -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="{x:Static t:MainTexts.HistoryNoteLabel}" Style="{StaticResource FieldLabel}" />
-                            <TextBlock Text="{Binding HistoryNote}" Style="{StaticResource Muted}"
-                                       FontSize="11" TextWrapping="Wrap" Margin="0,3,12,0" />
                         </StackPanel>
 
                         <Button Grid.Column="1" Style="{StaticResource PrimaryButton}"
@@ -1057,54 +1059,7 @@
                 </StackPanel>
             </Border>
 
-            <Grid Margin="4,12,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0" Style="{StaticResource Muted}" FontSize="11"
-                           TextWrapping="Wrap" VerticalAlignment="Bottom" MaxWidth="520"
-                           Text="{x:Static t:MainTexts.LogNote}" />
-
-                <!-- 점수 색 설명. 작게, 오른쪽 아래에. -->
-                <StackPanel Grid.Column="1" HorizontalAlignment="Right" Margin="20,0,0,0">
-                    <TextBlock Text="{x:Static t:MainTexts.Note}" Style="{StaticResource Muted}" FontSize="10"
-                               HorizontalAlignment="Right" Margin="0,0,0,3" />
-                    <ItemsControl ItemsSource="{Binding Bands}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type main:BandVm}">
-                                <StackPanel Orientation="Horizontal" Margin="0,1,0,1">
-                                    <Border x:Name="Dot" Width="8" Height="8" CornerRadius="4"
-                                            VerticalAlignment="Center" Margin="0,0,6,0"
-                                            Background="{DynamicResource Brush.Muted}" />
-                                    <TextBlock Text="{Binding RangeText}" FontSize="10" Width="52"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Meaning}" FontSize="10"
-                                               Foreground="{DynamicResource Brush.Muted}"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeGood}">
-                                        <Setter TargetName="Dot" Property="Background"
-                                                Value="{DynamicResource Brush.Good}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeWarn}">
-                                        <Setter TargetName="Dot" Property="Background"
-                                                Value="{DynamicResource Brush.Warn}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Grade}" Value="{x:Static main:ScoreBands.GradeBad}">
-                                        <Setter TargetName="Dot" Property="Background"
-                                                Value="{DynamicResource Brush.Bad}" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Grid>
+            <!-- 1.54: 맨 아래의 "점수를 매기는 규칙은 아직 …" 안내와 점수 색 설명을 뺐습니다. -->
         </StackPanel>
     </ScrollViewer>
 </UserControl>

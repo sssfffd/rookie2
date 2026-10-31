@@ -4367,6 +4367,35 @@ namespace LogScope.Tests
             Check("요청: 아무것도 없으면 Any 거짓", !q.Any, "");
             q.Use3 = true;
             Check("요청: 분석 3 만 있어도 Any", q.Any, "");
+
+            // ---- 1.54: 보낼 분석 고르기 ----
+            var s = new LlmPanelVm();
+            s.SetServer(true, "", "");
+            s.SetReady(1, "로그 비교", true, "");
+            s.SetReady(2, "DB", true, "");
+            Check("처음엔 모두 체크", s.Checks[0].Selected && s.Checks[1].Selected && s.Checks[2].Selected, "");
+            Check("결과 없는 분석 3 은 체크 꺼져 보임", !s.Checks[2].Checked && !s.Uses(3), "");
+            s.Checks[0].Checked = false;
+            Check("분석 1 끄면 1 은 안 보냄, 버튼은 켜짐", !s.Uses(1) && s.Uses(2) && s.CanRun, "");
+            s.Checks[1].Checked = false;
+            Check("다 끄면 버튼 꺼짐", !s.AnyUse && !s.CanRun, "");
+            s.Checks[2].Checked = true;
+            Check("결과 없는 칸은 눌러도 안 바뀜", !s.Checks[2].Checked && s.Checks[2].Selected, "");
+            s.SetReady(3, "분석 3", true, "");
+            Check("결과가 생기면 고른 대로 (분석 3 체크)", s.Uses(3) && s.CanRun, "");
+            s.SetReady(1, "로그 비교", false, "");
+            s.SetReady(1, "로그 비교", true, "");
+            Check("끈 것은 결과가 다시 와도 꺼진 채", !s.Uses(1), "");
+
+            var st = new AppState();
+            var mvm = new MainVm(st);
+            st.HasDbResult = true;
+            mvm.Llm.Checks[1].Selected = false;
+            LlmRequest rq = mvm.BuildLlmRequest(null);
+            Check("요청: 결과 있어도 안 고르면 Use2 거짓", !rq.Use2 && rq.DbDiff == null && !rq.Any, "");
+            mvm.Llm.Checks[1].Selected = true;
+            rq = mvm.BuildLlmRequest(null);
+            Check("요청: 고르면 Use2 참", rq.Use2 && !rq.Use1 && !rq.Use3 && rq.Analysis3 == null, "");
         }
 
         /// <summary>

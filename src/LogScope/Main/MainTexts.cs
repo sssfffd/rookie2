@@ -100,9 +100,5 @@ namespace LogScope.Main
         public const string ScoreTextTip = "분석 1 / 2 / 3";
         /// <summary>단추 이름</summary>
         public const string DeleteSaved = "삭제";
-        /// <summary>글</summary>
-        public const string LogNote = "점수를 매기는 규칙은 아직 정해지지 않았습니다. 지금은 Log 파일을 비교한 후에 100 점으로 둡니다.";
-        /// <summary>글</summary>
-        public const string Note = "점수 색";
     }
 }
