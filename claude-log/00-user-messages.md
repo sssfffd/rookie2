@@ -1957,3 +1957,12 @@
 > 이거 히트맵쪽에 차이가 난 IO개수 뜨는거랑 메인이랑 다른거 같은데?
 
 → 답변: [159-one-changed-io-rule.md](159-one-changed-io-rule.md)
+
+---
+
+## 요청 187 — 단계를 풀어도 메인 차이 수 · 요약이 안 돌아옴
+
+> 아니 그리고 단계 누르면 메인화면 차이난 갯수가 바뀌는데 다시 풀러도 차이난 갯수가 돌아오질 않는데?
+> 요약칸도 안바뀜
+
+→ 답변: [160-step-unpick-main-refresh.md](160-step-unpick-main-refresh.md)

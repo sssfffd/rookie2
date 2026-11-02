@@ -903,6 +903,20 @@ namespace LogScope.Shell
         /// </summary>
         private void OnStepChanged(object sender, EventArgs e)
         {
+            // 1.69: 바로 하지 않고 미룹니다. 단계 고르기 콤보는 바인딩으로 이 자리까지 오는데, 그 안에서 진행 창
+            // (모달) 을 띄우고 목록을 다시 만들면 콤보가 고른 것을 되돌리거나, 중간에 난 오류를 바인딩이 조용히
+            // 삼켜서 메인 칸이 안 바뀐 채로 남을 수 있습니다 ("단계를 풀어도 차이 수가 안 돌아옴").
+            // 여러 번 와도 한 번만 — 그때의 고른 단계로 합니다.
+            if (_stepChangeQueued) return;
+            _stepChangeQueued = true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(ApplyStepChange));
+        }
+
+        private bool _stepChangeQueued;
+
+        private void ApplyStepChange()
+        {
+            _stepChangeQueued = false;
             Recompare();
             _vm.ReloadAll();
             Graph.PushAll();

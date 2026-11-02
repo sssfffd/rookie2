@@ -70,7 +70,13 @@ namespace LogScope.Main
                 if (judge != null)
                 {
                     // 1.63: 개수는 IO 수 (허용 안 된 오차가 있는 IO). 오차 구간 수가 아님.
-                    Cards[0].SetVerdict(judge.Word, JudgeGradeOf(judge.Grade), string.Empty,
+                    // 1.69: 그래프에서 단계를 골라 둔 동안은 그 맞춤도 판정에 들어갑니다 (1.67) — 수가 왜 바뀌었는지,
+                    // 어떻게 되돌리는지 점수 아래에 적습니다.
+                    StepPair picked = _state.PickedStep;
+                    string note = picked != null
+                        ? "그래프에서 고른 단계 '" + picked.Label + "' 맞춤 반영 중 — [전체 구간] 으로 돌리면 원래 수"
+                        : string.Empty;
+                    Cards[0].SetVerdict(judge.Word, JudgeGradeOf(judge.Grade), note,
                                         judge.OpenIoCount.ToString("N0"));
                 }
                 else

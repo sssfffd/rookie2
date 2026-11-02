@@ -4807,6 +4807,26 @@ namespace LogScope.Tests
             main.Refresh();
             Check("다시 전체로 돌리면 메인 칸도 1", st.Judgement.OpenIoCount == 1 && main.Cards[0].VerdictCount == "1",
                   st.Judgement.OpenIoCount.ToString());
+
+            // 화면이 하는 길 그대로 (1.69): 단계 콤보 → 다시 견줌 → 화면 모두 다시. 고르고 · 다른 것 · 풀기.
+            var shell = new LogScope.Shell.ShellVm(st);
+            shell.Step.Changed += delegate { st.Recompare(null); shell.ReloadAll(); };
+            st.Recompare(null); shell.ReloadAll();
+            AnalysisCardVm c1 = shell.Main.Cards[0];
+            int idxB = -1, k = 0;
+            foreach (string ch in shell.Step.Choices) { if (ch.Contains("B")) idxB = k; k++; }
+            string seq = c1.VerdictCount;
+            shell.Step.PickIndex = idxB;
+            seq += " → B " + c1.VerdictCount;
+            bool noteB = c1.ScoreNote.Contains("'B'");
+            int groupsB = 0; foreach (GroupSummaryVm gs in c1.Groups) groupsB += gs.ChangedCount;
+            shell.Step.PickIndex = 1;
+            seq += " → A " + c1.VerdictCount;
+            shell.Step.PickIndex = 0;
+            seq += " → 전체 " + c1.VerdictCount;
+            int groupsAll = 0; foreach (GroupSummaryVm gs in c1.Groups) groupsAll += gs.ChangedCount;
+            Check("단계 고르기 → 풀기: 수 · 요약 · 글이 원래대로", c1.VerdictCount == "1" && groupsAll == 1 && groupsB == 0
+                  && noteB && c1.ScoreNote.Length == 0, seq + " · 요약 " + groupsB + "→" + groupsAll + " · " + c1.ScoreNote);
         }
 
         /// <summary>보정 제안 (1.66) — 시간만 밀린 · 높이만 다른 파형은 "이렇게 옮기면 정상" 이라고 알려 줌.</summary>

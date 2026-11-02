@@ -257,12 +257,19 @@ namespace LogScope.Shell
         /// <summary>로그가 바뀐 뒤 화면 전체를 새로 고칩니다.</summary>
         public void ReloadAll()
         {
-            Align.Reload();
-            Step.Reload();
-            Graph.Reload();
-            Heatmap.Reload();
-            Dashboard.Refresh();
-            Main.Refresh();
+            // 1.69: 앞의 화면 하나가 실패해도 메인 칸은 꼭 새로 (판정 수 · 요약이 옛것으로 남지 않게).
+            try
+            {
+                Align.Reload();
+                Step.Reload();
+                Graph.Reload();
+                Heatmap.Reload();
+                Dashboard.Refresh();
+            }
+            finally
+            {
+                Main.Refresh();
+            }
         }
     }
 }
