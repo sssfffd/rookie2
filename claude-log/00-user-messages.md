@@ -1910,3 +1910,14 @@
 > 그리고 이제 fail대신에 critical로 다 바꿔줘
 
 → 답변: [155-io-count-verdict-critical.md](155-io-count-verdict-critical.md)
+
+---
+
+## 요청 183 — 갤러리 칸 높이 고정
+
+> 아 그리고 갤러리로 보기할때
+> 3개 이하면 전체 차지 6개면 절반 이런데
+> 그냥 절대값으로 해주셈
+> 한 지금 4줄 생겼을때(4분의1) 정도 크기로 하면 적당할 것 같네
+
+→ 답변: [156-gallery-fixed-height.md](156-gallery-fixed-height.md)

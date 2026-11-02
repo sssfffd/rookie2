@@ -176,7 +176,11 @@ namespace LogScope.Analysis1.Graph
 
         /// <summary>갤러리 한 줄의 칸 수.</summary>
         public const int GalleryColumns = 3;
-        private const double GalleryMinH = 170;   // 칸 하나의 최소 높이
+        /// <summary>
+        /// 칸 하나의 높이 — <b>고정</b> (1.65). 1.60 은 창 높이를 줄 수로 나눠서 IO 가 셋 이하면 칸 하나가 판 전체,
+        /// 여섯이면 절반이 됐습니다. 네 줄일 때(판의 1/4 쯤) 크기로 고정합니다. 줄이 많으면 아래로 굴립니다.
+        /// </summary>
+        public const double GalleryCellH = 180;
         private const double GalleryGap = 8;       // 칸 사이 틈
         private const double CellGutter = 52;      // 칸 안 왼쪽 세로 눈금 자리
         private const double CellTimeH = 14;       // 칸 아래 시각 글 자리
@@ -202,7 +206,7 @@ namespace LogScope.Analysis1.Graph
             Rect area = GalleryArea(plot);
             int rows = (_channels.Count + GalleryColumns - 1) / GalleryColumns;
             cellW = area.Width / GalleryColumns;
-            cellH = Math.Max(GalleryMinH, plot.Height / Math.Max(1, rows));
+            cellH = GalleryCellH;
             needed = cellH * Math.Max(1, rows);
         }
 

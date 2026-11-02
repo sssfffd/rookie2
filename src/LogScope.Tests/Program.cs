@@ -4920,7 +4920,7 @@ namespace LogScope.Tests
             g.GalleryMode = true;
             AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(st.Settings.ToJson())));
             Check("설정 파일로 오감", back.GalleryMode && back.LaneMode, "");
-            Check("한 줄 칸 수 3", GraphCanvas.GalleryColumns == 3, "");
+            Check("한 줄 칸 수 3 · 칸 높이 고정 180 (1.65)", GraphCanvas.GalleryColumns == 3 && GraphCanvas.GalleryCellH == 180, "");
         }
 
         /// <summary>
