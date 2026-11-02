@@ -238,7 +238,7 @@ namespace LogScope.Common
         //
         // 분석 1 의 PASS · WARNING · CRITICAL 과 오차 목록. 견줄 때마다 같이 돕니다 — 단, 판정에 쓰는
         // 것(두 로그 · 단계 · 허용 오차 · 단계 없을 때의 밀기 값)이 그대로면 다시 찾지 않습니다.
-        // 그래프에서 단계를 고를 때마다 견주기가 다시 도는데, 판정은 단계를 고른 것과 상관없습니다.
+        // 1.67 부터 그래프에서 고른 단계의 맞춤도 판정에 들어갑니다 (ViewShift) — 고른 단계가 바뀌면 다시 찾습니다.
 
         /// <summary>판정 결과. 두 로그가 다 있어야 있습니다.</summary>
         public JudgeResult Judgement;
@@ -258,6 +258,7 @@ namespace LogScope.Common
                                                Settings.AbsoluteTolerance,
                                                Settings.Tolerances);
             o.Shift = BaseShift();
+            o.ViewShift = ViewShift();
             o.Rules = Settings.AllowRules;
             o.Once = AllowOnce;
             o.Exclude = NoDiffKeys();
@@ -276,6 +277,18 @@ namespace LogScope.Common
             return Settings.ManualShift + (Settings.AutoAlign ? Before.TimeStart - After.TimeStart : 0.0);
         }
 
+        /// <summary>
+        /// 분석 1 에서 지금 건 맞춤 중 판정의 전체 맞춤 (BaseShift) 과 다른 것 (1.67) — 그래프에서 단계를 골라
+        /// 그 단계 시작으로 맞췄으면 그 밀기 값, 아니면 NaN. 판정은 이 맞춤으로도 봐서 여기서 맞는 곳은 오차로 안 셉니다
+        /// (분석 1 에서 맞춰서 없어진 차이가 메인 칸에서도 없어지게).
+        /// </summary>
+        public double ViewShift()
+        {
+            StepPair step = PickedStep;
+            if (step == null || double.IsNaN(step.Shift)) return double.NaN;
+            return Settings.ManualShift + step.Shift;
+        }
+
         private void Rejudge(LoadProgress prog)
         {
             if (Before == null || After == null || Comparison == null)
@@ -287,7 +300,8 @@ namespace LogScope.Common
 
             JudgeOptions o = BuildJudgeOptions();
             StepPairList pairs = StepPairs();
-            string sig = JudgeSignature(pairs, o.Shift);
+            string sig = JudgeSignature(pairs, o.Shift) + "|view:"
+                       + o.ViewShift.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
             if (Judgement != null && sig == _judgeSig && ReferenceEquals(Before, _judgeBefore)
                 && ReferenceEquals(After, _judgeAfter) && ReferenceEquals(pairs, _judgePairs))
             {

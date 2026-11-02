@@ -1940,3 +1940,12 @@
 > 만약 파형이 비슷해서 시간 축을 조금만 바꿔주면 정상이 되거나 조금만 위아래로 움직이면 정상이 되는 경우 이런걸 사용자가 직접 확인하는게 아니라 바꾸면 된다라고 알려주거나 해야되는데 이걸 어떻게 할지가 문제네
 
 → 답변: [157-time-col-stepio-marks-tolerance-hints.md](157-time-col-stepio-marks-tolerance-hints.md)
+
+---
+
+## 요청 185 — 그룹 안 IO 차례 · 메인 칸 연동
+
+> 이거 분석 1에서 단계 맞춤 했을때 그룹안의 IO순서들 바뀌는건 문제가 있다
+> 그리고 메인화면에 뜨는 차이발생 개수 및 요약이 단계맞춤이나 다른 동작해서 IO차이가 없어졌을때 연동되게 해주셈
+
+→ 답변: [158-stable-io-order-main-follows-step.md](158-stable-io-order-main-follows-step.md)

@@ -415,13 +415,28 @@ namespace LogScope.Main
             }
 
             // 견준 IO 전체. 그룹에 안 담긴 것을 가려내는 데 씁니다.
+            // 1.67: 차례는 <b>로그 열 차례</b> — 비교 결과 차례 (차이 큰 순) 를 따르면 단계 맞춤 등으로
+            // 차이가 바뀔 때마다 "묶지 않은 IO" 안의 차례가 뒤바뀝니다.
             var rest = new HashSet<string>(StringComparer.Ordinal);
             var restNames = new List<string>();
+            var compared = new Dictionary<string, string>(StringComparer.Ordinal);
             for (int i = 0; i < r.Items.Count; i++)
             {
                 string key = LogDataset.LooseKey(r.Items[i].Name);
-                if (rest.Add(key)) restNames.Add(r.Items[i].Name);
+                if (!compared.ContainsKey(key)) compared.Add(key, r.Items[i].Name);
             }
+            foreach (LogDataset ds in new[] { _state.Before, _state.After })
+            {
+                if (ds == null) continue;
+                for (int i = 0; i < ds.ChannelCount; i++)
+                {
+                    string key = LogDataset.LooseKey(ds.Channels[i].Name);
+                    string name;
+                    if (compared.TryGetValue(key, out name) && rest.Add(key)) restNames.Add(name);
+                }
+            }
+            foreach (KeyValuePair<string, string> kv in compared)   // 혹시 두 로그 어디에도 없는 이름 (안 생김)
+                if (rest.Add(kv.Key)) restNames.Add(kv.Value);
 
             List<GroupDef> groups = _state.Settings.Groups;
             for (int g = 0; g < groups.Count; g++)
@@ -495,12 +510,8 @@ namespace LogScope.Main
 
             if (g.IsExpanded)
             {
-                // 오차 있는 IO 먼저 (나쁜 것 → 긴 것), 오차 없는 IO 는 뒤에
-                ios.Sort(delegate (GroupIoVm a, GroupIoVm b)
-                {
-                    int c = Rank(b.Grade).CompareTo(Rank(a.Grade));
-                    return c != 0 ? c : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-                });
+                // 1.67: 그룹에 적힌 차례 그대로 (예전에는 나쁜 것 먼저 — 단계 맞춤 등으로 오차가 바뀌면 차례가
+                // 뒤바뀌어 같은 IO 를 다시 찾아야 했음). 오차 있는 IO 는 색 · "오차 N" 으로 구분됩니다.
                 if (ios.Count > MaxIoRows) ios.RemoveRange(MaxIoRows, ios.Count - MaxIoRows);
                 g.Ios = ios;
             }
@@ -516,11 +527,6 @@ namespace LogScope.Main
             return g == JudgeGrade.Critical ? ScoreBands.GradeBad
                  : g == JudgeGrade.Warning ? ScoreBands.GradeWarn
                  : ScoreBands.GradeGood;
-        }
-
-        private static int Rank(string grade)
-        {
-            return grade == ScoreBands.GradeBad ? 3 : grade == ScoreBands.GradeWarn ? 2 : grade == ScoreBands.GradeGood ? 1 : 0;
         }
 
         private GroupIoVm IoRow(string group, string name, List<JudgeItem> items)

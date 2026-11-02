@@ -154,6 +154,7 @@ namespace LogScope.Tests
                 JudgeIoCountRules();
                 SecondTimeColumnRules();
                 JudgeHintRules();
+                JudgeViewShiftRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -3574,16 +3575,23 @@ namespace LogScope.Tests
             List<HeatLine> all = HeatLayout.Build(rows, groups, "", null);
             string shape = Shape(all);
             Check("그룹 차례대로, 그룹에 없는 IO 는 맨 아래",
-                  shape == "[온도:2] TEMP_C TEMP_A [압력:1] PRES_B [그룹에 없는 IO:1] X_LONE", shape);
-            Check("그룹 안은 히트맵 차례 그대로 (C 가 A 보다 위)",
-                  all[1].Row.Name == "TEMP_C", all[1].Row.Name);
+                  shape == "[온도:2] TEMP_A TEMP_C [압력:1] PRES_B [그룹에 없는 IO:1] X_LONE", shape);
+            Check("그룹 안은 그룹에 적힌 차례 (1.67 — 차이 크기와 상관없이 A 가 C 보다 위)",
+                  all[1].Row.Name == "TEMP_A", all[1].Row.Name);
+
+            // 그룹에 없는 IO 는 로그 열 차례 (히트맵 차례와 상관없이)
+            var loose = new List<HeatRow> { new HeatRow { Name = "Z", BeforeIndex = 5 }, new HeatRow { Name = "Y", BeforeIndex = 1 },
+                                            new HeatRow { Name = "ONLY_AFTER", AfterIndex = 0 } };
+            Check("그룹에 없는 IO 는 로그 열 차례 · 이후에만 있는 것은 뒤",
+                  Shape(HeatLayout.Build(loose, null, "", null)) == "[그룹에 없는 IO:3] Y Z ONLY_AFTER",
+                  Shape(HeatLayout.Build(loose, null, "", null)));
             Check("남은 IO 가 없는 그룹은 이름 줄도 없음", !shape.Contains("빈 그룹"), shape);
             Check("IO 수는 그룹 줄 빼고", HeatLayout.IoCount(all) == 4,
                   HeatLayout.IoCount(all).ToString(CultureInfo.InvariantCulture));
 
             List<HeatLine> temp = HeatLayout.Build(rows, groups, "temp", null);
             Check("검색은 대소문자 안 가림 · 안 맞는 그룹은 사라짐",
-                  Shape(temp) == "[온도:2] TEMP_C TEMP_A", Shape(temp));
+                  Shape(temp) == "[온도:2] TEMP_A TEMP_C", Shape(temp));
 
             List<HeatLine> none = HeatLayout.Build(rows, groups, "없는이름", null);
             Check("아무것도 안 맞으면 빈 목록", none.Count == 0, null);
@@ -4711,6 +4719,53 @@ namespace LogScope.Tests
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
         }
 
+        /// <summary>
+        /// 분석 1 에서 고른 단계 맞춤이 메인 칸에도 (1.67). 이전 A[0,100) B[100,200) C[200,300),
+        /// 이후 A[0,110) B[110,200) C[200,300). K 의 펄스가 C 안에서 B 의 밀림 (10 초) 만큼 늦음 —
+        /// 단계 맞춤 (C 는 0) · 전체 맞춤 (0) 둘 다에서 어긋나고, B 를 골라 −10 으로 맞추면 맞음.
+        /// </summary>
+        private static void JudgeViewShiftRules()
+        {
+            Say("판정 — 분석 1 에서 고른 단계 맞춤을 메인 칸에도");
+            var a = new StringBuilder("Time,STEP,K,FLAT\n");
+            var b = new StringBuilder("Time,STEP,K,FLAT\n");
+            for (int i = 0; i < 300; i++)
+            {
+                a.Append(i).Append(',').Append(i < 100 ? "A" : i < 200 ? "B" : "C").Append(',')
+                 .Append(i >= 250 && i < 260 ? 100 : 0).Append(",5\n");
+                b.Append(i).Append(',').Append(i < 110 ? "A" : i < 200 ? "B" : "C").Append(',')
+                 .Append(i >= 260 && i < 270 ? 100 : 0).Append(",5\n");
+            }
+            var st = new AppState();
+            st.Settings.StepIo = "STEP";
+            st.Before = OpenWithSteps(WriteCsv("view_a.csv", a.ToString()), "STEP");
+            st.After = OpenWithSteps(WriteCsv("view_b.csv", b.ToString()), "STEP");
+            st.StepPick = -1;
+            st.Recompare(null);
+            var main = new MainVm(st);
+            Check("안 고르면 K 오차 → 메인 칸 차이 1", st.Judgement != null && st.Judgement.OpenIoCount == 1
+                  && main.Cards[0].VerdictCount == "1", st.Judgement != null ? st.Judgement.OpenIoCount.ToString() : "없음");
+
+            int pickB = -1;
+            StepPairList pairs = st.StepPairs();
+            for (int i = 0; i < pairs.Count; i++) if (pairs[i].Label.Contains("B")) pickB = i;
+            st.StepPick = pickB;
+            st.Recompare(null);
+            main.Refresh();
+            Check("B 를 골라 맞추면 K 가 맞음 → 판정 · 메인 칸 0", pickB >= 0 && st.Judgement.OpenIoCount == 0
+                  && main.Cards[0].VerdictCount == "0", pickB + " " + st.Judgement.OpenIoCount + " " + st.Judgement.Note);
+            Check("왜 줄었는지 판정 글에", st.Judgement.Note.Contains("고른 단계"), st.Judgement.Note);
+            bool kChanged = false;
+            foreach (ChannelDiff d in st.Comparison.Items) if (d.Name == "K" && d.Changed) kChanged = true;
+            Check("분석 1 대시보드도 K 차이 없음 (같은 맞춤)", !kChanged, "");
+
+            st.StepPick = -1;
+            st.Recompare(null);
+            main.Refresh();
+            Check("다시 전체로 돌리면 메인 칸도 1", st.Judgement.OpenIoCount == 1 && main.Cards[0].VerdictCount == "1",
+                  st.Judgement.OpenIoCount.ToString());
+        }
+
         /// <summary>보정 제안 (1.66) — 시간만 밀린 · 높이만 다른 파형은 "이렇게 옮기면 정상" 이라고 알려 줌.</summary>
         private static void JudgeHintRules()
         {
@@ -4894,11 +4949,12 @@ namespace LogScope.Tests
             main.ToggleGroup("묶지 않은 IO");
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            Check("그룹 누르면 IO 여섯 줄 · 나쁜 것 먼저 · 개수만", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
-                  && rest.Ios[0].Name == "BIG" && rest.Ios[0].Grade == ScoreBands.GradeBad && rest.Ios[0].Summary == "오차 1"
-                  && rest.Ios[0].HasErrors && rest.Ios[0].OpenGlyph == "›"
-                  && rest.Ios[5].Summary == "오차 없음" && !rest.Ios[5].HasErrors,
-                  rest != null && rest.Ios.Count > 0 ? rest.Ios[0].Summary : "");
+            // 1.67: 차례는 로그 열 차례 그대로 (FLAT RAMP LATE SPIKE PULSE BIG) — 오차가 바뀌어도 안 바뀜
+            Check("그룹 누르면 IO 여섯 줄 · 로그 열 차례 · 개수만", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
+                  && rest.Ios[0].Name == "FLAT" && rest.Ios[0].Summary == "오차 없음" && !rest.Ios[0].HasErrors
+                  && rest.Ios[5].Name == "BIG" && rest.Ios[5].Grade == ScoreBands.GradeBad && rest.Ios[5].Summary == "오차 1"
+                  && rest.Ios[5].HasErrors && rest.Ios[5].OpenGlyph == "›",
+                  rest != null ? string.Join(",", rest.Ios.ConvertAll(x => x.Name).ToArray()) : "");
 
             var spikePop = new IoErrorsVm(main, "SPIKE", delegate { return main.ItemsOfIo("SPIKE"); });
             Check("IO 누르면 오차 창 — 구간 하나", spikePop.Rows.Count == 1 && spikePop.Title == "SPIKE"

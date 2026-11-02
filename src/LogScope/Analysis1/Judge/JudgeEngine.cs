@@ -99,6 +99,12 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>견주지 않을 IO (느슨한 열쇠) — 단계 IO (1.66).</summary>
         public HashSet<string> Exclude;
+
+        /// <summary>
+        /// 사용자가 분석 1 에서 지금 건 밀기 값 (1.67 — 그래프에서 고른 단계의 시작 맞춤 등). Shift 와 다르면 이것으로도 봐서
+        /// <b>모든 맞춤에서 벗어난 곳만</b> 오차로 남깁니다. NaN 이면 안 봄.
+        /// </summary>
+        public double ViewShift = double.NaN;
     }
 
     /// <summary>오차 하나 — 오차 목록의 한 줄.</summary>
@@ -339,6 +345,11 @@ namespace LogScope.Analysis1.Judge
                 res.Items.Add(it);
             }
 
+            if (!double.IsNaN(opt.ViewShift))
+            {
+                const string v = "분석 1 그래프에서 고른 단계의 시작 맞춤으로도 봐서, 거기서 맞는 곳은 오차로 세지 않았습니다.";
+                res.Note = res.Note.Length > 0 ? res.Note + " " + v : v;
+            }
             Regrade(res, opt);
             return res;
         }
@@ -508,22 +519,23 @@ namespace LogScope.Analysis1.Judge
                 // 움직인 IO 를 단계 시작에 맞춰 버린 경우 (단계 경계 바로 뒤 등). 그래서 같은 구간을 <b>전체 맞춤</b>
                 // (단계 없이 쓰는 밀기 값) 으로도 보고, <b>두 맞춤 모두에서 벗어난 곳만</b> 오차로 남깁니다.
                 // 단계로 맞춰 사라진 오차는 그대로 사라지고, 단계로 맞춰 생긴 오차는 없어집니다.
+                List<ErrRun> kept = runs;
                 if (res.ByStep && !double.IsNaN(opt.Shift))
                 {
-                    var g = new List<ErrRun>();
-                    int ga0, ga1;
-                    if (AfterRange(before, after, seg.B0, seg.B1, opt.Shift, out ga0, out ga1))
-                    {
-                        Scan(after, ai, ga0, ga1, before, bi, seg.B0, seg.B1, opt.Shift, seg.Slack,
-                             cat, abs, pct, false, g);
-                        Scan(before, bi, seg.B0, seg.B1, after, ai, ga0, ga1, -opt.Shift, seg.Slack,
-                             cat, abs, pct, true, g);
-                    }
                     // 방향마다, 훑은 쪽 로그 자신의 시간으로 겹치는 곳만
-                    merged = Merge(Intersect(runs, g), seg.Slack);
-                    if (merged.Count == 0) continue;
+                    kept = Intersect(kept, ShiftedRuns(before, bi, after, ai, seg, opt.Shift, cat, abs, pct));
                 }
-                else merged = Merge(runs, seg.Slack);
+                // 1.67: 사용자가 분석 1 에서 지금 건 맞춤 (그래프에서 고른 단계의 시작 맞춤 등) 으로도 봐서,
+                // 거기서 맞으면 오차가 아닙니다 — 분석 1 에서 맞춰서 없어진 차이는 메인 칸에서도 없어집니다.
+                // 그 맞춤으로 <b>새로 생기는</b> 차이는 겹친 곳만 남기므로 늘지 않습니다.
+                if (!double.IsNaN(opt.ViewShift) && kept.Count > 0
+                    && Math.Abs(opt.ViewShift - seg.Shift) > 1e-9
+                    && (!res.ByStep || double.IsNaN(opt.Shift) || Math.Abs(opt.ViewShift - opt.Shift) > 1e-9))
+                {
+                    kept = Intersect(kept, ShiftedRuns(before, bi, after, ai, seg, opt.ViewShift, cat, abs, pct));
+                }
+                if (kept.Count == 0) continue;
+                merged = Merge(kept, seg.Slack);
 
                 string hint = string.Empty, hintShort = string.Empty;
                 if (res.HintTried < MaxHintTries)
@@ -555,6 +567,20 @@ namespace LogScope.Analysis1.Judge
                     res.Items.Add(it);
                 }
             }
+        }
+
+        /// <summary>이 단계 (이전 로그 구간) 를 밀기 값 shift 하나로 견준 오차 (두 방향). 이후 로그 범위는 그 값에 맞춰 다시 잡음.</summary>
+        private static List<ErrRun> ShiftedRuns(LogDataset before, int bi, LogDataset after, int ai, Seg seg,
+                                                double shift, bool cat, double abs, double pct)
+        {
+            var g = new List<ErrRun>();
+            int ga0, ga1;
+            if (AfterRange(before, after, seg.B0, seg.B1, shift, out ga0, out ga1))
+            {
+                Scan(after, ai, ga0, ga1, before, bi, seg.B0, seg.B1, shift, seg.Slack, cat, abs, pct, false, g);
+                Scan(before, bi, seg.B0, seg.B1, after, ai, ga0, ga1, -shift, seg.Slack, cat, abs, pct, true, g);
+            }
+            return g;
         }
 
         // ---------------- 보정 제안 (1.66) ----------------

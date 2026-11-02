@@ -972,18 +972,25 @@ namespace LogScope.Analysis1.Heatmap
             if (rows == null || rows.Count == 0) return lines;
 
 
-            // IO 이름 → 처음 든 그룹 번호. 뒤 그룹에 또 있어도 앞 그룹이 이깁니다.
+            // IO 이름 → 처음 든 그룹 번호 · 그 그룹 안의 자리. 뒤 그룹에 또 있어도 앞 그룹이 이깁니다.
             var groupOf = new Dictionary<string, int>(StringComparer.Ordinal);
+            var posOf = new Dictionary<string, int>(StringComparer.Ordinal);
             int groupCount = groups == null ? 0 : groups.Count;
             for (int g = 0; g < groupCount; g++)
             {
                 GroupDef def = groups[g];
                 if (def == null || def.Members == null) continue;
+                int pos = 0;
                 foreach (string name in def.Members)
-                    if (name != null && !groupOf.ContainsKey(name)) groupOf.Add(name, g);
+                {
+                    if (name != null && !groupOf.ContainsKey(name)) { groupOf.Add(name, g); posOf.Add(name, pos); }
+                    pos++;
+                }
             }
 
-            // 그룹마다 남은 줄 (히트맵 차례 그대로). 마지막 칸이 그룹에 없는 IO.
+            // 그룹마다 남은 줄. 마지막 칸이 그룹에 없는 IO.
+            // 1.67: 그룹 안 차례는 <b>그룹에 적힌 차례</b> (그룹에 없는 IO 는 로그 열 차례) — 차이 크기 차례로 두면
+            // 단계 맞춤 · 허용 오차 · 시간 맞추기를 바꿀 때마다 그룹 안 IO 차례가 뒤바뀌어 같은 IO 를 다시 찾아야 했습니다.
             var buckets = new List<HeatRow>[groupCount + 1];
             for (int i = 0; i < buckets.Length; i++) buckets[i] = new List<HeatRow>();
 
@@ -997,10 +1004,18 @@ namespace LogScope.Analysis1.Heatmap
                 buckets[groupOf.TryGetValue(row.Name, out g) ? g : groupCount].Add(row);
             }
 
+            var order = new Dictionary<HeatRow, int>();
+            for (int i = 0; i < rows.Count; i++) if (rows[i] != null && !order.ContainsKey(rows[i])) order.Add(rows[i], i);
             for (int g = 0; g <= groupCount; g++)
             {
                 List<HeatRow> members = buckets[g];
                 if (members.Count == 0) continue;
+                bool grouped = g < groupCount;
+                members.Sort(delegate (HeatRow a, HeatRow b)
+                {
+                    int c = grouped ? posOf[a.Name].CompareTo(posOf[b.Name]) : LogOrder(a).CompareTo(LogOrder(b));
+                    return c != 0 ? c : order[a].CompareTo(order[b]);
+                });
 
                 string name = g < groupCount ? groups[g].Name : Ungrouped;
                 bool shut = collapsed != null && collapsed.Contains(name);
@@ -1009,6 +1024,13 @@ namespace LogScope.Analysis1.Heatmap
                 for (int i = 0; i < members.Count; i++) lines.Add(HeatLine.Io(name, members[i]));
             }
             return lines;
+        }
+
+        /// <summary>로그 열 차례 — 이전 로그 열 번호, 이후 로그에만 있으면 그 뒤에 이후 로그 열 번호로.</summary>
+        private static long LogOrder(HeatRow r)
+        {
+            if (r.BeforeIndex >= 0) return r.BeforeIndex;
+            return r.AfterIndex >= 0 ? (1L << 31) + r.AfterIndex : long.MaxValue;
         }
 
         /// <summary>남은 IO 줄 수 (그룹 줄은 빼고, 접힌 그룹의 IO 는 셉니다).</summary>
