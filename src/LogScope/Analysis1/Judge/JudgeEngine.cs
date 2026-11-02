@@ -16,7 +16,7 @@ namespace LogScope.Analysis1.Judge
     //                            안이면 같음. <b>양쪽에서</b> 봄 — 이후 → 이전, 이전 → 이후. 한쪽만 보면
     //                            "이전에는 있던 짧은 펄스가 이후에는 없음" 을 놓칩니다.
     //   ⑤ 정도                   오차 길이 · 단계 안 비율 · 가장 긴 오차 · 구간 수 · 최대로 벗어난 값
-    //   ⑦ 공정 순서              단계가 없어짐 · 생김 · 차례가 바뀜 (FAIL), 단계 길이 차이 (오차 항목)
+    //   ⑦ 공정 순서              단계가 없어짐 · 생김 · 차례가 바뀜 (CRITICAL), 단계 길이 차이 (오차 항목)
     //   ⑨ 허용                   오차마다 "이번만" · "앞으로도 (본 크기까지)" — 허용된 것은 판정에서 빠짐
     //
     //  하지 않는 것 (사용자 결정, 146): 단계 안 늘이기 · 짧은 튐 지우기 · 치우침 · 중요 표시 · 엄격도.
@@ -45,7 +45,16 @@ namespace LogScope.Analysis1.Judge
         IoExtra = 6,
     }
 
-    public enum JudgeGrade { Pass = 0, Warning = 1, Fail = 2 }
+    /// <summary>판정. 1.64: FAIL 을 CRITICAL 로 (사용자 요청 — 모든 분석에서 같은 낱말).</summary>
+    public enum JudgeGrade
+    {
+        Pass = 0,
+        Warning = 1,
+        Critical = 2,
+        /// <summary>1.63 까지의 이름 — 사용자 코드가 부를 수 있어 남겨 둠 (Critical 과 같은 값).</summary>
+        [System.Obsolete("Critical 을 쓰세요 (1.64)")]
+        Fail = Critical,
+    }
 
     /// <summary>허용 상태.</summary>
     public enum AllowState { None = 0, Once = 1, Rule = 2 }
@@ -61,8 +70,17 @@ namespace LogScope.Analysis1.Judge
         /// <summary>시간 여유 최대 (시각 로그일 때, ms). 시각이 아닌 로그는 위 % 만 씁니다.</summary>
         public double SlackMaxMs = 5000.0;
 
-        /// <summary>한 단계 안에서 오차 시간이 이 비율 이상이면 FAIL. 그 아래는 WARNING.</summary>
-        public double FailRatio = 0.20;
+        /// <summary>
+        /// 오차 한 줄의 낱말 — 한 단계 안에서 오차 시간이 이 비율 이상이면 CRITICAL, 그 아래는 WARNING.
+        /// 오차가 얼마나 심한지 보여 주는 표시이고, <b>분석 1 판정은 아래 IO 수로</b> 냅니다 (1.64).
+        /// </summary>
+        public double CriticalRatio = 0.20;
+
+        /// <summary>
+        /// 분석 1 판정 (1.64): 허용 안 된 오차가 있는 IO 가 0 개면 PASS, 이 수 이하면 WARNING, 넘으면 CRITICAL.
+        /// 단계가 없어지거나 · 생기거나 · 차례가 바뀌면 IO 수와 상관없이 CRITICAL, 단계 길이 오차만 있으면 WARNING.
+        /// </summary>
+        public int CriticalIoCount = 10;
 
         /// <summary>값 허용 오차 (지금 쓰는 표 그대로).</summary>
         public ToleranceTable Tolerances;
@@ -208,7 +226,7 @@ namespace LogScope.Analysis1.Judge
 
         public static string WordOf(JudgeGrade g)
         {
-            return g == JudgeGrade.Fail ? "FAIL" : g == JudgeGrade.Warning ? "WARNING" : "PASS";
+            return g == JudgeGrade.Critical ? "CRITICAL" : g == JudgeGrade.Warning ? "WARNING" : "PASS";
         }
 
         /// <summary>길이를 글로 — 시각 로그면 "0.1초" · "8분 3초".</summary>
@@ -816,7 +834,7 @@ namespace LogScope.Analysis1.Judge
                         {
                             double v; errTime.TryGetValue(it.Io + "\n" + it.Step, out v);
                             it.StepRatio = it.SegLength > 0 ? Math.Min(1.0, v / it.SegLength) : 0;
-                            it.Grade = it.StepRatio >= opt.FailRatio ? JudgeGrade.Fail : JudgeGrade.Warning;
+                            it.Grade = it.StepRatio >= opt.CriticalRatio ? JudgeGrade.Critical : JudgeGrade.Warning;
                             it.Detail = it.PeakText
                                       + (it.MissingInAfter ? " (이전에 있던 모양이 이후에 없음)" : string.Empty)
                                       + " · 최대 " + NumberText.Plain(it.MaxExcess)
@@ -828,7 +846,7 @@ namespace LogScope.Analysis1.Judge
                     case JudgeKind.StepMissing:
                     case JudgeKind.StepExtra:
                     case JudgeKind.StepOrder:
-                        it.Grade = JudgeGrade.Fail;
+                        it.Grade = JudgeGrade.Critical;
                         break;
                     default:
                         it.Grade = JudgeGrade.Warning;
@@ -874,7 +892,6 @@ namespace LogScope.Analysis1.Judge
             // 목록 차례: 허용 안 된 것 → 나쁜 것 → 긴 것
             res.Items.Sort(Compare);
 
-            res.Grade = JudgeGrade.Pass;
             res.OpenCount = 0;
             var openIos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             res.AllowedCount = 0;
@@ -884,10 +901,23 @@ namespace LogScope.Analysis1.Judge
                 if (it.IsAllowed) { res.AllowedCount++; continue; }
                 res.OpenCount++;
                 if (it.Io.Length > 0) openIos.Add(it.Io);
-                if (it.Grade > res.Grade) res.Grade = it.Grade;
                 if (res.Reasons.Count < 5) res.Reasons.Add(JudgeResult.WordOf(it.Grade) + "  " + it.What);
             }
             res.OpenIoCount = openIos.Count;
+
+            // 분석 1 판정 = 허용 안 된 오차가 있는 IO 수 (1.64): 0 → PASS, ~10 → WARNING, 넘으면 CRITICAL.
+            // 구간 수로 하면 IO 하나의 잔떨림만으로 수가 커져서 IO 수로 셉니다.
+            JudgeGrade g = res.OpenIoCount == 0 ? JudgeGrade.Pass
+                         : res.OpenIoCount <= opt.CriticalIoCount ? JudgeGrade.Warning : JudgeGrade.Critical;
+            foreach (JudgeItem it in res.Items)
+            {
+                if (it.IsAllowed) continue;
+                if (it.Kind == JudgeKind.StepMissing || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder)
+                    g = JudgeGrade.Critical;                       // 공정 순서가 다름
+                else if (it.Kind == JudgeKind.StepLength && g == JudgeGrade.Pass)
+                    g = JudgeGrade.Warning;                        // 단계 길이만 다름
+            }
+            res.Grade = g;
         }
 
         private static int Compare(JudgeItem a, JudgeItem b)

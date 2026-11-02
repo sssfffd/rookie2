@@ -1900,3 +1900,13 @@
 > 그리고 그래프로 보면 오차 발생 지점이 너무 안보이는데 보여지게 가능?
 
 → 답변: [154-io-count-split-graph-marks.md](154-io-count-split-graph-marks.md)
+
+---
+
+## 요청 182 — 판정을 오차 IO 수로 · FAIL → CRITICAL
+
+> 아니 위에 IO 개수 기준으로 넣으라고 한건 구간별로 개수를 넣으면 너무 크게 보여서 그럼
+> IO개수 기준으로 넣고 10개 이하면 warning 10개 넘으면 Critical
+> 그리고 이제 fail대신에 critical로 다 바꿔줘
+
+→ 답변: [155-io-count-verdict-critical.md](155-io-count-verdict-critical.md)

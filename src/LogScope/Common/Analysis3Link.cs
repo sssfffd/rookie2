@@ -143,10 +143,10 @@ namespace LogScope.Common
     /// <summary>
     /// 메인 화면 분석 3 칸에 올리는 결과.
     ///
-    /// 크게 적는 자리에 <b>낱말</b>(분석 2 처럼 PASS · WARNING · FAIL)이나 <b>점수</b>
+    /// 크게 적는 자리에 <b>낱말</b>(분석 2 처럼 PASS · WARNING · CRITICAL)이나 <b>점수</b>
     /// (분석 1 처럼 0~100) 중 하나를 씁니다. 둘 다 있으면 낱말이 이깁니다.
     ///
-    ///   [FAIL]  차이 발생 [3] 개        ← Verdict · Count
+    ///   [CRITICAL]  차이 발생 [3] 개        ← Verdict · Count
     ///   ┌ 요약 ───────────────────┐
     ///   │ ● 항목 A        1 → 2   │    ← Lines (누르면 OpenRequested)
     ///   │ ● 항목 B        OK      │
@@ -155,14 +155,14 @@ namespace LogScope.Common
     /// </summary>
     public sealed class Analysis3Result
     {
-        /// <summary>크게 적는 낱말 (PASS · WARNING · FAIL 등). 비우면 점수를 씁니다.</summary>
+        /// <summary>크게 적는 낱말 (PASS · WARNING · CRITICAL 등). 비우면 점수를 씁니다.</summary>
         public string Verdict = string.Empty;
 
         /// <summary>점수 0~100. 쓰지 않으면 NaN 그대로 둡니다. 색은 분석 1 과 같은 기준.</summary>
         public double Score = double.NaN;
 
         /// <summary>
-        /// 낱말 색. None 이면 낱말로 고릅니다 — PASS 초록 · WARNING/WARN 노랑 · FAIL 빨강,
+        /// 낱말 색. None 이면 낱말로 고릅니다 — PASS 초록 · WARNING/WARN 노랑 · CRITICAL 빨강,
         /// 그 밖의 낱말은 회색. 점수만 쓸 때는 보지 않습니다.
         /// </summary>
         public Analysis3Grade Grade = Analysis3Grade.None;

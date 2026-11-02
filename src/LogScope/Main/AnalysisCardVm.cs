@@ -163,7 +163,7 @@ namespace LogScope.Main
         {
             if (string.IsNullOrEmpty(tag)) return ScoreBands.GradeNone;
             string w = tag.Trim('[', ']', ' ').ToUpperInvariant();
-            if (w == "오류" || w == "에러" || w == "ERROR" || w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
+            if (w == "오류" || w == "에러" || w == "ERROR" || w == "CRITICAL" || w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
             if (w == "경고" || w == "주의" || w == "WARN" || w == "WARNING") return ScoreBands.GradeWarn;
             if (w == "정상" || w == "OK" || w == "PASS") return ScoreBands.GradeGood;
             return ScoreBands.GradeNone;
@@ -334,7 +334,7 @@ namespace LogScope.Main
             get
             {
                 if (Item.IsAllowed) return ScoreBands.GradeNone;
-                return Item.Grade == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                return Item.Grade == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
             }
         }
     }
@@ -433,7 +433,7 @@ namespace LogScope.Main
 
         /// <summary>
         /// 점수(0~100) 자리를 <b>쓰지 않는</b> 칸인지. 분석 2 가 그렇습니다 —
-        /// 점수가 아니라 PASS·WARNING·FAIL 을 적습니다.
+        /// 점수가 아니라 PASS·WARNING·CRITICAL 을 적습니다.
         ///
         /// 이 깃발이 없던 0.99 까지, 분석 2 칸은 DB 를 읽기 전에
         /// <c>?? / 100</c> 과 "Log 파일을 비교한 후 점수가 나옵니다" 를
@@ -471,7 +471,7 @@ namespace LogScope.Main
         private bool _has;
         private double _score;
 
-        // ---- 점수 대신 낱말 (PASS · WARNING · FAIL) ----
+        // ---- 점수 대신 낱말 (PASS · WARNING · CRITICAL) ----
         //
         // 분석 2(DB)는 점수가 아니라 판정입니다. "무엇을 어떻게 100 점으로
         // 환산했나" 를 묻게 만들 바에, 사람이 알고 싶은 것 하나만

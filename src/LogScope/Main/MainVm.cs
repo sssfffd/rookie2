@@ -63,7 +63,7 @@ namespace LogScope.Main
             }
             else
             {
-                // 1.56: 100 점 고정 자리에 <b>정상 판정</b> (PASS · WARNING · FAIL) 과 허용 안 된 오차 수.
+                // 1.56: 100 점 고정 자리에 <b>정상 판정</b> (PASS · WARNING · CRITICAL) 과 허용 안 된 오차 수.
                 // 판정과 오차 목록은 분석 1 의 [오차 목록] 화면 (Analysis1/Judge).
                 Cards[0].ClearScore();
                 JudgeResult judge = _state.Judgement;
@@ -88,7 +88,7 @@ namespace LogScope.Main
                     // 그대로 읽습니다) — 따로 셈하면 두 수가 어긋납니다.
                     //
                     // 1.21: 차이 난 IO 개수는 <b>점수 오른쪽</b>으로 옮겼습니다 (분석 2 의
-                    // "FAIL 차이 발생 N 개" 와 같은 자리 · 같은 크기 — 줄 맞춤이 그대로).
+                    // "CRITICAL 차이 발생 N 개" 와 같은 자리 · 같은 크기 — 줄 맞춤이 그대로).
                     // "한쪽에만 있는 IO" 는 뺐습니다 (대시보드에 목록으로 있음).
                     // 그래서 숫자 칸(Stats)은 비고, 비면 그 줄째 안 보입니다.
                     Cards[0].SetCount(r.ChangedCount.ToString("N0"));
@@ -139,7 +139,7 @@ namespace LogScope.Main
         }
 
         /// <summary>
-        /// 분석 2(DB) 칸에 <b>PASS · WARNING · FAIL</b> 을 적습니다.
+        /// 분석 2(DB) 칸에 <b>PASS · WARNING · CRITICAL</b> 을 적습니다.
         ///
         /// 점수가 아닌 이유는 <see cref="LogScope.Analysis2.DbVerdict"/> 에 적어
         /// 두었습니다. 가르는 규칙도 거기 한 곳입니다 — 여기서 또 가르면
@@ -264,7 +264,7 @@ namespace LogScope.Main
 
         /// <summary>
         /// 분석 3 의 색. 정해 왔으면 그대로, 아니면 낱말로 고릅니다 —
-        /// PASS · OK 초록, WARNING · WARN 노랑, FAIL · NG 빨강, 그 밖은 회색.
+        /// PASS · OK 초록, WARNING · WARN 노랑, CRITICAL · CRITICAL · NG 빨강, 그 밖은 회색.
         /// </summary>
         public static string A3Grade(Analysis3Grade grade, string word)
         {
@@ -277,7 +277,7 @@ namespace LogScope.Main
             string w = (word ?? string.Empty).Trim().ToUpperInvariant();
             if (w == "PASS" || w == "OK") return ScoreBands.GradeGood;
             if (w == "WARNING" || w == "WARN") return ScoreBands.GradeWarn;
-            if (w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
+            if (w == "CRITICAL" || w == "FAIL" || w == "NG") return ScoreBands.GradeBad;
             return ScoreBands.GradeNone;
         }
 
@@ -295,7 +295,7 @@ namespace LogScope.Main
         /// "얼마나 달라졌나" 를 보러 결국 분석 2 로 가야 합니다. 열이 여럿
         /// 달라진 IO 는 줄 아래 작은 글에 열마다 적습니다.
         ///
-        /// FAIL 이어도 이름을 적습니다 — 여기는 굴러가는 목록이라 "이 몇
+        /// CRITICAL 이어도 이름을 적습니다 — 여기는 굴러가는 목록이라 "이 몇
         /// 개가 문제" 로 읽힐 자리가 아닙니다 (한 줄에 늘어놓는 쪽은
         /// DbVerdict 가 여덟 개로 끊습니다).
         /// </summary>
@@ -349,7 +349,7 @@ namespace LogScope.Main
         private static string GradeOf(string verdict)
         {
             if (verdict == DbVerdict.Pass) return ScoreBands.GradeGood;
-            if (verdict == DbVerdict.Fail) return ScoreBands.GradeBad;
+            if (verdict == DbVerdict.Critical) return ScoreBands.GradeBad;
             return ScoreBands.GradeWarn;
         }
 
@@ -490,7 +490,7 @@ namespace LogScope.Main
             }
             g.GradeOverride = members.Count == 0 ? ScoreBands.GradeNone
                             : !anyOpen ? ScoreBands.GradeGood
-                            : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                            : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
             // 그룹 이름 아래 글은 1.62 에 뺐습니다 (사용자 요청 — "가장 긴 오차" 같은 글 없이 이름 · 개수만).
 
             if (g.IsExpanded)
@@ -513,7 +513,7 @@ namespace LogScope.Main
         /// <summary>판정 → 칸 색.</summary>
         public static string JudgeGradeOf(JudgeGrade g)
         {
-            return g == JudgeGrade.Fail ? ScoreBands.GradeBad
+            return g == JudgeGrade.Critical ? ScoreBands.GradeBad
                  : g == JudgeGrade.Warning ? ScoreBands.GradeWarn
                  : ScoreBands.GradeGood;
         }
@@ -545,7 +545,7 @@ namespace LogScope.Main
                 : "오차 " + open.ToString("N0")
                   + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
             io.Grade = open == 0 ? ScoreBands.GradeGood
-                     : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                     : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
             io.HasErrors = true;
             return io;
         }
@@ -566,7 +566,7 @@ namespace LogScope.Main
             g.CanExpand = true;   // 누르면 오차 창 (펼치지 않음)
             g.CountOverride = "오차 " + open.ToString("N0") + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
             g.GradeOverride = open == 0 ? ScoreBands.GradeGood
-                            : worst == JudgeGrade.Fail ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                            : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
             list.Add(g);
         }
 

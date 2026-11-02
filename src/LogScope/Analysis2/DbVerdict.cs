@@ -3,7 +3,7 @@
 namespace LogScope.Analysis2
 {
     /// <summary>
-    /// 분석 2 의 판정 — <b>PASS · WARNING · FAIL</b>.
+    /// 분석 2 의 판정 — <b>PASS · WARNING · CRITICAL</b>.
     ///
     /// 메인 화면 칸에 점수(0~100) 대신 이 세 낱말이 적힙니다. 점수는
     /// "무엇을 어떻게 100 점으로 환산했나" 를 묻게 만들지만, DB 견주기에서
@@ -13,7 +13,7 @@ namespace LogScope.Analysis2
     /// <code>
     ///   0 개            → PASS
     ///   1 ~ 99 개       → WARNING
-    ///   100 개 이상     → FAIL
+    ///   100 개 이상     → CRITICAL
     /// </code>
     ///
     /// <b>이 한 곳에만 있습니다.</b> 화면이 같은 가름을 한 번 더 짜면
@@ -26,18 +26,24 @@ namespace LogScope.Analysis2
     /// </summary>
     public static class DbVerdict
     {
-        /// <summary>차이 발생이 이 수부터 FAIL.</summary>
-        public const int FailFrom = 100;
+        /// <summary>차이 발생이 이 수부터 CRITICAL (1.64 에 CRITICAL 에서 이름만 바꿈).</summary>
+        public const int CriticalFrom = 100;
 
         public const string Pass = "PASS";
         public const string Warning = "WARNING";
-        public const string Fail = "FAIL";
+        public const string Critical = "CRITICAL";
+
+        // 1.63 까지의 이름 — 사용자 폴더(LlmExport)의 코드가 부를 수 있어 남겨 둡니다 (값은 새 것과 같음).
+        [System.Obsolete("CriticalFrom 을 쓰세요 (1.64 에 FAIL → CRITICAL)")]
+        public const int FailFrom = CriticalFrom;
+        [System.Obsolete("Critical 을 쓰세요 (1.64 에 FAIL → CRITICAL). 값도 \"CRITICAL\" 입니다.")]
+        public const string Fail = Critical;
 
         /// <summary>차이 발생 개수로 가른 판정.</summary>
         public static string Of(int changed)
         {
             if (changed <= 0) return Pass;
-            return changed >= FailFrom ? Fail : Warning;
+            return changed >= CriticalFrom ? Critical : Warning;
         }
 
         /// <summary>
@@ -59,7 +65,7 @@ namespace LogScope.Analysis2
         /// 적습니다.
         ///
         /// <code>
-        ///   FAIL    → 차이가 너무 많습니다. 파일을 다시 확인해 주세요.
+        ///   CRITICAL    → 차이가 너무 많습니다. 파일을 다시 확인해 주세요.
         ///   WARNING → 어떤 IO 가 달라졌는지 이름을 적습니다.
         ///   PASS    → 차이 없습니다.
         /// </code>
@@ -89,7 +95,7 @@ namespace LogScope.Analysis2
         {
             string word = Of(t.Changed);
 
-            if (word == Fail)
+            if (word == Critical)
             {
                 // 이름을 적지 않습니다. 100 개가 넘는 자리에서 여덟 개만
                 // 적으면 "이 여덟 개가 문제" 로 읽힙니다 — 그게 아니라
@@ -102,7 +108,7 @@ namespace LogScope.Analysis2
 
             string head = "차이 발생 " + t.Changed.ToString("N0") + "개";
             if (names == null || names.Count == 0)
-                return head + " (" + FailFrom.ToString("N0") + "개부터 FAIL)";
+                return head + " (" + CriticalFrom.ToString("N0") + "개부터 CRITICAL)";
 
             // 여기서 적는 것은 <b>한 줄</b>이라 여덟 개까지입니다. 넘겨받은
             // 목록이 더 길 수 있어서 (요약 칸은 더 많이 적습니다) 여기서

@@ -783,7 +783,7 @@ namespace LogScope.Shell
 
         /// <summary>
         /// 분석 2 가 읽고 견준 뒤. 센 수를 상태에 옮기고 메인 화면을
-        /// 다시 그립니다 — 메인 칸이 PASS · WARNING · FAIL 을 적습니다.
+        /// 다시 그립니다 — 메인 칸이 PASS · WARNING · CRITICAL 을 적습니다.
         ///
         /// 뷰모델이 상태를 직접 만지지 않고 창이 옮기는 것은 자리가
         /// 바뀔 때와 같은 방식입니다.

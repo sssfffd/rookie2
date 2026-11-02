@@ -23,7 +23,7 @@ namespace LogScope.Main
         public bool HasScore;
         public double Score;
 
-        public string Word = string.Empty;        // PASS · FAIL 등. 비면 점수 칸
+        public string Word = string.Empty;        // PASS · CRITICAL 등. 비면 점수 칸
         public string WordGrade = string.Empty;
         public string WordNote = string.Empty;
         public string Count = string.Empty;       // "차이 발생 N 개" 의 N

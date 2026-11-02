@@ -31,8 +31,8 @@ namespace LogScope.Analysis1.Judge
             sb.Append("- 비교 방법: ").Append(r.ByStep ? "단계마다 시작을 맞춤 (단계 " + r.StepCount + " 개)" : "단계 없이 전체를 한 구간으로")
               .Append(r.ByStep ? " — 단계 맞춤과 전체 맞춤 둘 다에서 벗어난 곳만 오차" : string.Empty)
               .Append(". 이후 값이 이전 로그의 앞뒤 시간 여유(단계 길이 2 %, 0.2~5 초) 동안의 값 범위 + IO 값 허용 오차 안이면 같음. ")
-              .Append("양쪽(이전→이후, 이후→이전)으로 봄. 한 단계에서 오차 시간이 20 % 이상이면 FAIL, 그 밖의 오차는 WARNING, ")
-              .Append("단계가 없어지거나 차례가 바뀌면 FAIL.\n");
+              .Append("양쪽(이전→이후, 이후→이전)으로 봄. 판정은 허용 안 된 오차가 있는 IO 수로 — 0 개 PASS, 10 개 이하 WARNING, ")
+              .Append("넘으면 CRITICAL. 단계가 없어지거나 차례가 바뀌면 CRITICAL. 오차 줄의 낱말은 그 단계에서 오차 시간이 20 % 이상이면 CRITICAL.\n");
             if (r.Note.Length > 0) sb.Append("- 알아 둘 점: ").Append(r.Note).Append('\n');
             sb.Append("- **사용자가 허용한 오차는 공정 담당자가 정상 변동으로 판단한 것입니다. 이상의 근거로 쓰지 마세요.**\n\n");
 

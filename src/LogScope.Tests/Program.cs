@@ -151,6 +151,7 @@ namespace LogScope.Tests
                 JudgeBandRules();
                 JudgeStepRules();
                 JudgeStepSplitRules();
+                JudgeIoCountRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4618,12 +4619,13 @@ namespace LogScope.Tests
                   pulse != null && pulse.MissingInAfter, pulse != null ? pulse.Detail : "없음");
 
             JudgeItem big = FindItem(r, JudgeKind.Value, "BIG");
-            Check("20 초 다름 = 33 % → FAIL", big != null && big.Grade == JudgeGrade.Fail,
+            Check("20 초 다름 = 33 % → FAIL", big != null && big.Grade == JudgeGrade.Critical,
                   big != null ? big.StepRatio.ToString(CultureInfo.InvariantCulture) : "없음");
-            Check("전체 FAIL", r.Grade == JudgeGrade.Fail && r.Word == "FAIL", r.Word);
+            Check("오차 IO 4 개 (10 개 이하) → WARNING (1.64)", r.Grade == JudgeGrade.Warning && r.Word == "WARNING"
+                  && r.OpenIoCount == 4, r.Word + " " + r.OpenIoCount);
             Check("허용 안 된 오차 수", r.OpenCount == 4 && r.AllowedCount == 0, r.OpenCount + " / " + r.AllowedCount);
             Check("FAIL 이 목록 맨 위", r.Items.Count > 0 && r.Items[0].Io == "BIG", r.Items.Count > 0 ? r.Items[0].Io : "");
-            Check("까닭 다섯 이하 · FAIL 먼저", r.Reasons.Count == 4 && r.Reasons[0].StartsWith("FAIL"), string.Join(" / ", r.Reasons.ToArray()));
+            Check("까닭 다섯 이하 · 심한 줄(CRITICAL) 먼저", r.Reasons.Count == 4 && r.Reasons[0].StartsWith("CRITICAL"), string.Join(" / ", r.Reasons.ToArray()));
 
             JudgeIo io = null;
             foreach (JudgeIo x in r.Ios) if (x.Name == "BIG") io = x;
@@ -4633,7 +4635,7 @@ namespace LogScope.Tests
             // ---- 허용 ----
             opt.Once.Add(big.Key);
             JudgeEngine.Regrade(r, opt);
-            Check("BIG 이번만 허용 → WARNING", r.Grade == JudgeGrade.Warning && big.Allowed == AllowState.Once
+            Check("BIG 이번만 허용 → 오차 IO 3 개 · WARNING", r.Grade == JudgeGrade.Warning && big.Allowed == AllowState.Once && r.OpenIoCount == 3
                   && r.OpenCount == 3 && r.AllowedCount == 1, r.Word);
             Check("허용된 것은 목록 아래로", r.Items[r.Items.Count - 1] == big, "");
 
@@ -4655,7 +4657,7 @@ namespace LogScope.Tests
 
             opt.Once.Clear(); opt.Rules.Clear();
             JudgeEngine.Regrade(r, opt);
-            Check("허용을 풀면 다시 FAIL", r.Grade == JudgeGrade.Fail && r.AllowedCount == 0, r.Word);
+            Check("허용을 풀면 다시 오차 IO 4 개", r.Grade == JudgeGrade.Warning && r.OpenIoCount == 4 && r.AllowedCount == 0, r.Word);
 
             // 설정 파일로 오가는지
             var s = new AppSettings();
@@ -4671,7 +4673,43 @@ namespace LogScope.Tests
                   JudgeEngine.DurationText(483000, true, ""));
         }
 
-        /// <summary>정상 판정 — 단계 (1.56). 단계 길이는 늘이지 않고 오차로, 차례가 바뀌면 FAIL.</summary>
+        /// <summary>
+        /// 분석 1 판정 = 오차 IO 수 (1.64): 0 PASS · 10 개 이하 WARNING · 넘으면 CRITICAL. IO 12 개 중 11 개만 튐.
+        /// </summary>
+        private static void JudgeIoCountRules()
+        {
+            Say("판정 — 오차 IO 수로 PASS · WARNING · CRITICAL");
+            var head = new StringBuilder("Time");
+            for (int c = 0; c < 12; c++) head.Append(",IO").Append(c);
+            var a = new StringBuilder(head.ToString()).Append("\n");
+            var b = new StringBuilder(head.ToString()).Append("\n");
+            for (int i = 0; i < 100; i++)
+            {
+                a.Append(Clock01(i)); b.Append(Clock01(i));
+                for (int c = 0; c < 12; c++)
+                {
+                    a.Append(",5");
+                    b.Append(',').Append(c < 11 && i == 50 ? 9 : 5);   // IO0 ~ IO10 이 한 점씩 튐
+                }
+                a.Append("\n"); b.Append("\n");
+            }
+            LogDataset dsA = Open(WriteCsv("judge_cnt_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("judge_cnt_b.csv", b.ToString()), Orientation.Auto);
+            var opt = new JudgeOptions();
+            opt.Once = new HashSet<string>();
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+            Check("오차 IO 11 개 → CRITICAL", r.OpenIoCount == 11 && r.Grade == JudgeGrade.Critical && r.Word == "CRITICAL",
+                  r.OpenIoCount + " " + r.Word);
+            opt.Once.Add(FindItem(r, JudgeKind.Value, "IO0").Key);
+            JudgeEngine.Regrade(r, opt);
+            Check("하나 허용해 10 개 → WARNING", r.OpenIoCount == 10 && r.Grade == JudgeGrade.Warning, r.OpenIoCount + " " + r.Word);
+            foreach (JudgeItem it in r.Items) opt.Once.Add(it.Key);
+            JudgeEngine.Regrade(r, opt);
+            Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
+            Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>정상 판정 — 단계 (1.56). 단계 길이는 늘이지 않고 오차로, 차례가 바뀌면 CRITICAL.</summary>
         private static void JudgeStepRules()
         {
             Say("판정 — 단계");
@@ -4702,7 +4740,7 @@ namespace LogScope.Tests
             Check("B 가 5 초 김 → 단계 길이 오차 (늘이지 않음)", len != null && len.Step == "B" && Math.Abs(len.MaxExcess - 5) < 1e-9,
                   len != null ? len.What : "없음");
             Check("단계 길이는 WARNING", len != null && len.Grade == JudgeGrade.Warning, "");
-            Check("차례가 바뀌면 FAIL", order != null && order.Grade == JudgeGrade.Fail && r.Grade == JudgeGrade.Fail,
+            Check("차례가 바뀌면 FAIL", order != null && order.Grade == JudgeGrade.Critical && r.Grade == JudgeGrade.Critical,
                   order != null ? order.Detail : "없음");
             Check("차례는 앞으로도 허용 못 함", order != null && !order.CanAllowAlways, "");
 
@@ -4728,7 +4766,7 @@ namespace LogScope.Tests
             JudgeResult r2 = JudgeEngine.Run(dsA, dsC, StepPairList.Build(dsA, dsC), opt, null);
             bool missing = false;
             foreach (JudgeItem it in r2.Items) if (it.Kind == JudgeKind.StepMissing && it.Step == "C") missing = true;
-            Check("이후에 없는 단계 → FAIL", missing && r2.Grade == JudgeGrade.Fail, r2.Word);
+            Check("이후에 없는 단계 → FAIL", missing && r2.Grade == JudgeGrade.Critical, r2.Word);
 
             // 같은 로그끼리면 PASS
             JudgeResult r3 = JudgeEngine.Run(dsA, dsA, StepPairList.Build(dsA, dsA), opt, null);
@@ -4745,7 +4783,7 @@ namespace LogScope.Tests
             st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
             st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
             st.Recompare(null);
-            Check("견주면 판정도 나옴", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Fail,
+            Check("견주면 판정도 나옴", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Warning,
                   st.Judgement != null ? st.Judgement.Word : "없음");
 
             JudgeResult first = st.Judgement;
@@ -4754,8 +4792,8 @@ namespace LogScope.Tests
             Check("판정에 쓰는 것이 그대로면 다시 찾지 않음", ReferenceEquals(first, st.Judgement), "");
 
             var main = new MainVm(st);
-            Check("메인 분석 1 칸 = 판정 낱말 · 오차 수", main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "4"
-                  && main.Cards[0].Grade == ScoreBands.GradeBad && main.Cards[0].ScoreOutOf.Length == 0,
+            Check("메인 분석 1 칸 = 판정 낱말 · 오차 수", main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "4"
+                  && main.Cards[0].Grade == ScoreBands.GradeWarn && main.Cards[0].ScoreOutOf.Length == 0,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].VerdictCount);
 
             // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----
@@ -4785,7 +4823,7 @@ namespace LogScope.Tests
             spikePop.Allow(spikePop.Rows[0], AllowChoice.Always);
             Check("창에서 앞으로도 허용 → 규칙 · 창 글 · 메인 칸 3", st.Settings.AllowRules.Count == 1 && spike.Allowed == AllowState.Rule
                   && spikePop.Summary == "오차 0 · 허용됨 1" && spikePop.Rows[0].IsAllowed && spikePop.Rows[0].Word == "허용됨 · 규칙"
-                  && main.Cards[0].ScoreText == "FAIL" && main.Cards[0].VerdictCount == "3" && changed == 1, spikePop.Summary);
+                  && main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "3" && changed == 1, spikePop.Summary);
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
             GroupIoVm spikeIo = null;
@@ -4796,7 +4834,8 @@ namespace LogScope.Tests
             LlmRequest lq = main.BuildLlmRequest(null);
             Check("LLM 요청에 판정 · 허용 글", lq.Use1 && lq.Judgement == st.Judgement
                   && lq.Analysis1Judgement.Contains("사용자가 허용한 오차") && lq.Analysis1Judgement.Contains("| 앞으로도 (규칙) | 값 | SPIKE |")
-                  && lq.Analysis1Judgement.Contains("**FAIL**"), lq.Analysis1Judgement.Length.ToString());
+                  && lq.Analysis1Judgement.Contains("**WARNING**") && lq.Analysis1Judgement.Contains("오차가 있는 IO 3 개"),
+                  lq.Analysis1Judgement.Length.ToString());
             main.Llm.Checks[0].Selected = false;
             lq = main.BuildLlmRequest(null);
             Check("분석 1 을 안 고르면 판정 글 없음", !lq.Use1 && lq.Judgement == null && lq.Analysis1Judgement.Length == 0, "");
@@ -5140,15 +5179,15 @@ namespace LogScope.Tests
             Check("0 개는 PASS", DbVerdict.Of(0) == DbVerdict.Pass, DbVerdict.Of(0));
             Check("1 개는 WARNING", DbVerdict.Of(1) == DbVerdict.Warning, DbVerdict.Of(1));
             Check("99 개는 WARNING", DbVerdict.Of(99) == DbVerdict.Warning, DbVerdict.Of(99));
-            Check("100 개는 FAIL", DbVerdict.Of(100) == DbVerdict.Fail, DbVerdict.Of(100));
-            Check("101 개도 FAIL", DbVerdict.Of(101) == DbVerdict.Fail, DbVerdict.Of(101));
-            Check("기준이 100", DbVerdict.FailFrom == 100,
-                  DbVerdict.FailFrom.ToString(CultureInfo.InvariantCulture));
+            Check("100 개는 FAIL", DbVerdict.Of(100) == DbVerdict.Critical, DbVerdict.Of(100));
+            Check("101 개도 FAIL", DbVerdict.Of(101) == DbVerdict.Critical, DbVerdict.Of(101));
+            Check("기준이 100", DbVerdict.CriticalFrom == 100,
+                  DbVerdict.CriticalFrom.ToString(CultureInfo.InvariantCulture));
 
             // 세 낱말이 서로 달라야 합니다 (하나라도 같으면 색이 엉킵니다).
             Check("세 낱말이 서로 다름",
-                  DbVerdict.Pass != DbVerdict.Warning && DbVerdict.Warning != DbVerdict.Fail
-                  && DbVerdict.Pass != DbVerdict.Fail, null);
+                  DbVerdict.Pass != DbVerdict.Warning && DbVerdict.Warning != DbVerdict.Critical
+                  && DbVerdict.Pass != DbVerdict.Critical, null);
 
             // ---- 낱말 아래 글 ----
             //
@@ -5191,9 +5230,10 @@ namespace LogScope.Tests
             string w2 = DbVerdict.Why(lots2, three);
             Check("못 적은 개수를 알려 줌", w2.Contains("외 27개"), w2);
 
-            // 이름을 모으지 않은 자리에서는 FAIL 기준을 알려 줍니다.
-            Check("이름이 없으면 FAIL 기준을 알려 줌",
-                  DbVerdict.Why(few).Contains("100개부터 FAIL"), DbVerdict.Why(few));
+            // 이름을 모으지 않은 자리에서는 CRITICAL 기준을 알려 줍니다 (1.64 에 FAIL → CRITICAL).
+            Check("이름이 없으면 CRITICAL 기준을 알려 줌",
+                  DbVerdict.Why(few).Contains("100개부터 CRITICAL"), DbVerdict.Why(few));
+            Check("DB 판정 낱말 CRITICAL", DbVerdict.Of(100) == "CRITICAL" && DbVerdict.Critical == "CRITICAL", DbVerdict.Of(100));
 
             // ---- 판정에 안 들어간 수 ----
             //

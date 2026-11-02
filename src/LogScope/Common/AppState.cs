@@ -26,7 +26,7 @@ namespace LogScope.Common
 
         // ---- 분석 2 (DB) 가 마지막으로 센 수 ----
         //
-        // 메인 화면 칸이 PASS · WARNING · FAIL 을 적는 데 씁니다. 수만
+        // 메인 화면 칸이 PASS · WARNING · CRITICAL 을 적는 데 씁니다. 수만
         // 둡니다 — 판정하는 규칙은 LogScope.Analysis2 의 DbVerdict 한 곳입니다.
         //
         // 아직 한 번도 안 읽었으면 HasDbResult 가 거짓입니다. 0 으로 두면
@@ -222,7 +222,7 @@ namespace LogScope.Common
 
         // ---------------- 정상 판정 (1.56) ----------------
         //
-        // 분석 1 의 PASS · WARNING · FAIL 과 오차 목록. 견줄 때마다 같이 돕니다 — 단, 판정에 쓰는
+        // 분석 1 의 PASS · WARNING · CRITICAL 과 오차 목록. 견줄 때마다 같이 돕니다 — 단, 판정에 쓰는
         // 것(두 로그 · 단계 · 허용 오차 · 단계 없을 때의 밀기 값)이 그대로면 다시 찾지 않습니다.
         // 그래프에서 단계를 고를 때마다 견주기가 다시 도는데, 판정은 단계를 고른 것과 상관없습니다.
 

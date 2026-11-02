@@ -182,7 +182,7 @@ namespace LogScope.Main
     /// History 줄 안의 한 칸 — 분석 하나의 그때 요약 (1.42).
     ///
     ///   분석 2 이름
-    ///   FAIL  차이 발생 3개        ← HeadText (색) · CountText
+    ///   CRITICAL  차이 발생 3개        ← HeadText (색) · CountText
     ///   TEMP_MAX  1 → 2  외 2줄    ← SummaryText
     ///   a.sql  →  b.sql            ← InputsText
     /// </summary>

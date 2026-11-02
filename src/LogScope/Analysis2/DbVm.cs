@@ -119,7 +119,7 @@ namespace LogScope.Analysis2
 
         // ---- 센 결과를 밖으로 ----
         //
-        // 메인 화면 칸이 PASS · WARNING · FAIL 을 보여 주려면 이 수가
+        // 메인 화면 칸이 PASS · WARNING · CRITICAL 을 보여 주려면 이 수가
         // 거기까지 가야 합니다. 뷰모델이 AppState 를 직접 만지지 않고
         // <b>알리기만</b> 합니다 — 누가 받아 어디에 둘지는 창이 정합니다
         // (자리가 바뀌었을 때와 같은 방식입니다).
