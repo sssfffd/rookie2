@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows;
 using System;
+using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Common;
 using LogScope.Settings;
@@ -130,7 +131,7 @@ namespace LogScope.Analysis1.Graph
             Focusable = true;
             ClipToBounds = true;
             // 1 픽셀 선이 흐려지지 않게 합니다. 파형은 또렷해야 읽힙니다.
-            ThemeManager.Changed += delegate { InvalidateVisual(); };
+            ThemeManager.Changed += delegate { _wide.Clear(); InvalidateVisual(); };
         }
 
         // ---------------- 바깥에서 설정하는 것 ----------------
@@ -1165,7 +1166,7 @@ namespace LogScope.Analysis1.Graph
                 // 있는지 찾게 됩니다.
                 if (_showBefore && _showAfter)
                 {
-                    firstPen = bPen; firstText = before;
+                    firstPen = WidePen(bPen); firstText = before;
                     secondPen = aPen; secondText = after;
                 }
                 else if (_showBefore)
@@ -1397,7 +1398,93 @@ namespace LogScope.Analysis1.Graph
                 }
             }
 
+            DrawJudgeMarks(dc, p, inner, ios);
             DrawLaneHeader(dc, p, rect, ios);
+        }
+
+        // ---------------- 굵고 옅은 이전 선 · 판정 오차 구간 (1.63) ----------------
+
+        private readonly Dictionary<Pen, Pen> _wide = new Dictionary<Pen, Pen>();
+        private static readonly Color MidGray = Color.FromRgb(128, 128, 128);
+
+        /// <summary>같은 색의 굵고 옅은 펜 (이전 선 밑깔기).</summary>
+        private Pen WidePen(Pen pen)
+        {
+            if (pen == null) return null;
+            Pen w;
+            if (_wide.TryGetValue(pen, out w)) return w;
+            var solid = pen.Brush as SolidColorBrush;
+            Brush b = Tinted(solid != null ? solid.Color : MidGray, 0.42);
+            w = new Pen(b, Math.Max(3.4, pen.Thickness * 2.8));
+            w.LineJoin = PenLineJoin.Round;
+            w.StartLineCap = PenLineCap.Round;
+            w.EndLineCap = PenLineCap.Round;
+            w.Freeze();
+            _wide[pen] = w;
+            return w;
+        }
+
+        private JudgeResult _marksOf;
+        private readonly Dictionary<string, List<JudgeItem>> _marks = new Dictionary<string, List<JudgeItem>>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// 판정 오차 구간을 레인에 칠합니다 (1.63) — 허용 안 된 것은 붉게, 허용된 것은 회색으로, 위에 굵은 띠까지.
+        /// 짧은 오차(0.1 초 아킹)도 보이게 최소 3 px. 그래프의 "차이 영역 표시" 와 따로입니다 (그쪽은 같은 시각끼리의
+        /// 차이, 이쪽은 판정이 오차로 본 구간).
+        /// </summary>
+        private void DrawJudgeMarks(DrawingContext dc, Palette p, Rect inner, IoRowVm[] ios)
+        {
+            JudgeResult judge = _state != null ? _state.Judgement : null;
+            if (judge == null || ios == null || ios.Length == 0 || inner.Width <= 2) return;
+            if (!ReferenceEquals(judge, _marksOf))
+            {
+                _marks.Clear();
+                foreach (JudgeItem it in judge.Items)
+                {
+                    if (it.Kind != JudgeKind.Value) continue;
+                    string k = LogDataset.LooseKey(it.Io);
+                    List<JudgeItem> l;
+                    if (!_marks.TryGetValue(k, out l)) { l = new List<JudgeItem>(); _marks[k] = l; }
+                    l.Add(it);
+                }
+                _marksOf = judge;
+            }
+
+            Rect plot = PlotArea;
+            if (plot.Width <= 0) return;
+            Color open = p.HeatHigh, allowed = p.Muted;
+            Brush openFill = Tinted(open, 0.16), openBar = Tinted(open, 0.85);
+            Brush okFill = Tinted(allowed, 0.10), okBar = Tinted(allowed, 0.55);
+
+            dc.PushClip(new RectangleGeometry(inner));
+            foreach (IoRowVm vm in ios)
+            {
+                List<JudgeItem> items;
+                if (!_marks.TryGetValue(LogDataset.LooseKey(vm.Name), out items)) continue;
+                foreach (JudgeItem it in items)
+                {
+                    double xa = TimeToX(it.Start), xb = TimeToX(it.End);
+                    if (double.IsNaN(xa) && double.IsNaN(xb)) continue;
+                    if (double.IsNaN(xa)) xa = xb;
+                    if (double.IsNaN(xb)) xb = xa;
+                    double x0 = inner.Left + (Math.Min(xa, xb) - plot.Left) / plot.Width * inner.Width;
+                    double x1 = inner.Left + (Math.Max(xa, xb) - plot.Left) / plot.Width * inner.Width;
+                    if (x1 < inner.Left || x0 > inner.Right) continue;
+                    if (x1 - x0 < 3) { double c = (x0 + x1) * 0.5; x0 = c - 1.5; x1 = c + 1.5; }
+                    bool ok = it.IsAllowed;
+                    dc.DrawRectangle(ok ? okFill : openFill, null, new Rect(x0, inner.Top, x1 - x0, inner.Height));
+                    dc.DrawRectangle(ok ? okBar : openBar, null, new Rect(x0, inner.Top, x1 - x0, 4));
+                }
+            }
+            dc.Pop();
+        }
+
+        private static Brush Tinted(Color c, double opacity)
+        {
+            var b = new SolidColorBrush(c);
+            b.Opacity = opacity;
+            b.Freeze();
+            return b;
         }
 
         /// <summary>
@@ -1940,8 +2027,10 @@ namespace LogScope.Analysis1.Graph
                 ShadeGap(dc, p, inner, columns, vlo, vhi, sep);
             }
 
+            // 1.63: 둘 다 그릴 때 이전 선은 <b>굵고 옅게</b> 깔고 이후 선을 가늘게 위에 — 두 선이 겹쳐도
+            // 이후 선 양옆으로 이전 선이 비쳐서 둘 다 있다는 것이 보입니다.
             if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1,
-                                _colsBefore, columns, vlo, vhi, beforePen, -sep);
+                                _colsBefore, columns, vlo, vhi, haveA ? WidePen(beforePen) : beforePen, -sep);
             if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1,
                                 _colsAfter, columns, vlo, vhi, afterPen, +sep);
         }

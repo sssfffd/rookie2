@@ -160,3 +160,4 @@
 | `151-graph-gallery.md` | 1.60 — 그래프 보기에 갤러리 (가로 3 칸, IO 하나씩, 시간 구간 같이 움직임) |
 | `152-group-expand-fix.md` | 1.61 — 그룹 눌러도 IO 안 나오던 것(필드 → 속성), 펼쳐도 화면 안 길어짐(230 고정), History 칸 두 줄 |
 | `153-io-popup-llm-allow.md` | 1.62 — IO 누르면 오차 창에서 허용, 그룹 아래 글 뺌, IO 줄 크게, 허용을 LLM 입력에 (Analysis1Judgement) |
+| `154-io-count-split-graph-marks.md` | 1.63 — 차이 발생 = IO 수, 단계로 나눠 생기는 오차 없앰 (두 맞춤 모두), 이전 선 굵고 옅게, 그래프에 오차 구간 |

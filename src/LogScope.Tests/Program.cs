@@ -150,6 +150,7 @@ namespace LogScope.Tests
                 MainAnalyzeWaitRules();
                 JudgeBandRules();
                 JudgeStepRules();
+                JudgeStepSplitRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4881,6 +4882,42 @@ namespace LogScope.Tests
             AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(st.Settings.ToJson())));
             Check("설정 파일로 오감", back.GalleryMode && back.LaneMode, "");
             Check("한 줄 칸 수 3", GraphCanvas.GalleryColumns == 3, "");
+        }
+
+        /// <summary>
+        /// 단계로 나눠 맞춰서 <b>새로 생기는</b> 오차는 없어야 함 (1.63). 단계 맞춤 · 전체 맞춤 둘 다에서 벗어난 곳만 오차.
+        /// 이후 로그의 A 가 5 초 길어 B 가 5 초 늦게 시작.
+        ///   X : 단계와 상관없이 30 초에 바뀜 (두 로그 같은 시각) — 단계 맞춤에선 어긋나 보이지만 전체 맞춤에선 같음 → 오차 아님
+        ///   Y : B 시작 + 3 초에 바뀜 (단계를 따라감) — 전체 맞춤에선 어긋나지만 단계 맞춤에선 같음 → 오차 아님
+        ///   Z : 이후 로그 35 초에만 튐 — 둘 다에서 벗어남 → 오차
+        /// </summary>
+        private static void JudgeStepSplitRules()
+        {
+            Say("판정 — 단계로 나눠 생기는 오차 없애기");
+            var a = new StringBuilder("Time,STEP,X,Y,Z\n");
+            for (int i = 0; i < 40; i++)
+                a.Append(i).Append(',').Append(i < 20 ? "A" : "B").Append(',').Append(i < 30 ? 0 : 1)
+                 .Append(',').Append(i < 23 ? 0 : 1).Append(",5\n");
+            var b = new StringBuilder("Time,STEP,X,Y,Z\n");
+            for (int i = 0; i < 45; i++)
+                b.Append(i).Append(',').Append(i < 25 ? "A" : "B").Append(',').Append(i < 30 ? 0 : 1)
+                 .Append(',').Append(i < 28 ? 0 : 1).Append(',').Append(i == 35 ? 50 : 5).Append("\n");
+            LogDataset dsA = OpenWithSteps(WriteCsv("judge_split_a.csv", a.ToString()), "STEP");
+            LogDataset dsB = OpenWithSteps(WriteCsv("judge_split_b.csv", b.ToString()), "STEP");
+
+            var opt = new JudgeOptions();
+            opt.Once = new HashSet<string>();
+            opt.Shift = 0;   // 시작 시각 맞춤 (두 로그 다 0 초 시작)
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+
+            Check("단계별로 견줌", r.ByStep && r.StepCount == 2, r.Note);
+            Check("단계와 상관없는 X — 단계 맞춤으로 생긴 오차 없음", CountItems(r, "X") == 0, CountItems(r, "X").ToString());
+            Check("단계를 따라가는 Y — 오차 없음", CountItems(r, "Y") == 0, CountItems(r, "Y").ToString());
+            Check("진짜 튐 Z 는 남음", CountItems(r, "Z") == 1, CountItems(r, "Z").ToString());
+            bool len = false;
+            foreach (JudgeItem it in r.Items) if (it.Kind == JudgeKind.StepLength && it.Step == "A") len = true;
+            Check("A 가 5 초 길어진 것은 그대로 단계 길이 오차", len, "");
+            Check("오차 IO 수 = 1 (Z)", r.OpenIoCount == 1, r.OpenIoCount.ToString());
         }
 
         /// <summary>정상 판정 — 상태(글자) IO 와 IO 가 없어짐 (1.56).</summary>

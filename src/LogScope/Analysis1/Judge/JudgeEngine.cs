@@ -67,7 +67,10 @@ namespace LogScope.Analysis1.Judge
         /// <summary>값 허용 오차 (지금 쓰는 표 그대로).</summary>
         public ToleranceTable Tolerances;
 
-        /// <summary>단계가 없을 때의 밀기 값 — 이후 시각 + Shift = 이전 시각 (대시보드 비교와 같음).</summary>
+        /// <summary>
+        /// 전체 맞춤의 밀기 값 — 이후 시각 + Shift = 이전 시각. 단계가 없으면 이것으로 견주고, 단계가 있으면
+        /// 단계 맞춤과 함께 봐서 둘 다에서 벗어난 곳만 오차로 남깁니다 (1.63). 그래프에서 고른 단계와 상관없는 값.
+        /// </summary>
         public double Shift;
 
         /// <summary>"앞으로도 허용" 규칙.</summary>
@@ -179,6 +182,9 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>허용 안 된 오차 수 · 허용된 오차 수.</summary>
         public int OpenCount;
+
+        /// <summary>허용 안 된 오차가 있는 IO 수 (1.63 — 메인 칸 "차이 발생 N 개" 가 이 수). 단계 오차는 IO 가 아니라 안 셈.</summary>
+        public int OpenIoCount;
         public int AllowedCount;
 
         /// <summary>판정 까닭 — 허용 안 된 오차 중 나쁜 것부터 다섯.</summary>
@@ -233,6 +239,13 @@ namespace LogScope.Analysis1.Judge
             public string PeakText = string.Empty;
             public bool Reverse;
             public bool Forward;
+
+            /// <summary>
+            /// 훑은 쪽(target) 로그 자신의 시간 (1.63). 이후 → 이전으로 훑었으면 이후 로그 시각, 거꾸로면 이전 로그 시각.
+            /// 단계 맞춤 · 전체 맞춤의 오차를 견줄 때는 이 시간으로 견줍니다 — 이전 로그 시간축으로 옮기면
+            /// 밀기 값이 달라 같은 튐이 서로 다른 자리에 놓입니다. Off = 이전 로그 시각 − 이 시각.
+            /// </summary>
+            public double Ts, Te, Off;
         }
 
         public static JudgeResult Run(LogDataset before, LogDataset after, StepPairList pairs,
@@ -448,7 +461,30 @@ namespace LogScope.Analysis1.Judge
                      cat, abs, pct, true, runs);
                 if (runs.Count == 0) continue;
 
-                foreach (ErrRun r in Merge(runs, seg.Slack))
+                List<ErrRun> merged;
+
+                // 1.63: 단계로 나눠 맞추면 없던 오차가 <b>새로 생기는</b> 자리가 있습니다 — 단계 시작과 상관없이
+                // 움직인 IO 를 단계 시작에 맞춰 버린 경우 (단계 경계 바로 뒤 등). 그래서 같은 구간을 <b>전체 맞춤</b>
+                // (단계 없이 쓰는 밀기 값) 으로도 보고, <b>두 맞춤 모두에서 벗어난 곳만</b> 오차로 남깁니다.
+                // 단계로 맞춰 사라진 오차는 그대로 사라지고, 단계로 맞춰 생긴 오차는 없어집니다.
+                if (res.ByStep && !double.IsNaN(opt.Shift))
+                {
+                    var g = new List<ErrRun>();
+                    int ga0, ga1;
+                    if (AfterRange(before, after, seg.B0, seg.B1, opt.Shift, out ga0, out ga1))
+                    {
+                        Scan(after, ai, ga0, ga1, before, bi, seg.B0, seg.B1, opt.Shift, seg.Slack,
+                             cat, abs, pct, false, g);
+                        Scan(before, bi, seg.B0, seg.B1, after, ai, ga0, ga1, -opt.Shift, seg.Slack,
+                             cat, abs, pct, true, g);
+                    }
+                    // 방향마다, 훑은 쪽 로그 자신의 시간으로 겹치는 곳만
+                    merged = Merge(Intersect(runs, g), seg.Slack);
+                    if (merged.Count == 0) continue;
+                }
+                else merged = Merge(runs, seg.Slack);
+
+                foreach (ErrRun r in merged)
                 {
                     var it = new JudgeItem();
                     it.Kind = JudgeKind.Value;
@@ -589,11 +625,14 @@ namespace LogScope.Analysis1.Judge
                 {
                     cur = new ErrRun();
                     cur.Start = outT;
+                    cur.Ts = xt[k];
+                    cur.Off = outT - xt[k];
                     cur.Reverse = reverse;
                     cur.Forward = !reverse;
                     cur.Excess = -1;
                 }
                 cur.End = end;
+                cur.Te = xt[k] + interval;
                 if (excess > cur.Excess)
                 {
                     cur.Excess = excess;
@@ -646,6 +685,67 @@ namespace LogScope.Analysis1.Judge
             double v;
             if (double.TryParse(name, NumberStyles.Float, Inv, out v) && v == Math.Round(v)) return (int)v;
             return -1;
+        }
+
+        /// <summary>이전 로그 [b0, b1] 구간에 (밀기 값 shift 로) 겹치는 이후 로그 표본 범위. 없으면 false.</summary>
+        private static bool AfterRange(LogDataset before, LogDataset after, int b0, int b1, double shift,
+                                       out int a0, out int a1)
+        {
+            a0 = 0; a1 = -1;
+            if (after.SampleCount == 0 || b1 < b0) return false;
+            double t0 = before.Times[b0] - shift, t1 = before.Times[b1] - shift;   // 이후 시간축
+            int i0 = after.IndexAtOrBefore(t0);
+            if (i0 < 0) i0 = 0;
+            else if (after.Times[i0] < t0) i0++;
+            int i1 = after.IndexAtOrBefore(t1);
+            if (i1 < i0 || i0 >= after.SampleCount) return false;
+            a0 = i0; a1 = i1;
+            return true;
+        }
+
+        /// <summary>
+        /// 두 오차 목록이 <b>겹치는 곳</b>만 (1.63 — 단계 맞춤 · 전체 맞춤 둘 다에서 벗어난 곳). 같은 방향끼리,
+        /// <b>훑은 쪽 로그 자신의 시간</b>(Ts · Te)으로 겹침을 봅니다. 결과는 단계 맞춤 쪽의 이전 로그 시간축에 놓고,
+        /// 크기 · 그 순간 글은 단계 맞춤 쪽 것 (그 순간이 겹친 곳 밖이면 전체 맞춤 쪽).
+        /// 방향마다 Ts 로 늘어놓고 두 손가락으로 훑습니다 (오차가 수천 개인 IO 에서도 길이에 비례).
+        /// </summary>
+        private static List<ErrRun> Intersect(List<ErrRun> stepRuns, List<ErrRun> globalRuns)
+        {
+            var outList = new List<ErrRun>();
+            for (int dir = 0; dir < 2; dir++)
+            {
+                bool reverse = dir == 1;
+                var a = new List<ErrRun>();
+                var b = new List<ErrRun>();
+                foreach (ErrRun r in stepRuns) if (r.Reverse == reverse) a.Add(r);
+                foreach (ErrRun g in globalRuns) if (g.Reverse == reverse) b.Add(g);
+                Comparison<ErrRun> byTs = delegate (ErrRun x, ErrRun y) { return x.Ts.CompareTo(y.Ts); };
+                a.Sort(byTs);
+                b.Sort(byTs);
+
+                int j = 0;
+                foreach (ErrRun r in a)
+                {
+                    while (j < b.Count && b[j].Te <= r.Ts) j++;
+                    for (int k = j; k < b.Count && b[k].Ts < r.Te; k++)
+                    {
+                        ErrRun g = b[k];
+                        double s = Math.Max(r.Ts, g.Ts), e = Math.Min(r.Te, g.Te);
+                        if (!(e > s)) continue;
+                        double rPeak = r.PeakTime - r.Off, gPeak = g.PeakTime - g.Off;
+                        bool useR = (rPeak >= s && rPeak <= e) || !(gPeak >= s && gPeak <= e);
+                        var x = new ErrRun();
+                        x.Ts = s; x.Te = e; x.Off = r.Off;
+                        x.Start = s + r.Off; x.End = e + r.Off;
+                        ErrRun src = useR ? r : g;
+                        x.Excess = src.Excess; x.Percent = src.Percent; x.PeakText = src.PeakText;
+                        x.PeakTime = useR ? r.PeakTime : gPeak + r.Off;
+                        x.Reverse = r.Reverse; x.Forward = r.Forward;
+                        outList.Add(x);
+                    }
+                }
+            }
+            return outList;
         }
 
         /// <summary>
@@ -776,15 +876,18 @@ namespace LogScope.Analysis1.Judge
 
             res.Grade = JudgeGrade.Pass;
             res.OpenCount = 0;
+            var openIos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             res.AllowedCount = 0;
             res.Reasons = new List<string>();
             foreach (JudgeItem it in res.Items)
             {
                 if (it.IsAllowed) { res.AllowedCount++; continue; }
                 res.OpenCount++;
+                if (it.Io.Length > 0) openIos.Add(it.Io);
                 if (it.Grade > res.Grade) res.Grade = it.Grade;
                 if (res.Reasons.Count < 5) res.Reasons.Add(JudgeResult.WordOf(it.Grade) + "  " + it.What);
             }
+            res.OpenIoCount = openIos.Count;
         }
 
         private static int Compare(JudgeItem a, JudgeItem b)

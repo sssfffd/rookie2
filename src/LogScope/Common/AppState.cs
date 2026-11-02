@@ -243,10 +243,22 @@ namespace LogScope.Common
             o.Tolerances = ToleranceTable.From(Settings.RelativeTolerancePercent,
                                                Settings.AbsoluteTolerance,
                                                Settings.Tolerances);
-            o.Shift = Comparison != null ? Comparison.AppliedShift : 0.0;
+            o.Shift = BaseShift();
             o.Rules = Settings.AllowRules;
             o.Once = AllowOnce;
             return o;
+        }
+
+        /// <summary>
+        /// 단계를 고르지 않았을 때의 밀기 값 (1.63) — BuildDiffOptions 와 같은 규칙에서 단계만 뺀 것.
+        /// 사건 맞추기 → 그 값, 아니면 시작 시각 자동 맞춤, 그 위에 손으로 넣은 ManualShift.
+        /// 판정이 그래프에서 고른 단계를 따라 바뀌지 않게 따로 셉니다.
+        /// </summary>
+        public double BaseShift()
+        {
+            if (Before == null || After == null) return Settings.ManualShift;
+            if (UsesTriggerAlign) return Settings.ManualShift + TriggerShift;
+            return Settings.ManualShift + (Settings.AutoAlign ? Before.TimeStart - After.TimeStart : 0.0);
         }
 
         private void Rejudge(LoadProgress prog)
@@ -260,8 +272,7 @@ namespace LogScope.Common
 
             JudgeOptions o = BuildJudgeOptions();
             StepPairList pairs = StepPairs();
-            bool bySteps = pairs.UsableCount > 0 && Before.HasSteps && After.HasSteps;
-            string sig = JudgeSignature(pairs, bySteps ? 0.0 : o.Shift);
+            string sig = JudgeSignature(pairs, o.Shift);
             if (Judgement != null && sig == _judgeSig && ReferenceEquals(Before, _judgeBefore)
                 && ReferenceEquals(After, _judgeAfter) && ReferenceEquals(pairs, _judgePairs))
             {

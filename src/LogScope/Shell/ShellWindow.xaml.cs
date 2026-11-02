@@ -795,6 +795,7 @@ namespace LogScope.Shell
         private void OnAllowChanged(object sender, EventArgs e)
         {
             SaveSettings();
+            Graph.Repaint();   // 그래프의 오차 구간 색 (허용 → 회색, 1.63)
         }
 
         private void OnDbResultChanged(object sender, EventArgs e)

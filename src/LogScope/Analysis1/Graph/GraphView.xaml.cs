@@ -181,6 +181,12 @@ namespace LogScope.Analysis1.Graph
         /// 단계를 고를 때 씁니다 — OnDataChanged 는 구간을 전체로
         /// 되돌리는데, 단계를 고른 사람은 그 단계만 보려고 고른 것입니다.
         /// </summary>
+        /// <summary>그림만 다시 (판정 허용이 바뀌었을 때 — 오차 구간 색, 1.63).</summary>
+        public void Repaint()
+        {
+            Plot.InvalidateVisual();
+        }
+
         public void PushAll()
         {
             PushOptions();

@@ -69,8 +69,9 @@ namespace LogScope.Main
                 JudgeResult judge = _state.Judgement;
                 if (judge != null)
                 {
+                    // 1.63: 개수는 IO 수 (허용 안 된 오차가 있는 IO). 오차 구간 수가 아님.
                     Cards[0].SetVerdict(judge.Word, JudgeGradeOf(judge.Grade), string.Empty,
-                                        judge.OpenCount.ToString("N0"));
+                                        judge.OpenIoCount.ToString("N0"));
                 }
                 else
                 {
