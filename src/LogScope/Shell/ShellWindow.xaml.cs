@@ -811,6 +811,9 @@ namespace LogScope.Shell
             // 히트맵도 같은 그룹으로 나눕니다 (1.07). 다시 계산하지는 않고
             // 이미 센 줄을 새 그룹으로 늘어놓기만 합니다.
             Heatmap.RefreshGroups();
+
+            // 메인 칸 요약도 같은 그룹입니다 (1.73 — 예전에는 다음에 다시 견줄 때까지 옛 그룹으로 남았음).
+            _vm.Main.Refresh();
         }
 
         /// <summary>
@@ -917,15 +920,20 @@ namespace LogScope.Shell
         private void ApplyStepChange()
         {
             _stepChangeQueued = false;
-            Recompare();
+            // 1.73: 견줄 것이 바뀐 때만 (고른 단계). 나눠 보기 · [시작을 0 으로] 는 보이는 모양만 바뀜.
+            bool compared = _state.ComparisonStale || !_state.HasBoth;
+            if (compared) Recompare();
             _vm.ReloadAll();
             Graph.PushAll();
             Graph.ApplyStep();
 
             // 히트맵도 밀기 값이 달라졌으니 옛 그림입니다. 보고 있는 중이면
             // 다시 계산하고, 아니면 비워 둡니다 (넘어올 때 계산합니다).
-            Heatmap.Invalidate();
-            if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
+            if (compared)
+            {
+                Heatmap.Invalidate();
+                if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
+            }
 
             SaveSettings();
 
@@ -953,6 +961,7 @@ namespace LogScope.Shell
 
         private void OnPageChanged(object sender, EventArgs e)
         {
+            HealStaleComparison();
             EnsureHeatmap();
         }
 
@@ -961,6 +970,7 @@ namespace LogScope.Shell
         {
             // 분석 1 로 돌아왔는데 히트맵을 보고 있었다면 다시 계산해 둡니다.
             // 화면을 옮겨 다니는 사이에 맞추기나 허용 오차가 바뀌었을 수 있습니다.
+            HealStaleComparison();
             EnsureHeatmap();
         }
 
@@ -1032,13 +1042,30 @@ namespace LogScope.Shell
             _vm.Screen = ShellVm.ScreenAnalysis1;
             _vm.GoGraph();
             Graph.FocusOnIo(e.Io);
-            if (double.IsNaN(e.Start) || double.IsNaN(e.End)) return;
 
-            double len = Math.Max(0, e.End - e.Start);
+            // 1.73: 갈 곳은 HeatJump.ForError 한 곳 — 오차가 난 단계를 고르고 (판정과 같은 맞춤), 구간은 로그 안으로.
             LogDataset ds = _state.TimeReference;
             bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
-            double pad = Math.Max(len, clock ? 2000.0 : len * 0.5 + 1e-9);
-            Graph.SetTimeRange(e.Start - pad, e.End + pad);
+            double lo, hi;
+            _state.FullTimeRange(out lo, out hi);
+            HeatJump plan = HeatJump.ForError(e.Step, e.Start, e.End, _state.StepPairs(), lo, hi, clock);
+            if (plan == null) return;
+            GoPlan(plan);
+        }
+
+        /// <summary>
+        /// 그래프를 plan 대로 (1.71 · 1.73) — 단계를 고르거나 나눠 보기를 끄고, 그 처리가 (미뤄서) 끝난 뒤 구간을 겁니다.
+        /// </summary>
+        private void GoPlan(HeatJump plan)
+        {
+            bool changed = false;
+            if (plan.Pair >= 0) changed = _vm.Step.PickPair(plan.Pair);
+            if (plan.LeaveSplit && _vm.Step.SplitByStep) { _vm.Step.SplitByStep = false; changed = true; }
+
+            double t0 = plan.T0, t1 = plan.T1;
+            Action show = delegate { Graph.SetTimeRange(t0, t1); };
+            if (changed) _afterStepChange = show;   // ApplyStepChange 끝에서
+            else show();
         }
 
         private void OnDashboardIoActivated(object sender, DashboardView.IoEventArgs e)
@@ -1067,14 +1094,7 @@ namespace LogScope.Shell
                 return;
             }
 
-            bool changed = false;
-            if (plan.Pair >= 0) changed = _vm.Step.PickPair(plan.Pair);
-            else if (plan.LeaveSplit && _vm.Step.SplitByStep) { _vm.Step.SplitByStep = false; changed = true; }
-
-            double t0 = plan.T0, t1 = plan.T1;
-            Action show = delegate { Graph.SetTimeRange(t0, t1); };
-            if (changed) _afterStepChange = show;   // ApplyStepChange 끝에서
-            else show();
+            GoPlan(plan);
         }
 
         /// <summary>미뤄 둔 단계 바뀜 처리가 끝난 뒤 할 일 (히트맵에서 넘어온 구간, 1.71).</summary>
@@ -1124,25 +1144,48 @@ namespace LogScope.Shell
                 if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
             }
 
-            _vm.Dashboard.Refresh();
-            _vm.Graph.Reload();
-            Graph.OnDataChanged();
-            Graph.ApplyStep();
-
             // [허용한 오차] 에서 지웠을 수 있습니다 (1.59) — 판정만 다시 (오차를 다시 찾지는 않음).
             _state.Regrade();
-            _vm.Main.Refresh();
-            RefreshChangedIos();
 
-            // 설정 창에서 허용 오차를 바꿨으면 그래프 · 히트맵 칸 글도 고치고 다시 견줍니다 (1.66).
+            // 설정 창에서 허용 오차를 바꿨으면 그래프 · 히트맵 칸 글도 고칩니다 (1.66).
             if (_state.Settings.RelativeTolerancePercent != _shownTolerance)
             {
                 _shownTolerance = _state.Settings.RelativeTolerancePercent;
                 _syncingTolerance = true;
                 try { _vm.Graph.RaiseTolerance(); _vm.Heatmap.RaiseTolerance(); }
                 finally { _syncingTolerance = false; }
-                if (_state.HasBoth) OnRecompare(this, null);
             }
+
+            // 1.73: 비교에 들어가는 것 (단계 IO = 고른 단계 · 시작 맞춤 · 손 밀기 · 사건 맞추기 · 허용 오차) 이
+            // 바뀌었으면 <b>시간 맞추기부터 다시 하고 다시 견줍니다</b>. 예전에는 여기서 안 견줘서, 단계 IO 를
+            // 지워 고른 단계가 풀려도 그래프의 이후 로그는 옛 단계의 밀기 값 그대로였습니다.
+            if (_state.ComparisonStale)
+            {
+                ReapplyAlign();
+                OnRecompare(this, null);
+                Graph.ApplyStep();
+                SaveSettings();
+                return;
+            }
+
+            _vm.Dashboard.Refresh();
+            _vm.Graph.Reload();
+            Graph.OnDataChanged();
+            Graph.ApplyStep();
+            _vm.Main.Refresh();
+            RefreshChangedIos();
+        }
+
+        /// <summary>
+        /// 마지막 비교가 지금 설정과 다르면 다시 견줍니다 (1.73 — 안전망). 화면을 옮길 때 부릅니다 —
+        /// 어느 길로 설정이 바뀌었든 옛 결과 (옛 밀기 값 · 옛 판정) 를 보지 않게.
+        /// </summary>
+        private void HealStaleComparison()
+        {
+            if (!_state.ComparisonStale) return;
+            ReapplyAlign();
+            OnRecompare(this, null);
+            Graph.ApplyStep();
         }
 
         private void SaveSettings()

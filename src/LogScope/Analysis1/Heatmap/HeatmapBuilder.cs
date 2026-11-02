@@ -962,6 +962,44 @@ namespace LogScope.Analysis1.Heatmap
             j.LeaveSplit = true;
             return j;
         }
+
+        /// <summary>
+        /// 1.73 — 판정 오차 하나 (메인 칸 IO 창의 [그래프]) 를 그래프로. 그 오차가 난 <b>단계</b>를 고릅니다 (판정이 그
+        /// 단계를 그 단계 시작 맞춤으로 봤으므로 같은 맞춤 — 이름이 같은 단계가 여럿이면 오차 시각이 든 것). 구간은
+        /// 오차 ± (길이만큼, 시각 로그면 최소 2 초) 를 로그가 있는 [lo, hi] 안으로. 나눠 보기는 끕니다.
+        /// 단계가 없는 오차면 Pair = -1 (고른 단계를 그대로 둠). 시각이 없으면 null.
+        /// </summary>
+        public static HeatJump ForError(string step, double start, double end, StepPairList pairs,
+                                        double lo, double hi, bool clock)
+        {
+            if (double.IsNaN(start) || double.IsNaN(end)) return null;
+            var j = new HeatJump();
+            j.LeaveSplit = true;
+
+            if (!string.IsNullOrEmpty(step) && pairs != null)
+            {
+                int first = -1;
+                for (int i = 0; i < pairs.Count; i++)
+                {
+                    StepPair p = pairs[i];
+                    if (!p.HasBoth || p.Label != step) continue;
+                    if (first < 0) first = i;
+                    if (start >= p.BeforeStart && start <= p.BeforeEnd) { first = i; break; }
+                }
+                j.Pair = first;
+            }
+
+            double len = Math.Max(0, end - start);
+            double pad = Math.Max(len, clock ? 2000.0 : len * 0.5 + 1e-9);
+            j.T0 = start - pad; j.T1 = end + pad;
+            if (hi > lo)
+            {
+                if (j.T0 < lo) j.T0 = lo;
+                if (j.T1 > hi) j.T1 = hi;
+            }
+            if (!(j.T1 > j.T0)) { j.T0 = start; j.T1 = end > start ? end : start + 1; }
+            return j;
+        }
     }
 
     // ======================================================================

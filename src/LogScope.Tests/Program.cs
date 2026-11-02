@@ -158,6 +158,7 @@ namespace LogScope.Tests
                 SameChangedCountRules();
                 JudgeStepNeverAddsRules();
                 HeatJumpRules();
+                StaleComparisonRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4720,6 +4721,62 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>
+        /// 비교가 지금 설정과 맞는지 (1.73) — "단계를 풀었는데 단계 진입이 같은 시각으로 나옴".
+        /// view_a/b: 이전 B 는 100 초에, 이후 B 는 110 초에 시작 (A 가 10 초 김).
+        /// </summary>
+        private static void StaleComparisonRules()
+        {
+            Say("비교가 지금 설정과 맞는지 — 단계를 풀면 실제 시각으로");
+            var st = new AppState();
+            st.Settings.StepIo = "STEP";
+            st.Before = OpenWithSteps(Path.Combine(_dir, "view_a.csv"), "STEP");
+            st.After = OpenWithSteps(Path.Combine(_dir, "view_b.csv"), "STEP");
+            st.Recompare(null);
+            Check("처음 — 옛 결과 아님 · 밀기 0 (둘 다 0 초 시작)", !st.ComparisonStale && Math.Abs(st.AppliedShift) < 1e-9,
+                  st.AppliedShift.ToString(CultureInfo.InvariantCulture));
+
+            int pickB = -1;
+            StepPairList pairs = st.StepPairs();
+            for (int i = 0; i < pairs.Count; i++) if (pairs[i].Label.Contains("B")) pickB = i;
+            st.StepPick = pickB;
+            Check("단계를 고르면 옛 결과", st.ComparisonStale, "");
+            st.Recompare(null);
+            Check("B 를 고르면 이후를 −10 밀어 B 시작이 겹침", Math.Abs(st.AppliedShift + 10) < 1e-9,
+                  st.AppliedShift.ToString(CultureInfo.InvariantCulture));
+
+            // 설정 창에서 단계 IO 를 지움 → 고른 단계가 풀림 → 옛 결과 → 다시 견주면 밀기 0 (B 진입이 다시 100 · 110 초)
+            st.Settings.StepIo = string.Empty;
+            st.ReapplySteps();
+            Check("단계 IO 를 지우면 고른 단계가 풀리고 옛 결과로 보임", st.StepPick == -1 && st.PickedStep == null && st.ComparisonStale,
+                  st.StepPick.ToString());
+            st.Recompare(null);
+            Check("다시 견주면 밀기 0 — 단계 진입이 실제 시각대로", Math.Abs(st.AppliedShift) < 1e-9 && !st.ComparisonStale,
+                  st.AppliedShift.ToString(CultureInfo.InvariantCulture));
+
+            // 그 밖의 비교에 들어가는 것도
+            st.Settings.ManualShift = 2.5;
+            bool manual = st.ComparisonStale; st.Recompare(null);
+            st.Settings.AutoAlign = !st.Settings.AutoAlign;
+            bool auto = st.ComparisonStale; st.Recompare(null);
+            st.Settings.RelativeTolerancePercent = st.Settings.RelativeTolerancePercent + 1;
+            bool rel = st.ComparisonStale; st.Recompare(null);
+            st.Settings.Tolerances.Add(new ToleranceOverride { Io = "K", Percent = 5, Absolute = 0 });
+            bool per = st.ComparisonStale; st.Recompare(null);
+            st.Settings.Theme = st.Settings.Theme;   // 상관없는 것은 그대로
+            Check("손 밀기 · 시작 맞춤 · 허용 오차 · IO 별 허용도 옛 결과로 · 상관없는 것은 아님", manual && auto && rel && per && !st.ComparisonStale,
+                  manual + " " + auto + " " + rel + " " + per);
+
+            // 오차 → 그래프
+            LogDataset a = st.Before;
+            HeatJump j = HeatJump.ForError("B", 130, 135, pairs, 0, 300, false);
+            Check("오차 → 그래프: 그 단계 고름 · 나눠 보기 끔 · 구간 안", j != null && j.Pair == pickB && j.LeaveSplit
+                  && j.T0 >= 0 && j.T0 < 130 && j.T1 > 135 && j.T1 <= 300, j == null ? "-" : j.Pair + " " + j.T0 + "~" + j.T1);
+            HeatJump j0 = HeatJump.ForError("", 0, 2, pairs, 0, 300, false);
+            Check("단계 없는 오차 · 로그 시작 — 고른 단계 그대로, 마이너스 아님", j0 != null && j0.Pair < 0 && j0.T0 == 0,
+                  j0 == null ? "-" : j0.T0 + "~" + j0.T1);
         }
 
         /// <summary>

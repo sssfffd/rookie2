@@ -346,15 +346,20 @@ namespace LogScope.Main
             public readonly string Io;
             public readonly double Start;
             public readonly double End;
+            /// <summary>오차가 난 단계 이름 (1.73). 없으면 빈 글자.</summary>
+            public readonly string Step;
 
-            public GraphEventArgs(string io, double start, double end) { Io = io ?? string.Empty; Start = start; End = end; }
+            public GraphEventArgs(string io, double start, double end, string step = "")
+            {
+                Io = io ?? string.Empty; Start = start; End = end; Step = step ?? string.Empty;
+            }
         }
 
-        private void RaiseGraph(string io, double start, double end)
+        private void RaiseGraph(string io, double start, double end, string step = "")
         {
             if (string.IsNullOrEmpty(io)) return;
             EventHandler<GraphEventArgs> h = GraphRequested;
-            if (h != null) h(this, new GraphEventArgs(io, start, end));
+            if (h != null) h(this, new GraphEventArgs(io, start, end, step));
         }
 
         /// <summary>
@@ -378,7 +383,7 @@ namespace LogScope.Main
             var w = new IoErrorsWindow(new IoErrorsVm(vm, title, source));
             w.Owner = Window.GetWindow(this);
             w.ShowDialog();
-            if (w.GraphItem != null) RaiseGraph(w.GraphItem.Io, w.GraphItem.Start, w.GraphItem.End);
+            if (w.GraphItem != null) RaiseGraph(w.GraphItem.Io, w.GraphItem.Start, w.GraphItem.End, w.GraphItem.Step);
         }
 
         private void OnIoGraph(object sender, RoutedEventArgs e)

@@ -232,6 +232,50 @@ namespace LogScope.Common
                 : null;
             ComparedAt = Comparison != null ? DateTime.Now : DateTime.MinValue;
             Rejudge(prog);
+            _compareSig = Comparison != null ? CompareSignature() : string.Empty;
+        }
+
+        // ---------------- 비교가 지금 설정과 맞는지 (1.73) ----------------
+        //
+        // 그래프 · 대시보드 · 판정 · 메인 칸은 모두 마지막 비교 (Comparison · Judgement) 를 그립니다. 그래프의
+        // 이후 로그 밀기 값도 Comparison.AppliedShift 입니다. 그런데 설정 창을 닫을 때는 다시 견주지 않아서
+        // (0.9x 부터), 거기서 단계 IO 를 지우거나 (= 고른 단계가 풀림) 시작 맞춤 · 손 밀기 · 허용 오차를 바꿔도
+        // <b>옛 밀기 값 · 옛 결과가 그대로</b> 남았습니다 — "단계를 풀었는데 단계 진입이 같은 시각으로 나옴".
+        // 비교할 때 쓴 것들을 글 하나로 적어 두고, 지금 것과 다르면 "옛 결과" 로 봅니다 (창이 다시 견줌).
+
+        private string _compareSig = string.Empty;
+
+        /// <summary>비교 · 판정에 들어가는 것 모두 — 고른 단계와 그 밀기 값, 단계 IO, 시간 맞추기, 허용 오차, 뺄 IO.</summary>
+        public string CompareSignature()
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder();
+            StepPair p = PickedStep;
+            sb.Append("pick:").Append(p != null ? p.Label + "@" + p.Shift.ToString("R", inv) : "-")
+              .Append("|step:").Append(Settings.StepIo ?? string.Empty)
+              .Append("|auto:").Append(Settings.AutoAlign)
+              .Append("|manual:").Append(Settings.ManualShift.ToString("R", inv))
+              .Append("|align:").Append(Settings.AlignIo ?? string.Empty).Append('/').Append(Settings.AlignEdge)
+              .Append('/').Append(Settings.AlignOccurrence).Append('/').Append(Settings.AlignLevel.ToString("R", inv))
+              .Append("|trig:").Append(TriggerShift.ToString("R", inv))
+              .Append("|rel:").Append(Settings.RelativeTolerancePercent.ToString("R", inv))
+              .Append("|abs:").Append(Settings.AbsoluteTolerance.ToString("R", inv));
+            foreach (ToleranceOverride t in Settings.Tolerances)
+            {
+                if (t == null) continue;
+                sb.Append("|t:").Append(t.Io).Append(':').Append(t.Percent.ToString("R", inv))
+                  .Append(':').Append(t.Absolute.ToString("R", inv));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// 마지막 비교가 지금 설정과 다른지 (1.73). 참이면 창이 시간 맞추기를 다시 하고 다시 견줍니다
+        /// (설정 창을 닫을 때 · 화면을 옮길 때). 두 로그가 다 없으면 거짓.
+        /// </summary>
+        public bool ComparisonStale
+        {
+            get { return HasBoth && (Comparison == null || _compareSig != CompareSignature()); }
         }
 
         // ---------------- 정상 판정 (1.56) ----------------
