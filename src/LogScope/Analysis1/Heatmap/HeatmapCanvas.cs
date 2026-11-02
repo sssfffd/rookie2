@@ -179,9 +179,11 @@ namespace LogScope.Analysis1.Heatmap
             public readonly string Name;
             public readonly double Start;
             public readonly double End;
-            public CellEventArgs(string name, double start, double end)
+            /// <summary>칸 번호 (1.71 — 그래프로 갈 곳을 HeatJump 가 정함).</summary>
+            public readonly int Column;
+            public CellEventArgs(string name, double start, double end, int column = -1)
             {
-                Name = name; Start = start; End = end;
+                Name = name; Start = start; End = end; Column = column;
             }
         }
 
@@ -650,7 +652,7 @@ namespace LogScope.Analysis1.Heatmap
             HeatRow row = _lines[r].Row;
             EventHandler<CellEventArgs> h = CellActivated;
             if (h != null) h(this, new CellEventArgs(row.Name,
-                _result.BucketStart(c), _result.BucketEnd(c)));
+                _result.BucketStart(c), _result.BucketEnd(c), c));
         }
 
         protected override void OnMouseWheel(MouseWheelEventArgs e)

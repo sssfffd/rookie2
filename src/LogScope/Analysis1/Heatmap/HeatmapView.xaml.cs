@@ -41,9 +41,11 @@ namespace LogScope.Analysis1.Heatmap
             public readonly string Name;
             public readonly double Start;
             public readonly double End;
-            public CellEventArgs(string name, double start, double end)
+            /// <summary>칸 번호 (1.71).</summary>
+            public readonly int Column;
+            public CellEventArgs(string name, double start, double end, int column = -1)
             {
-                Name = name; Start = start; End = end;
+                Name = name; Start = start; End = end; Column = column;
             }
         }
 
@@ -156,7 +158,7 @@ namespace LogScope.Analysis1.Heatmap
         private void OnCellActivated(object sender, HeatmapCanvas.CellEventArgs e)
         {
             EventHandler<CellEventArgs> h = CellOpened;
-            if (h != null) h(this, new CellEventArgs(e.Name, e.Start, e.End));
+            if (h != null) h(this, new CellEventArgs(e.Name, e.Start, e.End, e.Column));
         }
 
         // ---------------- 계산 ----------------

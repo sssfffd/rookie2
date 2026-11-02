@@ -157,6 +157,7 @@ namespace LogScope.Tests
                 JudgeViewShiftRules();
                 SameChangedCountRules();
                 JudgeStepNeverAddsRules();
+                HeatJumpRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4719,6 +4720,53 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>
+        /// 히트맵 칸 → 그래프 (1.71). JudgeViewShiftRules 가 쓴 view_a/b (이전 A[0,100) B[100,200) C[200,300),
+        /// 이후 A 가 10 김) 를 다시 엽니다.
+        /// </summary>
+        private static void HeatJumpRules()
+        {
+            Say("히트맵 칸 → 그래프로 갈 곳");
+            LogDataset a = OpenWithSteps(Path.Combine(_dir, "view_a.csv"), "STEP");
+            LogDataset b = OpenWithSteps(Path.Combine(_dir, "view_b.csv"), "STEP");
+            StepPairList pairs = StepPairList.Build(a, b);
+            var o = new HeatmapOptions();
+            o.ByStep = true; o.Steps = pairs; o.Shift = 0; o.IncludeUnchanged = true;
+            HeatmapResult hs = HeatmapBuilder.Build(a, b, o, null);
+            Check("단계 칸 셋", hs.ByStep && hs.BucketCount == 3, hs.BucketCount.ToString());
+
+            var sb = new StringBuilder();
+            bool allOk = hs.ByStep;
+            for (int c = 0; c < hs.BucketCount; c++)
+            {
+                HeatJump j = HeatJump.Plan(hs, c, pairs, 0, 300);
+                double w0, w1;
+                bool ok = j != null && j.Pair >= 0 && pairs[j.Pair].Label == hs.BucketText(c)
+                          && StepWindow.Of(pairs[j.Pair], out w0, out w1) && j.T0 == w0 && j.T1 == w1
+                          && j.T0 >= -10 && j.T1 > j.T0 && !j.LeaveSplit;
+                allOk &= ok;
+                if (j != null) sb.Append(hs.BucketText(c)).Append("→").Append(j.Pair >= 0 ? pairs[j.Pair].Label : "-")
+                                 .Append(" [").Append(NumberText.Plain(j.T0)).Append(", ").Append(NumberText.Plain(j.T1)).Append("] ");
+            }
+            Check("단계 칸 → 그 단계를 고르고 그 단계 구간 (마이너스 · 다른 단계 아님)", allOk, sb.ToString());
+
+            // 단계가 그 사이 바뀌어 짝이 안 맞으면 시간으로
+            HeatJump stale = HeatJump.Plan(hs, 1, new StepPairList(), 0, 300);
+            Check("짝을 못 찾으면 그 칸의 시간 구간으로", stale != null && stale.Pair < 0 && stale.LeaveSplit
+                  && stale.T0 >= 0 && stale.T1 <= 300, stale == null ? "-" : stale.T0 + " ~ " + stale.T1);
+
+            // 시간 칸: 첫 칸 앞 여유가 0 보다 앞으로 안 감
+            var ou = new HeatmapOptions();
+            ou.Shift = 0; ou.BucketSpan = 30; ou.IncludeUnchanged = true;
+            HeatmapResult hu = HeatmapBuilder.Build(a, b, ou, null);
+            HeatJump first = HeatJump.Plan(hu, 0, pairs, 0, 299);
+            HeatJump last = HeatJump.Plan(hu, hu.BucketCount - 1, pairs, 0, 299);
+            Check("시간 칸 — 첫 칸은 0 부터 (마이너스 아님) · 끝 칸은 로그 끝까지", first != null && first.Pair < 0 && first.T0 == 0
+                  && first.T1 > hu.BucketEnd(0) && last.T1 == 299 && last.LeaveSplit,
+                  first == null ? "-" : first.T0 + " ~ " + first.T1 + " / " + last.T0 + " ~ " + last.T1);
+            Check("없는 칸이면 null", HeatJump.Plan(hu, hu.BucketCount, pairs, 0, 299) == null && HeatJump.Plan(null, 0, pairs, 0, 1) == null, "");
         }
 
         /// <summary>

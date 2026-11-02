@@ -91,6 +91,19 @@ namespace LogScope.Analysis1.Graph
             }
         }
 
+        /// <summary>
+        /// 단계 짝 번호로 고릅니다 (1.71 — 히트맵 단계 칸에서 넘어올 때). 바뀌었으면 Changed 가 나가고 참.
+        /// 이미 그 단계면 거짓 (아무 일 없음). 목록에 없는 짝 (한쪽에만 있는 단계) 이면 거짓.
+        /// </summary>
+        public bool PickPair(int pair)
+        {
+            Fill();
+            int at = _map.IndexOf(pair);
+            if (at < 0 || _state.StepPick == pair) return false;
+            PickIndex = at;
+            return true;
+        }
+
         /// <summary>단계를 하나 고른 상태인지.</summary>
         public bool Picked { get { return _state.PickedStep != null; } }
 

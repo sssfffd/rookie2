@@ -928,6 +928,10 @@ namespace LogScope.Shell
             if (_vm.Page == ShellVm.PageHeatmap && _state.HasBoth) Heatmap.Recalculate(false);
 
             SaveSettings();
+
+            Action after = _afterStepChange;
+            _afterStepChange = null;
+            if (after != null) after();
         }
 
         private void AfterLoad()
@@ -1043,14 +1047,38 @@ namespace LogScope.Shell
             Graph.FocusOnIo(e.Name);
         }
 
+        /// <summary>
+        /// 히트맵 칸을 눌렀을 때 (1.71). 갈 곳은 HeatJump.Plan 한 곳이 정합니다 — 단계 칸이면 그 단계를 그래프에서
+        /// 고르고 (히트맵이 그 단계의 밀기 값으로 견줬으므로 같은 맞춤), 시간 칸이면 그 구간 (로그 안으로 자름).
+        /// 단계를 바꾸면 그래프가 미뤄서 다시 견주므로 (1.69), 구간은 그 <b>뒤에</b> 겁니다.
+        /// </summary>
         private void OnHeatmapCellOpened(object sender, HeatmapView.CellEventArgs e)
         {
+            double lo, hi;
+            _state.FullTimeRange(out lo, out hi);
+            HeatJump plan = HeatJump.Plan(Heatmap.Map.Result, e.Column, _state.StepPairs(), lo, hi);
+
             _vm.GoGraph();
             Graph.FocusOnIo(e.Name);
-            // 그 칸의 시간대로 확대해 줍니다. 앞뒤로 조금 여유를 둡니다.
-            double pad = (e.End - e.Start) * 0.25;
-            Graph.SetTimeRange(e.Start - pad, e.End + pad);
+            if (plan == null)
+            {
+                double pad = (e.End - e.Start) * 0.25;
+                Graph.SetTimeRange(Math.Max(lo, e.Start - pad), Math.Min(hi, e.End + pad));
+                return;
+            }
+
+            bool changed = false;
+            if (plan.Pair >= 0) changed = _vm.Step.PickPair(plan.Pair);
+            else if (plan.LeaveSplit && _vm.Step.SplitByStep) { _vm.Step.SplitByStep = false; changed = true; }
+
+            double t0 = plan.T0, t1 = plan.T1;
+            Action show = delegate { Graph.SetTimeRange(t0, t1); };
+            if (changed) _afterStepChange = show;   // ApplyStepChange 끝에서
+            else show();
         }
+
+        /// <summary>미뤄 둔 단계 바뀜 처리가 끝난 뒤 할 일 (히트맵에서 넘어온 구간, 1.71).</summary>
+        private Action _afterStepChange;
 
         // ---------------- 설정 ----------------
 

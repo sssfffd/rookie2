@@ -733,6 +733,15 @@ namespace LogScope.Analysis1.Heatmap
         /// </summary>
         private readonly double[] _shifts;
 
+        /// <summary>칸마다 단계 짝 번호 (StepPairList 의 자리, 1.71). 단계로 자르지 않았으면 null.</summary>
+        private readonly int[] _pairs;
+
+        /// <summary>그 칸의 단계 짝 번호. 단계 칸이 아니면 -1.</summary>
+        public int PairOf(int i)
+        {
+            return _pairs != null && i >= 0 && i < _pairs.Length ? _pairs[i] : -1;
+        }
+
         /// <summary>단계로 자른 것인지. 화면의 가로축 글자가 달라집니다.</summary>
         public readonly bool ByStep;
 
@@ -740,8 +749,9 @@ namespace LogScope.Analysis1.Heatmap
         public readonly double Span;
 
         private HeatBuckets(double[] from, double[] to, string[] labels, double[] shifts,
-                            bool byStep, double span)
+                            bool byStep, double span, int[] pairs = null)
         {
+            _pairs = pairs;
             _from = from;
             _to = to;
             _labels = labels;
@@ -860,6 +870,7 @@ namespace LogScope.Analysis1.Heatmap
             var to = new List<double>();
             var labels = new List<string>();
             var shifts = new List<double>();
+            var pairIndex = new List<int>();
 
             int outside = 0, oneSided = 0;
 
@@ -889,6 +900,7 @@ namespace LogScope.Analysis1.Heatmap
                 // 그 단계의 밀기 값. 칸마다 다릅니다 — 이것이 단계로
                 // 자르는 뜻의 절반입니다 (나머지 절반은 칸 자리).
                 shifts.Add(p.Shift);
+                pairIndex.Add(i);
             }
 
             if (from.Count == 0)
@@ -904,7 +916,68 @@ namespace LogScope.Analysis1.Heatmap
                         + "견주는 구간 밖의 단계 " + outside + " 개도 뺐습니다.";
 
             return new HeatBuckets(from.ToArray(), to.ToArray(), labels.ToArray(),
-                                   shifts.ToArray(), true, double.NaN);
+                                   shifts.ToArray(), true, double.NaN, pairIndex.ToArray());
+        }
+    }
+
+    // ======================================================================
+    //  HeatJump — 히트맵 칸을 눌러 그래프로 갈 곳 (1.71)
+    // ======================================================================
+
+    /// <summary>히트맵 칸 → 그래프에서 볼 것.</summary>
+    public sealed class HeatJump
+    {
+        /// <summary>그래프에서 고를 단계 짝 번호. -1 이면 단계를 바꾸지 않고 시간 구간만.</summary>
+        public int Pair = -1;
+
+        /// <summary>보여 줄 구간 (이전 로그 시간축 — 그래프 가로축과 같음).</summary>
+        public double T0, T1;
+
+        /// <summary>그래프의 "단계로 나눠 보기" 를 꺼야 하는지 (시간 구간은 칸 나눔 화면에서 뜻이 없음).</summary>
+        public bool LeaveSplit;
+
+        /// <summary>
+        /// 1.71 — 칸을 눌렀을 때 그래프로 갈 곳을 한 곳에서 정합니다.
+        /// <list type="bullet">
+        /// <item><b>단계 칸</b> ([가로를 단계로]): 그 단계를 그래프에서 <b>고릅니다</b>. 히트맵이 그 칸을 그 단계의 밀기 값으로
+        ///   견줬으므로 그래프도 같은 맞춤이어야 같은 것이 보입니다. 구간은 그 단계 (두 로그 중 긴 쪽까지).
+        ///   예전에는 시각만 넘겨서, 그래프에 다른 단계가 골라져 있으면 그 단계 시작부터 센 눈금 (마이너스) ·
+        ///   다른 밀기 값으로 엉뚱한 곳이 보였습니다.</item>
+        /// <item><b>시간 칸</b>: 칸 구간 (앞뒤 25 % 여유) 을 로그가 있는 구간 [lo, hi] 안으로 자릅니다 — 첫 칸에서 0 보다 앞
+        ///   (마이너스) 으로 가지 않게. 칸 나눔 화면이면 끕니다.</item>
+        /// </list>
+        /// 단계 칸인데 짝을 못 찾으면 (단계가 그 사이 바뀜) 시간 칸처럼 합니다. 칸이 없으면 null.
+        /// </summary>
+        public static HeatJump Plan(HeatmapResult r, int col, StepPairList pairs, double lo, double hi)
+        {
+            if (r == null || col < 0 || col >= r.BucketCount) return null;
+            var j = new HeatJump();
+
+            if (r.Buckets != null && r.Buckets.ByStep)
+            {
+                int p = r.Buckets.PairOf(col);
+                double s0, s1;
+                if (pairs != null && p >= 0 && p < pairs.Count && pairs[p].HasBoth
+                    && pairs[p].Label == r.Buckets.Label(col, null)
+                    && StepWindow.Of(pairs[p], out s0, out s1))
+                {
+                    j.Pair = p; j.T0 = s0; j.T1 = s1;
+                    return j;
+                }
+            }
+
+            double a = r.BucketStart(col), b = r.BucketEnd(col);
+            double pad = (b - a) * 0.25;
+            j.T0 = a - pad; j.T1 = b + pad;
+            if (hi > lo)
+            {
+                if (j.T0 < lo) j.T0 = lo;
+                if (j.T1 > hi) j.T1 = hi;
+                if (!(j.T1 > j.T0)) { j.T0 = Math.Max(lo, a); j.T1 = Math.Min(hi, b); }
+            }
+            if (!(j.T1 > j.T0)) { j.T0 = a; j.T1 = b > a ? b : a + 1; }
+            j.LeaveSplit = true;
+            return j;
         }
     }
 
