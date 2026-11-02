@@ -760,9 +760,6 @@ namespace LogScope.Analysis1.Heatmap
             Span = span;
         }
 
-        /// <summary>칸마다 밀기 값이 따로인지.</summary>
-        public bool HasShifts { get { return _shifts != null; } }
-
         /// <summary>
         /// 그 칸에서 이후 로그를 미는 값. 칸마다의 값이 없으면
         /// <paramref name="fallback"/> 을 돌려줍니다.
@@ -798,20 +795,6 @@ namespace LogScope.Analysis1.Heatmap
                 else return mid;
             }
             return -1;
-        }
-
-        /// <summary>
-        /// 시각이 커지는 순서로 훑을 때 쓰는 빠른 길. <paramref name="k"/> 를
-        /// 앞으로만 밀면서 찾습니다 (표본마다 이진 탐색을 하지 않게).
-        /// 빈틈에 든 시각은 -1 을 돌려주고 k 는 그대로 둡니다.
-        /// </summary>
-        public int Walk(double t, ref int k)
-        {
-            int n = _from.Length;
-            if (k < 0) k = 0;
-            while (k < n && t >= _to[k]) k++;
-            if (k >= n) return -1;
-            return t >= _from[k] ? k : -1;
         }
 
         /// <summary>

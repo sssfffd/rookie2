@@ -31,36 +31,6 @@ namespace LogScope.Main
             return GradeBad;
         }
 
-        /// <summary>화면 아래에 적는 색 설명. 위에서부터 좋은 쪽입니다.</summary>
-        public static List<BandVm> Legend()
-        {
-            return new List<BandVm>
-            {
-                new BandVm(GradeGood, Range(GoodFrom, 100), "이상 없음"),
-                new BandVm(GradeWarn, Range(WarnFrom, GoodFrom - 1), "확인 필요"),
-                new BandVm(GradeBad,  Range(0, WarnFrom - 1),        "점검 필요"),
-            };
-        }
-
-        private static string Range(double a, double b)
-        {
-            return a.ToString("0") + " ~ " + b.ToString("0");
-        }
-    }
-
-    /// <summary>색 설명 한 줄. "초록  90 ~ 100  이상 없음".</summary>
-    public sealed class BandVm
-    {
-        public string Grade { get; private set; }
-        public string RangeText { get; private set; }
-        public string Meaning { get; private set; }
-
-        public BandVm(string grade, string rangeText, string meaning)
-        {
-            Grade = grade;
-            RangeText = rangeText;
-            Meaning = meaning;
-        }
     }
 
     /// <summary>

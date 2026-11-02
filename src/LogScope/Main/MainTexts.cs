@@ -125,8 +125,6 @@ namespace LogScope.Main
         public const string ShowLiveTip = "History 를 접고 지금 분석 결과를 보여 줍니다.";
         /// <summary>단추 이름</summary>
         public const string SaveResult = "지금 결과 저장";
-        /// <summary>글 마우스를 올리면 뜨는 설명</summary>
-        public const string ScoreTextTip = "분석 1 / 2 / 3";
         /// <summary>단추 이름</summary>
         public const string DeleteSaved = "삭제";
     }

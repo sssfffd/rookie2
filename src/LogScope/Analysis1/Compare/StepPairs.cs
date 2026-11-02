@@ -153,15 +153,6 @@ namespace LogScope.Analysis1.Compare
             }
         }
 
-        /// <summary>목록 글로 찾기. 설정에 적어 둔 단계를 다시 고를 때 씁니다.</summary>
-        public int IndexOfLabel(string label)
-        {
-            if (string.IsNullOrEmpty(label)) return -1;
-            for (int i = 0; i < Pairs.Count; i++)
-                if (string.Equals(Pairs[i].Label, label, StringComparison.Ordinal)) return i;
-            return -1;
-        }
-
         /// <summary>
         /// 길이가 이 배수 넘게 다르면 알려 줍니다. 단계 하나만 보려고 폭을
         /// 좁히는데 한쪽이 훨씬 길면 <b>그 쪽은 화면 밖으로 잘립니다</b> —

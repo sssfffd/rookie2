@@ -53,14 +53,6 @@ namespace LogScope.Analysis1.Graph
             set { if (Set(ref _search, value ?? string.Empty)) RebuildRows(); }
         }
 
-        private int _kindFilter;
-        /// <summary>0 전체 / 1 디지털 / 2 아날로그 / 3 상태</summary>
-        public int KindFilter
-        {
-            get { return _kindFilter; }
-            set { if (Set(ref _kindFilter, value)) RebuildRows(); }
-        }
-
         private int _scopeFilter;
         /// <summary>0 모든 IO / 1 고른 IO만 / 2 달라진 IO만</summary>
         public int ScopeFilter
@@ -187,7 +179,7 @@ namespace LogScope.Analysis1.Graph
             List<GroupDef> groups = _state.Settings.Groups;
             var rows = new ObservableCollection<object>();
             var placed = new HashSet<string>(StringComparer.Ordinal);
-            bool filtering = NameSearch.IsActive(_search) || _kindFilter != 0 || _scopeFilter != 0;
+            bool filtering = NameSearch.IsActive(_search) || _scopeFilter != 0;
 
             for (int g = 0; g < groups.Count; g++)
             {
@@ -252,13 +244,6 @@ namespace LogScope.Analysis1.Graph
             if (_scopeFilter == 1 && !vm.IsSelected) return false;
             if (_scopeFilter == 2 && !_changedNames.Contains(vm.Name)) return false;
 
-            switch (_kindFilter)
-            {
-                case 1: if (vm.Kind != ChannelKind.Digital) return false; break;
-                case 2: if (vm.Kind != ChannelKind.Analog) return false; break;
-                case 3: if (vm.Kind != ChannelKind.State) return false; break;
-            }
-
             // 검색 규칙은 NameSearch 한 곳 (히트맵 · 분석 2 와 같음).
             if (!NameSearch.Matches(vm.Name, _search)) return false;
 
@@ -276,12 +261,6 @@ namespace LogScope.Analysis1.Graph
             if (vm == null) return;
             vm.IsSelected = !vm.IsSelected;
             AfterSelection();
-        }
-
-        public void SetSelected(IoRowVm vm, bool on)
-        {
-            if (vm == null || vm.IsSelected == on) return;
-            vm.IsSelected = on;
         }
 
         /// <summary>

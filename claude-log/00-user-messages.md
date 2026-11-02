@@ -1986,3 +1986,11 @@
 > 이거 로직좀 확실하게좀 짜보셈
 
 → 답변: [162-heatmap-cell-jump.md](162-heatmap-cell-jump.md)
+
+---
+
+## 요청 190 — 안 쓰는 파일 · 내용 지우기
+
+> 아 그리고 지금 안쓰는 파일들이나 내용 삭제좀
+
+→ 답변: [163-remove-unused.md](163-remove-unused.md)

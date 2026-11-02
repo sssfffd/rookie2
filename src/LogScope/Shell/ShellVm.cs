@@ -171,10 +171,6 @@ namespace LogScope.Shell
         public string TabAnalysis2 { get { return AppConfig.Current.Title(2); } }
         public string TabAnalysis3 { get { return AppConfig.Current.Title(3); } }
 
-        /// <summary>아직 만들지 않은 화면 가운데에 크게 적을 이름.</summary>
-        public string Analysis2Name { get { return AppConfig.Current.Title(2); } }
-        public string Analysis3Name { get { return AppConfig.Current.Title(3); } }
-
         // ---- 분석 3 화면: LLM 서버에 안 닿으면 회색으로 덮음 (1.51) ----
 
         public bool A3Blocked { get { return !LlmServer.IsOk; } }

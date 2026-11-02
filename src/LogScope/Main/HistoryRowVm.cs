@@ -51,43 +51,8 @@ namespace LogScope.Main
         public string Name { get { return Record.DisplayName; } }
         public string BasisText { get { return Record.BasisText; } }
 
-        /// <summary>
-        /// 무엇을 견줬는지. 파일 <b>이름 전체</b>를 적습니다 — 발생시간만
-        /// 적으면 같은 날 두 번 딴 로그를 가릴 수가 없습니다.
-        /// </summary>
-        public string LogsText
-        {
-            get
-            {
-                string b = Record.BeforeName.Length > 0 ? Record.BeforeName : "-";
-                string a = Record.AfterName.Length > 0 ? Record.AfterName : "-";
-                return b + "   →   " + a;
-            }
-        }
-
-        /// <summary>풍선 도움말에 띄울 전체 경로.</summary>
-        public string PathsText
-        {
-            get
-            {
-                string b = Record.BeforePath.Length > 0 ? Record.BeforePath : Record.BeforeName;
-                string a = Record.AfterPath.Length > 0 ? Record.AfterPath : Record.AfterName;
-                return "이전  " + b + "\n이후  " + a;
-            }
-        }
-
         /// <summary>분석 셋의 점수를 한 줄로. "100 / ?? / ??".</summary>
         public string ScoreText { get { return Record.AllScoresText; } }
-
-        public string CountsText
-        {
-            get
-            {
-                return "비교 " + Record.ComparedCount.ToString("N0")
-                     + " · 달라진 " + Record.ChangedCount.ToString("N0")
-                     + " · 한쪽에만 " + Record.OneSidedCount.ToString("N0");
-            }
-        }
 
         // ---- 지금 결과와의 차이 -------------------------------------------
 
