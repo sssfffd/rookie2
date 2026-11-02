@@ -302,6 +302,7 @@ namespace LogScope.Analysis1.Judge
             res.TimeUnit = before.TimeKind == TimeKind.Index ? "표본" : (before.TimeUnit ?? string.Empty);
 
             List<Seg> segs = Segments(before, after, pairs, opt, res);
+            Seg whole = WholeSeg(before, after, opt, res);
 
             var afterUsed = new bool[after.ChannelCount];
             for (int i = 0; i < before.ChannelCount; i++)
@@ -332,7 +333,7 @@ namespace LogScope.Analysis1.Judge
                 }
                 afterUsed[j] = true;
                 res.IoCount++;
-                CompareIo(before, i, after, j, segs, opt, res);
+                CompareIo(before, i, after, j, segs, whole, opt, res);
             }
             for (int j = 0; j < after.ChannelCount; j++)
             {
@@ -368,14 +369,9 @@ namespace LogScope.Analysis1.Judge
                 if (before.HasSteps != after.HasSteps)
                     res.Note = "한쪽 로그에만 단계가 있어 단계 없이 전체를 한 구간으로 견줬습니다.";
 
-                var s = new Seg();
-                s.B0 = 0; s.B1 = before.SampleCount - 1;
-                s.A0 = 0; s.A1 = after.SampleCount - 1;
-                s.Shift = opt.Shift;
+                Seg s = WholeSeg(before, after, opt, res);
                 double t0 = Math.Max(before.TimeStart, after.TimeStart + s.Shift);
                 double t1 = Math.Min(before.TimeEnd, after.TimeEnd + s.Shift);
-                s.Length = t1 > t0 ? t1 - t0 : before.TimeEnd - before.TimeStart;
-                s.Slack = Slack(before, s.B0, s.B1, after, s.A0, s.A1, s.Length, res.Clock, opt);
                 if (t1 <= t0)
                     res.Note = "두 로그의 시간 구간이 겹치지 않습니다. 시간 맞추기를 확인해 주세요.";
                 segs.Add(s);
@@ -451,6 +447,23 @@ namespace LogScope.Analysis1.Judge
             return segs;
         }
 
+        /// <summary>
+        /// 로그 전체를 한 구간으로 — <b>단계 없이 볼 때와 똑같은</b> 구간 (밀기 값 opt.Shift, 시간 여유 = 전체 길이 기준).
+        /// 단계가 있을 때도 이것으로 한 번 더 봐서 겹친 곳만 남기므로, 단계를 켜서 오차 IO 가 늘 수 없습니다 (1.70).
+        /// </summary>
+        private static Seg WholeSeg(LogDataset before, LogDataset after, JudgeOptions opt, JudgeResult res)
+        {
+            var s = new Seg();
+            s.B0 = 0; s.B1 = before.SampleCount - 1;
+            s.A0 = 0; s.A1 = after.SampleCount - 1;
+            s.Shift = opt.Shift;
+            double t0 = Math.Max(before.TimeStart, after.TimeStart + s.Shift);
+            double t1 = Math.Min(before.TimeEnd, after.TimeEnd + s.Shift);
+            s.Length = t1 > t0 ? t1 - t0 : before.TimeEnd - before.TimeStart;
+            s.Slack = Slack(before, s.B0, s.B1, after, s.A0, s.A1, s.Length, res.Clock, opt);
+            return s;
+        }
+
         private static JudgeItem StepItem(JudgeKind kind, string step, double at, string what, string detail)
         {
             var it = new JudgeItem();
@@ -488,7 +501,7 @@ namespace LogScope.Analysis1.Judge
         // ---------------- IO 하나 ----------------
 
         private static void CompareIo(LogDataset before, int bi, LogDataset after, int ai,
-                                      List<Seg> segs, JudgeOptions opt, JudgeResult res)
+                                      List<Seg> segs, Seg whole, JudgeOptions opt, JudgeResult res)
         {
             Channel bc = before.Channels[bi];
             Channel ac = after.Channels[ai];
@@ -500,6 +513,12 @@ namespace LogScope.Analysis1.Judge
                 abs = opt.Tolerances.AbsoluteFor(bc.Name);
                 pct = opt.Tolerances.PercentFor(bc.Name);
             }
+
+            // 1.70: 전체 맞춤 · 고른 단계 맞춤은 <b>단계 없이 볼 때와 똑같이</b> (로그 전체 · 전체 길이로 정한 시간 여유)
+            // IO 마다 한 번만 훑어 둡니다 (오차가 있는 단계가 나올 때 처음 한 번). 1.63 ~ 1.69 에는 이것을 단계 구간 ·
+            // 단계 시간 여유로 봐서, 짧은 단계는 여유가 좁고 단계 경계에서 창이 잘려 <b>단계를 켜면 오차가 늘었습니다</b>.
+            List<ErrRun> wholeRuns = null, viewRuns = null;
+            bool useView = !double.IsNaN(opt.ViewShift) && Math.Abs(opt.ViewShift - whole.Shift) > 1e-9;
 
             for (int s = 0; s < segs.Count; s++)
             {
@@ -520,19 +539,19 @@ namespace LogScope.Analysis1.Judge
                 // (단계 없이 쓰는 밀기 값) 으로도 보고, <b>두 맞춤 모두에서 벗어난 곳만</b> 오차로 남깁니다.
                 // 단계로 맞춰 사라진 오차는 그대로 사라지고, 단계로 맞춰 생긴 오차는 없어집니다.
                 List<ErrRun> kept = runs;
-                if (res.ByStep && !double.IsNaN(opt.Shift))
+                if (res.ByStep)
                 {
-                    // 방향마다, 훑은 쪽 로그 자신의 시간으로 겹치는 곳만
-                    kept = Intersect(kept, ShiftedRuns(before, bi, after, ai, seg, opt.Shift, cat, abs, pct));
+                    // 방향마다, 훑은 쪽 로그 자신의 시간으로 겹치는 곳만 — 결과는 늘 "단계 없이 본 오차" 안
+                    if (wholeRuns == null) wholeRuns = WholeRuns(before, bi, after, ai, whole, whole.Shift, cat, abs, pct);
+                    kept = Intersect(kept, wholeRuns);
                 }
                 // 1.67: 사용자가 분석 1 에서 지금 건 맞춤 (그래프에서 고른 단계의 시작 맞춤 등) 으로도 봐서,
                 // 거기서 맞으면 오차가 아닙니다 — 분석 1 에서 맞춰서 없어진 차이는 메인 칸에서도 없어집니다.
                 // 그 맞춤으로 <b>새로 생기는</b> 차이는 겹친 곳만 남기므로 늘지 않습니다.
-                if (!double.IsNaN(opt.ViewShift) && kept.Count > 0
-                    && Math.Abs(opt.ViewShift - seg.Shift) > 1e-9
-                    && (!res.ByStep || double.IsNaN(opt.Shift) || Math.Abs(opt.ViewShift - opt.Shift) > 1e-9))
+                if (useView && kept.Count > 0)
                 {
-                    kept = Intersect(kept, ShiftedRuns(before, bi, after, ai, seg, opt.ViewShift, cat, abs, pct));
+                    if (viewRuns == null) viewRuns = WholeRuns(before, bi, after, ai, whole, opt.ViewShift, cat, abs, pct);
+                    kept = Intersect(kept, viewRuns);
                 }
                 if (kept.Count == 0) continue;
                 merged = Merge(kept, seg.Slack);
@@ -569,17 +588,13 @@ namespace LogScope.Analysis1.Judge
             }
         }
 
-        /// <summary>이 단계 (이전 로그 구간) 를 밀기 값 shift 하나로 견준 오차 (두 방향). 이후 로그 범위는 그 값에 맞춰 다시 잡음.</summary>
-        private static List<ErrRun> ShiftedRuns(LogDataset before, int bi, LogDataset after, int ai, Seg seg,
-                                                double shift, bool cat, double abs, double pct)
+        /// <summary>로그 전체를 밀기 값 shift 로, 전체 구간의 시간 여유로 견준 오차 (두 방향) — 단계 없이 볼 때와 같은 셈.</summary>
+        private static List<ErrRun> WholeRuns(LogDataset before, int bi, LogDataset after, int ai, Seg whole,
+                                              double shift, bool cat, double abs, double pct)
         {
             var g = new List<ErrRun>();
-            int ga0, ga1;
-            if (AfterRange(before, after, seg.B0, seg.B1, shift, out ga0, out ga1))
-            {
-                Scan(after, ai, ga0, ga1, before, bi, seg.B0, seg.B1, shift, seg.Slack, cat, abs, pct, false, g);
-                Scan(before, bi, seg.B0, seg.B1, after, ai, ga0, ga1, -shift, seg.Slack, cat, abs, pct, true, g);
-            }
+            Scan(after, ai, whole.A0, whole.A1, before, bi, whole.B0, whole.B1, shift, whole.Slack, cat, abs, pct, false, g);
+            Scan(before, bi, whole.B0, whole.B1, after, ai, whole.A0, whole.A1, -shift, whole.Slack, cat, abs, pct, true, g);
             return g;
         }
 

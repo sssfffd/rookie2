@@ -156,6 +156,7 @@ namespace LogScope.Tests
                 JudgeHintRules();
                 JudgeViewShiftRules();
                 SameChangedCountRules();
+                JudgeStepNeverAddsRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4718,6 +4719,105 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>
+        /// 단계를 켜도 오차 IO 가 늘지 않음 (1.70). 1.63 ~ 1.69 에는 단계 구간 · 단계 시간 여유로 "전체 맞춤" 을 봐서,
+        /// 단계 길이가 같고 IO 가 고르게 조금 늦은 로그 (전체 여유 안 · 짧은 단계 여유 밖) 에서 단계를 켜면 오차가 생겼습니다.
+        /// 정해진 씨앗으로 무작위 로그 80 쌍 — 단계 켬 ⊆ 단계 끔, 단계 하나 골라 둠 ⊆ 둘 다.
+        /// </summary>
+        private static void JudgeStepNeverAddsRules()
+        {
+            Say("판정 — 단계를 켜도 오차 IO 가 늘지 않음");
+
+            // ① 콕 집은 예: 단계 길이 같음, 네모 파형이 이후에서 4 표본 늦음 (전체 600 표본 → 여유 12, 단계 60 → 여유 2)
+            int[] lens = { 60, 60, 60, 60, 60, 60, 60, 60, 60, 60 };
+            string a = StepLog(lens, false, 4, -1), b = StepLog(lens, true, 4, -1);   // 튐 없음
+            var ex = new HashSet<string> { LogDataset.LooseKey("STEP") };
+            JudgeResult on = JudgeWith(WriteCsv("never_a.csv", a), WriteCsv("never_b.csv", b), true, ex, double.NaN);
+            JudgeResult off = JudgeWith(Path.Combine(_dir, "never_a.csv"), Path.Combine(_dir, "never_b.csv"), false, ex, double.NaN);
+            Check("고르게 4 표본 늦음 — 단계 끔 0 · 단계 켬도 0", on.ByStep && off.OpenIoCount == 0 && on.OpenIoCount == 0,
+                  "켬 " + on.OpenIoCount + " / 끔 " + off.OpenIoCount);
+
+            // ② 무작위 80 쌍
+            var rnd = new Random(20261102);
+            int bad = 0, badView = 0, sumOn = 0, sumOff = 0;
+            string first = string.Empty;
+            for (int c = 0; c < 80; c++)
+            {
+                int ns = rnd.Next(2, 6);
+                var lb = new int[ns]; var la = new int[ns];
+                for (int s = 0; s < ns; s++)
+                {
+                    lb[s] = rnd.Next(20, 200);
+                    la[s] = rnd.Next(2) == 0 ? lb[s] : Math.Max(10, lb[s] + rnd.Next(-15, 16));
+                }
+                int delay = rnd.Next(0, 9), spikeStep = rnd.Next(ns);
+                string pa = WriteCsv("never_ra.csv", StepLog(lb, false, delay, spikeStep));
+                string pb = WriteCsv("never_rb.csv", StepLog(la, true, delay, spikeStep));
+                JudgeResult rOn = JudgeWith(pa, pb, true, ex, double.NaN);
+                JudgeResult rOff = JudgeWith(pa, pb, false, ex, double.NaN);
+                HashSet<string> sOn = OpenValueIos(rOn), sOff = OpenValueIos(rOff);
+                sumOn += sOn.Count; sumOff += sOff.Count;
+                foreach (string k in sOn) if (!sOff.Contains(k)) { bad++; if (first.Length == 0) first = "쌍 " + c + " " + k; break; }
+
+                LogDataset db = OpenWithSteps(pa, "STEP"), da = OpenWithSteps(pb, "STEP");
+                StepPairList pairs = StepPairList.Build(db, da);
+                StepPair pk = pairs.Count > 0 ? pairs[rnd.Next(pairs.Count)] : null;
+                if (pk != null && pk.HasBoth)
+                {
+                    HashSet<string> sView = OpenValueIos(JudgeWith(pa, pb, true, ex, pk.Shift));
+                    foreach (string k in sView) if (!sOn.Contains(k) || !sOff.Contains(k)) { badView++; break; }
+                }
+            }
+            Check("무작위 80 쌍 — 단계 켬 오차 IO ⊆ 단계 끔", bad == 0, first + " · 합 켬 " + sumOn + " / 끔 " + sumOff);
+            Check("단계 하나 골라 둠 ⊆ 단계 켬 · 단계 끔", badView == 0, badView.ToString());
+            Check("단계를 켜면 오차 IO 가 줄어듦 (합)", sumOn < sumOff, "켬 " + sumOn + " / 끔 " + sumOff);
+        }
+
+        private static JudgeResult JudgeWith(string pathA, string pathB, bool steps, HashSet<string> exclude, double view)
+        {
+            LogDataset a = steps ? OpenWithSteps(pathA, "STEP") : Open(pathA, Orientation.Auto);
+            LogDataset b = steps ? OpenWithSteps(pathB, "STEP") : Open(pathB, Orientation.Auto);
+            var o = new JudgeOptions();
+            o.Exclude = exclude;
+            o.Shift = a.TimeStart - b.TimeStart;
+            o.ViewShift = view;
+            return JudgeEngine.Run(a, b, StepPairList.Build(a, b), o, null);
+        }
+
+        private static HashSet<string> OpenValueIos(JudgeResult r)
+        {
+            var s = new HashSet<string>();
+            foreach (JudgeItem it in r.Items) if (it.Kind == JudgeKind.Value && !it.IsAllowed) s.Add(it.Io);
+            return s;
+        }
+
+        /// <summary>
+        /// 단계 로그. IO0 단계 따라 오르막 · IO1 전체 시간 사인 · IO2 단계마다 값 · IO3 잔떨림 ·
+        /// IO4 이후에만 튐 (spikeStep 가운데) · IO5 네모 파형 (이후는 delay 표본 늦음).
+        /// </summary>
+        private static string StepLog(int[] len, bool after, int delay, int spikeStep)
+        {
+            var sb = new StringBuilder("Time,STEP,IO0,IO1,IO2,IO3,IO4,IO5\n");
+            var r2 = new Random(7);
+            int t = 0;
+            for (int s = 0; s < len.Length; s++)
+            {
+                for (int k = 0; k < len[s]; k++, t++)
+                {
+                    int tt = after ? t - delay : t;
+                    double[] v =
+                    {
+                        s * 50 + k * 0.5, 100 + 40 * Math.Sin(t / 7.0), s * 20, 50 + r2.NextDouble(),
+                        after && s == spikeStep && k == len[s] / 2 ? 500 : 10, tt % 40 < 20 ? 0 : 100
+                    };
+                    sb.Append(t).Append(",S").Append(s);
+                    foreach (double x in v) sb.Append(',').Append(x.ToString("0.###", CultureInfo.InvariantCulture));
+                    sb.Append('\n');
+                }
+            }
+            return sb.ToString();
         }
 
         /// <summary>

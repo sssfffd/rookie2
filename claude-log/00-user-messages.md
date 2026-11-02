@@ -1966,3 +1966,13 @@
 > 요약칸도 안바뀜
 
 → 답변: [160-step-unpick-main-refresh.md](160-step-unpick-main-refresh.md)
+
+---
+
+## 요청 188 — 단계를 켜면 오차가 늘어남
+
+> 이거 문제가 단계별로 돌리면 오차가 더 늘어나버림
+> 이럼 안되는데 로직에 뭔가 이상있는거 아냐?
+> 다시 꼼꼼히 검증하고 이게 설정에 단계 on시키는 순간 단계별 풀어도 메인화면에 갯수나 히트맵쪽 갯수가 안쭐어들거든? 이것도 해결해야할듯
+
+→ 답변: [161-steps-never-add-errors.md](161-steps-never-add-errors.md)
