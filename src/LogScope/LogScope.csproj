@@ -97,6 +97,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Main\SimilarIosWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Main\IoErrorsWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -235,6 +239,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Main\IoErrorsVm.cs" />
+    <Compile Include="Main\SimilarIosVm.cs" />
+    <Compile Include="Main\SimilarIosWindow.xaml.cs">
+      <DependentUpon>SimilarIosWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Analysis1\Judge\JudgeText.cs" />
     <Compile Include="Main\MainView.xaml.cs">
       <DependentUpon>MainView.xaml</DependentUpon>

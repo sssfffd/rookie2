@@ -319,6 +319,31 @@ namespace LogScope.Main
             RaiseGroupOpened(g);
         }
 
+        /// <summary>
+        /// 분석 1 칸의 알림 줄 (1.74). 공정 단계 → 단계 오차 창 (IoErrorsWindow), 조금 어긋난 IO → SimilarIosWindow.
+        /// </summary>
+        private void OnNoticeClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var vm = DataContext as MainVm;
+            var b = sender as FrameworkElement;
+            string key = b != null ? b.Tag as string : null;
+            if (vm == null || string.IsNullOrEmpty(key) || vm.IsViewingHistory) return;
+
+            if (key == NoticeVm.KeySteps)
+            {
+                OpenErrors(MainVm.PseudoSteps, delegate { return vm.ItemsOfPseudo(MainVm.PseudoSteps); });
+                return;
+            }
+            if (key == NoticeVm.KeySimilar)
+            {
+                var w = new SimilarIosWindow(vm.Similar());
+                w.Owner = Window.GetWindow(this);
+                w.ShowDialog();
+                if (w.GraphItem != null) RaiseGraph(w.GraphItem.Io, w.GraphItem.Start, w.GraphItem.End, w.GraphItem.Step);
+            }
+        }
+
         /// <summary>그룹 줄 오른쪽 [그래프] — 그 그룹의 IO 만 켜고 그래프로 (1.58 까지 줄을 누르면 하던 일).</summary>
         private void OnGroupGraph(object sender, RoutedEventArgs e)
         {

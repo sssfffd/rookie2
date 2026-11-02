@@ -21,6 +21,18 @@
         public double Num;
         public string Text;
 
+        /// <summary>
+        /// 파일에 적힌 글자 그대로 (1.74, csv 만). 머리 칸을 IO 이름으로 쓸 때 — "HIGH" · "ON" · "F" 같은 이름이
+        /// 참거짓으로 읽혀 "TRUE" · "FALSE" 로 바뀌던 것, "007" 이 "7" 로 바뀌던 것을 막습니다. 없으면 null.
+        /// </summary>
+        public string Source;
+
+        /// <summary>이름으로 쓸 글 — 적힌 글자 그대로, 없으면 Display.</summary>
+        public string Name()
+        {
+            return !string.IsNullOrEmpty(Source) ? Source : Display();
+        }
+
         public bool IsEmpty { get { return Kind == CellKind.Empty; } }
         public bool IsTextLike { get { return Kind == CellKind.Text; } }
         public bool IsNumberLike

@@ -159,6 +159,7 @@ namespace LogScope.Tests
                 JudgeStepNeverAddsRules();
                 HeatJumpRules();
                 StaleComparisonRules();
+                SimilarIosRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4724,6 +4725,73 @@ namespace LogScope.Tests
         }
 
         /// <summary>
+        /// 파형은 같고 조금 어긋난 IO (1.74) — 알림 줄 · 창 · 한꺼번에 허용.
+        /// LATE: 8 초 늦음 · HIGH: 10 높음 (잔떨림 섞임) · BOTH: 15 초 늦고 10 높음 · SPIKE: 진짜 튐 · OK: 같음.
+        /// 시간 여유 = 300 × 2 % = 6 초.
+        /// </summary>
+        private static void SimilarIosRules()
+        {
+            Say("파형은 같고 조금 어긋난 IO — 알려 주고 묻고 허용");
+            var a = new StringBuilder("Time,LATE,HIGH,BOTH,SPIKE,OK\n");
+            var b = new StringBuilder("Time,LATE,HIGH,BOTH,SPIKE,OK\n");
+            var rnd = new Random(5);
+            Func<int, double> sq = delegate (int t) { return (t >= 0 && (t / 25) % 2 == 1) ? 100 : 0; };
+            for (int i = 0; i < 300; i++)
+            {
+                double s = 100 + 20 * Math.Sin(i / 7.0);
+                double n1 = rnd.NextDouble() * 0.2, n2 = rnd.NextDouble() * 0.2;
+                a.Append(i).Append(',').Append(sq(i)).Append(',').Append(F3(s + n1)).Append(',').Append(F3(sq(i) + s * 0))
+                 .Append(',').Append(F3(s)).Append(',').Append(F3(50 + n1)).Append('\n');
+                b.Append(i).Append(',').Append(sq(i - 8)).Append(',').Append(F3(s + 10 + n2)).Append(',').Append(F3(sq(i - 15) + 10))
+                 .Append(',').Append(F3(i >= 150 && i < 153 ? 400 : s)).Append(',').Append(F3(50 + n1)).Append('\n');
+            }
+            var st = new AppState();
+            st.Before = Open(WriteCsv("sim_a.csv", a.ToString()), Orientation.Auto);
+            st.After = Open(WriteCsv("sim_b.csv", b.ToString()), Orientation.Auto);
+            st.Recompare(null);
+            var main = new MainVm(st);
+            Check("판정은 그대로 — 넷 다 오차 (OK 만 정상)", st.Judgement.OpenIoCount == 4, st.Judgement.OpenIoCount.ToString());
+
+            NoticeVm sim = null;
+            foreach (NoticeVm n in main.Cards[0].Notices) if (n.Key == NoticeVm.KeySimilar) sim = n;
+            Check("알림 줄 — 조금 어긋난 IO 3 개 (시간 1 · 높이 1 · 둘 다 1)", sim != null
+                  && sim.Text == "IO 3 개 — 시간 밀림 1 · 높이 차이 1 · 둘 다 1", sim != null ? sim.Text : "없음");
+
+            SimilarIosVm vm = main.Similar();
+            var text = new Dictionary<string, string>();
+            foreach (SimilarIoRowVm r in vm.Rows) text[r.Io] = r.Text;
+            string late, high, both;
+            text.TryGetValue("LATE", out late); text.TryGetValue("HIGH", out high); text.TryGetValue("BOTH", out both);
+            Check("사람 말로 — 이후가 8 초쯤 늦음", late != null && late.StartsWith("이후가 ") && late.EndsWith(" 늦음")
+                  && ParseLead(late.Substring(4)) >= 6.5 && ParseLead(late.Substring(4)) <= 9.5, late ?? "-");
+            Check("사람 말로 — 이후 값이 10 쯤 높음", high != null && high.StartsWith("이후 값이 ") && high.EndsWith(" 높음")
+                  && Math.Abs(ParseLead(high.Substring(6)) - 10) < 0.3, high ?? "-");
+            Check("둘 다면 둘 다 적음", both != null && both.Contains("늦음") && both.Contains("높음"), both ?? "-");
+            Check("진짜 튐은 창에 없음 · 처음엔 모두 고름", !text.ContainsKey("SPIKE") && vm.Rows.TrueForAll(r => r.Selected), "");
+
+            // HIGH 만 빼고 이번만 허용 → 판정 IO 4 → 2 (HIGH · SPIKE), 알림 줄 1 개로
+            foreach (SimilarIoRowVm r in vm.Rows) if (r.Io == "HIGH") r.Selected = false;
+            int n2c = vm.AllowSelected(AllowChoice.Once);
+            sim = null;
+            foreach (NoticeVm n in main.Cards[0].Notices) if (n.Key == NoticeVm.KeySimilar) sim = n;
+            Check("고른 둘을 이번만 허용 → 판정 IO 2 (HIGH · SPIKE) · 창 줄 1 · 안 고른 것은 그대로 안 고름",
+                  n2c > 0 && st.Judgement.OpenIoCount == 2 && main.Cards[0].VerdictCount == "2"
+                  && vm.Rows.Count == 1 && vm.Rows[0].Io == "HIGH" && sim != null && sim.Text.StartsWith("IO 1 개"),
+                  st.Judgement.OpenIoCount + " / " + vm.Rows.Count + " / " + (sim != null ? sim.Text : "-"));
+        }
+
+        private static string F3(double v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
+
+        /// <summary>"8.12초 늦음" → 8.12 (앞의 수).</summary>
+        private static double ParseLead(string s)
+        {
+            int i = 0;
+            while (i < s.Length && (char.IsDigit(s[i]) || s[i] == '.')) i++;
+            double v;
+            return double.TryParse(s.Substring(0, i), NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? v : double.NaN;
+        }
+
+        /// <summary>
         /// 비교가 지금 설정과 맞는지 (1.73) — "단계를 풀었는데 단계 진입이 같은 시각으로 나옴".
         /// view_a/b: 이전 B 는 100 초에, 이후 B 는 110 초에 시작 (A 가 10 초 김).
         /// </summary>
@@ -5114,6 +5182,15 @@ namespace LogScope.Tests
             for (int i = 0; i < 20; i++)
                 b.Append("09:15:").Append(i.ToString("00")).Append(',').Append(i * 3).Append(',').Append(i).Append('\n');
             LogDataset ds2 = Open(WriteCsv("two_time_no.csv", b.ToString()), Orientation.Auto);
+            // 1.74: 참거짓 · 숫자처럼 보이는 머리 글도 이름 그대로 ("HIGH" 가 "TRUE" 로, "007" 이 "7" 로 바뀌던 것)
+            var hn = new StringBuilder("Time,HIGH,ON,F,007,LOW_LIMIT\n");
+            for (int i = 0; i < 5; i++) hn.Append(i).Append(",1,2,3,4,5\n");
+            LogDataset dn = Open(WriteCsv("bool_names.csv", hn.ToString()), Orientation.Auto);
+            var nm = new List<string>();
+            for (int i = 0; i < dn.ChannelCount; i++) nm.Add(dn.Channels[i].Name);
+            Check("머리 글 HIGH · ON · F · 007 은 이름 그대로", string.Join(",", nm.ToArray()) == "HIGH,ON,F,007,LOW_LIMIT",
+                  string.Join(",", nm.ToArray()));
+
             Check("늘어나는 IO 는 시간으로 안 잡음", ds2.ChannelCount == 2 && ds2.FindChannel("COUNTER") >= 0
                   && ds2.TimeKind == TimeKind.ClockMs, ds2.ChannelCount.ToString());
         }
@@ -5153,19 +5230,23 @@ namespace LogScope.Tests
                   order != null ? order.Detail : "없음");
             Check("차례는 앞으로도 허용 못 함", order != null && !order.CanAllowAlways, "");
 
-            // 메인 칸: 공정 단계 오차는 맨 위 "공정 단계" 줄에 모임 (1.59)
+            // 메인 칸: 공정 단계 오차는 그룹 줄이 아니라 위의 알림 줄 "공정 단계 (IO 아님)" (1.74)
             var st = new AppState();
             st.Before = dsA; st.After = dsB;
             st.Recompare(null);
             var main = new MainVm(st);
-            GroupSummaryVm steps = main.Cards[0].Groups.Count > 0 ? main.Cards[0].Groups[0] : null;
-            Check("맨 위 공정 단계 줄", steps != null && steps.GroupName == "공정 단계" && steps.IsPseudo && !steps.CanGraph
-                  && steps.CountOverride == "오차 2" && steps.Grade == ScoreBands.GradeBad, steps != null ? steps.CountText : "없음");
+            NoticeVm steps = null;
+            foreach (NoticeVm n in main.Cards[0].Notices) if (n.Key == NoticeVm.KeySteps) steps = n;
+            bool noRow = true;
+            foreach (GroupSummaryVm g in main.Cards[0].Groups) if (g.GroupName == MainVm.PseudoSteps) noRow = false;
+            Check("공정 단계는 알림 줄 (IO 아님) · 그룹 줄에는 없음", steps != null && noRow && steps.Title.Contains("IO 아님")
+                  && steps.Text.Contains("길이 다름 1") && steps.Text.Contains("차례 바뀜") && steps.Grade == ScoreBands.GradeBad,
+                  steps != null ? steps.Text : "없음");
             var pop = new IoErrorsVm(main, "공정 단계", delegate { return main.ItemsOfPseudo(MainVm.PseudoSteps); });
             Check("누르면 오차 창에 둘 · 차례는 앞으로도 허용 단추 없음", pop.Rows.Count == 2
                   && pop.Summary == "오차 2" && pop.Rows[0].Item.Kind == JudgeKind.StepOrder
                   && !pop.Rows[0].CanAllowAlways && pop.Rows[0].IsOpen && pop.Rows[1].CanAllowAlways, pop.Rows.Count.ToString());
-            Check("공정 단계 줄은 History 에 안 남김", main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count - 1, "");
+            Check("알림 줄은 History 그룹에 안 섞임", main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count, "");
 
             // 단계가 하나 없어지면
             var c = new StringBuilder("Time,STEP,PV\n");

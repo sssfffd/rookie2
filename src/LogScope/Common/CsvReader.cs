@@ -191,12 +191,14 @@ namespace LogScope.Common
             if (s.Length == 0) return Cell.Empty;
 
             bool b;
-            if (ValueParse.TryBool(s, out b)) return Cell.FromBool(b);
+            if (ValueParse.TryBool(s, out b)) { Cell cb = Cell.FromBool(b); cb.Source = s; return cb; }
 
             double d;
             if (double.TryParse(s, System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out d))
-                return Cell.FromNumber(d);
+            {
+                Cell cn = Cell.FromNumber(d); cn.Source = s; return cn;
+            }
 
             return Cell.FromText(s);
         }

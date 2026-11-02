@@ -191,8 +191,8 @@ namespace LogScope.Analysis1.LogFile
             {
                 dropCol = c0;
                 timeCol = c0 + 1;
-                ds.AddNote("1 열(" + header[c0].Display() + ")은 PC 시간으로 보고 빼고, 2 열("
-                         + header[c0 + 1].Display() + ")을 시간축으로 썼습니다.");
+                ds.AddNote("1 열(" + header[c0].Name() + ")은 PC 시간으로 보고 빼고, 2 열("
+                         + header[c0 + 1].Name() + ")을 시간축으로 썼습니다.");
             }
 
             int dataStart = r0 + 1;
@@ -215,7 +215,7 @@ namespace LogScope.Analysis1.LogFile
             for (int j = c0; j < header.Length; j++)
             {
                 if (j == timeCol || j == dropCol) continue;
-                string name = header[j].Display();
+                string name = header[j].Name();
                 if (string.IsNullOrEmpty(name))
                 {
                     // 값은 있는데 이름이 없는 열. 버리지 않고 열 문자로 표시합니다.
@@ -337,7 +337,7 @@ namespace LogScope.Analysis1.LogFile
                 if (increasing && parsed > 1) score += 6;
                 score += parsed;
 
-                string h = header.Length > j ? header[j].Display() : string.Empty;
+                string h = header.Length > j ? header[j].Name() : string.Empty;
                 if (!string.IsNullOrEmpty(h))
                 {
                     string hl = h.ToLowerInvariant();
@@ -358,7 +358,7 @@ namespace LogScope.Analysis1.LogFile
         /// </summary>
         private static bool IsTimeColumn(List<Cell[]> probe, int r0, int j, Cell[] header)
         {
-            string h = header.Length > j ? header[j].Display() : string.Empty;
+            string h = header.Length > j ? header[j].Name() : string.Empty;
             string hl = (h ?? string.Empty).ToLowerInvariant();
             bool named = hl.Contains("time") || hl.Contains("date") || hl.Contains("시간")
                       || hl.Contains("시각") || hl.Contains("일시") || hl.Contains("날짜");
@@ -392,7 +392,7 @@ namespace LogScope.Analysis1.LogFile
         {
             if (unitRow != null && column < unitRow.Length)
             {
-                string u = unitRow[column].Display();
+                string u = unitRow[column].Name();
                 if (!string.IsNullOrEmpty(u) && u.Length <= 16) return u;
             }
             return ValueParse.ExtractUnit(name);
@@ -451,7 +451,7 @@ namespace LogScope.Analysis1.LogFile
             Action<Cell[], int> take = delegate (Cell[] cells, int len)
             {
                 rowIndex++;
-                string name = c0 < len ? cells[c0].Display() : string.Empty;
+                string name = c0 < len ? cells[c0].Name() : string.Empty;
                 if (string.IsNullOrEmpty(name)) { name = "(이름 없음 " + (rowIndex + 1) + "행)"; noName++; }
                 name = Unique(used, name);
 

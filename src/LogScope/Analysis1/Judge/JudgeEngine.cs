@@ -108,6 +108,9 @@ namespace LogScope.Analysis1.Judge
     }
 
     /// <summary>오차 하나 — 오차 목록의 한 줄.</summary>
+    /// <summary>보정 제안의 종류 (1.74).</summary>
+    public enum HintKind { None, Time, Offset, Both }
+
     public sealed class JudgeItem
     {
         public JudgeKind Kind;
@@ -183,6 +186,11 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>짧은 제안 ("시간 +1.2초" · "값 −0.3"). 메인 IO 줄에 붙입니다.</summary>
         public string HintShort = string.Empty;
+
+        /// <summary>제안의 종류와 값 (1.74). 시간 = 이후 로그를 이만큼 늦추면 (음수 = 앞당기면), 값 = 이후가 이만큼 높음.</summary>
+        public HintKind HintKind;
+        public double HintShift = double.NaN;
+        public double HintOffset = double.NaN;
     }
 
     /// <summary>IO 하나의 정도 (가이드 ⑤).</summary>
@@ -557,10 +565,12 @@ namespace LogScope.Analysis1.Judge
                 merged = Merge(kept, seg.Slack);
 
                 string hint = string.Empty, hintShort = string.Empty;
+                HintResult hres = null;
                 if (res.HintTried < MaxHintTries)
                 {
                     res.HintTried++;
-                    Suggest(before, bi, after, ai, seg, cat, abs, pct, res, out hint, out hintShort);
+                    Suggest(before, bi, after, ai, seg, cat, abs, pct, res, out hres);
+                    HintText(hres, res, out hint, out hintShort);
                 }
 
                 foreach (ErrRun r in merged)
@@ -580,6 +590,7 @@ namespace LogScope.Analysis1.Judge
                     it.SegLength = seg.Length;
                     it.Hint = hint;
                     it.HintShort = hintShort;
+                    if (hres != null) { it.HintKind = hres.Kind; it.HintShift = hres.Shift; it.HintOffset = hres.Offset; }
                     it.What = bc.Name + (seg.Step.Length > 0 ? "  ·  " + seg.Step : string.Empty)
                             + "  ·  " + before.FormatTime(r.Start)
                             + "  ·  " + DurationText(it.Duration, res.Clock, res.TimeUnit);
@@ -601,7 +612,7 @@ namespace LogScope.Analysis1.Judge
         // ---------------- 보정 제안 (1.66) ----------------
 
         /// <summary>보정 제안을 찾아볼 IO · 단계 수 한도 — 넘으면 나머지는 제안 없이 (판정은 그대로).</summary>
-        private const int MaxHintTries = 150;
+        private const int MaxHintTries = 1000;   // 1.74: 150 → 1000 (단계 × IO 가 많으면 모자랐음 · 일의 양 한도가 따로 지킴)
 
         /// <summary>제안으로 남기려면 오차가 이만큼 이하로 줄어야 합니다 (처음 오차 대비).</summary>
         private const double HintKeepRatio = 0.1;
@@ -616,69 +627,160 @@ namespace LogScope.Analysis1.Judge
         /// ② 값 (숫자 IO 만): 같은 시각끼리 (이후 − 이전) 의 가운데 값만큼 이후를 내려 보고, 처음의 10 % 이하로 줄면 제안.
         /// 오차 시간은 두 방향으로 훑은 길이의 합 — 판정과 같은 규칙 (시간 여유 · 값 허용) 그대로.
         /// </summary>
-        private static void Suggest(LogDataset before, int bi, LogDataset after, int ai, Seg seg, bool cat,
-                                    double abs, double pct, JudgeResult res, out string hint, out string hintShort)
+        /// <summary>보정 제안 하나 (1.74 — 글만이 아니라 값도, 메인 칸 "조금 어긋난 IO" 창이 묶어 보여 줌).</summary>
+        private sealed class HintResult
         {
-            hint = string.Empty; hintShort = string.Empty;
+            public HintKind Kind;
+            public double Shift = double.NaN;    // 이후 로그를 이만큼 늦추면 (음수 = 앞당기면)
+            public double Offset = double.NaN;   // 이후 값이 이만큼 높음 (음수 = 낮음)
+            public bool Zero;                    // 오차가 0 이 됨 (아니면 "거의")
+        }
+
+        private static void Suggest(LogDataset before, int bi, LogDataset after, int ai, Seg seg, bool cat,
+                                    double abs, double pct, JudgeResult res, out HintResult hr)
+        {
+            hr = null;
             double interval = Math.Max(MeanInterval(before, seg.B0, seg.B1), MeanInterval(after, seg.A0, seg.A1));
             double w = Math.Min(seg.Length * 0.25, seg.Slack * 10);
             double step = Math.Max(w / 16, interval);
             int kmax = step > 0 && w >= step ? (int)Math.Floor(w / step + 1e-9) : 0;
             long n = (long)(seg.B1 - seg.B0 + 1) + (seg.A1 - seg.A0 + 1);
-            long cost = n * 2 * (2L * kmax + 3);   // 처음 · 시간 후보 · 값 — 후보마다 두 방향
+            // 처음 · 성긴 시간 후보 (4 칸마다) · 그 둘레 · 값 · 시간+값 — 후보마다 두 방향 (1.74: 33 → 약 16 번)
+            long cost = n * 2 * (kmax / 2 + 14);
             if (res.HintWork + cost > MaxHintWork) return;
             res.HintWork += cost;
 
             double baseErr = ErrAmount(before, bi, after, ai, seg, seg.Shift, 0, cat, abs, pct);
             if (baseErr <= 0) return;
 
-            // ① 시간
+            // 높이 차이 (같은 시각끼리 이후 − 이전 의 가운데 값). 그 IO 의 잔떨림보다 작으면 뜻이 없어 0.
+            // 1.74: 시간 찾기는 이 높이를 빼고 합니다 — 높이도 다르면 시간만 밀어서는 하나도 안 줄어 시간 밀림을 못 찾았음.
+            double noise = cat ? 0 : NoiseLevel(before, bi, seg);
+            double off = cat ? double.NaN : MedianOffset(before, bi, after, ai, seg, seg.Shift);
+            double off0 = !double.IsNaN(off) && Math.Abs(off) > 2 * noise ? off : 0;
+            double base0 = off0 == 0 ? baseErr : ErrAmount(before, bi, after, ai, seg, seg.Shift, off0, cat, abs, pct);
+
+            // ① 시간 — 성기게 (4 칸마다) 본 뒤 가장 좋은 곳 둘레를 촘촘히. 본 값은 기억 (다시 안 훑음).
+            double bestD = 0, best = base0;
             if (kmax > 0)
             {
-                var err = new double[2 * kmax + 1];   // err[k + kmax] = d = k × step 일 때
-                err[kmax] = baseErr;
-                double best = baseErr;
+                var err = new double[2 * kmax + 1];
+                for (int i = 0; i < err.Length; i++) err[i] = double.NaN;
+                err[kmax] = base0;
+                Func<int, double> at = delegate (int k)
+                {
+                    if (k < -kmax || k > kmax) return double.MaxValue;
+                    if (double.IsNaN(err[k + kmax]))
+                        err[k + kmax] = ErrAmount(before, bi, after, ai, seg, seg.Shift + k * step, off0, cat, abs, pct);
+                    return err[k + kmax];
+                };
                 int bestK = 0;
-                for (int m = 1; m <= kmax; m++)
+                Action<int> consider = delegate (int k)
                 {
-                    for (int sg = -1; sg <= 1; sg += 2)
-                    {
-                        int k = sg * m;
-                        double e = ErrAmount(before, bi, after, ai, seg, seg.Shift + k * step, 0, cat, abs, pct);
-                        err[k + kmax] = e;
-                        if (e < best - 1e-12) { best = e; bestK = k; }   // 같으면 덜 민 쪽
-                    }
-                }
-                // 가장 좋은 곳이 이어진 구간이면 그 <b>가운데</b> — 시간 여유 때문에 덜 밀어도 맞아 보이지만,
-                // 실제로 밀린 만큼은 구간 가운데입니다 (8 초 밀림 · 여유 5 초면 3 ~ 13 초가 다 정상 → 8 초).
-                int kl = bestK, kr = bestK;
-                while (kl - 1 >= -kmax && kl - 1 != 0 && err[kl - 1 + kmax] <= best + 1e-12) kl--;
-                while (kr + 1 <= kmax && kr + 1 != 0 && err[kr + 1 + kmax] <= best + 1e-12) kr++;
-                double bestD = (kl + kr) / 2.0 * step;
-                if (bestK != 0 && best <= baseErr * HintKeepRatio)
+                    double e = at(k);
+                    if (e < best - 1e-12 || (Math.Abs(e - best) <= 1e-12 && Math.Abs(k) < Math.Abs(bestK))) { best = e; bestK = k; }
+                };
+                int coarse = Math.Max(1, Math.Min(4, kmax));
+                for (int m = coarse; m <= kmax; m += coarse) { consider(m); consider(-m); }
+                for (int k = 1; k < coarse && k <= kmax; k++) { consider(k); consider(-k); }
+                int c0 = bestK;
+                for (int k = c0 - coarse + 1; k <= c0 + coarse - 1; k++) if (k != 0) consider(k);
+                if (bestK != 0)
                 {
-                    // 이후 시각 + Shift = 이전 시각 → Shift 를 d 늘리는 것 = 이후 로그를 d 만큼 늦추는 것
-                    string amount = DurationText(Math.Abs(bestD), res.Clock, res.TimeUnit);
-                    hint = "이후 로그를 " + amount + (bestD > 0 ? " 늦추면(뒤로)" : " 앞당기면")
-                         + " 이 단계 오차가 " + (best <= 0 ? "없어집니다" : "거의 없어집니다")
-                         + " — 파형은 같고 시간만 밀린 것 같습니다";
-                    hintShort = "시간 " + (bestD > 0 ? "+" : "−") + amount;
-                    return;
+                    // 가장 좋은 곳이 이어진 구간이면 그 <b>가운데</b> — 시간 여유 때문에 덜 밀어도 맞아 보이지만,
+                    // 실제로 밀린 만큼은 구간 가운데입니다 (8 초 밀림 · 여유 5 초면 3 ~ 13 초가 다 정상 → 8 초).
+                    int kl = bestK, kr = bestK;
+                    while (kl - 1 >= -kmax && kl - 1 != 0 && at(kl - 1) <= best + 1e-12) kl--;
+                    while (kr + 1 <= kmax && kr + 1 != 0 && at(kr + 1) <= best + 1e-12) kr++;
+                    bestD = (kl + kr) / 2.0 * step;
                 }
+                if (Math.Abs(bestD) < seg.Slack * 0.5) bestK = 0;   // 시간 여유 안쪽 — 잔떨림이 우연히 줄인 것
+                if (bestK == 0) { bestD = 0; best = base0; }
             }
 
-            // ② 값 (숫자 IO)
-            if (cat) return;
-            double off = MedianOffset(before, bi, after, ai, seg);
-            if (double.IsNaN(off) || off == 0) return;
-            double e2 = ErrAmount(before, bi, after, ai, seg, seg.Shift, off, cat, abs, pct);
-            if (e2 <= baseErr * HintKeepRatio)
+            // 1.74: 셋 (시간 · 높이 · 둘 다) 을 다 보고 <b>남는 오차가 가장 적은 것</b> — 예전에는 시간을 먼저 봐서,
+            // 높이만 다른 사인파를 "시간이 밀림" 으로 잘못 알려 줬습니다 (가파른 곳은 시간 여유 띠에 들어가므로).
+            double limit = baseErr * HintKeepRatio;
+            // 시간만 — 높이를 뺀 채 찾았으면 높이 없이 다시 재 봄
+            double eTime = bestD == 0 ? double.MaxValue
+                         : off0 == 0 ? best : ErrAmount(before, bi, after, ai, seg, seg.Shift + bestD, 0, cat, abs, pct);
+            // 높이만
+            double eOff = off0 != 0 ? base0 : double.MaxValue;
+            // 시간 + 높이 — 민 자리에서 높이를 다시 재서
+            double eBoth = double.MaxValue, off3 = double.NaN;
+            if (!cat && bestD != 0)
             {
-                string amount = NumberText.Plain(Math.Abs(off));
-                hint = "이후 값이 이전보다 " + amount + (off > 0 ? " 높습니다 — " + amount + " 내리면" : " 낮습니다 — " + amount + " 올리면")
-                     + " 이 단계 오차가 " + (e2 <= 0 ? "없어집니다" : "거의 없어집니다")
-                     + " (모양은 같고 높이만 다름 · 영점/오프셋 확인)";
-                hintShort = "값 " + (off > 0 ? "−" : "+") + amount;
+                off3 = MedianOffset(before, bi, after, ai, seg, seg.Shift + bestD);
+                if (!double.IsNaN(off3) && off3 != 0 && Math.Abs(off3) > 2 * noise)
+                    eBoth = ErrAmount(before, bi, after, ai, seg, seg.Shift + bestD, off3, cat, abs, pct);
+            }
+
+            // 하나로 되면 하나 (같으면 높이 — 가장 단순한 설명), 둘 다는 하나보다 분명히 (절반 미만) 나을 때만
+            HintKind kind = HintKind.None;
+            double single = Math.Min(eTime, eOff), used = double.MaxValue;
+            if (single <= limit) { kind = eOff <= eTime ? HintKind.Offset : HintKind.Time; used = single; }
+            if (eBoth <= limit && (kind == HintKind.None || eBoth < single * 0.5)) { kind = HintKind.Both; used = eBoth; }
+
+            switch (kind)
+            {
+                case HintKind.Time: hr = new HintResult { Kind = kind, Shift = bestD, Zero = used <= 0 }; break;
+                case HintKind.Offset: hr = new HintResult { Kind = kind, Offset = off0, Zero = used <= 0 }; break;
+                case HintKind.Both: hr = new HintResult { Kind = kind, Shift = bestD, Offset = off3, Zero = used <= 0 }; break;
+            }
+        }
+
+        /// <summary>이 단계 이전 로그의 잔떨림 크기 (붙은 표본 차이의 가운데 값 × 1.05 ≈ σ). 튐에 흔들리지 않음.</summary>
+        private static double NoiseLevel(LogDataset before, int bi, Seg seg)
+        {
+            float[] v = before.Channels[bi].Values;
+            int n = seg.B1 - seg.B0;
+            if (n <= 1) return 0;
+            int stride = Math.Max(1, n / 4000);
+            var d = new List<double>();
+            for (int k = seg.B0; k < seg.B1; k += stride)
+            {
+                float x = v[k], y = v[k + 1];
+                if (float.IsNaN(x) || float.IsNaN(y)) continue;
+                d.Add(Math.Abs(y - x));
+            }
+            if (d.Count == 0) return 0;
+            d.Sort();
+            return d[d.Count / 2] * 1.05;   // 1.4826 / √2
+        }
+
+        /// <summary>제안을 사람이 읽는 글로 (긴 글 · 짧은 글).</summary>
+        private static void HintText(HintResult h, JudgeResult res, out string hint, out string hintShort)
+        {
+            hint = string.Empty; hintShort = string.Empty;
+            if (h == null || h.Kind == HintKind.None) return;
+            string gone = " 이 단계 오차가 " + (h.Zero ? "없어집니다" : "거의 없어집니다");
+            string t = string.Empty, ts = string.Empty, v = string.Empty, vs = string.Empty;
+            if (h.Kind == HintKind.Time || h.Kind == HintKind.Both)
+            {
+                string amount = DurationText(Math.Abs(h.Shift), res.Clock, res.TimeUnit);
+                t = "이후 로그를 " + amount + (h.Shift > 0 ? " 늦추면(뒤로)" : " 앞당기면");
+                ts = "시간 " + (h.Shift > 0 ? "+" : "−") + amount;
+            }
+            if (h.Kind == HintKind.Offset || h.Kind == HintKind.Both)
+            {
+                string amount = NumberText.Plain(Math.Abs(h.Offset));
+                v = "이후 값이 이전보다 " + amount + (h.Offset > 0 ? " 높습니다 — " + amount + " 내리면" : " 낮습니다 — " + amount + " 올리면");
+                vs = "값 " + (h.Offset > 0 ? "−" : "+") + amount;
+            }
+            switch (h.Kind)
+            {
+                case HintKind.Time:
+                    hint = t + gone + " — 파형은 같고 시간만 밀린 것 같습니다";
+                    hintShort = ts;
+                    break;
+                case HintKind.Offset:
+                    hint = v + gone + " (모양은 같고 높이만 다름 · 영점/오프셋 확인)";
+                    hintShort = vs;
+                    break;
+                default:
+                    hint = t + ", " + v + gone + " — 파형은 같고 시간과 높이가 조금씩 다름";
+                    hintShort = ts + " · " + vs;
+                    break;
             }
         }
 
@@ -707,7 +809,7 @@ namespace LogScope.Analysis1.Judge
         }
 
         /// <summary>같은 시각끼리 (이후 − 이전) 의 가운데 값. 표본은 최대 4000 개만 (고르게 건너뜀).</summary>
-        private static double MedianOffset(LogDataset before, int bi, LogDataset after, int ai, Seg seg)
+        private static double MedianOffset(LogDataset before, int bi, LogDataset after, int ai, Seg seg, double shift)
         {
             int n = seg.B1 - seg.B0 + 1;
             if (n <= 0) return double.NaN;
@@ -718,7 +820,7 @@ namespace LogScope.Analysis1.Judge
             {
                 float b = bv[k];
                 if (float.IsNaN(b)) continue;
-                double a = after.SampleAt(ai, before.Times[k] - seg.Shift);
+                double a = after.SampleAt(ai, before.Times[k] - shift);
                 if (double.IsNaN(a)) continue;
                 d.Add(a - b);
             }

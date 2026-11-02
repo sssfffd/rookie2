@@ -140,6 +140,31 @@ namespace LogScope.Main
         }
     }
 
+    /// <summary>분석 칸의 알림 줄 하나 (1.74). 누르면 Key 에 맞는 창.</summary>
+    public sealed class NoticeVm
+    {
+        public const string KeySteps = "steps";
+        public const string KeySimilar = "similar";
+
+        public NoticeVm(string key, string title, string text, string grade, string action)
+        {
+            Key = key ?? string.Empty;
+            Title = title ?? string.Empty;
+            Text = text ?? string.Empty;
+            Grade = grade ?? ScoreBands.GradeNone;
+            Action = action ?? string.Empty;
+        }
+
+        public string Key { get; private set; }
+        /// <summary>굵은 머리 ("공정 단계 (IO 아님)").</summary>
+        public string Title { get; private set; }
+        /// <summary>내용 ("길이 다름 2 · 차례 바뀜 1").</summary>
+        public string Text { get; private set; }
+        public string Grade { get; private set; }
+        /// <summary>오른쪽 글 ("보기 ›", "확인하고 허용 ›").</summary>
+        public string Action { get; private set; }
+    }
+
     public sealed class GroupSummaryVm
     {
         public string GroupName { get; private set; }
@@ -657,6 +682,21 @@ namespace LogScope.Main
         }
 
         public bool HasStats { get { return _stats.Count > 0; } }
+
+        // ---- 알림 줄 (1.74) — 그룹 위, IO 가 아닌 것 ---------------------------
+        //
+        // "공정 단계" (단계 길이 · 없어짐 · 차례) 는 IO 가 아닌데 그룹 줄 사이에 끼어 IO 처럼 보였습니다.
+        // "파형은 같고 조금 어긋난 IO" 도 한눈에 보이고 한 번에 정할 수 있어야 합니다. 둘 다 여기.
+
+        private List<NoticeVm> _notices = new List<NoticeVm>();
+        public List<NoticeVm> Notices { get { return _notices; } }
+        public bool HasNotices { get { return _notices.Count > 0; } }
+
+        public void SetNotices(List<NoticeVm> notices)
+        {
+            _notices = notices ?? new List<NoticeVm>();
+            Raise("Notices"); Raise("HasNotices");
+        }
 
         // ---- 칸 아래의 요약 (그룹별) --------------------------------------
 

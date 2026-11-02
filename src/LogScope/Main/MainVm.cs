@@ -103,6 +103,7 @@ namespace LogScope.Main
             }
 
             Cards[0].SetGroups(BuildGroups(r));
+            Cards[0].SetNotices(BuildNotices(r));
 
             // 분석 2 · 3 은 그룹 줄을 쓰지 않습니다. 점수는 비워 두고, 분석 3 은
             // 바로 아래 ShowA3Result 가 올라온 결과로 다시 적습니다.
@@ -396,11 +397,7 @@ namespace LogScope.Main
                     if (!byIo.TryGetValue(k, out l)) { l = new List<JudgeItem>(); byIo[k] = l; }
                     l.Add(it);
                 }
-                AddPseudo(list, judge, PseudoSteps, delegate (JudgeItem it)
-                {
-                    return it.Kind == JudgeKind.StepLength || it.Kind == JudgeKind.StepMissing
-                        || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder;
-                });
+                // 1.74: "공정 단계" 는 IO 가 아니라 그룹 줄에서 빼고 위의 알림 줄로 (BuildNotices).
                 AddPseudo(list, judge, PseudoIos, delegate (JudgeItem it)
                 {
                     return it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
@@ -573,6 +570,56 @@ namespace LogScope.Main
         }
 
         /// <summary>공정 단계 · 한쪽에만 있는 IO — 그룹이 아닌 줄. 오차가 있을 때만.</summary>
+        /// <summary>
+        /// 분석 1 칸의 알림 줄 (1.74) — ① 공정 단계 (IO 아님): 단계 길이 · 없어짐 · 생김 · 차례, ② 파형은 같고 조금 어긋난 IO:
+        /// 시간만 조금 밀거나 높이만 조금 옮기면 정상인 IO (판정은 그대로, 눌러서 확인하고 한꺼번에 허용).
+        /// </summary>
+        private List<NoticeVm> BuildNotices(CompareResult r)
+        {
+            var list = new List<NoticeVm>();
+            JudgeResult judge = _state.Judgement;
+            if (r == null || judge == null) return list;
+
+            int len = 0, miss = 0, extra = 0, order = 0, allowed = 0;
+            JudgeGrade worst = JudgeGrade.Pass;
+            foreach (JudgeItem it in judge.Items)
+            {
+                if (!IsStepKind(it.Kind)) continue;
+                if (it.IsAllowed) { allowed++; continue; }
+                if (it.Kind == JudgeKind.StepLength) len++;
+                else if (it.Kind == JudgeKind.StepMissing) miss++;
+                else if (it.Kind == JudgeKind.StepExtra) extra++;
+                else order++;
+                if (it.Grade > worst) worst = it.Grade;
+            }
+            if (len + miss + extra + order + allowed > 0)
+            {
+                var parts = new List<string>();
+                if (len > 0) parts.Add("길이 다름 " + len);
+                if (miss > 0) parts.Add("이후에 없음 " + miss);
+                if (extra > 0) parts.Add("이후에만 있음 " + extra);
+                if (order > 0) parts.Add("차례 바뀜");
+                if (allowed > 0) parts.Add("허용됨 " + allowed);
+                string grade = len + miss + extra + order == 0 ? ScoreBands.GradeGood
+                             : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                list.Add(new NoticeVm(NoticeVm.KeySteps, MainTexts.NoticeSteps, string.Join(" · ", parts.ToArray()),
+                                      grade, MainTexts.NoticeOpen));
+            }
+
+            List<SimilarIoRowVm> similar = SimilarIosVm.Collect(judge);
+            if (similar.Count > 0)
+            {
+                list.Add(new NoticeVm(NoticeVm.KeySimilar, MainTexts.NoticeSimilar, SimilarIosVm.SummaryOf(similar),
+                                      ScoreBands.GradeWarn, MainTexts.NoticeSimilarOpen));
+            }
+            return list;
+        }
+
+        private static bool IsStepKind(JudgeKind k)
+        {
+            return k == JudgeKind.StepLength || k == JudgeKind.StepMissing || k == JudgeKind.StepExtra || k == JudgeKind.StepOrder;
+        }
+
         private void AddPseudo(List<GroupSummaryVm> list, JudgeResult judge, string name, Predicate<JudgeItem> pick)
         {
             var items = new List<JudgeItem>();
@@ -669,6 +716,25 @@ namespace LogScope.Main
             Refresh();
             EventHandler h = AllowChanged;
             if (h != null) h(this, EventArgs.Empty);
+        }
+
+        /// <summary>여러 오차를 한꺼번에 허용 (1.74 — "조금 어긋난 IO" 창). 메인 칸 · 알림은 한 번만 다시. 허용한 수.</summary>
+        public int AllowMany(List<JudgeItem> items, AllowChoice choice)
+        {
+            if (IsViewingHistory || items == null) return 0;
+            int n = 0;
+            foreach (JudgeItem it in items) if (JudgeAllow.Apply(_state, it, choice)) n++;
+            if (n == 0) return 0;
+            Refresh();
+            EventHandler h = AllowChanged;
+            if (h != null) h(this, EventArgs.Empty);
+            return n;
+        }
+
+        /// <summary>"조금 어긋난 IO" 창의 값 (1.74).</summary>
+        public SimilarIosVm Similar()
+        {
+            return new SimilarIosVm(this, delegate { return _state.Judgement; });
         }
 
         // ---------------- 지금 열어 둔 로그 ----------------

@@ -98,6 +98,36 @@ namespace LogScope.Main
         public const string IoClickTip = "누르면 이 IO 의 구간별 오차가 작은 창으로 뜹니다. 거기서 허용합니다.";
         /// <summary>오차 창 (1.62) — 닫기 단추</summary>
         public const string IoErrorsClose = "닫기";
+
+        // ---- 분석 1 칸 알림 줄 · 조금 어긋난 IO 창 (1.74) ----
+        /// <summary>알림 줄 머리</summary>
+        public const string NoticeSteps = "공정 단계 (IO 아님)";
+        /// <summary>알림 줄 머리</summary>
+        public const string NoticeSimilar = "파형은 같고 조금 어긋난 IO";
+        /// <summary>알림 줄 오른쪽</summary>
+        public const string NoticeOpen = "보기 ›";
+        /// <summary>알림 줄 오른쪽</summary>
+        public const string NoticeSimilarOpen = "확인하고 허용 ›";
+        /// <summary>알림 줄 마우스를 올리면 뜨는 설명</summary>
+        public const string NoticeTip = "누르면 자세히 봅니다.";
+        /// <summary>창 제목</summary>
+        public const string SimilarTitle = "파형은 같고 조금 어긋난 IO";
+        /// <summary>창 머리 아래 설명</summary>
+        public const string SimilarHelp = "시간만 조금 밀리거나 높이만 조금 다른 IO 입니다. 판정은 오차로 셌습니다 — 정상 변동이면 골라서 허용하세요.\n허용하는 것은 이 제안이 붙은 오차 구간만입니다 (같은 IO 의 튐 같은 다른 오차는 그대로).";
+        /// <summary>단추 이름</summary>
+        public const string SimilarAllowOnce = "고른 것 이번만 허용";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string SimilarAllowOnceTip = "이 로그 짝에서만 허용합니다. 로그를 바꾸면 다시 오차로 셉니다.";
+        /// <summary>단추 이름</summary>
+        public const string SimilarAllowAlways = "고른 것 앞으로도 허용";
+        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
+        public const string SimilarAllowAlwaysTip = "같은 IO · 같은 단계에서 이만한 어긋남은 다음 로그에서도 허용합니다 (설정 창 [허용한 오차] 에서 지울 수 있음).";
+        /// <summary>단추 이름</summary>
+        public const string SimilarSelectAll = "모두 고르기";
+        /// <summary>단추 이름</summary>
+        public const string SimilarSelectNone = "모두 풀기";
+        /// <summary>글 — 줄이 없을 때</summary>
+        public const string SimilarNone = "조금 어긋난 IO 가 없습니다.";
         /// <summary>오차 창 — 오차가 없을 때</summary>
         public const string IoErrorsNone = "오차가 없습니다.";
         /// <summary>단추 이름</summary>
