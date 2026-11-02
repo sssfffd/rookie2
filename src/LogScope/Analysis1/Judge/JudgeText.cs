@@ -26,7 +26,7 @@ namespace LogScope.Analysis1.Judge
             var sb = new StringBuilder(8 * 1024);
             sb.Append("## 분석 1 정상 판정 (이전 로그 = 정상 기준)\n\n");
             sb.Append("- 판정: **").Append(r.Word).Append("** — 오차가 있는 IO ").Append(r.OpenIoCount.ToString("N0"))
-              .Append(" 개 (허용 안 된 오차 구간 ").Append(r.OpenCount.ToString("N0")).Append(" 개)
+              .Append(" 개 (허용 안 된 오차 구간 ").Append(r.OpenCount.ToString("N0")).Append(" 개)")
               .Append(", 사용자가 허용한 오차 ").Append(r.AllowedCount.ToString("N0")).Append(" 개\n");
             sb.Append("- 비교 방법: ").Append(r.ByStep ? "단계마다 시작을 맞춤 (단계 " + r.StepCount + " 개)" : "단계 없이 전체를 한 구간으로")
               .Append(r.ByStep ? " — 단계 맞춤과 전체 맞춤 둘 다에서 벗어난 곳만 오차" : string.Empty)
