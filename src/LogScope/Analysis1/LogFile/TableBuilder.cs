@@ -183,6 +183,18 @@ namespace LogScope.Analysis1.LogFile
             Cell[] header = probe[r0];
             int timeCol = PickTimeColumn(probe, r0, c0, header);
 
+            // 1 열 PC 시간 · 2 열 동작 시간 (1.66): 2 열을 시간축으로, 1 열은 버림.
+            int dropCol = -1;
+            if (opt.PreferSecondTime && c0 + 1 < header.Length
+                && (timeCol == c0 || timeCol == c0 + 1)
+                && IsTimeColumn(probe, r0, c0, header) && IsTimeColumn(probe, r0, c0 + 1, header))
+            {
+                dropCol = c0;
+                timeCol = c0 + 1;
+                ds.AddNote("1 열(" + header[c0].Display() + ")은 PC 시간으로 보고 빼고, 2 열("
+                         + header[c0 + 1].Display() + ")을 시간축으로 썼습니다.");
+            }
+
             int dataStart = r0 + 1;
             Cell[] unitRow = null;
             if (IsUnitRow(probe, dataStart, c0, timeCol))
@@ -202,7 +214,7 @@ namespace LogScope.Analysis1.LogFile
 
             for (int j = c0; j < header.Length; j++)
             {
-                if (j == timeCol) continue;
+                if (j == timeCol || j == dropCol) continue;
                 string name = header[j].Display();
                 if (string.IsNullOrEmpty(name))
                 {
@@ -338,6 +350,38 @@ namespace LogScope.Analysis1.LogFile
                 if (score > bestScore) { bestScore = score; best = j; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// 시간 열인지 (1.66) — 앞쪽 64 줄이 다 시간 값으로 읽히고 줄마다 줄지 않으며 한 번은 늘고,
+        /// <b>머리 글에 시간 낱말</b>이 있거나 값이 시각 · 날짜 모양일 때.
+        /// </summary>
+        private static bool IsTimeColumn(List<Cell[]> probe, int r0, int j, Cell[] header)
+        {
+            string h = header.Length > j ? header[j].Display() : string.Empty;
+            string hl = (h ?? string.Empty).ToLowerInvariant();
+            bool named = hl.Contains("time") || hl.Contains("date") || hl.Contains("시간")
+                      || hl.Contains("시각") || hl.Contains("일시") || hl.Contains("날짜");
+
+            double prev = double.NaN;
+            int parsed = 0, clock = 0;
+            bool rose = false;
+            for (int i = r0 + 1; i < probe.Count && parsed < 64; i++)
+            {
+                Cell[] r = probe[i];
+                if (j >= r.Length || r[j].IsEmpty) continue;
+                TimeKind k; double v;
+                if (!ValueParse.TryTimeValue(r[j], out k, out v)) return false;
+                parsed++;
+                if (k == TimeKind.ClockMs || k == TimeKind.DateMs) clock++;
+                if (!double.IsNaN(prev))
+                {
+                    if (v < prev) return false;
+                    if (v > prev) rose = true;
+                }
+                prev = v;
+            }
+            return parsed > 1 && rose && (named || clock == parsed);
         }
 
         /// <summary>

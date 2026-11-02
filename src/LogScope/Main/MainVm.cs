@@ -544,6 +544,16 @@ namespace LogScope.Main
                 ? "허용됨 " + items.Count.ToString("N0")
                 : "오차 " + open.ToString("N0")
                   + (open < items.Count ? " · 허용됨 " + (items.Count - open).ToString("N0") : string.Empty);
+            // 1.66: 시간 · 값을 조금만 옮기면 정상인 단계가 있으면 알려 줌 (자세한 글은 누르면 뜨는 창에)
+            if (open > 0)
+            {
+                foreach (JudgeItem it in items)
+                {
+                    if (it.IsAllowed || string.IsNullOrEmpty(it.HintShort)) continue;
+                    io.Summary += " · " + it.HintShort + "면 정상";
+                    break;
+                }
+            }
             io.Grade = open == 0 ? ScoreBands.GradeGood
                      : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
             io.HasErrors = true;

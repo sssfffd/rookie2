@@ -141,6 +141,13 @@ namespace LogScope.Analysis1.LogFile
         /// </summary>
         public string StepIo = string.Empty;
 
+        /// <summary>
+        /// 1 열 = PC 시간, 2 열 = 동작 시간인 로그 (1.66). 두 열이 다 시간이면 <b>2 열을 시간축</b>으로 쓰고
+        /// 1 열은 IO 로도 넣지 않습니다. 2 열은 머리 글에 시간 낱말(시간 · 시각 · time · date …)이 있거나
+        /// 값이 시각 모양이고, 줄마다 늘어날 때만 — 그냥 늘어나는 IO 를 시간으로 잡지 않게.
+        /// </summary>
+        public bool PreferSecondTime = true;
+
         public OpenOptions Clone()
         {
             return (OpenOptions)MemberwiseClone();

@@ -1187,6 +1187,10 @@ namespace LogScope.Analysis1.Graph
 
             const double sample = 18, gap = 6, padX = 8, padY = 5, lineH = 16;
 
+            // 판정 오차 구간 색 (1.66) — 차이 영역 표시(옅은 빨강)와 헷갈리지 않게 보라.
+            if (_state != null && _state.Judgement != null && _state.Judgement.Items.Count > 0)
+                note = (note != null ? note + "  ·  " : string.Empty) + "보라 띠 = 판정 오차 (회색 = 허용)";
+
             FormattedText t1 = Text(firstText, FontSmall, p.TextBrush);
             FormattedText t2 = secondText != null ? Text(secondText, FontSmall, p.TextBrush) : null;
             FormattedText t3 = note != null ? Text(note, FontSmall, p.MutedBrush) : null;
@@ -1406,10 +1410,21 @@ namespace LogScope.Analysis1.Graph
             DrawLaneHeader(dc, p, rect, ios);
         }
 
+        /// <summary>단계 IO — 차이를 칠하지 않음 (1.66, AppState.NoDiffKeys).</summary>
+        private bool IsNoDiff(IoRowVm vm)
+        {
+            if (_state == null || vm == null) return false;
+            string io = _state.Settings.StepIo ?? string.Empty;
+            return io.Trim().Length > 0 && LogDataset.LooseKey(io.Trim()) == LogDataset.LooseKey(vm.Name);
+        }
+
         // ---------------- 굵고 옅은 이전 선 · 판정 오차 구간 (1.63) ----------------
 
         private readonly Dictionary<Pen, Pen> _wide = new Dictionary<Pen, Pen>();
         private static readonly Color MidGray = Color.FromRgb(128, 128, 128);
+
+        /// <summary>판정 오차 구간 색 — 보라 (1.66). 밝은 · 어두운 화면 모두에서 빨강 · 파랑 선과 갈립니다.</summary>
+        private static readonly Color JudgeMarkColor = Color.FromRgb(0x8E, 0x44, 0xAD);
 
         /// <summary>같은 색의 굵고 옅은 펜 (이전 선 밑깔기).</summary>
         private Pen WidePen(Pen pen)
@@ -1456,7 +1471,8 @@ namespace LogScope.Analysis1.Graph
 
             Rect plot = PlotArea;
             if (plot.Width <= 0) return;
-            Color open = p.HeatHigh, allowed = p.Muted;
+            // 1.66: 보라 — [차이 영역 표시] 의 옅은 빨강과 구분 (전에는 둘 다 붉어서 헷갈림)
+            Color open = JudgeMarkColor, allowed = p.Muted;
             Brush openFill = Tinted(open, 0.16), openBar = Tinted(open, 0.85);
             Brush okFill = Tinted(allowed, 0.10), okBar = Tinted(allowed, 0.55);
 
@@ -2010,7 +2026,7 @@ namespace LogScope.Analysis1.Graph
                 if (_sideOnly != 0) return;
                 if (!CanDiff(vm)) return;     // 한쪽에만 있는 IO 는 견줄 상대가 없습니다.
 
-                if (_shade)
+                if (_shade && !IsNoDiff(vm))
                 {
                     // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                     Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
@@ -2022,7 +2038,7 @@ namespace LogScope.Analysis1.Graph
                 return;
             }
 
-            if (_shade && haveB && haveA && _sideOnly == 0)
+            if (_shade && haveB && haveA && _sideOnly == 0 && !IsNoDiff(vm))
             {
                 // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.

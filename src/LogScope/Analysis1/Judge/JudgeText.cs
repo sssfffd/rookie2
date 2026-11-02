@@ -33,6 +33,8 @@ namespace LogScope.Analysis1.Judge
               .Append(". 이후 값이 이전 로그의 앞뒤 시간 여유(단계 길이 2 %, 0.2~5 초) 동안의 값 범위 + IO 값 허용 오차 안이면 같음. ")
               .Append("양쪽(이전→이후, 이후→이전)으로 봄. 판정은 허용 안 된 오차가 있는 IO 수로 — 0 개 PASS, 10 개 이하 WARNING, ")
               .Append("넘으면 CRITICAL. 단계가 없어지거나 차례가 바뀌면 CRITICAL. 오차 줄의 낱말은 그 단계에서 오차 시간이 20 % 이상이면 CRITICAL.\n");
+            sb.Append("- 설명 칸의 '제안:' 은 그 IO · 단계를 시간만 조금 밀거나 값만 조금 올리고 내리면 오차가 (거의) 없어진다는 뜻입니다 — ")
+              .Append("파형 모양은 같고 시간 밀림 · 영점(오프셋) 차이일 가능성이 큽니다. 판정은 그대로입니다.\n");
             if (r.Note.Length > 0) sb.Append("- 알아 둘 점: ").Append(r.Note).Append('\n');
             sb.Append("- **사용자가 허용한 오차는 공정 담당자가 정상 변동으로 판단한 것입니다. 이상의 근거로 쓰지 마세요.**\n\n");
 

@@ -152,6 +152,8 @@ namespace LogScope.Tests
                 JudgeStepRules();
                 JudgeStepSplitRules();
                 JudgeIoCountRules();
+                SecondTimeColumnRules();
+                JudgeHintRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4709,6 +4711,90 @@ namespace LogScope.Tests
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
         }
 
+        /// <summary>보정 제안 (1.66) — 시간만 밀린 · 높이만 다른 파형은 "이렇게 옮기면 정상" 이라고 알려 줌.</summary>
+        private static void JudgeHintRules()
+        {
+            Say("판정 — 보정 제안 (시간 밀림 · 값 오프셋)");
+            var opt = new JudgeOptions();
+            opt.Once = new HashSet<string>();
+
+            // ① 네모 파형이 이후에서 8 초 늦게
+            var a = new StringBuilder("Time,PV\n");
+            var b = new StringBuilder("Time,PV\n");
+            for (int i = 0; i < 200; i++)
+            {
+                a.Append(i).Append(',').Append((i / 25) % 2 == 0 ? 0 : 100).Append('\n');
+                int j = i - 8;
+                b.Append(i).Append(',').Append(j >= 0 && (j / 25) % 2 == 1 ? 100 : 0).Append('\n');
+            }
+            LogDataset dsA = Open(WriteCsv("hint_ta.csv", a.ToString()), Orientation.Auto);
+            LogDataset dsB = Open(WriteCsv("hint_tb.csv", b.ToString()), Orientation.Auto);
+            JudgeResult r = JudgeEngine.Run(dsA, dsB, StepPairList.Build(dsA, dsB), opt, null);
+            JudgeItem it = FindItem(r, JudgeKind.Value, "PV");
+            Check("시간 밀림 → 오차는 그대로 잡힘", it != null && r.OpenIoCount == 1, r.OpenIoCount.ToString());
+            Check("시간 밀림 → '앞당기면' 제안", it != null && it.Hint.Contains("앞당기면") && it.HintShort.StartsWith("시간 −"),
+                  it == null ? "-" : it.Hint + " / " + it.HintShort);
+            double amt;
+            Check("밀 양은 실제 밀림 (8) 가까이 — 시간 여유로 덜 밀어도 되는 쪽이 아니라 가운데",
+                  it != null && double.TryParse(it.HintShort.Replace("시간 −", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out amt)
+                  && amt >= 6.5 && amt <= 9.5, it == null ? "-" : it.HintShort);
+            Check("제안은 설명 글에도", it != null && it.Detail.Contains("제안:"), it == null ? "-" : it.Detail);
+            Check("LLM 글에도 제안", JudgeText.ForLlm(r, dsA).Contains("앞당기면"), "");
+
+            // ② 모양은 같고 이후가 10 높음
+            var c = new StringBuilder("Time,PV\n");
+            var d = new StringBuilder("Time,PV\n");
+            for (int i = 0; i < 200; i++)
+            {
+                double v = 100 + 20 * Math.Sin(i / 7.0);
+                c.Append(i).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+                d.Append(i).Append(',').Append((v + 10).ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsC = Open(WriteCsv("hint_oa.csv", c.ToString()), Orientation.Auto);
+            LogDataset dsD = Open(WriteCsv("hint_ob.csv", d.ToString()), Orientation.Auto);
+            r = JudgeEngine.Run(dsC, dsD, StepPairList.Build(dsC, dsD), opt, null);
+            it = FindItem(r, JudgeKind.Value, "PV");
+            Check("값 오프셋 → '10 내리면' 제안", it != null && it.Hint.Contains("10 내리면") && it.HintShort == "값 −10",
+                  it == null ? "-" : it.Hint + " / " + it.HintShort);
+
+            // ③ 진짜 튐 (아킹 같은 것) 은 제안 없음
+            var e = new StringBuilder("Time,PV\n");
+            for (int i = 0; i < 200; i++)
+            {
+                double v = 100 + 20 * Math.Sin(i / 7.0);
+                if (i >= 90 && i <= 92) v = 999;
+                e.Append(i).Append(',').Append(v.ToString("0.###", CultureInfo.InvariantCulture)).Append('\n');
+            }
+            LogDataset dsE = Open(WriteCsv("hint_sb.csv", e.ToString()), Orientation.Auto);
+            r = JudgeEngine.Run(dsC, dsE, StepPairList.Build(dsC, dsE), opt, null);
+            it = FindItem(r, JudgeKind.Value, "PV");
+            Check("튐 → 오차는 잡고 제안은 없음", it != null && it.Hint.Length == 0 && it.HintShort.Length == 0,
+                  it == null ? "-" : it.Hint);
+        }
+
+        /// <summary>1 열 PC 시간 · 2 열 동작 시간 (1.66) — 2 열을 시간축으로, 1 열은 IO 에서 뺌.</summary>
+        private static void SecondTimeColumnRules()
+        {
+            Say("읽기 — 1 열 PC 시간 · 2 열 동작 시간");
+            var a = new StringBuilder("PC시간,동작시간,PV\n");
+            for (int i = 0; i < 20; i++)
+                a.Append("09:15:").Append((i / 2).ToString("00")).Append(",").Append((i * 0.5).ToString("0.0", CultureInfo.InvariantCulture))
+                 .Append(',').Append(i * 2).Append('\n');
+            LogDataset ds = Open(WriteCsv("two_time.csv", a.ToString()), Orientation.Auto);
+            Check("IO 는 PV 하나 (1 열 PC 시간은 뺌)", ds.ChannelCount == 1 && ds.Channels[0].Name == "PV",
+                  ds.ChannelCount + " " + (ds.ChannelCount > 0 ? ds.Channels[0].Name : ""));
+            Check("시간축 = 2 열 (0 ~ 9.5)", ds.SampleCount == 20 && Math.Abs(ds.TimeStart - 0) < 1e-9 && Math.Abs(ds.TimeEnd - 9.5) < 1e-9,
+                  ds.TimeStart + " ~ " + ds.TimeEnd);
+
+            // 2 열이 그냥 늘어나는 IO (머리 글에 시간 낱말 없음) 면 그대로 IO
+            var b = new StringBuilder("Time,COUNTER,PV\n");
+            for (int i = 0; i < 20; i++)
+                b.Append("09:15:").Append(i.ToString("00")).Append(',').Append(i * 3).Append(',').Append(i).Append('\n');
+            LogDataset ds2 = Open(WriteCsv("two_time_no.csv", b.ToString()), Orientation.Auto);
+            Check("늘어나는 IO 는 시간으로 안 잡음", ds2.ChannelCount == 2 && ds2.FindChannel("COUNTER") >= 0
+                  && ds2.TimeKind == TimeKind.ClockMs, ds2.ChannelCount.ToString());
+        }
+
         /// <summary>정상 판정 — 단계 (1.56). 단계 길이는 늘이지 않고 오차로, 차례가 바뀌면 CRITICAL.</summary>
         private static void JudgeStepRules()
         {
@@ -4957,6 +5043,21 @@ namespace LogScope.Tests
             foreach (JudgeItem it in r.Items) if (it.Kind == JudgeKind.StepLength && it.Step == "A") len = true;
             Check("A 가 5 초 길어진 것은 그대로 단계 길이 오차", len, "");
             Check("오차 IO 수 = 1 (Z)", r.OpenIoCount == 1, r.OpenIoCount.ToString());
+
+            // 단계 IO 는 차이를 안 봄 (1.66) — 대시보드 · 판정 · 히트맵
+            var st = new AppState();
+            st.Settings.StepIo = "STEP";
+            st.Before = dsA; st.After = dsB;
+            st.Recompare(null);
+            bool stepInDiff = false;
+            foreach (ChannelDiff d in st.Comparison.Items) if (d.Name == "STEP") stepInDiff = true;
+            Check("단계 IO 는 대시보드 비교에서 빠짐", !stepInDiff && st.Comparison.Items.Count == 3, st.Comparison.Items.Count.ToString());
+            Check("단계 IO 는 판정에서 빠짐", CountItems(st.Judgement, "STEP") == 0 && FindItem(st.Judgement, JudgeKind.IoMissing, "STEP") == null, "");
+            var ho = new HeatmapOptions();
+            ho.Exclude = st.NoDiffKeys();
+            ho.IncludeUnchanged = true;
+            HeatmapResult hm = HeatmapBuilder.Build(dsA, dsB, ho, null);
+            Check("단계 IO 는 히트맵에서 빠짐", FindRow(hm, "STEP") == null && FindRow(hm, "X") != null, hm.Rows.Count.ToString());
         }
 
         /// <summary>정상 판정 — 상태(글자) IO 와 IO 가 없어짐 (1.56).</summary>

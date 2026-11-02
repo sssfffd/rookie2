@@ -249,6 +249,13 @@ namespace LogScope.Analysis1.Graph
             }
         }
 
+        /// <summary>히트맵에서 허용 오차를 바꿨을 때 이 화면 글도 다시 (1.66).</summary>
+        public void RaiseTolerance()
+        {
+            Raise("RelativeTolerancePercentText"); Raise("ToleranceHint"); Raise("ToleranceHintDetail");
+            Changed();
+        }
+
         /// <summary>절대 오차. 설정 창에서만 바꿉니다.</summary>
         public double AbsoluteTolerance { get { return S.AbsoluteTolerance; } }
 

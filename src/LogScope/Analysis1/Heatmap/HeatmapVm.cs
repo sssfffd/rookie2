@@ -168,6 +168,12 @@ namespace LogScope.Analysis1.Heatmap
             }
         }
 
+        /// <summary>그래프에서 허용 오차를 바꿨을 때 이 화면 글도 다시 (1.66).</summary>
+        public void RaiseTolerance()
+        {
+            Raise("RelativeTolerancePercent"); Raise("StaleText");
+        }
+
         /// <summary>허용 오차 퍼센트 (숫자). 설정에 적힌 그 값 그대로입니다.</summary>
         public double RelativePercent
         {
@@ -314,6 +320,7 @@ namespace LogScope.Analysis1.Heatmap
         {
             var o = new HeatmapOptions();
             o.OnlyNames = HeatmapOptions.NameFilter(_focusNames);
+            o.Exclude = _state.NoDiffKeys();
             o.BucketSpan = BucketSpan;
             o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             o.RelativePercent = RelativePercent;

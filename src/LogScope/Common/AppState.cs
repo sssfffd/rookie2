@@ -172,9 +172,23 @@ namespace LogScope.Common
             return list;
         }
 
+        /// <summary>
+        /// 차이를 보지 않는 IO (느슨한 열쇠) — <b>단계 IO</b> (1.66). 단계를 나누는 데 쓰는 IO 는 단계마다 맞춰
+        /// 보면 같은 것이 당연하고, 단계 길이가 다르면 경계에서 어긋나 "차이" 로 잡혔습니다. 단계가 다른 것은
+        /// 판정의 공정 단계 검사(길이 · 차례)가 따로 봅니다. 대시보드 · 히트맵 · 판정 · 그래프 차이 칠이 모두 이걸 씁니다.
+        /// </summary>
+        public HashSet<string> NoDiffKeys()
+        {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            string io = Settings.StepIo ?? string.Empty;
+            if (io.Trim().Length > 0) set.Add(LogDataset.LooseKey(io.Trim()));
+            return set;
+        }
+
         public DiffOptions BuildDiffOptions()
         {
             var o = new DiffOptions();
+            o.Exclude = NoDiffKeys();
             o.AbsoluteTolerance = Settings.AbsoluteTolerance;
             o.RelativePercent = Settings.RelativeTolerancePercent;
             o.Tolerances = ToleranceTable.From(Settings.RelativeTolerancePercent,
@@ -246,6 +260,7 @@ namespace LogScope.Common
             o.Shift = BaseShift();
             o.Rules = Settings.AllowRules;
             o.Once = AllowOnce;
+            o.Exclude = NoDiffKeys();
             return o;
         }
 
@@ -292,7 +307,7 @@ namespace LogScope.Common
         private string JudgeSignature(StepPairList pairs, double shift)
         {
             var sb = new System.Text.StringBuilder();
-            sb.Append(pairs.Count).Append('|')
+            sb.Append(pairs.Count).Append('|').Append(Settings.StepIo ?? string.Empty).Append('|')
               .Append(Before.Times.Length).Append('|').Append(After.Times.Length).Append('|')
               .Append(shift.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
               .Append(Settings.RelativeTolerancePercent.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')

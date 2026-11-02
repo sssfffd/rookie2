@@ -163,8 +163,16 @@ namespace LogScope.Analysis1.Heatmap
 
         private Window OwnerWindow { get { return Window.GetWindow(this); } }
 
+        /// <summary>
+        /// [히트맵 다시 계산] (1.66) — 창이 받으면 대시보드 · 그래프 · 판정까지 같이 다시 견주고 히트맵을 셉니다
+        /// (둘 중 하나만 다시 계산하면 서로 다른 기준이 보이던 것). 받는 이가 없으면 히트맵만.
+        /// </summary>
+        public event EventHandler RecompareRequested;
+
         private void OnRecalculate(object sender, RoutedEventArgs e)
         {
+            EventHandler h = RecompareRequested;
+            if (h != null) { h(this, EventArgs.Empty); return; }
             Recalculate(true);
         }
 

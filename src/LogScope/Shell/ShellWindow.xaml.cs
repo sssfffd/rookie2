@@ -84,6 +84,11 @@ namespace LogScope.Shell
 
             Dashboard.IoActivated += OnDashboardIoActivated;
             Heatmap.CellOpened += OnHeatmapCellOpened;
+            Heatmap.RecompareRequested += OnHeatmapRecompare;
+            // 허용 오차는 그래프 · 히트맵이 같은 값 하나 (1.66) — 한쪽에서 바꾸면 다른 쪽 글도 바뀌고 둘 다 다시 견줌
+            _vm.Graph.PropertyChanged += OnToleranceMaybeChanged;
+            _vm.Heatmap.PropertyChanged += OnToleranceMaybeChanged;
+            _shownTolerance = _state.Settings.RelativeTolerancePercent;
             // 시간 맞추기는 그래프와 히트맵이 같은 것 하나를 씁니다.
             // 그래서 어느 화면을 거치지 않고 여기서 바로 받습니다.
             _vm.Align.Changed += OnAlignmentChanged;
@@ -708,6 +713,44 @@ namespace LogScope.Shell
             _vm.ReloadAll();
             Graph.OnDataChanged();
             Heatmap.Invalidate();
+            // 히트맵을 보고 있으면 같이 다시 셉니다 (1.66). 아니면 넘어올 때 셉니다 (EnsureHeatmap).
+            if (_vm.Screen == ShellVm.ScreenAnalysis1 && _vm.Page == ShellVm.PageHeatmap && _state.HasBoth)
+                Heatmap.Recalculate(false);
+        }
+
+        /// <summary>히트맵의 [히트맵 다시 계산] — 그래프 · 대시보드 · 판정까지 같이 (1.66).</summary>
+        private void OnHeatmapRecompare(object sender, EventArgs e)
+        {
+            if (!_state.HasBoth) { Heatmap.Recalculate(true); return; }
+            OnRecompare(this, null);
+            Heatmap.Recalculate(true);
+        }
+
+        private double _shownTolerance = double.NaN;
+        private bool _syncingTolerance;
+
+        /// <summary>
+        /// 그래프 · 히트맵의 허용 오차 칸 (1.66). 값이 실제로 바뀌었을 때만 — 다른 쪽 글을 고치고, 저장하고,
+        /// 다시 견줍니다 (대시보드 · 그래프 · 판정 · 히트맵). 다시 그리면서 오는 같은 알림은 값이 그대로라 넘어갑니다.
+        /// </summary>
+        private void OnToleranceMaybeChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (_syncingTolerance) return;
+            if (e.PropertyName != "RelativeTolerancePercentText" && e.PropertyName != "RelativeTolerancePercent") return;
+            double now = _state.Settings.RelativeTolerancePercent;
+            if (now == _shownTolerance) return;
+            _shownTolerance = now;
+
+            _syncingTolerance = true;
+            try
+            {
+                if (sender == _vm.Graph) _vm.Heatmap.RaiseTolerance();
+                else _vm.Graph.RaiseTolerance();
+            }
+            finally { _syncingTolerance = false; }
+
+            SaveSettings();
+            if (_state.HasBoth) OnRecompare(this, null);
         }
 
         private void Recompare()
@@ -1032,6 +1075,16 @@ namespace LogScope.Shell
             // [허용한 오차] 에서 지웠을 수 있습니다 (1.59) — 판정만 다시 (오차를 다시 찾지는 않음).
             _state.Regrade();
             _vm.Main.Refresh();
+
+            // 설정 창에서 허용 오차를 바꿨으면 그래프 · 히트맵 칸 글도 고치고 다시 견줍니다 (1.66).
+            if (_state.Settings.RelativeTolerancePercent != _shownTolerance)
+            {
+                _shownTolerance = _state.Settings.RelativeTolerancePercent;
+                _syncingTolerance = true;
+                try { _vm.Graph.RaiseTolerance(); _vm.Heatmap.RaiseTolerance(); }
+                finally { _syncingTolerance = false; }
+                if (_state.HasBoth) OnRecompare(this, null);
+            }
         }
 
         private void SaveSettings()

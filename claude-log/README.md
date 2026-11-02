@@ -163,3 +163,4 @@
 | `154-io-count-split-graph-marks.md` | 1.63 — 차이 발생 = IO 수, 단계로 나눠 생기는 오차 없앰 (두 맞춤 모두), 이전 선 굵고 옅게, 그래프에 오차 구간 |
 | `155-io-count-verdict-critical.md` | 1.64 — 분석 1 판정 = 오차 IO 수 (0 PASS · ≤10 WARNING · >10 CRITICAL), FAIL → CRITICAL (분석 1 · 2) |
 | `156-gallery-fixed-height.md` | 1.65 — 갤러리 칸 높이 180 고정 (IO 수와 상관없이) |
+| `157-time-col-stepio-marks-tolerance-hints.md` | 1.66 — 2 열 동작 시간이 시간축, 단계 IO 차이 뺌, 판정 띠 보라, 허용 오차 그래프 · 히트맵 연동, 시간 · 값 보정 제안 |

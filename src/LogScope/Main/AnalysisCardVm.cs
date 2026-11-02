@@ -308,8 +308,20 @@ namespace LogScope.Main
         /// <summary>"2 단계 · 12:10:00 · 8분 3초 · 최대 3.1".</summary>
         public string Text { get; private set; }
 
-        /// <summary>그 순간의 값 · 범위 · 이 단계 오차 비율.</summary>
-        public string Detail { get { return Item.Detail; } }
+        /// <summary>그 순간의 값 · 범위 · 이 단계 오차 비율. 보정 제안은 아래 줄 (Hint) 로 따로 보여 주므로 뺍니다.</summary>
+        public string Detail
+        {
+            get
+            {
+                string d = Item.Detail;
+                string tail = " · 제안: " + Item.Hint;
+                return Item.Hint.Length > 0 && d.EndsWith(tail, System.StringComparison.Ordinal) ? d.Substring(0, d.Length - tail.Length) : d;
+            }
+        }
+
+        /// <summary>1.66 보정 제안 — "이후 로그를 1.2초 앞당기면 이 단계 오차가 없어집니다 …". 없으면 빈 글자.</summary>
+        public string Hint { get { return Item.Hint.Length > 0 ? "제안 ▶ " + Item.Hint : string.Empty; } }
+        public bool HasHint { get { return Item.Hint.Length > 0; } }
 
         public bool IsAllowed { get { return Item.IsAllowed; } }
         public bool IsOpen { get { return !Item.IsAllowed; } }

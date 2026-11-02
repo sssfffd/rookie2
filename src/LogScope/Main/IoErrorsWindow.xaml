@@ -49,6 +49,9 @@
                                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding Detail}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
                                                    Foreground="{DynamicResource Brush.Muted}" />
+                                        <TextBlock Text="{Binding Hint}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource Brush.Accent}"
+                                                   Visibility="{Binding HasHint, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
                                     <WrapPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0" MaxWidth="290"
                                                HorizontalAlignment="Right">

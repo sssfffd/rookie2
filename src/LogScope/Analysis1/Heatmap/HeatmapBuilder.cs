@@ -120,6 +120,7 @@ namespace LogScope.Analysis1.Heatmap
 
                 Channel bc = before.Channels[bi];
                 if (opt.HasFilter && !opt.OnlyNames.Contains(LogDataset.LooseKey(bc.Name))) continue;
+                if (opt.Exclude != null && opt.Exclude.Contains(LogDataset.LooseKey(bc.Name))) continue;   // 단계 IO (1.66)
 
                 int ai = after.FindChannel(bc.Name);
                 if (ai < 0) continue;   // 한쪽에만 있는 IO 는 여기서 다루지 않습니다.
@@ -607,6 +608,9 @@ namespace LogScope.Analysis1.Heatmap
         public HashSet<string> OnlyNames;
 
         public bool HasFilter { get { return OnlyNames != null && OnlyNames.Count > 0; } }
+
+        /// <summary>보지 않을 IO (느슨한 열쇠) — 단계 IO (1.66).</summary>
+        public HashSet<string> Exclude;
 
         /// <summary>이름 목록을 느슨한 열쇠로 바꿔 담습니다.</summary>
         public static HashSet<string> NameFilter(IEnumerable<string> names)

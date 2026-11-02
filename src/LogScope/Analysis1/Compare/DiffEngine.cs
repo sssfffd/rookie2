@@ -68,6 +68,12 @@ namespace LogScope.Analysis1.Compare
 
                 Channel bc = before.Channels[i];
                 int j = after.FindChannel(bc.Name);
+                // 단계 IO 는 견주지 않습니다 (1.66, AppState.NoDiffKeys)
+                if (opt.Exclude != null && opt.Exclude.Contains(LogDataset.LooseKey(bc.Name)))
+                {
+                    if (j >= 0) afterUsed[j] = true;
+                    continue;
+                }
                 if (j < 0)
                 {
                     var only = new ChannelDiff();
@@ -331,6 +337,9 @@ namespace LogScope.Analysis1.Compare
 
         /// <summary>목록을 정렬할 기준.</summary>
         public DiffMetric SortBy = DiffMetric.MaxAbs;
+
+        /// <summary>견주지 않을 IO (느슨한 열쇠) — 단계 IO (1.66). null 이면 모두 견줌.</summary>
+        public HashSet<string> Exclude;
 
         public DiffOptions Clone() { return (DiffOptions)MemberwiseClone(); }
     }
