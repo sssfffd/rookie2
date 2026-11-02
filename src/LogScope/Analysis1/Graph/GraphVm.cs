@@ -425,6 +425,12 @@ namespace LogScope.Analysis1.Graph
             return GroupFile.Write(_state.Settings.Groups);
         }
 
+        /// <summary>오차 허용이 바뀌었을 때 — 목록의 "차이 남" 표시만 판정 기준으로 다시 (1.68).</summary>
+        public void RefreshChanged()
+        {
+            List.UpdateChanged(_state.Before, _state.After, _state.ChangedNames());
+        }
+
         /// <summary>로그가 바뀌었을 때 목록을 다시 만듭니다.</summary>
         public void Reload()
         {

@@ -155,6 +155,7 @@ namespace LogScope.Tests
                 SecondTimeColumnRules();
                 JudgeHintRules();
                 JudgeViewShiftRules();
+                SameChangedCountRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4717,6 +4718,48 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>
+        /// "차이 난 IO" 한 규칙 (1.68) — 메인 칸 · 대시보드 · 히트맵 · 그래프 목록이 같은 수.
+        /// judge_a/b: RAMP 는 0.3 초 늦음 → 예전 비교로는 차이, 판정은 시간 여유로 흡수. 판정 차이 = LATE SPIKE PULSE BIG.
+        /// </summary>
+        private static void SameChangedCountRules()
+        {
+            Say("차이 난 IO — 메인 · 대시보드 · 히트맵 · 그래프 목록이 같은 수");
+            var st = new AppState();
+            st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            st.Recompare(null);
+            bool rampOld = false;
+            foreach (ChannelDiff d in st.Comparison.Items) if (d.Name == "RAMP" && d.Changed) rampOld = true;
+            Check("예전 비교는 RAMP 도 차이 (판정과 다른 경우가 있음)", rampOld, "");
+
+            var main = new MainVm(st);
+            var dash = new LogScope.Analysis1.Dashboard.DashboardVm(st);
+            dash.Refresh();
+            var heat = new HeatmapVm(st, new AlignVm(st));
+            HeatmapResult hr = HeatmapBuilder.Build(st.Before, st.After, heat.BuildOptions(), null);
+            var g = new GraphVm(st, new AlignVm(st), new StepVm(st));
+            g.Reload();
+            HashSet<string> names = st.ChangedNames();
+            Check("메인 4 = 대시보드 4 = 히트맵 4", main.Cards[0].VerdictCount == "4" && dash.ChangedCount == "4개"
+                  && hr.ChangedChannels == 4 && dash.Changed.Count == 4,
+                  main.Cards[0].VerdictCount + " / " + dash.ChangedCount + " / " + hr.ChangedChannels + " / " + dash.Changed.Count);
+            Check("히트맵 줄 · 그래프 목록에 RAMP 는 차이 아님", FindRow(hr, "RAMP") == null && !names.Contains("RAMP")
+                  && names.Contains("SPIKE") && g.List.Find("RAMP").Status != IoRowVm.StatusChanged
+                  && g.List.Find("SPIKE").Status == IoRowVm.StatusChanged, string.Join(",", new List<string>(names).ToArray()));
+
+            // 메인 칸에서 SPIKE 를 허용하면 모두 3
+            foreach (JudgeItem it in main.ItemsOfIo("SPIKE")) st.AllowOnce.Add(it.Key);
+            st.Regrade();
+            main.Refresh();
+            dash.Refresh();
+            g.RefreshChanged();
+            hr = HeatmapBuilder.Build(st.Before, st.After, heat.BuildOptions(), null);
+            Check("허용하면 메인 · 대시보드 · 히트맵 · 그래프 목록 모두 3", main.Cards[0].VerdictCount == "3" && dash.ChangedCount == "3개"
+                  && hr.ChangedChannels == 3 && g.List.Find("SPIKE").Status != IoRowVm.StatusChanged,
+                  main.Cards[0].VerdictCount + " / " + dash.ChangedCount + " / " + hr.ChangedChannels);
         }
 
         /// <summary>

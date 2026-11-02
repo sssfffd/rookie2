@@ -137,6 +137,16 @@ namespace LogScope.Analysis1.Graph
             Raise("CountText");
         }
 
+        /// <summary>
+        /// "차이 남" 표시만 다시 (1.68 — 오차를 허용하면 판정 기준 차이 IO 가 바뀜). 목록 · 고른 것은 그대로.
+        /// </summary>
+        public void UpdateChanged(LogDataset before, LogDataset after, HashSet<string> changedNames)
+        {
+            _changedNames = changedNames ?? new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < All.Count; i++) All[i].Status = StatusOf(All[i], before, after);
+            RebuildRows();
+        }
+
         private string StatusOf(IoRowVm vm, LogDataset before, LogDataset after)
         {
             if (!vm.InAfter && before != null && after != null) return IoRowVm.StatusOnlyBefore;

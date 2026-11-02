@@ -839,6 +839,21 @@ namespace LogScope.Shell
         {
             SaveSettings();
             Graph.Repaint();   // 그래프의 오차 구간 색 (허용 → 회색, 1.63)
+            RefreshChangedIos();
+        }
+
+        /// <summary>
+        /// 판정의 허용이 바뀌면 분석 1 의 "차이 난 IO" 도 바뀝니다 (1.68 — 메인 칸과 같은 규칙).
+        /// 대시보드 · 그래프 목록은 바로, 히트맵은 보고 있으면 바로 · 아니면 넘어올 때 다시 셉니다.
+        /// </summary>
+        private void RefreshChangedIos()
+        {
+            _vm.Dashboard.Refresh();
+            _vm.Graph.RefreshChanged();
+            if (Heatmap.Map.Result == null) return;
+            Heatmap.Invalidate();
+            if (_vm.Screen == ShellVm.ScreenAnalysis1 && _vm.Page == ShellVm.PageHeatmap && _state.HasBoth)
+                Heatmap.Recalculate(false);
         }
 
         private void OnDbResultChanged(object sender, EventArgs e)
@@ -1075,6 +1090,7 @@ namespace LogScope.Shell
             // [허용한 오차] 에서 지웠을 수 있습니다 (1.59) — 판정만 다시 (오차를 다시 찾지는 않음).
             _state.Regrade();
             _vm.Main.Refresh();
+            RefreshChangedIos();
 
             // 설정 창에서 허용 오차를 바꿨으면 그래프 · 히트맵 칸 글도 고치고 다시 견줍니다 (1.66).
             if (_state.Settings.RelativeTolerancePercent != _shownTolerance)

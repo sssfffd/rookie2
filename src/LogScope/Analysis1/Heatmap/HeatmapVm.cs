@@ -330,6 +330,7 @@ namespace LogScope.Analysis1.Heatmap
                                                _state.Settings.AbsoluteTolerance,
                                                _state.Settings.Tolerances);
             o.IncludeUnchanged = _includeUnchanged;
+            o.Judged = _state.OpenValueIoKeys();
             o.Shift = _state.AppliedShift;
 
             // 단계로 자르기. 짝 목록은 화면이 짓지 않고 받아 옵니다 —
@@ -411,7 +412,10 @@ namespace LogScope.Analysis1.Heatmap
                 }
             }
 
+            int oneSide = _state.OpenOneSideIoCount();
             Summary = "차이가 난 IO " + r.ChangedChannels + "개"
+                    + (_state.Judgement != null ? " (정상 판정 기준 — 메인 칸과 같은 규칙"
+                       + (oneSide > 0 ? ", 메인 칸에는 한쪽에만 있는 IO " + oneSide + "개도 더해짐" : string.Empty) + ")" : string.Empty)
                     + "   /   양쪽에 다 있는 IO " + r.ComparedChannels + "개"
                     + (r.ByStep ? "        가로 단계" : "        칸 폭 " + r.BucketLabel)
                     + "   /   칸 수 " + r.BucketCount

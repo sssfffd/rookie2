@@ -293,10 +293,18 @@ namespace LogScope.Analysis1.Dashboard
             AfterNote = onlyA > 0 ? "이름이 이전에 없는 IO: " + onlyA + "개" : "이름이 이전에 없는 IO: 없음";
             AfterNoteGood = onlyA > 0;
 
-            int changed = c != null ? c.ChangedCount : 0;
+            // 1.68: 정상 판정이 있으면 메인 칸과 같은 수 (허용 안 된 오차가 있는 IO — 한쪽에만 있는 IO 포함).
+            HashSet<string> open = _state.OpenValueIoKeys();
+            int oneSide = _state.OpenOneSideIoCount();
+            int changed = 0;
+            if (c != null) foreach (ChannelDiff d in c.Items) if (_state.IsChangedIo(d, open)) changed++;
             int common = c != null ? c.CommonCount : 0;
-            ChangedCount = changed.ToString("N0") + "개";
-            ChangedNote = "양쪽에 다 있는 IO " + common + "개 중"
+            ChangedCount = (_state.Judgement != null ? _state.Judgement.OpenIoCount : changed).ToString("N0") + "개";
+            ChangedNote = (_state.Judgement != null
+                            ? "정상 판정 기준 (메인 칸과 같음) — 값 오차 IO " + changed + "개"
+                              + (oneSide > 0 ? " + 한쪽에만 있는 IO " + oneSide + "개" : string.Empty) + "   /   "
+                            : string.Empty)
+                        + "양쪽에 다 있는 IO " + common + "개 중"
                         + "   /   허용 오차 값 범위의 "
                         + _state.Settings.RelativeTolerancePercent.ToString("0.####") + "% (이전 값 대비)"
                         + (_state.Settings.AbsoluteTolerance > 0
@@ -336,9 +344,10 @@ namespace LogScope.Analysis1.Dashboard
             CompareResult c = _state.Comparison;
             if (c != null)
             {
+                HashSet<string> open = _state.OpenValueIoKeys();   // 1.68: 판정 기준 (메인 칸과 같은 IO)
                 foreach (ChannelDiff d in c.Items)
                 {
-                    if (!d.Changed) continue;
+                    if (!_state.IsChangedIo(d, open)) continue;
                     rows.Add(new DiffRowVm
                     {
                         Name = d.Name,

@@ -343,12 +343,47 @@ namespace LogScope.Common
             if (Judgement != null) JudgeEngine.Regrade(Judgement, BuildJudgeOptions());
         }
 
-        /// <summary>값이 달라졌거나 한쪽에만 있는 IO 이름들.</summary>
+        // ---------------- "차이 난 IO" 한 규칙 (1.68) ----------------
+        //
+        // 메인 칸 · 대시보드 · 히트맵 · 그래프 목록이 같은 IO 를 "차이 남" 으로 봅니다 — 정상 판정이 있으면
+        // <b>허용 안 된 값 오차가 있는 IO</b> (메인 칸 "차이 발생 N 개" 와 같은 것), 없으면 예전 비교.
+        // 화면마다 따로 셈하면 같은 로그인데 수가 달라 어느 것을 믿을지 모르게 됩니다.
+
+        /// <summary>판정에서 허용 안 된 <b>값</b> 오차가 있는 IO (느슨한 열쇠). 판정이 없으면 null.</summary>
+        public HashSet<string> OpenValueIoKeys()
+        {
+            if (Judgement == null) return null;
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            foreach (JudgeItem it in Judgement.Items)
+                if (it.Kind == JudgeKind.Value && !it.IsAllowed && it.Io.Length > 0) set.Add(LogDataset.LooseKey(it.Io));
+            return set;
+        }
+
+        /// <summary>판정에서 허용 안 된 "한쪽에만 있는 IO" 수 (메인 칸 수에는 들어가고 히트맵에는 없는 것).</summary>
+        public int OpenOneSideIoCount()
+        {
+            if (Judgement == null) return 0;
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            foreach (JudgeItem it in Judgement.Items)
+                if ((it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra) && !it.IsAllowed && it.Io.Length > 0)
+                    set.Add(LogDataset.LooseKey(it.Io));
+            return set.Count;
+        }
+
+        /// <summary>양쪽에 다 있는 이 IO 가 "차이 남" 인지 — 위 규칙.</summary>
+        public bool IsChangedIo(ChannelDiff d, HashSet<string> openKeys)
+        {
+            if (d == null) return false;
+            return openKeys != null ? openKeys.Contains(LogDataset.LooseKey(d.Name)) : d.Changed;
+        }
+
+        /// <summary>값이 달라졌거나 한쪽에만 있는 IO 이름들 (1.68 — 값은 판정 기준).</summary>
         public HashSet<string> ChangedNames()
         {
             var set = new HashSet<string>(StringComparer.Ordinal);
             if (Comparison == null) return set;
-            foreach (ChannelDiff d in Comparison.Items) if (d.Changed) set.Add(d.Name);
+            HashSet<string> open = OpenValueIoKeys();
+            foreach (ChannelDiff d in Comparison.Items) if (IsChangedIo(d, open)) set.Add(d.Name);
             foreach (ChannelDiff d in Comparison.OnlyBefore) set.Add(d.Name);
             foreach (ChannelDiff d in Comparison.OnlyAfter) set.Add(d.Name);
             return set;

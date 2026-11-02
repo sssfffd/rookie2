@@ -127,8 +127,10 @@ namespace LogScope.Analysis1.Heatmap
 
                 compared++;
                 HeatRow row = BuildRow(before, bi, after, ai, t0, t1, cuts, shift, opt, sum, sumSq);
-                if (row.HasDifference) changed++;
-                if (row.HasDifference || opt.IncludeUnchanged) res.Rows.Add(row);
+                // 1.68: 정상 판정이 있으면 "차이 난 IO" 는 판정 기준 (메인 칸과 같은 IO). 칸 색은 그대로 이 계산.
+                bool diff = opt.Judged != null ? opt.Judged.Contains(LogDataset.LooseKey(bc.Name)) : row.HasDifference;
+                if (diff) changed++;
+                if (diff || opt.IncludeUnchanged) res.Rows.Add(row);
             }
 
             res.ComparedChannels = compared;
@@ -577,6 +579,12 @@ namespace LogScope.Analysis1.Heatmap
 
         /// <summary>차이가 없는 IO 도 줄로 넣을지.</summary>
         public bool IncludeUnchanged;
+
+        /// <summary>
+        /// 정상 판정에서 허용 안 된 값 오차가 있는 IO (느슨한 열쇠, 1.68). 있으면 "차이 난 IO" 를 이것으로 가립니다 —
+        /// 메인 칸 · 대시보드와 같은 수. null 이면 예전처럼 칸이 허용 오차를 넘었는지로.
+        /// </summary>
+        public HashSet<string> Judged;
 
         /// <summary>이후 로그의 시간을 이만큼 밀어 맞춥니다.</summary>
         public double Shift;

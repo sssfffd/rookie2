@@ -165,3 +165,4 @@
 | `156-gallery-fixed-height.md` | 1.65 — 갤러리 칸 높이 180 고정 (IO 수와 상관없이) |
 | `157-time-col-stepio-marks-tolerance-hints.md` | 1.66 — 2 열 동작 시간이 시간축, 단계 IO 차이 뺌, 판정 띠 보라, 허용 오차 그래프 · 히트맵 연동, 시간 · 값 보정 제안 |
 | `158-stable-io-order-main-follows-step.md` | 1.67 — 그룹 안 IO 차례 고정 (히트맵 · 메인), 분석 1 에서 고른 단계 맞춤이 판정 · 메인 칸에도 |
+| `159-one-changed-io-rule.md` | 1.68 — "차이 난 IO" 한 규칙 (판정 기준): 히트맵 · 대시보드 · 그래프 목록 수 = 메인 칸 |

@@ -1949,3 +1949,11 @@
 > 그리고 메인화면에 뜨는 차이발생 개수 및 요약이 단계맞춤이나 다른 동작해서 IO차이가 없어졌을때 연동되게 해주셈
 
 → 답변: [158-stable-io-order-main-follows-step.md](158-stable-io-order-main-follows-step.md)
+
+---
+
+## 요청 186 — 히트맵 차이 IO 수와 메인이 다름
+
+> 이거 히트맵쪽에 차이가 난 IO개수 뜨는거랑 메인이랑 다른거 같은데?
+
+→ 답변: [159-one-changed-io-rule.md](159-one-changed-io-rule.md)
