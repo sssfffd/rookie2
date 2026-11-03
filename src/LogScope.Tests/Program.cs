@@ -160,6 +160,7 @@ namespace LogScope.Tests
                 HeatJumpRules();
                 StaleComparisonRules();
                 SimilarIosRules();
+                GraphPanStableRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4722,6 +4723,60 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>
+        /// 그래프를 밀어도 모양이 그대로 (1.75) — 고정 시간 격자로 접기 · 칠하기, 위아래 끝은 붙이지 않고 자르기.
+        /// </summary>
+        private static void GraphPanStableRules()
+        {
+            Say("그래프 — 밀어도 모양 그대로 · 화면 밖은 제자리에서 자름");
+            // 0.1 초마다 바뀌는 톱니 + 튐 (10 만 표본)
+            var sb = new StringBuilder("Time,V\n");
+            for (int i = 0; i < 100000; i++)
+                sb.Append((i * 0.1).ToString("0.0", CultureInfo.InvariantCulture)).Append(',')
+                  .Append(((i * 7919) % 1000) / 10.0 + (i % 997 == 0 ? 500 : 0)).Append('\n');
+            LogDataset ds = Open(WriteCsv("pan.csv", sb.ToString()), Orientation.Auto);
+
+            const int columns = 500;
+            double t0 = 1000, t1 = 3000, span = (t1 - t0) / columns;   // 한 열 4 초 (40 표본)
+            // 0.3 열 · 7.6 열 · 123.45 열 밀기 — 같은 시각 열의 최소 · 최대가 같아야 함
+            bool same = true, oldSame = true;
+            foreach (double move in new[] { 0.3, 7.6, 123.45 })
+            {
+                double a0 = t0, b0 = t0 + move * span;
+                double oa = Math.Floor(a0 / span) * span, ob = Math.Floor(b0 / span) * span;
+                var ca = new Decimator.Column[columns + 1];
+                var cb = new Decimator.Column[columns + 1];
+                Decimator.BuildGrid(ds, 0, oa, span, ca, columns + 1);
+                Decimator.BuildGrid(ds, 0, ob, span, cb, columns + 1);
+                int shiftCols = (int)Math.Round((ob - oa) / span);
+                for (int c = 2; c + shiftCols < columns - 1; c++)
+                {
+                    Decimator.Column x = ca[c + shiftCols], y = cb[c];
+                    if (x.HasValue != y.HasValue || x.Min != y.Min || x.Max != y.Max) { same = false; break; }
+                }
+                // 예전 (화면 왼쪽 끝부터 접기) — 밀면 달라짐
+                var pa = new Decimator.Column[columns];
+                var pb = new Decimator.Column[columns];
+                Decimator.Build(ds, 0, a0, a0 + columns * span, pa, columns);
+                Decimator.Build(ds, 0, b0, b0 + columns * span, pb, columns);
+                int k = (int)Math.Floor(move);
+                for (int c = 2; c + k < columns - 1; c++)
+                    if (pa[c + k].Min != pb[c].Min || pa[c + k].Max != pb[c].Max) { oldSame = false; break; }
+            }
+            Check("고정 격자 — 0.3 · 7.6 · 123.45 열 밀어도 같은 시각 열의 최소 · 최대 그대로", same, "");
+            Check("(예전 방식은 밀면 달라졌음 — 고친 까닭)", !oldSame, "");
+
+            // 위아래 끝 자르기: (0, 50) → (10, 250), 띠 [0, 100] → y = 100 은 x = 2.5 에서 (붙이면 x = 10 까지 끝선을 따라 그었음)
+            double u0, u1;
+            bool ok = LineClip.Band(50, 250, 0, 100, out u0, out u1);
+            Check("밖으로 나가는 선은 끝을 지나는 자리에서 자름", ok && u0 == 0 && Math.Abs(u1 * 10 - 2.5) < 1e-9, u0 + " " + u1);
+            ok = LineClip.Band(-300, 400, 0, 100, out u0, out u1);
+            Check("위에서 아래로 가로지르는 선은 가운데만", ok && Math.Abs(u0 * 700 - 300) < 1e-9 && Math.Abs(u1 * 700 - 400) < 1e-9, u0 + " " + u1);
+            Check("둘 다 밖 (같은 쪽) 이면 안 그림", !LineClip.Band(150, 300, 0, 100, out u0, out u1), "");
+            Check("가로선은 안이면 그대로 · 밖이면 안 그림", LineClip.Band(40, 40, 0, 100, out u0, out u1) && u0 == 0 && u1 == 1
+                  && !LineClip.Band(140, 140, 0, 100, out u0, out u1), "");
         }
 
         /// <summary>

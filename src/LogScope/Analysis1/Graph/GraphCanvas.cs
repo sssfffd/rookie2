@@ -1308,6 +1308,7 @@ namespace LogScope.Analysis1.Graph
 
         private void EnsureBuffers(int columns)
         {
+            columns += 2;   // 1.75: 고정 격자는 화면보다 한 열 더 (왼쪽 끝이 열 중간에 걸림)
             if (_colsBefore.Length < columns)
             {
                 _colsBefore = new Decimator.Column[columns];
@@ -1326,6 +1327,99 @@ namespace LogScope.Analysis1.Graph
         private double ColumnToX(Rect inner, int column)
         {
             return inner.Left + column / _pixelsPerDip;
+        }
+
+        /// <summary>
+        /// 1.75 — 고정 시간 격자의 열 c 의 왼쪽 가로 좌표. 격자의 0 번 열은 화면 왼쪽 끝보다 frac 열만큼 앞에서 시작합니다.
+        /// </summary>
+        private double GridX(Rect inner, int c, double frac)
+        {
+            return inner.Left + (c - frac) / _pixelsPerDip;
+        }
+
+        /// <summary>
+        /// 1.75 — 화면 [t0, t1] 을 columns 열로 볼 때의 고정 격자. 열 폭 span 은 그대로, 시작 origin 은 span 의 배수
+        /// (화면 왼쪽 끝 이하) — 그래서 화면을 밀어도 열 경계가 시각에 붙어 있습니다. 열 수는 columns + 1.
+        /// </summary>
+        private static void Grid(double t0, double t1, int columns, out double origin, out double span,
+                                 out int count, out double frac)
+        {
+            span = columns > 0 && t1 > t0 ? (t1 - t0) / columns : 1;
+            origin = Math.Floor(t0 / span) * span;
+            if (origin > t0) origin -= span;            // 반올림 오차
+            frac = (t0 - origin) / span;
+            if (frac >= 1) { origin += span; frac -= 1; }
+            count = columns + 1;
+        }
+
+        /// <summary>
+        /// 1.75 — 위아래로 화면 밖을 지나는 선을 <b>제자리에서 자르는</b> 선 그리기. 예전에는 화면 밖 점을 위 · 아래 끝에
+        /// 붙여서 (Clamp) 그렸는데, 그러면 화면 안에서 밖으로 나가는 선이 실제로 끝을 지나는 자리가 아니라 다음 표본
+        /// 자리까지 비스듬히 그어져 <b>보이는 파형의 기울기가 바뀌고</b>, 끝선을 따라 가로줄이 생겼습니다. 화면을 밀어
+        /// 밖에 있는 표본이 바뀌면 모양도 따라 바뀌었습니다. 이제 선분마다 위 · 아래 끝과 만나는 점을 계산해 그 안쪽만 긋습니다.
+        /// </summary>
+        private sealed class ClipLine
+        {
+            private readonly StreamGeometryContext _ctx;
+            private readonly List<Point> _pts;
+            private readonly double _top, _bottom;
+            private bool _open, _hasPrev;
+            private Point _prev, _last;
+
+            public ClipLine(StreamGeometryContext ctx, List<Point> pts, double top, double bottom)
+            {
+                _ctx = ctx; _pts = pts; _top = top; _bottom = bottom;
+                _pts.Clear();
+            }
+
+            /// <summary>선을 끊습니다 (값이 없는 자리).</summary>
+            public void Break()
+            {
+                Flush();
+                _hasPrev = false;
+            }
+
+            public void To(double x, double y)
+            {
+                if (double.IsNaN(x) || double.IsNaN(y)) { Break(); return; }
+                var p = new Point(x, y);
+                if (!_hasPrev)
+                {
+                    _hasPrev = true;
+                    _prev = p;
+                    if (y >= _top && y <= _bottom) Begin(p);
+                    return;
+                }
+
+                Point a = _prev;
+                _prev = p;
+                double dy = p.Y - a.Y;
+                double u0, u1;
+                if (!LineClip.Band(a.Y, p.Y, _top, _bottom, out u0, out u1)) { Flush(); return; }
+
+                var c0 = new Point(a.X + (p.X - a.X) * u0, a.Y + dy * u0);
+                var c1 = new Point(a.X + (p.X - a.X) * u1, a.Y + dy * u1);
+                if (!_open) Begin(c0);
+                else if (u0 > 0 || c0.X != _last.X || c0.Y != _last.Y) { Flush(); Begin(c0); }
+                _pts.Add(c1);
+                _last = c1;
+                if (u1 < 1) Flush();   // 화면 밖으로 나감 — 여기서 끊음
+            }
+
+            private void Begin(Point p)
+            {
+                _ctx.BeginFigure(p, false, false);
+                _open = true;
+                _last = p;
+            }
+
+            /// <summary>모아 둔 점을 그리고 도형을 닫습니다.</summary>
+            public void Flush()
+            {
+                if (_pts.Count > 0) _ctx.PolyLineTo(_pts, true, false);
+                _pts.Clear();
+                _open = false;
+            }
         }
 
         /// <summary>
@@ -2019,6 +2113,11 @@ namespace LogScope.Analysis1.Graph
             // 그리면 그 선만 눈금에서 어긋나 보입니다.
             double sep = (_separate && haveB && haveA) ? inner.Height * 0.02 : 0.0;
 
+            // 1.75: 접기 · 칠하기는 고정 시간 격자 위에서 (밀어도 같은 표본이 같은 열 — 모양이 안 출렁임).
+            // 이후 로그는 같은 격자를 자기 시간으로 옮겨 씁니다 (이후 시각 + shift = 화면 시각).
+            double gOrigin, gSpan, gFrac; int gCount;
+            Grid(bt0, bt1, columns, out gOrigin, out gSpan, out gCount, out gFrac);
+
             // ---- 차이 눈금: 선 하나 -------------------------------------
             if (Diffing)
             {
@@ -2029,12 +2128,12 @@ namespace LogScope.Analysis1.Graph
                 if (_shade && !IsNoDiff(vm))
                 {
                     // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
-                    Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
-                    Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
-                    ShadeGap(dc, p, inner, columns, vlo, vhi, 0);
+                    Decimator.SampleGrid(_state.Before, vm.BeforeIndex, gOrigin, gSpan, _bandBefore, gCount);
+                    Decimator.SampleGrid(_state.After, vm.AfterIndex, gOrigin - shift, gSpan, _bandAfter, gCount);
+                    ShadeGap(dc, p, inner, gCount, gFrac, vlo, vhi, 0);
                 }
 
-                DrawDifference(dc, p, inner, vm, bt0, bt1, shift, columns, vlo, vhi);
+                DrawDifference(dc, p, inner, vm, bt0, bt1, shift, gOrigin, gSpan, gCount, gFrac, vlo, vhi);
                 return;
             }
 
@@ -2042,16 +2141,16 @@ namespace LogScope.Analysis1.Graph
             {
                 // 칠하려면 양쪽 값이 같은 자리에서 하나씩 있어야 합니다.
                 // 접은 값(최소/최대)이 아니라 열마다 한 값씩 뽑아 씁니다.
-                Decimator.SampleColumns(_state.Before, vm.BeforeIndex, bt0, bt1, _bandBefore, columns);
-                Decimator.SampleColumns(_state.After, vm.AfterIndex, at0, at1, _bandAfter, columns);
-                ShadeGap(dc, p, inner, columns, vlo, vhi, sep);
+                Decimator.SampleGrid(_state.Before, vm.BeforeIndex, gOrigin, gSpan, _bandBefore, gCount);
+                Decimator.SampleGrid(_state.After, vm.AfterIndex, gOrigin - shift, gSpan, _bandAfter, gCount);
+                ShadeGap(dc, p, inner, gCount, gFrac, vlo, vhi, sep);
             }
 
             // 1.63: 둘 다 그릴 때 이전 선은 <b>굵고 옅게</b> 깔고 이후 선을 가늘게 위에 — 두 선이 겹쳐도
             // 이후 선 양옆으로 이전 선이 비쳐서 둘 다 있다는 것이 보입니다.
-            if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1,
+            if (haveB) DrawSide(dc, inner, _state.Before, vm.BeforeIndex, bt0, bt1, gOrigin, gSpan, gCount, gFrac,
                                 _colsBefore, columns, vlo, vhi, haveA ? WidePen(beforePen) : beforePen, -sep);
-            if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1,
+            if (haveA) DrawSide(dc, inner, _state.After, vm.AfterIndex, at0, at1, gOrigin - shift, gSpan, gCount, gFrac,
                                 _colsAfter, columns, vlo, vhi, afterPen, +sep);
         }
 
@@ -2064,14 +2163,15 @@ namespace LogScope.Analysis1.Graph
         /// 한 번 훑으면서 둘 다 채우고 넘치면 접은 쪽을 씁니다.
         /// </summary>
         private void DrawDifference(DrawingContext dc, Palette p, Rect inner, IoRowVm vm,
-                                    double t0, double t1, double shift, int columns,
+                                    double t0, double t1, double shift,
+                                    double gOrigin, double gSpan, int gCount, double gFrac,
                                     double vlo, double vhi)
         {
-            int count = DifferenceSeries.Build(_state.Before, vm.BeforeIndex,
-                                               _state.After, vm.AfterIndex,
-                                               shift, t0, t1,
-                                               _colsDiff, columns,
-                                               _diffT, _diffV, _diffT.Length);
+            int count = DifferenceSeries.BuildGrid(_state.Before, vm.BeforeIndex,
+                                                   _state.After, vm.AfterIndex,
+                                                   shift, gOrigin, gSpan,
+                                                   _colsDiff, gCount,
+                                                   _diffT, _diffV, _diffT.Length);
 
             // 0 선. 어디가 "차이 없음" 인지 눈에 보여야 합니다.
             double zero = ValueToY(0, inner, vlo, vhi);
@@ -2084,7 +2184,7 @@ namespace LogScope.Analysis1.Graph
             Pen pen = p.DiffPen;
             if (count < 0)
             {
-                DrawColumns(dc, inner, _colsDiff, columns, vlo, vhi, pen, 0);
+                DrawColumns(dc, inner, _colsDiff, gCount, gFrac, vlo, vhi, pen, 0);
                 return;
             }
             if (count == 0) return;
@@ -2094,26 +2194,20 @@ namespace LogScope.Analysis1.Graph
             bool stepped = DifferenceSeries.ByName(_state.Before.Channels[vm.BeforeIndex],
                                                    _state.After.Channels[vm.AfterIndex]);
 
-            double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
             using (StreamGeometryContext ctx = geo.Open())
             {
-                _pts.Clear();
-                double prevY = 0;
+                var line = new ClipLine(ctx, _pts, inner.Top - 1, inner.Bottom + 1);
+                double prevY = double.NaN;
                 for (int i = 0; i < count; i++)
                 {
                     double x = TimeToXIn(inner, _diffT[i], t0, t1);
-                    double y = Clamp(ValueToY(_diffV[i], inner, vlo, vhi), top, bottom);
-
-                    if (i == 0) { ctx.BeginFigure(new Point(x, y), false, false); }
-                    else
-                    {
-                        if (stepped) _pts.Add(new Point(x, prevY));
-                        _pts.Add(new Point(x, y));
-                    }
+                    double y = ValueToY(_diffV[i], inner, vlo, vhi);
+                    if (stepped && !double.IsNaN(prevY)) line.To(x, prevY);
+                    line.To(x, y);
                     prevY = y;
                 }
-                if (_pts.Count > 0) ctx.PolyLineTo(_pts, true, false);
+                line.Flush();
             }
             geo.Freeze();
             dc.DrawGeometry(null, pen, geo);
@@ -2132,7 +2226,8 @@ namespace LogScope.Analysis1.Graph
         /// 심해지던 그 증상이 이것입니다.
         /// </summary>
         private void DrawSide(DrawingContext dc, Rect inner, LogDataset ds, int ch,
-                              double t0, double t1, Decimator.Column[] cols, int columns,
+                              double t0, double t1, double gOrigin, double gSpan, int gCount, double gFrac,
+                              Decimator.Column[] cols, int columns,
                               double vlo, double vhi, Pen pen, double dy)
         {
             int first, last;
@@ -2143,8 +2238,8 @@ namespace LogScope.Analysis1.Graph
                 DrawSamples(dc, inner, ds, ch, first, last, t0, t1, vlo, vhi, pen, dy);
             else
             {
-                Decimator.Build(ds, ch, t0, t1, cols, columns);
-                DrawColumns(dc, inner, cols, columns, vlo, vhi, pen, dy);
+                Decimator.BuildGrid(ds, ch, gOrigin, gSpan, cols, gCount);
+                DrawColumns(dc, inner, cols, gCount, gFrac, vlo, vhi, pen, dy);
             }
         }
 
@@ -2163,32 +2258,27 @@ namespace LogScope.Analysis1.Graph
             double[] times = ds.Times;
             bool stepped = c.IsStepped;
 
-            double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
 
             using (StreamGeometryContext ctx = geo.Open())
             {
-                bool open = false;
-                _pts.Clear();
+                var line = new ClipLine(ctx, _pts, inner.Top - 1, inner.Bottom + 1);
 
                 for (int i = first; i <= last; i++)
                 {
                     float value = v[i];
-                    if (float.IsNaN(value)) { if (open) Flush(ctx, ref open); continue; }
+                    if (float.IsNaN(value)) { line.Break(); continue; }
 
                     double x = TimeToXIn(inner, times[i], t0, t1);
-                    double y = Clamp(ValueToY(value, inner, vlo, vhi) + dy,
-                                     top, bottom);
-
-                    if (!open) { ctx.BeginFigure(new Point(x, y), false, false); open = true; }
-                    else _pts.Add(new Point(x, y));
+                    double y = ValueToY(value, inner, vlo, vhi) + dy;
+                    line.To(x, y);
 
                     // 계단: 다음 표본 시각까지 이 값을 그대로 끌고 갑니다.
                     // 그 다음 바퀴가 세로 변을 그립니다.
                     if (stepped && i < last && !float.IsNaN(v[i + 1]))
-                        _pts.Add(new Point(TimeToXIn(inner, times[i + 1], t0, t1), y));
+                        line.To(TimeToXIn(inner, times[i + 1], t0, t1), y);
                 }
-                if (open) Flush(ctx, ref open);
+                line.Flush();
             }
 
             geo.Freeze();
@@ -2211,27 +2301,26 @@ namespace LogScope.Analysis1.Graph
         /// 여기서 값이 없는 열은 정말로 기록이 끊긴 자리입니다 — 표본이 픽셀보다
         /// 촘촘한 경우에만 이 길로 오기 때문입니다.
         /// </summary>
-        private void DrawColumns(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns,
+        private void DrawColumns(DrawingContext dc, Rect inner, Decimator.Column[] cols, int columns, double frac,
                                  double vlo, double vhi, Pen pen, double dy)
         {
-            double top = inner.Top - 4, bottom = inner.Bottom + 4;
             var geo = new StreamGeometry();
 
             using (StreamGeometryContext ctx = geo.Open())
             {
-                bool open = false;
+                // 1.75: 위아래 끝에 붙이지 않고 끝을 지나는 자리에서 자릅니다 (ClipLine). 열 자리는 고정 격자 (GridX).
+                var line = new ClipLine(ctx, _pts, inner.Top - 1, inner.Bottom + 1);
                 double prevY = double.NaN;
-                _pts.Clear();
 
                 for (int x = 0; x < columns; x++)
                 {
                     Decimator.Column c = cols[x];
-                    if (!c.HasValue) { if (open) Flush(ctx, ref open); prevY = double.NaN; continue; }
+                    if (!c.HasValue) { line.Break(); prevY = double.NaN; continue; }
 
-                    double px = ColumnToX(inner, x);
+                    double px = GridX(inner, x, frac);
                     // 화면 y 는 값이 클수록 작아집니다. yTop 이 c.Max, yBottom 이 c.Min.
-                    double yTop = Clamp(ValueToY(c.Max, inner, vlo, vhi) + dy, top, bottom);
-                    double yBottom = Clamp(ValueToY(c.Min, inner, vlo, vhi) + dy, top, bottom);
+                    double yTop = ValueToY(c.Max, inner, vlo, vhi) + dy;
+                    double yBottom = ValueToY(c.Min, inner, vlo, vhi) + dy;
 
                     // 직전 열이 끝난 높이에서 가까운 쪽부터 찍습니다.
                     double enter = yTop, leave = yBottom;
@@ -2240,27 +2329,15 @@ namespace LogScope.Analysis1.Graph
                         enter = yBottom; leave = yTop;
                     }
 
-                    if (!open) { ctx.BeginFigure(new Point(px, enter), false, false); open = true; }
-                    else _pts.Add(new Point(px, enter));
-
-                    if (leave != enter) _pts.Add(new Point(px, leave));
+                    line.To(px, enter);
+                    if (leave != enter) line.To(px, leave);
                     prevY = leave;
                 }
-                if (open) Flush(ctx, ref open);
+                line.Flush();
             }
 
             geo.Freeze();
             dc.DrawGeometry(null, pen, geo);
-        }
-
-        private void Flush(StreamGeometryContext ctx, ref bool open)
-        {
-            if (_pts.Count > 0)
-            {
-                ctx.PolyLineTo(_pts, true, false);
-                _pts.Clear();
-            }
-            open = false;
         }
 
         private static double Clamp(double v, double lo, double hi)
@@ -2299,7 +2376,7 @@ namespace LogScope.Analysis1.Graph
         /// 경계를 오른쪽에서 왼쪽으로 되짚어 닫습니다. 점 개수는 비슷하지만
         /// 도형 개수가 수천 개에서 몇 개로 줄어듭니다.
         /// </summary>
-        private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns,
+        private void ShadeGap(DrawingContext dc, Palette p, Rect inner, int columns, double frac,
                               double vlo, double vhi, double sep)
         {
             var geo = new StreamGeometry();
@@ -2336,7 +2413,7 @@ namespace LogScope.Analysis1.Graph
                         double b = Clamp(Math.Max(y1, y2), inner.Top, inner.Bottom);
                         if (b - t < 1) b = t + 1;
 
-                        lastPx = ColumnToX(inner, x);
+                        lastPx = GridX(inner, x, frac);
                         _edgeTop.Add(new Point(lastPx, t));
                         _edgeBottom.Add(new Point(lastPx, b));
                         x++;

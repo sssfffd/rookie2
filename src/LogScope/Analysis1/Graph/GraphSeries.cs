@@ -41,19 +41,33 @@ namespace LogScope.Analysis1.Graph
         public static void Build(LogDataset ds, int channel, double t0, double t1,
                                  Column[] outCols, int columns)
         {
+            if (columns <= 0 || !(t1 > t0)) { for (int i = 0; i < columns; i++) outCols[i] = new Column(); return; }
+            BuildGrid(ds, channel, t0, (t1 - t0) / columns, outCols, columns);
+        }
+
+        /// <summary>
+        /// 1.75 — 열을 <b>고정된 시간 격자</b> 위에 놓고 접습니다: 열 c = [origin + c·span, origin + (c+1)·span).
+        /// origin 을 화면 왼쪽 끝이 아니라 span 의 배수로 두면 (그래프 쪽이 정함), 화면을 옆으로 밀어도 <b>같은 표본이
+        /// 같은 열에</b> 들어가 파형의 위아래 끝이 그대로입니다. 예전에는 열이 화면 왼쪽 끝부터라, 1 픽셀이 안 되게만
+        /// 밀어도 표본이 옆 열로 넘어가 최소 · 최대가 달라져 파형이 출렁였습니다.
+        /// </summary>
+        public static void BuildGrid(LogDataset ds, int channel, double origin, double span,
+                                     Column[] outCols, int columns)
+        {
             for (int i = 0; i < columns; i++) outCols[i] = new Column();
-            if (ds == null || columns <= 0) return;
+            if (ds == null || columns <= 0 || !(span > 0)) return;
             if (channel < 0 || channel >= ds.ChannelCount) return;
 
             int n = ds.SampleCount;
-            if (n == 0 || !(t1 > t0)) return;
+            if (n == 0) return;
+            double t0 = origin, t1 = origin + columns * span;
 
             float[] v = ds.Channels[channel].Values;
             double[] times = ds.Times;
 
             int start = ds.IndexAtOrBefore(t0);
             if (start < 0) start = 0;
-            double scale = columns / (t1 - t0);
+            double scale = 1.0 / span;
 
             // 표본은 시간 순서라 열 번호가 뒤로 가지 않습니다. 그래서 지금 열의
             // 최소/최대를 지역 변수에 모았다가 열이 바뀔 때 한 번만
@@ -93,7 +107,7 @@ namespace LogScope.Analysis1.Graph
                 float value = v[i];
                 if (float.IsNaN(value)) continue;
 
-                int c = (int)((t - t0) * scale);
+                int c = (int)Math.Floor((t - t0) * scale);
                 if (c < 0) c = 0;
                 else if (c >= columns) c = columns - 1;
 
@@ -135,12 +149,21 @@ namespace LogScope.Analysis1.Graph
         public static void SampleColumns(LogDataset ds, int channel, double t0, double t1,
                                          float[] outValues, int columns)
         {
+            if (columns <= 0 || !(t1 > t0)) { for (int i = 0; i < columns; i++) outValues[i] = float.NaN; return; }
+            SampleGrid(ds, channel, t0, (t1 - t0) / columns, outValues, columns);
+        }
+
+        /// <summary>1.75 — 고정된 시간 격자 (BuildGrid 와 같은 열) 의 열 한가운데 값. 밀어도 칠하는 자리가 그대로.</summary>
+        public static void SampleGrid(LogDataset ds, int channel, double origin, double span,
+                                      float[] outValues, int columns)
+        {
             for (int i = 0; i < columns; i++) outValues[i] = float.NaN;
-            if (ds == null || columns <= 0) return;
+            if (ds == null || columns <= 0 || !(span > 0)) return;
             if (channel < 0 || channel >= ds.ChannelCount) return;
 
             int n = ds.SampleCount;
-            if (n == 0 || !(t1 > t0)) return;
+            if (n == 0) return;
+            double t0 = origin;
 
             Channel c = ds.Channels[channel];
             float[] v = c.Values;
@@ -148,7 +171,7 @@ namespace LogScope.Analysis1.Graph
             bool stepped = c.IsStepped;
 
             double first = times[0], last = times[n - 1];
-            double step = (t1 - t0) / columns;
+            double step = span;
 
             int i0 = ds.IndexAtOrBefore(t0);
             if (i0 < 0) i0 = 0;
@@ -283,8 +306,19 @@ namespace LogScope.Analysis1.Graph
                                 Decimator.Column[] outCols, int columns,
                                 double[] outT, float[] outV, int maxPoints)
         {
+            if (columns <= 0 || !(t1 > t0)) { for (int i = 0; i < columns; i++) outCols[i] = new Decimator.Column(); return 0; }
+            return BuildGrid(before, bi, after, ai, shift, t0, (t1 - t0) / columns, outCols, columns, outT, outV, maxPoints);
+        }
+
+        /// <summary>1.75 — 고정된 시간 격자 위에서 (Decimator.BuildGrid 와 같은 뜻). 열은 [origin, origin + columns·span].</summary>
+        public static int BuildGrid(LogDataset before, int bi, LogDataset after, int ai,
+                                    double shift, double origin, double span,
+                                    Decimator.Column[] outCols, int columns,
+                                    double[] outT, float[] outV, int maxPoints)
+        {
             for (int i = 0; i < columns; i++) outCols[i] = new Decimator.Column();
-            if (!Usable(before, bi, after, ai) || columns <= 0 || !(t1 > t0)) return 0;
+            if (!Usable(before, bi, after, ai) || columns <= 0 || !(span > 0)) return 0;
+            double t0 = origin, t1 = origin + columns * span;
 
             Channel bc = before.Channels[bi];
             Channel ac = after.Channels[ai];
@@ -294,7 +328,7 @@ namespace LogScope.Analysis1.Graph
             float[] bv = bc.Values, av = ac.Values;
             int nb = before.SampleCount, na = after.SampleCount;
 
-            double scale = columns / (t1 - t0);
+            double scale = 1.0 / span;
 
             // 두 격자를 합쳐 훑습니다. 양쪽 다 시간 순서라 뒤로 가지 않으므로,
             // 값을 읽을 자리를 가리키는 두 손가락이 앞으로만 움직입니다
@@ -350,7 +384,7 @@ namespace LogScope.Analysis1.Graph
                     else { outT[count] = t; outV[count] = value; count++; }
                 }
 
-                int c = (int)((t - t0) * scale);
+                int c = (int)Math.Floor((t - t0) * scale);
                 if (c < 0) c = 0;
                 else if (c >= columns) c = columns - 1;
 
@@ -527,6 +561,24 @@ namespace LogScope.Analysis1.Graph
     ///
     /// 화면이 없어도 돌아가는 규칙이라 여기서 시험할 수 있습니다.
     /// </summary>
+    /// <summary>
+    /// 1.75 — 선분을 위 · 아래 끝 [top, bottom] 으로 자르는 셈 (그래프의 ClipLine 이 씀, WPF 없음 — 시험이 닿음).
+    /// 선분 a → b (y 만 봄) 중 띠 안에 드는 부분을 비율 [u0, u1] (0 = a, 1 = b) 로. 하나도 안 들면 false.
+    /// </summary>
+    public static class LineClip
+    {
+        public static bool Band(double ay, double by, double top, double bottom, out double u0, out double u1)
+        {
+            u0 = 0; u1 = 1;
+            double dy = by - ay;
+            if (dy == 0) return ay >= top && ay <= bottom;
+            double ua = (top - ay) / dy, ub = (bottom - ay) / dy;
+            u0 = Math.Max(0, Math.Min(ua, ub));
+            u1 = Math.Min(1, Math.Max(ua, ub));
+            return u0 <= u1;
+        }
+    }
+
     public static class TraceColors
     {
         /// <param name="laneMode">IO 마다 칸을 따로 두고 그리는 중인지.</param>
