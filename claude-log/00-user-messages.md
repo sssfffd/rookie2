@@ -2051,3 +2051,11 @@
 (되물음에 대한 답: "갤러리 한정이 아니라 lane이나 그냥 그래프창 모두 말하는거")
 
 → 답변: [168-orange-marks-lane-wheel.md](168-orange-marks-lane-wheel.md)
+
+---
+
+## 요청 196 — 휠은 예전처럼
+
+> 그리고 휠 동작은 이전이랑 같게 해주셈
+
+→ 답변: [169-wheel-back.md](169-wheel-back.md)

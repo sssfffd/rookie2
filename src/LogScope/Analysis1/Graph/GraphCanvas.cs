@@ -2929,12 +2929,16 @@ namespace LogScope.Analysis1.Graph
             }
             else
             {
-                // 1.77: 마우스가 있는 줄만 (Lane · 갤러리). 줄 밖 (아래 시간 띠 등) · 겹쳐보기는 모두 같이.
-                string key = TimeKeyAt(at);
-                double s0, s1;
-                EnterLaneTime(key, out s0, out s1);
+                // 1.78: 휠은 예전처럼 <b>모든 줄이 같이</b> (사용자 요청 — 1.77 에 마우스가 있는 줄만으로 했다가 되돌림).
+                // 끌기 · 오른쪽 네모로 자기 구간을 가진 줄도 같은 비율로, 마우스 가로 자리를 중심으로 같이 확대 · 축소.
+                foreach (string key in new List<string>(_laneTimes.Keys))
+                {
+                    double s0, s1;
+                    if (!EnterLaneTime(key, out s0, out s1)) continue;
+                    ZoomTimeAround(XToTime(at.X), factor);
+                    LeaveLaneTime(key, s0, s1, true);
+                }
                 ZoomTimeAround(XToTime(at.X), factor);
-                if (key != null) LeaveLaneTime(key, s0, s1, true);
             }
 
             InvalidateVisual();
