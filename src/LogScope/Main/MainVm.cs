@@ -59,6 +59,8 @@ namespace LogScope.Main
                 Cards[0].ClearScore();
                 Cards[0].ClearVerdict();
                 Cards[0].SetCount(string.Empty);
+                Cards[0].SetCountBlock(string.Empty, string.Empty);
+                Cards[0].SetScoreNote(string.Empty);
                 Cards[0].SetStats(new List<StatVm>());
             }
             else
@@ -76,8 +78,14 @@ namespace LogScope.Main
                     string note = picked != null
                         ? "그래프에서 고른 단계 '" + picked.Label + "' 맞춤 반영 중 — [전체 구간] 으로 돌리면 원래 수"
                         : string.Empty;
-                    Cards[0].SetVerdict(judge.Word, JudgeGradeOf(judge.Grade), note,
-                                        judge.OpenIoCount.ToString("N0"));
+                    // 1.81: 점수 (100 − 차이 난 IO 의 평균 오차율) · 옆에 "차이 a / b IO" · 그 아래 평균 오차율 (JudgeScore).
+                    JudgeScore js = JudgeScore.Of(judge, _state.Before, _state.After, _state.NoDiffKeys());
+                    Cards[0].ClearVerdict();
+                    Cards[0].SetCount(string.Empty);
+                    Cards[0].SetScore(Math.Round(js.Score, 1));
+                    Cards[0].SetCountBlock(js.DiffIos.ToString("N0") + " / " + js.TotalIos.ToString("N0"),
+                                           "평균 오차율 " + js.MeanErrorRate.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " %");
+                    Cards[0].SetScoreNote(note);
                 }
                 else
                 {
@@ -98,6 +106,8 @@ namespace LogScope.Main
                     // "한쪽에만 있는 IO" 는 뺐습니다 (대시보드에 목록으로 있음).
                     // 그래서 숫자 칸(Stats)은 비고, 비면 그 줄째 안 보입니다.
                     Cards[0].SetCount(r.ChangedCount.ToString("N0"));
+                    Cards[0].SetCountBlock(string.Empty, string.Empty);
+                    Cards[0].SetScoreNote(string.Empty);
                 }
                 Cards[0].SetStats(new List<StatVm>());
             }
@@ -1031,7 +1041,9 @@ namespace LogScope.Main
             // 1.62: 분석 1 판정 · 허용 — 허용한 오차를 LLM 이 정상 변동으로 읽게 (JudgeText)
             q.Judgement = q.Use1 ? _state.Judgement : null;
             q.Analysis1Judgement = q.Use1 && _state.Judgement != null
-                ? JudgeText.ForLlm(_state.Judgement, _state.Before) : string.Empty;
+                ? JudgeText.ForLlm(_state.Judgement, _state.Before,
+                                   JudgeScore.Of(_state.Judgement, _state.Before, _state.After, _state.NoDiffKeys()))
+                : string.Empty;
             return q;
         }
 

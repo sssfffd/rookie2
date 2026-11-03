@@ -22,9 +22,22 @@ namespace LogScope.Analysis1.Judge
 
         public static string ForLlm(JudgeResult r, LogDataset before)
         {
+            return ForLlm(r, before, null);
+        }
+
+        /// <summary>1.81: 점수 (메인 칸에 적는 것) 도 같이.</summary>
+        public static string ForLlm(JudgeResult r, LogDataset before, JudgeScore score)
+        {
             if (r == null) return string.Empty;
             var sb = new StringBuilder(8 * 1024);
             sb.Append("## 분석 1 정상 판정 (이전 로그 = 정상 기준)\n\n");
+            if (score != null)
+            {
+                sb.Append("- 점수: **").Append(score.Score.ToString("0.#", Inv)).Append(" / 100** — 차이 난 IO ")
+                  .Append(score.DiffIos.ToString("N0")).Append(" / 전체 ").Append(score.TotalIos.ToString("N0"))
+                  .Append(" 개, 평균 오차율 ").Append(score.MeanErrorRate.ToString("0.#", Inv)).Append(" %")
+                  .Append(" (오차율 = 이전 로그 전체 시간을 100 칸으로 나눠 허용 안 된 오차가 걸친 칸 수, 평균은 차이 난 IO 만, 점수 = 100 − 평균)\n");
+            }
             sb.Append("- 판정: **").Append(r.Word).Append("** — 오차가 있는 IO ").Append(r.OpenIoCount.ToString("N0"))
               .Append(" 개 (허용 안 된 오차 구간 ").Append(r.OpenCount.ToString("N0")).Append(" 개)")
               .Append(", 사용자가 허용한 오차 ").Append(r.AllowedCount.ToString("N0")).Append(" 개\n");

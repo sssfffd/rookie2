@@ -108,6 +108,87 @@ namespace LogScope.Analysis1.Judge
     }
 
     /// <summary>오차 하나 — 오차 목록의 한 줄.</summary>
+    /// <summary>
+    /// 분석 1 점수 (1.81, 사용자가 정한 셈).
+    /// <list type="bullet">
+    /// <item><b>오차율</b> (IO 하나): 이전 로그 전체 시간을 <b>100 칸</b>으로 나눠, 허용 안 된 판정 오차가 걸친 칸 수 (%).
+    ///   한쪽 로그에만 있는 IO 는 100 %.</item>
+    /// <item><b>평균 오차율</b>: 차이 난 IO (허용 안 된 오차가 있는 IO) 들의 오차율 평균 — 차이 없는 IO 를 0 % 로 넣으면 IO 가 많을수록
+    ///   묽어져 크게 망가진 IO 가 있어도 점수가 거의 안 움직여서. "몇 개가 다른가" 는 옆의 차이 개수가 맡음.</item>
+    /// <item><b>점수</b> = 100 − 평균 오차율. 차이 난 IO 가 없으면 100.</item>
+    /// <item>차이 개수 / 전체 개수 = 차이 난 IO 수 / 두 로그의 IO 수 (합집합, 단계 IO 뺌).</item>
+    /// </list>
+    /// </summary>
+    public sealed class JudgeScore
+    {
+        public const int Buckets = 100;
+
+        public double Score = 100;
+        public int DiffIos;
+        public int TotalIos;
+        public double MeanErrorRate;
+
+        /// <summary>IO 이름 → 오차율 (%) — 차이 난 IO 만.</summary>
+        public Dictionary<string, double> Rates = new Dictionary<string, double>(StringComparer.Ordinal);
+
+        public static JudgeScore Of(JudgeResult r, LogDataset before, LogDataset after, ICollection<string> exclude)
+        {
+            var s = new JudgeScore();
+            var all = new HashSet<string>(StringComparer.Ordinal);
+            foreach (LogDataset ds in new[] { before, after })
+            {
+                if (ds == null) continue;
+                for (int i = 0; i < ds.ChannelCount; i++)
+                {
+                    string k = LogDataset.LooseKey(ds.Channels[i].Name);
+                    if (exclude == null || !exclude.Contains(k)) all.Add(k);
+                }
+            }
+            s.TotalIos = all.Count;
+            if (r == null || before == null || before.SampleCount == 0) return s;
+
+            double t0 = before.TimeStart, t1 = before.TimeEnd;
+            double w = (t1 - t0) / Buckets;
+            var marks = new Dictionary<string, bool[]>(StringComparer.Ordinal);
+            var full = new HashSet<string>(StringComparer.Ordinal);
+            foreach (JudgeItem it in r.Items)
+            {
+                if (it.IsAllowed || it.Io.Length == 0) continue;
+                if (it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra) { full.Add(it.Io); continue; }
+                if (it.Kind != JudgeKind.Value) continue;
+                bool[] m;
+                if (!marks.TryGetValue(it.Io, out m)) { m = new bool[Buckets]; marks[it.Io] = m; }
+                if (!(w > 0)) { m[0] = true; continue; }
+                double a = Math.Min(it.Start, it.End), b = Math.Max(it.Start, it.End);
+                if (b < t0 || a > t1) continue;
+                int k0 = (int)Math.Floor((Math.Max(a, t0) - t0) / w);
+                int k1 = (int)Math.Floor((Math.Min(b, t1) - t0) / w);
+                if (k0 >= Buckets) k0 = Buckets - 1;
+                if (k1 >= Buckets) k1 = Buckets - 1;
+                // 끝이 칸 경계에 딱 걸리면 그 칸은 안 셈 (길이가 있는 오차만)
+                if (k1 > k0 && b > a && (Math.Min(b, t1) - t0) / w == k1) k1--;
+                for (int k = k0; k <= k1; k++) m[k] = true;
+            }
+            foreach (KeyValuePair<string, bool[]> kv in marks)
+            {
+                int n = 0;
+                foreach (bool x in kv.Value) if (x) n++;
+                s.Rates[kv.Key] = n * 100.0 / Buckets;
+            }
+            foreach (string io in full) s.Rates[io] = 100.0;
+
+            s.DiffIos = s.Rates.Count;
+            if (s.DiffIos > 0)
+            {
+                double sum = 0;
+                foreach (double v in s.Rates.Values) sum += v;
+                s.MeanErrorRate = sum / s.DiffIos;
+            }
+            s.Score = Math.Max(0, 100.0 - s.MeanErrorRate);
+            return s;
+        }
+    }
+
     /// <summary>보정 제안의 종류 (1.74).</summary>
     public enum HintKind { None, Time, Offset, Both }
 

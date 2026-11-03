@@ -569,6 +569,30 @@ namespace LogScope.Main
             RaiseScore();
         }
 
+        // ---- 분석 1 점수 옆 (1.81) — "차이 5 / 120 IO" 와 그 아래 "평균 오차율 11.7 %" ----
+
+        private string _countMain = string.Empty, _countSub = string.Empty, _scoreNote = string.Empty;
+
+        /// <summary>"5 / 120" (차이 난 IO / 전체 IO). 비면 그 덩어리를 숨김.</summary>
+        public string CountMain { get { return _countMain; } }
+        /// <summary>"평균 오차율 11.7 %".</summary>
+        public string CountSub { get { return _countSub; } }
+        public bool HasCountBlock { get { return _countMain.Length > 0; } }
+
+        public void SetCountBlock(string main, string sub)
+        {
+            _countMain = main ?? string.Empty;
+            _countSub = sub ?? string.Empty;
+            Raise("CountMain"); Raise("CountSub"); Raise("HasCountBlock");
+        }
+
+        /// <summary>점수 칸일 때 점수 옆 작은 글 (예: 고른 단계 반영 중).</summary>
+        public void SetScoreNote(string note)
+        {
+            _scoreNote = note ?? string.Empty;
+            Raise("ScoreNote");
+        }
+
         public void SetScore(double value)
         {
             if (_has && _score == value) return;
@@ -657,9 +681,9 @@ namespace LogScope.Main
 
                 if (!_has) return "Log 파일을 비교한 후 점수가 나옵니다";
 
-                // 점수가 나온 뒤에는 아무것도 안 적습니다 (1.06). "이상 없음 ·
-                // 확인 필요 · 점검 필요" 를 적었는데, 점수 색과 화면 아래 색
-                // 설명이 이미 같은 말을 합니다.
+                // 점수가 나온 뒤에는 따로 정한 글만 (1.81 — 고른 단계 반영 중 등). 그 밖에는 아무것도 안 적습니다 (1.06).
+                if (_scoreNote.Length > 0) return _scoreNote;
+                // ("이상 없음 · 확인 필요 · 점검 필요" 를 적었는데, 점수 색과 화면 아래 색 설명이 이미 같은 말을 합니다.)
                 return string.Empty;
             }
         }
@@ -769,6 +793,8 @@ namespace LogScope.Main
             s.WordGrade = _wordGrade;
             s.WordNote = _wordNote;
             s.Count = _verdictCount;
+            s.CountMain = _countMain;
+            s.CountSub = _countSub;
             s.LineNote = _lineNote;
 
             for (int i = 0; i < _lines.Count; i++)
@@ -809,6 +835,8 @@ namespace LogScope.Main
             _wordGrade = s.WordGrade ?? ScoreBands.GradeNone;
             _wordNote = s.WordNote ?? string.Empty;
             _verdictCount = s.Count ?? string.Empty;
+            _scoreNote = string.Empty;
+            SetCountBlock(s.CountMain, s.CountSub);
             RaiseScore();
             Raise("HasVerdict"); Raise("VerdictCount");
 

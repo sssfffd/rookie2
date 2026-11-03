@@ -161,6 +161,7 @@ namespace LogScope.Tests
                 StaleComparisonRules();
                 SimilarIosRules();
                 GraphPanStableRules();
+                JudgeScoreRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4726,6 +4727,39 @@ namespace LogScope.Tests
         }
 
         /// <summary>
+        /// 분석 1 점수 (1.81) — 오차율 = 이전 로그 전체 시간 100 칸 중 허용 안 된 오차가 걸친 칸 수,
+        /// 평균은 차이 난 IO 만, 점수 = 100 − 평균. 한쪽에만 있는 IO 는 100 %.
+        /// </summary>
+        private static void JudgeScoreRules()
+        {
+            Say("분석 1 점수 — 100 칸 오차율 · 평균 · 점수");
+            var a = new StringBuilder("Time,A,B,C,D\n");
+            var b = new StringBuilder("Time,A,B,D\n");
+            for (int i = 0; i <= 100; i++) { a.Append(i).Append(",1,1,1,1\n"); b.Append(i).Append(",1,1,1\n"); }
+            LogDataset da = Open(WriteCsv("score_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset db = Open(WriteCsv("score_b.csv", b.ToString()), Orientation.Auto);
+            var r = new JudgeResult();
+            // A: 0 ~ 10 초 오차 (칸 폭 1 초 → 0 ~ 9 칸 = 10 칸, 끝이 칸 경계면 그 칸은 안 셈) + 50.5 초 한 점 (1 칸)
+            r.Items.Add(new JudgeItem { Kind = JudgeKind.Value, Io = "A", Start = 0, End = 10 });
+            r.Items.Add(new JudgeItem { Kind = JudgeKind.Value, Io = "A", Start = 50.5, End = 50.5 });
+            // B: 허용된 오차 — 안 셈
+            r.Items.Add(new JudgeItem { Kind = JudgeKind.Value, Io = "B", Start = 0, End = 100, Allowed = AllowState.Once });
+            // C: 이후에 없음 — 100 %
+            r.Items.Add(new JudgeItem { Kind = JudgeKind.IoMissing, Io = "C" });
+            JudgeScore js = JudgeScore.Of(r, da, db, null);
+            double ra, rc;
+            js.Rates.TryGetValue("A", out ra); js.Rates.TryGetValue("C", out rc);
+            Check("A 오차율 11 % (10 칸 + 1 칸)", Math.Abs(ra - 11) < 1e-9, ra.ToString(CultureInfo.InvariantCulture));
+            Check("허용된 B 는 안 셈 · 한쪽에만 있는 C 는 100 %", !js.Rates.ContainsKey("B") && Math.Abs(rc - 100) < 1e-9, rc.ToString(CultureInfo.InvariantCulture));
+            Check("차이 2 / 전체 4 (A B C D)", js.DiffIos == 2 && js.TotalIos == 4, js.DiffIos + " / " + js.TotalIos);
+            Check("평균 오차율 = 차이 난 IO 만 (11 + 100) / 2 = 55.5 · 점수 44.5", Math.Abs(js.MeanErrorRate - 55.5) < 1e-9
+                  && Math.Abs(js.Score - 44.5) < 1e-9, js.MeanErrorRate + " / " + js.Score);
+            JudgeScore none = JudgeScore.Of(new JudgeResult(), da, db, new HashSet<string> { LogDataset.LooseKey("D") });
+            Check("차이 없으면 100 점 · 단계 IO 는 전체에서 뺌", none.Score == 100 && none.DiffIos == 0 && none.TotalIos == 3,
+                  none.Score + " " + none.TotalIos);
+        }
+
+        /// <summary>
         /// 그래프를 밀어도 모양이 그대로 (1.75) — 고정 시간 격자로 접기 · 칠하기, 위아래 끝은 붙이지 않고 자르기.
         /// </summary>
         private static void GraphPanStableRules()
@@ -4830,9 +4864,15 @@ namespace LogScope.Tests
             sim = null;
             foreach (NoticeVm n in main.Cards[0].Notices) if (n.Key == NoticeVm.KeySimilar) sim = n;
             Check("고른 둘을 이번만 허용 → 판정 IO 2 (HIGH · SPIKE) · 창 줄 1 · 안 고른 것은 그대로 안 고름",
-                  n2c > 0 && st.Judgement.OpenIoCount == 2 && main.Cards[0].VerdictCount == "2"
+                  n2c > 0 && st.Judgement.OpenIoCount == 2 && main.Cards[0].CountMain.StartsWith("2 / ")
                   && vm.Rows.Count == 1 && vm.Rows[0].Io == "HIGH" && sim != null && sim.Text.StartsWith("IO 1 개"),
                   st.Judgement.OpenIoCount + " / " + vm.Rows.Count + " / " + (sim != null ? sim.Text : "-"));
+        }
+
+        /// <summary>판정에서 차이 난 IO 의 평균 오차율 (JudgeScore 와 같은 셈) — 점수 = 100 − 이것.</summary>
+        private static double MeanRate(AppState st)
+        {
+            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).MeanErrorRate;
         }
 
         private static string F3(double v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
@@ -5071,9 +5111,9 @@ namespace LogScope.Tests
             var g = new GraphVm(st, new AlignVm(st), new StepVm(st));
             g.Reload();
             HashSet<string> names = st.ChangedNames();
-            Check("메인 4 = 대시보드 4 = 히트맵 4", main.Cards[0].VerdictCount == "4" && dash.ChangedCount == "4개"
+            Check("메인 4 = 대시보드 4 = 히트맵 4", main.Cards[0].CountMain.StartsWith("4 / ") && dash.ChangedCount == "4개"
                   && hr.ChangedChannels == 4 && dash.Changed.Count == 4,
-                  main.Cards[0].VerdictCount + " / " + dash.ChangedCount + " / " + hr.ChangedChannels + " / " + dash.Changed.Count);
+                  main.Cards[0].CountMain + " / " + dash.ChangedCount + " / " + hr.ChangedChannels + " / " + dash.Changed.Count);
             Check("히트맵 줄 · 그래프 목록에 RAMP 는 차이 아님", FindRow(hr, "RAMP") == null && !names.Contains("RAMP")
                   && names.Contains("SPIKE") && g.List.Find("RAMP").Status != IoRowVm.StatusChanged
                   && g.List.Find("SPIKE").Status == IoRowVm.StatusChanged, string.Join(",", new List<string>(names).ToArray()));
@@ -5085,9 +5125,9 @@ namespace LogScope.Tests
             dash.Refresh();
             g.RefreshChanged();
             hr = HeatmapBuilder.Build(st.Before, st.After, heat.BuildOptions(), null);
-            Check("허용하면 메인 · 대시보드 · 히트맵 · 그래프 목록 모두 3", main.Cards[0].VerdictCount == "3" && dash.ChangedCount == "3개"
+            Check("허용하면 메인 · 대시보드 · 히트맵 · 그래프 목록 모두 3", main.Cards[0].CountMain.StartsWith("3 / ") && dash.ChangedCount == "3개"
                   && hr.ChangedChannels == 3 && g.List.Find("SPIKE").Status != IoRowVm.StatusChanged,
-                  main.Cards[0].VerdictCount + " / " + dash.ChangedCount + " / " + hr.ChangedChannels);
+                  main.Cards[0].CountMain + " / " + dash.ChangedCount + " / " + hr.ChangedChannels);
         }
 
         /// <summary>
@@ -5115,7 +5155,7 @@ namespace LogScope.Tests
             st.Recompare(null);
             var main = new MainVm(st);
             Check("안 고르면 K 오차 → 메인 칸 차이 1", st.Judgement != null && st.Judgement.OpenIoCount == 1
-                  && main.Cards[0].VerdictCount == "1", st.Judgement != null ? st.Judgement.OpenIoCount.ToString() : "없음");
+                  && main.Cards[0].CountMain.StartsWith("1 / "), st.Judgement != null ? st.Judgement.OpenIoCount.ToString() : "없음");
 
             int pickB = -1;
             StepPairList pairs = st.StepPairs();
@@ -5124,7 +5164,7 @@ namespace LogScope.Tests
             st.Recompare(null);
             main.Refresh();
             Check("B 를 골라 맞추면 K 가 맞음 → 판정 · 메인 칸 0", pickB >= 0 && st.Judgement.OpenIoCount == 0
-                  && main.Cards[0].VerdictCount == "0", pickB + " " + st.Judgement.OpenIoCount + " " + st.Judgement.Note);
+                  && main.Cards[0].CountMain.StartsWith("0 / "), pickB + " " + st.Judgement.OpenIoCount + " " + st.Judgement.Note);
             Check("왜 줄었는지 판정 글에", st.Judgement.Note.Contains("고른 단계"), st.Judgement.Note);
             bool kChanged = false;
             foreach (ChannelDiff d in st.Comparison.Items) if (d.Name == "K" && d.Changed) kChanged = true;
@@ -5133,7 +5173,7 @@ namespace LogScope.Tests
             st.StepPick = -1;
             st.Recompare(null);
             main.Refresh();
-            Check("다시 전체로 돌리면 메인 칸도 1", st.Judgement.OpenIoCount == 1 && main.Cards[0].VerdictCount == "1",
+            Check("다시 전체로 돌리면 메인 칸도 1", st.Judgement.OpenIoCount == 1 && main.Cards[0].CountMain.StartsWith("1 / "),
                   st.Judgement.OpenIoCount.ToString());
 
             // 화면이 하는 길 그대로 (1.69): 단계 콤보 → 다시 견줌 → 화면 모두 다시. 고르고 · 다른 것 · 풀기.
@@ -5143,17 +5183,17 @@ namespace LogScope.Tests
             AnalysisCardVm c1 = shell.Main.Cards[0];
             int idxB = -1, k = 0;
             foreach (string ch in shell.Step.Choices) { if (ch.Contains("B")) idxB = k; k++; }
-            string seq = c1.VerdictCount;
+            string seq = c1.CountMain;
             shell.Step.PickIndex = idxB;
-            seq += " → B " + c1.VerdictCount;
+            seq += " → B " + c1.CountMain;
             bool noteB = c1.ScoreNote.Contains("'B'");
             int groupsB = 0; foreach (GroupSummaryVm gs in c1.Groups) groupsB += gs.ChangedCount;
             shell.Step.PickIndex = 1;
-            seq += " → A " + c1.VerdictCount;
+            seq += " → A " + c1.CountMain;
             shell.Step.PickIndex = 0;
-            seq += " → 전체 " + c1.VerdictCount;
+            seq += " → 전체 " + c1.CountMain;
             int groupsAll = 0; foreach (GroupSummaryVm gs in c1.Groups) groupsAll += gs.ChangedCount;
-            Check("단계 고르기 → 풀기: 수 · 요약 · 글이 원래대로", c1.VerdictCount == "1" && groupsAll == 1 && groupsB == 0
+            Check("단계 고르기 → 풀기: 수 · 요약 · 글이 원래대로", c1.CountMain.StartsWith("1 / ") && groupsAll == 1 && groupsB == 0
                   && noteB && c1.ScoreNote.Length == 0, seq + " · 요약 " + groupsB + "→" + groupsAll + " · " + c1.ScoreNote);
         }
 
@@ -5337,9 +5377,10 @@ namespace LogScope.Tests
             Check("판정에 쓰는 것이 그대로면 다시 찾지 않음", ReferenceEquals(first, st.Judgement), "");
 
             var main = new MainVm(st);
-            Check("메인 분석 1 칸 = 판정 낱말 · 오차 수", main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "4"
-                  && main.Cards[0].Grade == ScoreBands.GradeWarn && main.Cards[0].ScoreOutOf.Length == 0,
-                  main.Cards[0].ScoreText + " / " + main.Cards[0].VerdictCount);
+            Check("메인 분석 1 칸 = 점수 / 100 · 차이 4 / 6 IO · 평균 오차율 (1.81)", main.Cards[0].ScoreOutOf == "/ 100"
+                  && main.Cards[0].CountMain == "4 / 6" && main.Cards[0].CountSub.StartsWith("평균 오차율 ")
+                  && Math.Abs(main.Cards[0].Score - (100 - MeanRate(st))) < 0.051 && main.Cards[0].Score < 100,
+                  main.Cards[0].ScoreText + " / " + main.Cards[0].CountMain);
 
             // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----
             int changed = 0;
@@ -5370,7 +5411,7 @@ namespace LogScope.Tests
             spikePop.Allow(spikePop.Rows[0], AllowChoice.Always);
             Check("창에서 앞으로도 허용 → 규칙 · 창 글 · 메인 칸 3", st.Settings.AllowRules.Count == 1 && spike.Allowed == AllowState.Rule
                   && spikePop.Summary == "오차 0 · 허용됨 1" && spikePop.Rows[0].IsAllowed && spikePop.Rows[0].Word == "허용됨 · 규칙"
-                  && main.Cards[0].ScoreText == "WARNING" && main.Cards[0].VerdictCount == "3" && changed == 1, spikePop.Summary);
+                  && main.Cards[0].CountMain.StartsWith("3 / ") && changed == 1, spikePop.Summary);
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
             GroupIoVm spikeIo = null;
@@ -5391,8 +5432,9 @@ namespace LogScope.Tests
             var bigPop = new IoErrorsVm(main, "BIG", delegate { return main.ItemsOfIo("BIG"); });
             JudgeItem big = bigPop.Rows[0].Item;
             bigPop.Allow(bigPop.Rows[0], AllowChoice.Once);
-            Check("BIG 이번만 허용 → WARNING", main.Cards[0].ScoreText == "WARNING" && big.Allowed == AllowState.Once
-                  && main.Cards[0].VerdictCount == "2" && changed == 2, main.Cards[0].ScoreText);
+            Check("BIG 이번만 허용 → 차이 2 · 점수는 남은 IO 의 평균으로", big.Allowed == AllowState.Once
+                  && Math.Abs(main.Cards[0].Score - (100 - MeanRate(st))) < 0.051
+                  && main.Cards[0].CountMain.StartsWith("2 / ") && changed == 2, main.Cards[0].ScoreText);
             Check("LLM 글에 이번만 허용", main.BuildLlmRequest(null).Analysis1Judgement.Contains("| 이번만 | 값 | BIG |"), "");
 
             main.Allow(spike, AllowChoice.Unallow);
@@ -5427,7 +5469,8 @@ namespace LogScope.Tests
             Check("같은 로그끼리 → PASS", st.Judgement != null && st.Judgement.Grade == JudgeGrade.Pass
                   && st.Judgement.Items.Count == 0, st.Judgement != null ? st.Judgement.Items.Count.ToString() : "없음");
             main.Refresh();
-            Check("같은 로그끼리 → 메인 칸 PASS · 0", main.Cards[0].ScoreText == "PASS" && main.Cards[0].VerdictCount == "0", main.Cards[0].ScoreText);
+            Check("같은 로그끼리 → 메인 칸 100 점 · 차이 0", main.Cards[0].ScoreText == "100" && main.Cards[0].CountMain.StartsWith("0 / ")
+                  && main.Cards[0].CountSub == "평균 오차율 0 %", main.Cards[0].ScoreText + " " + main.Cards[0].CountSub);
         }
 
         /// <summary>

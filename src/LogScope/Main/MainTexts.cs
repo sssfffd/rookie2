@@ -40,6 +40,10 @@ namespace LogScope.Main
         public const string Text = "차이 발생";
         /// <summary>글</summary>
         public const string Text2 = "개";
+        /// <summary>분석 1 점수 옆 (1.81) — "차이 5 / 120 IO" 의 앞 글</summary>
+        public const string CountBlockLabel = "차이";
+        /// <summary>분석 1 점수 옆 (1.81) — 뒤 글</summary>
+        public const string CountBlockUnit = "IO";
 
         // ---- 이 분석이 쓰는 로그 (분석 1) — 점수 바로 아래 (1.04) ----
 

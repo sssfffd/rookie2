@@ -296,6 +296,24 @@
                                             <TextBlock Text="{x:Static t:MainTexts.Text2}" FontSize="13" VerticalAlignment="Bottom"
                                                        Margin="4,0,0,6" Foreground="{DynamicResource Brush.Muted}" />
                                         </StackPanel>
+
+                                        <!--
+                                          분석 1 (1.81): 점수 오른쪽에 "차이 5 / 120 IO", 그 아래 "평균 오차율 11.7 %".
+                                          점수 줄 높이 (42) 안에 두 줄 — 칸마다 이전 · 이후 줄 높이가 그대로.
+                                        -->
+                                        <StackPanel Margin="16,0,0,1" VerticalAlignment="Bottom"
+                                                    Visibility="{Binding HasCountBlock, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{x:Static t:MainTexts.CountBlockLabel}" FontSize="12" VerticalAlignment="Bottom"
+                                                           Margin="0,0,6,3" Foreground="{DynamicResource Brush.Muted}" />
+                                                <TextBlock Text="{Binding CountMain}" FontSize="18" FontWeight="Bold" VerticalAlignment="Bottom"
+                                                           Foreground="{DynamicResource Brush.Text}" />
+                                                <TextBlock Text="{x:Static t:MainTexts.CountBlockUnit}" FontSize="12" VerticalAlignment="Bottom"
+                                                           Margin="5,0,0,3" Foreground="{DynamicResource Brush.Muted}" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding CountSub}" FontSize="11" Margin="0,0,0,0"
+                                                       Foreground="{DynamicResource Brush.Muted}" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- 점수 옆 작은 글 ("Log 파일을 비교한 후 점수가 나옵니다" 등).

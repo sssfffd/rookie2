@@ -27,6 +27,8 @@ namespace LogScope.Main
         public string WordGrade = string.Empty;
         public string WordNote = string.Empty;
         public string Count = string.Empty;       // "차이 발생 N 개" 의 N
+        public string CountMain = string.Empty;   // 분석 1 (1.81): "5 / 120"
+        public string CountSub = string.Empty;    // 분석 1 (1.81): "평균 오차율 11.7 %"
 
         public string LineNote = string.Empty;    // 요약이 비었을 때의 글
         public List<LineSnapshot> Lines = new List<LineSnapshot>();
@@ -61,7 +63,11 @@ namespace LogScope.Main
         /// <summary>"차이 발생 3 개". 개수가 없으면 빈 글자.</summary>
         public string CountText
         {
-            get { return Count.Length > 0 ? "차이 발생 " + Count + "개" : string.Empty; }
+            get
+            {
+                if (CountMain.Length > 0) return "차이 " + CountMain + " IO" + (CountSub.Length > 0 ? " · " + CountSub : string.Empty);
+                return Count.Length > 0 ? "차이 발생 " + Count + "개" : string.Empty;
+            }
         }
 
         /// <summary>요약 한 줄 — 첫 줄과 남은 줄 수, 또는 그룹 수.</summary>
@@ -108,6 +114,8 @@ namespace LogScope.Main
             d["wordGrade"] = WordGrade ?? string.Empty;
             d["wordNote"] = WordNote ?? string.Empty;
             d["count"] = Count ?? string.Empty;
+            d["countMain"] = CountMain ?? string.Empty;
+            d["countSub"] = CountSub ?? string.Empty;
             d["lineNote"] = LineNote ?? string.Empty;
             d["before"] = BeforeName ?? string.Empty;
             d["after"] = AfterName ?? string.Empty;
@@ -136,6 +144,8 @@ namespace LogScope.Main
             s.WordGrade = Json.GetString(d, "wordGrade", string.Empty);
             s.WordNote = Json.GetString(d, "wordNote", string.Empty);
             s.Count = Json.GetString(d, "count", string.Empty);
+            s.CountMain = Json.GetString(d, "countMain", string.Empty);
+            s.CountSub = Json.GetString(d, "countSub", string.Empty);
             s.LineNote = Json.GetString(d, "lineNote", string.Empty);
             s.BeforeName = Json.GetString(d, "before", string.Empty);
             s.AfterName = Json.GetString(d, "after", string.Empty);
