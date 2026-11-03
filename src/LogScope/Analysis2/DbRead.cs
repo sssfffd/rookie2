@@ -445,7 +445,16 @@ namespace LogScope.Analysis2
                     // 덤프 안의 표들에도 같은 폴더 이름을 붙입니다. 따로 읽어
                     // 옮겨 담아야 해서 한 번 거칩니다.
                     var side = new DbSnapshot();
-                    SqlDumpReader.Read(file, side, opt.MaxRowsPerTable);
+                    // 1.82: 사용자가 만든 읽기 (SqlUserReader.cs) 가 먼저 — false 면 내장 읽기.
+                    // 거기서 어떤 예외가 나도 프로그램은 안 멈추고 그 파일만 "오류" 로 적고 넘어갑니다.
+                    bool mine;
+                    try { mine = SqlUserReader.Read(file, side, opt.MaxRowsPerTable); }
+                    catch (Exception ue)
+                    {
+                        snap.Notes.Add(Path.GetFileName(file) + " — SqlUserReader 오류 (" + ue.GetType().Name + "): " + ue.Message);
+                        return;
+                    }
+                    if (!mine) SqlDumpReader.Read(file, side, opt.MaxRowsPerTable);
                     for (int i = 0; i < side.Tables.Count; i++)
                     {
                         DbTable one = side.Tables[i];

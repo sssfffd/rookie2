@@ -1038,6 +1038,14 @@ private static StepTable Mine(LogDataset ds)
 XAML 쪽도 `{x:Static ...}` 으로 그 상수를 읽으므로 글자가 한 곳에만 있고,
 이름을 잘못 적으면 `check_sources.py` 가 잡습니다.
 
+### `.sql` 을 직접 읽게 하려면 (1.82)
+
+`src/LogScope/Analysis2/SqlUserReader.cs` 의 `SqlUserReader.Read(path, into, maxRows)` 한 곳입니다.
+.sql 파일을 읽을 때마다 **이것이 먼저** 불리고, `true` 를 돌려주면 그 결과를, `false` 면 내장 읽기
+(`SqlDumpReader` — mysqldump 꼴) 를 씁니다. 지금은 `false` 라 예전과 같습니다. 표 만드는 예시가 파일 안에
+주석으로 있습니다 (`DbTable` · `DbColumn` · `DbRow`). 거기서 예외가 나면 그 파일만 "SqlUserReader 오류" 로 적고 넘어갑니다.
+이 파일은 사용자 몫이라 이후 버전에서 고치지 않습니다.
+
 ### `.csv` 를 어떻게 읽나 — 3 번 열쇠 · 4 번 값 (0.87)
 
 쓰는 `.csv` 가 이렇게 생겼습니다.

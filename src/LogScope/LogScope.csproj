@@ -175,6 +175,7 @@
     <Compile Include="Analysis2\DbRead.cs" />
     <Compile Include="Analysis2\DbReadMysql.cs" />
     <Compile Include="Analysis2\DbSql.cs" />
+    <Compile Include="Analysis2\SqlUserReader.cs" />
     <Compile Include="Analysis2\DbVerdict.cs" />
     <Compile Include="Common\Cell.cs" />
     <Compile Include="Common\CsvReader.cs" />
