@@ -172,7 +172,7 @@ namespace LogScope.Analysis1.Graph
             Focusable = true;
             ClipToBounds = true;
             // 1 픽셀 선이 흐려지지 않게 합니다. 파형은 또렷해야 읽힙니다.
-            ThemeManager.Changed += delegate { _wide.Clear(); InvalidateVisual(); };
+            ThemeManager.Changed += delegate { _wide.Clear(); _dense.Clear(); InvalidateVisual(); };
         }
 
         // ---------------- 바깥에서 설정하는 것 ----------------
@@ -2282,7 +2282,7 @@ namespace LogScope.Analysis1.Graph
             Pen pen = p.DiffPen;
             if (count < 0)
             {
-                DrawColumns(dc, inner, _colsDiff, gCount, gFrac, vlo, vhi, pen, 0);
+                DrawColumns(dc, inner, _colsDiff, gCount, gFrac, vlo, vhi, DensePen(pen), 0);
                 return;
             }
             if (count == 0) return;
@@ -2337,8 +2337,30 @@ namespace LogScope.Analysis1.Graph
             else
             {
                 Decimator.BuildGrid(ds, ch, gOrigin, gSpan, cols, gCount);
-                DrawColumns(dc, inner, cols, gCount, gFrac, vlo, vhi, pen, dy);
+                DrawColumns(dc, inner, cols, gCount, gFrac, vlo, vhi, DensePen(pen), dy);
             }
+        }
+
+        private readonly Dictionary<Pen, Pen> _dense = new Dictionary<Pen, Pen>();
+
+        /// <summary>
+        /// 1.80 — 표본이 픽셀보다 촘촘할 때 (축소해서 넓게 볼 때) 쓰는 펜. 이때는 열마다 위아래 끝을 잇는 촘촘한 선이라
+        /// 확대했을 때보다 얇아 보이고, 이전 (파랑, 2.4 px) 이 이후 (빨강, 1.4 px) 밑에서 양옆 0.5 px 만 비쳐 둘이 거의 안 갈렸습니다.
+        /// 넓게 볼 때만 이후 1.8 px · 이전 3.8 px — 파랑이 빨강 양옆으로 1 px 씩 보입니다. 한 선만 그릴 때도 1.8 px.
+        /// </summary>
+        private Pen DensePen(Pen pen)
+        {
+            if (pen == null) return null;
+            Pen d;
+            if (_dense.TryGetValue(pen, out d)) return d;
+            double w = pen.Thickness <= 1.6 ? 1.8 : pen.Thickness + 1.4;
+            d = new Pen(pen.Brush, w);
+            d.LineJoin = PenLineJoin.Round;
+            d.StartLineCap = PenLineCap.Round;
+            d.EndLineCap = PenLineCap.Round;
+            d.Freeze();
+            _dense[pen] = d;
+            return d;
         }
 
         /// <summary>
