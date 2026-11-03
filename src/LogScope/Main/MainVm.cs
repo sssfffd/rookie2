@@ -485,9 +485,6 @@ namespace LogScope.Main
             var g = new GroupSummaryVm(name, members, members.Count, changedHere);
             if (judge == null) return g;
 
-            g.CanExpand = members.Count > 0;
-            g.IsExpanded = g.CanExpand && _openGroups.Contains(name);
-
             // 색: 그룹 안 IO 의 허용 안 된 오차 중 가장 나쁜 것
             JudgeGrade worst = JudgeGrade.Pass;
             bool anyOpen = false;
@@ -496,9 +493,11 @@ namespace LogScope.Main
             {
                 List<JudgeItem> items;
                 byIo.TryGetValue(LogDataset.LooseKey(members[m]), out items);
+                // 1.79: 펼쳤을 때 차이 없는 IO ("오차 없음") 는 안 보임 (사용자 요청). 허용해 둔 오차가 있는 IO 는 보임 —
+                // 그 창에서 허용을 풀 수 있어야 하므로.
+                if (items == null || items.Count == 0) continue;
                 GroupIoVm io = IoRow(name, members[m], items);
                 ios.Add(io);
-                if (items == null) continue;
                 foreach (JudgeItem it in items)
                 {
                     if (it.IsAllowed) continue;
@@ -506,6 +505,10 @@ namespace LogScope.Main
                     if (it.Grade > worst) worst = it.Grade;
                 }
             }
+            // 펼칠 것이 있을 때만 펼침 (차이 있는 IO 가 없으면 예전처럼 누르면 그 그룹을 그래프로)
+            g.CanExpand = ios.Count > 0;
+            g.IsExpanded = g.CanExpand && _openGroups.Contains(name);
+
             g.GradeOverride = members.Count == 0 ? ScoreBands.GradeNone
                             : !anyOpen ? ScoreBands.GradeGood
                             : worst == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;

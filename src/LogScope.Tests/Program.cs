@@ -5353,11 +5353,12 @@ namespace LogScope.Tests
             main.ToggleGroup("묶지 않은 IO");
             rest = null;
             foreach (GroupSummaryVm x in main.Cards[0].Groups) if (x.GroupName == "묶지 않은 IO") rest = x;
-            // 1.67: 차례는 로그 열 차례 그대로 (FLAT RAMP LATE SPIKE PULSE BIG) — 오차가 바뀌어도 안 바뀜
-            Check("그룹 누르면 IO 여섯 줄 · 로그 열 차례 · 개수만", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 6
-                  && rest.Ios[0].Name == "FLAT" && rest.Ios[0].Summary == "오차 없음" && !rest.Ios[0].HasErrors
-                  && rest.Ios[5].Name == "BIG" && rest.Ios[5].Grade == ScoreBands.GradeBad && rest.Ios[5].Summary == "오차 1"
-                  && rest.Ios[5].HasErrors && rest.Ios[5].OpenGlyph == "›",
+            // 1.67: 차례는 로그 열 차례 그대로 — 오차가 바뀌어도 안 바뀜.
+            // 1.79: 차이 없는 IO (FLAT · RAMP) 는 펼쳐도 안 보임 → LATE SPIKE PULSE BIG 넷
+            Check("그룹 누르면 차이 있는 IO 넷만 · 로그 열 차례 · 개수만", rest != null && rest.IsExpanded && rest.ShowIos && rest.Ios.Count == 4
+                  && rest.Ios[0].Name == "LATE" && rest.Ios[0].HasErrors
+                  && rest.Ios[3].Name == "BIG" && rest.Ios[3].Grade == ScoreBands.GradeBad && rest.Ios[3].Summary == "오차 1"
+                  && rest.Ios[3].HasErrors && rest.Ios[3].OpenGlyph == "›" && rest.Ios.TrueForAll(x => x.Summary != "오차 없음"),
                   rest != null ? string.Join(",", rest.Ios.ConvertAll(x => x.Name).ToArray()) : "");
 
             var spikePop = new IoErrorsVm(main, "SPIKE", delegate { return main.ItemsOfIo("SPIKE"); });
