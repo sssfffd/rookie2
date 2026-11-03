@@ -34,6 +34,13 @@ namespace LogScope.Analysis1.Graph
             {
                 if (_vm != null) _vm.Step.ToggleBand(pair);
             };
+            // 갤러리 칸을 누르면 그 IO 하나만 Lane 으로 (1.77).
+            Plot.GalleryCellClicked += delegate (object s, string name)
+            {
+                if (_vm == null || string.IsNullOrEmpty(name)) return;
+                FocusOnIo(name);
+                _vm.LaneMode = true;
+            };
         }
 
         /// <summary>창이 상태를 넘겨 줍니다.</summary>

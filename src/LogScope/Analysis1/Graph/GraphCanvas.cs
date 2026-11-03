@@ -88,6 +88,47 @@ namespace LogScope.Analysis1.Graph
         private double _dragT0, _dragT1, _dragCenter;
         private string _dragLane;
 
+        // ---- 줄마다 따로인 시간 구간 (1.77) ----
+        //
+        // 휠 · 끌기는 <b>마우스가 있는 줄 (Lane 줄 · 갤러리 칸) 만</b> 시간을 바꿉니다. 그 줄은 자기 구간을 들고,
+        // 없는 줄은 함께 쓰는 구간 (_t0 · _t1) 을 따릅니다. 그릴 때 · 마우스를 셀 때 그 줄의 구간을 잠시 _t0 · _t1 에
+        // 끼워 넣어서, 시간을 쓰는 코드 (TimeToX · XToTime · 접기 격자 · 커서 · 판정 띠 · 보이는 구간 맞춤) 가 그대로입니다.
+        // Home · [전체] · 히트맵 · 오차에서 넘어와 구간을 정하면 모두 함께 쓰는 구간으로 돌아갑니다.
+        // 겹쳐보기 (줄 하나) 와 단계로 나눠 보기 (칸마다 따로 — 원래 기능) 에는 쓰지 않습니다.
+        private readonly Dictionary<string, double[]> _laneTimes = new Dictionary<string, double[]>(StringComparer.Ordinal);
+        private string _dragTimeKey;
+
+        /// <summary>줄마다 시간을 따로 둘 수 있는 화면인지 (Lane · 갤러리, 줄이 둘 이상, 단계 나눠 보기 아님).</summary>
+        private bool PerLaneTime { get { return _laneMode && !StepMode && _channels.Count > 1; } }
+
+        /// <summary>그 자리의 줄 이름 (줄마다 시간을 둘 수 있을 때만). 아니면 null.</summary>
+        private string TimeKeyAt(Point at)
+        {
+            if (!PerLaneTime) return null;
+            string k; Rect r; IoRowVm[] i;
+            return LaneAt(at, out k, out r, out i) ? k : null;
+        }
+
+        /// <summary>그 줄의 구간을 _t0 · _t1 에 끼움 (원래 값은 s0 · s1). 그 줄이 따로 구간이 없으면 그대로.</summary>
+        private bool EnterLaneTime(string key, out double s0, out double s1)
+        {
+            s0 = _t0; s1 = _t1;
+            double[] r;
+            if (key == null || !PerLaneTime || !_laneTimes.TryGetValue(key, out r)) return false;
+            _t0 = r[0]; _t1 = r[1];
+            return true;
+        }
+
+        /// <summary>끼운 것을 되돌림. store 면 지금 _t0 · _t1 을 그 줄의 구간으로 적어 둠.</summary>
+        private void LeaveLaneTime(string key, double s0, double s1, bool store)
+        {
+            if (store && key != null && _t1 > _t0) _laneTimes[key] = new[] { _t0, _t1 };
+            _t0 = s0; _t1 = s1;
+        }
+
+        /// <summary>줄마다 따로인 구간이 하나라도 있는지.</summary>
+        private bool AnyLaneTime { get { return PerLaneTime && _laneTimes.Count > 0; } }
+
         // 오른쪽 단추로 끌어 네모를 그리면 그 자리만큼 확대합니다.
         private bool _band;
         private Point _bandFrom, _bandTo;
@@ -413,6 +454,7 @@ namespace LogScope.Analysis1.Graph
             // 칸으로 나눠 보는 중이면 칸들을 단계 전체로 되돌립니다
             // (그게 이 모드의 "전체" 입니다).
             ResetStepViews();
+            _laneTimes.Clear();   // 1.77: 줄마다 따로인 구간도 함께 처음으로
 
             if (_state == null) { _t0 = 0; _t1 = 1; }
             else _state.FullTimeRange(out _t0, out _t1);
@@ -465,6 +507,7 @@ namespace LogScope.Analysis1.Graph
         public void SetTimeRange(double t0, double t1)
         {
             if (!(t1 > t0)) return;
+            _laneTimes.Clear();   // 1.77: 정해 준 구간은 모든 줄이 같이
             _t0 = t0;
             _t1 = t1;
             _timeInit = true;
@@ -630,6 +673,9 @@ namespace LogScope.Analysis1.Graph
         /// (StepBand.Pair). 화면이 받아 그 단계만 보게 합니다.
         /// </summary>
         public event EventHandler<int> StepHeadClicked;
+
+        /// <summary>갤러리에서 칸 하나를 눌렀을 때 (1.77) — 그 IO 이름. 창이 그 IO 만 Lane 으로 바꿉니다.</summary>
+        public event EventHandler<string> GalleryCellClicked;
 
         private double XToTime(double x)
         {
@@ -1026,7 +1072,21 @@ namespace LogScope.Analysis1.Graph
                     double top = plot.Top + i * laneH - scrollY;
                     if (top + laneH < plot.Top || top > plot.Bottom) continue;
                     var rect = new Rect(plot.Left, top, plot.Width, laneH);
-                    DrawLane(dc, p, rect, new[] { _channels[i] }, _channels[i].Name, columns);
+                    string key = _channels[i].Name;
+                    double s0, s1;
+                    bool own = EnterLaneTime(key, out s0, out s1);
+                    try
+                    {
+                        DrawLane(dc, p, rect, new[] { _channels[i] }, key, columns);
+                        if (AnyLaneTime)
+                        {
+                            // 줄마다 시간이 다르면 커서도 줄마다 (그 줄의 시간 자리에)
+                            DrawLaneCursorLine(dc, rect, _cursorA, p.CursorAPen);
+                            DrawLaneCursorLine(dc, rect, _cursorB, p.CursorBPen);
+                        }
+                        if (own) DrawOwnTimeLabel(dc, p, rect);
+                    }
+                    finally { LeaveLaneTime(key, s0, s1, false); }
                 }
             }
             else
@@ -1040,8 +1100,11 @@ namespace LogScope.Analysis1.Graph
 
             DrawTimeAxis(dc, p, plot);
             if (StepMode) DrawStepHead(dc, p, plot);
-            DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
-            DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
+            if (!AnyLaneTime)
+            {
+                DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
+                DrawCursor(dc, p, plot, _cursorB, p.CursorBPen, p.CursorB, "B");
+            }
             DrawLegend(dc, p, plot);
             DrawBand(dc, p, plot);
         }
@@ -1070,6 +1133,10 @@ namespace LogScope.Analysis1.Graph
                 _tickRight = cell.Left + CellGutter - 4;
                 _tickMaxW = CellGutter - 6;
                 var lane = new Rect(cell.Left, cell.Top, cell.Width, Math.Max(20, cell.Height - CellTimeH));
+                double s0, s1;
+                EnterLaneTime(_channels[i].Name, out s0, out s1);   // 1.77: 칸마다 따로인 시간
+                try
+                {
                 DrawLane(dc, p, lane, new[] { _channels[i] }, _channels[i].Name, columns, CellGutter);
 
                 // 칸 아래: 시작 · 끝 시각 (단계로 나눠 보는 중이면 생략 — 칸 안에서 단계마다 시간이 따로)
@@ -1086,6 +1153,8 @@ namespace LogScope.Analysis1.Graph
                 // 커서 A · B 를 칸마다
                 DrawCellCursor(dc, plot, cp, lane, _cursorA, p.CursorAPen);
                 DrawCellCursor(dc, plot, cp, lane, _cursorB, p.CursorBPen);
+                }
+                finally { LeaveLaneTime(_channels[i].Name, s0, s1, false); }
             }
             dc.Pop();
             _tickRight = GutterW - 8;
@@ -1098,11 +1167,32 @@ namespace LogScope.Analysis1.Graph
             dc.DrawRectangle(p.AxisStripBrush, null, strip);
             dc.DrawLine(p.BorderPen, new Point(0, strip.Top), new Point(strip.Right, strip.Top));
             string range = StepMode ? "단계로 나눠 보는 중 — 칸마다 같은 단계 칸"
+                         : AnyLaneTime ? "칸마다 따로 (휠 · 끌기는 마우스가 있는 칸만) — Home 을 누르면 모든 칸이 같은 구간으로"
                          : "모든 칸 같은 구간  " + TimeLabel(refDs, _t0) + "  ~  " + TimeLabel(refDs, _t1);
             dc.DrawText(Text(range, FontSmall, p.MutedBrush), new Point(10, strip.Top + 5));
 
             DrawLegend(dc, p, plot);
             DrawBand(dc, p, plot);
+        }
+
+        /// <summary>Lane 줄 하나에 커서 줄 (1.77 — 줄마다 시간이 다를 때). 지금 끼운 그 줄의 구간으로.</summary>
+        private void DrawLaneCursorLine(DrawingContext dc, Rect lane, double t, Pen pen)
+        {
+            if (double.IsNaN(t) || t < _t0 || t > _t1) return;
+            double x = TimeToX(t);
+            if (double.IsNaN(x)) return;
+            x = Snap(x);
+            dc.DrawLine(pen, new Point(x, lane.Top + HeaderH), new Point(x, lane.Bottom - 2));
+        }
+
+        /// <summary>자기 구간을 가진 Lane 줄의 오른쪽 아래에 "이 줄만 a ~ b" (1.77) — 아래 시간 눈금과 다르다는 표시.</summary>
+        private void DrawOwnTimeLabel(DrawingContext dc, Palette p, Rect lane)
+        {
+            LogDataset refDs = _state != null ? _state.TimeReference : null;
+            FormattedText ft = Text("이 줄만  " + TimeLabel(refDs, _t0) + "  ~  " + TimeLabel(refDs, _t1), FontSmall, p.MutedBrush);
+            var box = new Rect(lane.Right - ft.Width - 12, lane.Bottom - ft.Height - 6, ft.Width + 8, ft.Height + 2);
+            dc.DrawRectangle(Tinted(p.Window, 0.85), null, box);
+            dc.DrawText(ft, new Point(box.Left + 4, box.Top + 1));
         }
 
         private void DrawCellCursor(DrawingContext dc, Rect plot, Rect cellPlot, Rect lane, double t, Pen pen)
@@ -1187,9 +1277,9 @@ namespace LogScope.Analysis1.Graph
 
             const double sample = 18, gap = 6, padX = 8, padY = 5, lineH = 16;
 
-            // 판정 오차 구간 색 (1.66) — 차이 영역 표시(옅은 빨강)와 헷갈리지 않게 보라.
+            // 판정 오차 구간 색 (1.66 보라 → 1.77 주황) — 차이 영역 표시(옅은 빨강)와 헷갈리지 않게.
             if (_state != null && _state.Judgement != null && _state.Judgement.Items.Count > 0)
-                note = (note != null ? note + "  ·  " : string.Empty) + "보라 띠 = 판정 오차 (회색 = 허용)";
+                note = (note != null ? note + "  ·  " : string.Empty) + "주황 띠 = 판정 오차 (회색 = 허용)";
 
             FormattedText t1 = Text(firstText, FontSmall, p.TextBrush);
             FormattedText t2 = secondText != null ? Text(secondText, FontSmall, p.TextBrush) : null;
@@ -1522,18 +1612,21 @@ namespace LogScope.Analysis1.Graph
         private readonly Dictionary<Pen, Pen> _wide = new Dictionary<Pen, Pen>();
         private static readonly Color MidGray = Color.FromRgb(128, 128, 128);
 
-        /// <summary>판정 오차 구간 색 — 보라 (1.66). 밝은 · 어두운 화면 모두에서 빨강 · 파랑 선과 갈립니다.</summary>
-        private static readonly Color JudgeMarkColor = Color.FromRgb(0x8E, 0x44, 0xAD);
+        /// <summary>판정 오차 구간 색 — 주황 (1.77, 1.66 ~ 1.76 은 보라). 빨강 · 파랑 선과 [차이 영역 표시] 의 옅은 빨강과 갈립니다.</summary>
+        private static readonly Color JudgeMarkColor = Color.FromRgb(0xF0, 0x8C, 0x00);
 
-        /// <summary>같은 색의 굵고 옅은 펜 (이전 선 밑깔기).</summary>
+        /// <summary>
+        /// 이전 선 밑깔기 펜. 1.63 ~ 1.76 은 굵고 (3.9 px) 옅게 (42 %) 깔았는데, 파랑이 너무 연하고 두껍게 보여서 (1.77)
+        /// <b>진하게 (90 %) · 조금만 굵게</b> (2.4 px, 이후 선 1.4 px 보다 양쪽 0.5 px 씩) — 겹쳐도 이후 선 양옆으로 파랑이 비침.
+        /// </summary>
         private Pen WidePen(Pen pen)
         {
             if (pen == null) return null;
             Pen w;
             if (_wide.TryGetValue(pen, out w)) return w;
             var solid = pen.Brush as SolidColorBrush;
-            Brush b = Tinted(solid != null ? solid.Color : MidGray, 0.42);
-            w = new Pen(b, Math.Max(3.4, pen.Thickness * 2.8));
+            Brush b = Tinted(solid != null ? solid.Color : MidGray, 0.9);
+            w = new Pen(b, Math.Max(2.4, pen.Thickness + 1.0));
             w.LineJoin = PenLineJoin.Round;
             w.StartLineCap = PenLineCap.Round;
             w.EndLineCap = PenLineCap.Round;
@@ -1570,7 +1663,7 @@ namespace LogScope.Analysis1.Graph
 
             Rect plot = PlotArea;
             if (plot.Width <= 0) return;
-            // 1.66: 보라 — [차이 영역 표시] 의 옅은 빨강과 구분 (전에는 둘 다 붉어서 헷갈림)
+            // 1.66: 보라 → 1.77: 주황 — [차이 영역 표시] 의 옅은 빨강과 구분 (전에는 둘 다 붉어서 헷갈림)
             Color open = JudgeMarkColor, allowed = p.Muted;
             Brush openFill = Tinted(open, 0.16), openBar = Tinted(open, 0.85);
             Brush okFill = Tinted(allowed, 0.10), okBar = Tinted(allowed, 0.55);
@@ -2834,7 +2927,15 @@ namespace LogScope.Analysis1.Graph
                 if (k >= 0) ZoomStep(k, XToTime(at.X), factor);
                 else ZoomAllSteps(factor);
             }
-            else ZoomTimeAround(XToTime(at.X), factor);
+            else
+            {
+                // 1.77: 마우스가 있는 줄만 (Lane · 갤러리). 줄 밖 (아래 시간 띠 등) · 겹쳐보기는 모두 같이.
+                string key = TimeKeyAt(at);
+                double s0, s1;
+                EnterLaneTime(key, out s0, out s1);
+                ZoomTimeAround(XToTime(at.X), factor);
+                if (key != null) LeaveLaneTime(key, s0, s1, true);
+            }
 
             InvalidateVisual();
             RaiseViewChanged();
@@ -2852,7 +2953,10 @@ namespace LogScope.Analysis1.Graph
 
             double lo, hi;
             bool usable;
+            double s0, s1;
+            EnterLaneTime(key, out s0, out s1);   // 1.77: 보이는 구간 맞춤이면 그 줄의 구간으로
             BaseRange(ios, out lo, out hi, out usable);
+            LeaveLaneTime(key, s0, s1, false);
             if (!usable) return;      // 그릴 값이 없는 레인은 세로 위치를 적지 않습니다.
 
             LaneY ly = LaneFor(key);
@@ -2934,15 +3038,22 @@ namespace LogScope.Analysis1.Graph
             _dragPoint = Pos(e);
             _captureCell = _hitCell;   // 갤러리: 끄는 동안 이 칸 기준 (1.60)
             _dragLast = _dragPoint;
+            // 1.77: 끌기도 누른 줄만 — 그 줄의 지금 구간에서 시작
+            _dragTimeKey = TimeKeyAt(_dragPoint);
+            double ds0, ds1;
+            EnterLaneTime(_dragTimeKey, out ds0, out ds1);
             _dragT0 = _t0; _dragT1 = _t1;
 
             string key; Rect inner; IoRowVm[] ios;
             _dragLane = null;
-            if (LaneAt(_dragPoint, out key, out inner, out ios))
+            bool inLane = LaneAt(_dragPoint, out key, out inner, out ios);
+            double lo0 = 0, hi0 = 0; bool usable0 = false;
+            if (inLane) BaseRange(ios, out lo0, out hi0, out usable0);
+            LeaveLaneTime(_dragTimeKey, ds0, ds1, false);
+            if (inLane)
             {
-                double lo, hi;
-                bool usable;
-                BaseRange(ios, out lo, out hi, out usable);
+                double lo = lo0, hi = hi0;
+                bool usable = usable0;
                 if (usable)
                 {
                     _dragLane = key;
@@ -3002,8 +3113,12 @@ namespace LogScope.Analysis1.Graph
             {
                 double span = _dragT1 - _dragT0;
                 double shift = -dx * span / plot.Width;
-                _t0 = _dragT0 + shift;
-                _t1 = _dragT1 + shift;
+                if (_dragTimeKey != null) _laneTimes[_dragTimeKey] = new[] { _dragT0 + shift, _dragT1 + shift };   // 1.77: 그 줄만
+                else
+                {
+                    _t0 = _dragT0 + shift;
+                    _t1 = _dragT1 + shift;
+                }
             }
 
             _dragLast = Pos(e);
@@ -3015,7 +3130,10 @@ namespace LogScope.Analysis1.Graph
                 {
                     double lo, hi;
                     bool usable;
+                    double ms0, ms1;
+                    EnterLaneTime(_dragTimeKey, out ms0, out ms1);
                     BaseRange(ios, out lo, out hi, out usable);
+                    LeaveLaneTime(_dragTimeKey, ms0, ms1, false);
                     if (usable)
                     {
                         LaneY ly = LaneFor(key);
@@ -3041,8 +3159,19 @@ namespace LogScope.Analysis1.Graph
             // 갤러리에서 칸 사이 틈을 누른 것은 커서가 아닙니다.
             if (_galleryMode && _hitCell < 0) return;
 
-            // 끌지 않고 그냥 눌렀으면 커서를 놓습니다.
+            // 1.77: 갤러리에서 칸을 (끌지 않고) 누르면 그 IO 하나만 Lane 으로 — 창 (GraphView) 이 받아 바꿈.
+            if (_galleryMode && _hitCell < _channels.Count)
+            {
+                EventHandler<string> g = GalleryCellClicked;
+                if (g != null) { g(this, _channels[_hitCell].Name); return; }
+            }
+
+            // 끌지 않고 그냥 눌렀으면 커서를 놓습니다 (1.77: 그 줄의 시간으로).
+            string ck = TimeKeyAt(upAt);
+            double cs0, cs1;
+            EnterLaneTime(ck, out cs0, out cs1);
             double t = XToTime(upAt.X);
+            LeaveLaneTime(ck, cs0, cs1, false);
             // 칸 사이의 금을 누르면 가리키는 시각이 없습니다 (NaN).
             // 커서를 거기 두면 값이 전부 "-" 로 나오니 그냥 둡니다.
             if (double.IsNaN(t)) return;
@@ -3105,12 +3234,17 @@ namespace LogScope.Analysis1.Graph
 
             // 세로 먼저. 시간을 바꾸면 BaseRange(보이는 구간 맞춤)가 달라져
             // 값 범위 계산이 어긋납니다.
+            // 1.77: 네모를 시작한 줄만 (줄마다 시간을 둘 수 있으면)
+            string bk = PerLaneTime ? _bandLane : null;
+            double bs0, bs1;
+            EnterLaneTime(bk, out bs0, out bs1);
             if (r.Height >= 6) ZoomBandValue(r);
             if (r.Width >= 6)
             {
                 if (StepMode) ZoomStepToBox(r);
                 else ZoomBandTime(r);
             }
+            if (bk != null) LeaveLaneTime(bk, bs0, bs1, true);
 
             InvalidateVisual();
             RaiseViewChanged();
