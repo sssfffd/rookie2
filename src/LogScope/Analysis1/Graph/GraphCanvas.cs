@@ -1489,15 +1489,20 @@ namespace LogScope.Analysis1.Graph
 
             DrawValueAxis(dc, p, rect, inner, vlo, vhi, ios);
 
-            if (StepMode) DrawLaneInBands(dc, p, inner, ios, vlo, vhi);
+            if (StepMode) DrawLaneInBands(dc, p, inner, ios, vlo, vhi);   // 칸마다 자름 (DrawBandPart)
             else
             {
+                // 1.76: 선 · 칠하기를 그림 칸 안으로 자릅니다. 왼쪽 · 오른쪽 바깥 표본까지 이어 그리고 (끝에서 선이 안 끊기게),
+                // 고정 격자 (1.75) 의 첫 열은 왼쪽 끝보다 조금 앞에서 시작해서, 자르지 않으면 왼쪽 기준선 (값 눈금) 을
+                // 넘어 그어졌습니다. 위아래는 ClipLine 이 끝에서 자르고, 여기서는 선 굵기만큼 (1 px) 여유.
+                dc.PushClip(new RectangleGeometry(new Rect(inner.Left, inner.Top - 1, inner.Width, inner.Height + 2)));
                 for (int k = 0; k < ios.Length; k++)
                 {
                     Pen before = ColorByIo ? p.SeriesPen(k) : p.BeforePen;
                     Pen after = ColorByIo ? PairPen(p, k) : p.AfterPen;
                     DrawChannel(dc, p, inner, ios[k], vlo, vhi, before, after, columns);
                 }
+                dc.Pop();
             }
 
             DrawJudgeMarks(dc, p, inner, ios);
