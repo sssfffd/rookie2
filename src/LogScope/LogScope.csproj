@@ -133,10 +133,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Common\TextViewWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -173,8 +169,6 @@
     <Compile Include="Analysis2\DbNames.cs" />
     <Compile Include="Analysis2\DbPathText.cs" />
     <Compile Include="Analysis2\DbRead.cs" />
-    <Compile Include="Analysis2\DbReadMysql.cs" />
-    <Compile Include="Analysis2\DbSql.cs" />
     <Compile Include="Analysis2\SqlUserReader.cs" />
     <Compile Include="Analysis2\DbVerdict.cs" />
     <Compile Include="Common\Cell.cs" />
@@ -276,10 +270,6 @@
     </Compile>
     <Compile Include="Common\TextInputWindow.xaml.cs">
       <DependentUpon>TextInputWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Common\TextViewWindow.xaml.cs">
-      <DependentUpon>TextViewWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

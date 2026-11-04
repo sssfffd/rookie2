@@ -20,20 +20,12 @@ namespace LogScope.Analysis2
         public const string Read = "데이터 읽기";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
         public const string ReadTip = "아래 두 칸을 읽어 견줍니다.";
-        /// <summary>단추 이름</summary>
-        public const string ShowScript = "SQL 문 출력";
-        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ShowScriptTip = "지금 차이로 맞추는 SQL 을 만들어 창에 띄웁니다. 그 창에서 복사하거나 파일로 저장할 수 있습니다. 이 프로그램이 돌리지는 않습니다.";
         /// <summary>글</summary>
         public const string Text = "이전";
         /// <summary>단추 이름</summary>
-        public const string PickPath = "폴더";
-        /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string PickPathTip = "폴더를 고릅니다 (그 안의 .sql / .csv / .frm 을 하위 폴더까지 읽습니다).";
-        /// <summary>단추 이름</summary>
         public const string PickFile = "파일";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string PickFileTip = "파일 하나를 고릅니다 (.sql 덤프 · .csv · .frm).";
+        public const string PickFileTip = "파일 하나를 고릅니다 (.sql 덤프 · .csv).";
         /// <summary>글</summary>
         public const string Text2 = "이후";
         /// <summary>글</summary>

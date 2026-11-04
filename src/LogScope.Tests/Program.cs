@@ -127,11 +127,6 @@ namespace LogScope.Tests
                 TextSniffRules();
                 DbDumpBytes();
                 DbCsvTable();
-                DbNestedFolders();
-                DbFrmIbdNote();
-                FrmShape();
-                FrmDefaultUnknown();
-                FrmInFolder();
                 DbSingleFile();
                 DbCompare();
                 DbDiffLines();
@@ -179,7 +174,6 @@ namespace LogScope.Tests
                 HeatmapPerStepShift();
                 HeatmapGroupsAndSearch();
                 NameSearchRule();
-                DbScript();
                 ToleranceTableRules();
                 TolerancePerIo();
             }
@@ -2124,442 +2118,16 @@ namespace LogScope.Tests
             Check("따옴표 안의 쉼표", t.Rows[1].Get(1) == "쉼표, 포함", t.Rows[1].Get(1));
             Check("CSV 에는 키가 없음", !t.HasKey, null);
 
-            // 폴더로 읽기 + 못 읽는 파일을 밝히는지
+            // 1.90: 폴더는 읽지 않음 — 조용히 넘기지 않고 그렇다고 적음
             string dir = Path.Combine(_dir, "dbfolder");
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "t.csv"), "a,b\n1,2\n", new UTF8Encoding(false));
-            File.WriteAllBytes(Path.Combine(dir, "big_table.ibd"), new byte[] { 1, 2, 3 });
-            File.WriteAllBytes(Path.Combine(dir, "big_table.frm"), new byte[] { 1, 2, 3 });
-
             DbSnapshot snap = DbFolderReader.Read(dir, null);
-            Check("폴더에서 csv 를 읽음", snap.Find("t") != null, null);
-            Check("못 읽는 파일을 밝힘", snap.Notes.Count > 0, null);
-            // 어느 줄에 적히는지가 아니라 적히는지를 봅니다. 줄 차례는
-            // 안내가 늘면 바뀝니다.
             string folderNotes = string.Join(" / ", snap.Notes.ToArray());
-            Check("ibd 를 적음", folderNotes.Contains(".ibd"), folderNotes);
-            Check("frm 도 적음", folderNotes.Contains(".frm"), folderNotes);
+            Check("폴더는 안 읽고 그렇다고 적음 (1.90)", snap.Tables.Count == 0 && folderNotes.Contains("폴더는 읽지 않습니다"), folderNotes);
 
             DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는폴더"), null);
-            Check("없는 폴더는 그렇다고만", none.Tables.Count == 0 && none.Notes.Count == 1, null);
-        }
-
-
-        /// <summary>
-        /// 폴더 안에 폴더가 나뉘어 있을 때. MySQL 데이터 폴더가
-        /// Data\&lt;DB 이름&gt;\&lt;표&gt; 꼴이라 이 모양이 실제 모양입니다.
-        /// </summary>
-        private static void DbNestedFolders()
-        {
-            Say("DB — 하위 폴더까지 읽기");
-
-            string root = Path.Combine(_dir, "nested");
-            Directory.CreateDirectory(Path.Combine(root, "db1"));
-            Directory.CreateDirectory(Path.Combine(root, "db2", "깊은곳"));
-
-            // 뿌리에 바로 있는 것, 그리고 폴더마다 같은 이름의 표
-            File.WriteAllText(Path.Combine(root, "root_table.csv"), "a\n1\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(root, "db1", "users.csv"), "id,name\n1,가\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(root, "db2", "users.csv"), "id,name\n1,나\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(root, "db2", "깊은곳", "deep.sql"),
-                "CREATE TABLE `t` (`k` int NOT NULL, PRIMARY KEY (`k`));\nINSERT INTO `t` VALUES (1);\n",
-                new UTF8Encoding(false));
-            File.WriteAllBytes(Path.Combine(root, "db1", "users.ibd"), new byte[] { 1, 2, 3 });
-
-            DbSnapshot snap = DbFolderReader.Read(root, null);
-
-            // 같은 이름의 표가 폴더마다 있어도 덮이지 않아야 합니다. 덮이면
-            // 한쪽 DB 가 조용히 사라집니다.
-            Check("뿌리의 표는 이름 그대로", snap.Find("root_table") != null, null);
-            Check("폴더 이름이 붙음 (db1)", snap.Find("db1.users") != null, null);
-            Check("폴더 이름이 붙음 (db2)", snap.Find("db2.users") != null, null);
-            Check("표 넷을 다 읽음", snap.Tables.Count == 4, "실제 " + snap.Tables.Count);
-
-            DbTable u1 = snap.Find("db1.users");
-            DbTable u2 = snap.Find("db2.users");
-            Check("같은 이름이어도 값이 섞이지 않음",
-                  u1.Rows[0].Get(1) == "가" && u2.Rows[0].Get(1) == "나",
-                  u1.Rows[0].Get(1) + "/" + u2.Rows[0].Get(1));
-
-            // 두 겹 아래의 .sql 도, 그 안의 표 이름에 폴더가 붙습니다.
-            Check("두 겹 아래의 덤프", snap.Find("db2.깊은곳.t") != null, null);
-
-            // 하위 폴더를 읽었다는 것과 .ibd 를 못 읽는다는 것을 둘 다 적습니다.
-            string notes = string.Join(" / ", snap.Notes.ToArray());
-            Check("하위 폴더를 읽었다고 적음", notes.Contains("하위 폴더"), notes);
-            Check("ibd 는 못 읽는다고 적음", notes.Contains(".ibd"), notes);
-
-            // 겹 수 상한: 0 이면 뿌리만 봅니다.
-            var shallow = new DbFolderReader.Options();
-            shallow.MaxDepth = 0;
-            DbSnapshot top = DbFolderReader.Read(root, shallow);
-            Check("겹 수 상한이 걸림", top.Tables.Count == 1 && top.Find("root_table") != null,
-                  "실제 " + top.Tables.Count);
-
-            // 파일 수 상한
-            var few = new DbFolderReader.Options();
-            few.MaxFiles = 2;
-            var notes2 = new List<string>();
-            List<string> some = DbFolderReader.Files(root, few, notes2);
-            Check("파일 수 상한이 걸림", some.Count == 2, "실제 " + some.Count);
-            Check("그렇다고 적음", string.Join(" ", notes2.ToArray()).Contains("상한"),
-                  string.Join(" ", notes2.ToArray()));
-
-            // 폴더 이름 붙이기 자체
-            Check("뿌리 파일에는 안 붙음",
-                  DbFolderReader.Prefix(root, Path.Combine(root, "x.csv")) == "", 
-                  DbFolderReader.Prefix(root, Path.Combine(root, "x.csv")));
-            Check("한 겹은 한 번",
-                  DbFolderReader.Prefix(root, Path.Combine(root, "db1", "x.csv")) == "db1.",
-                  DbFolderReader.Prefix(root, Path.Combine(root, "db1", "x.csv")));
-            Check("두 겹은 점으로 이음",
-                  DbFolderReader.Prefix(root, Path.Combine(root, "db2", "깊은곳", "x.csv")) == "db2.깊은곳.",
-                  DbFolderReader.Prefix(root, Path.Combine(root, "db2", "깊은곳", "x.csv")));
-            Check("바깥 경로면 안 붙음",
-                  DbFolderReader.Prefix(root, Path.Combine(_dir, "x.csv")) == "",
-                  DbFolderReader.Prefix(root, Path.Combine(_dir, "x.csv")));
-
-            // 폴더 구조가 같으면 그대로 견줘집니다 (이름이 같으니까).
-            string rootB = Path.Combine(_dir, "nested_b");
-            Directory.CreateDirectory(Path.Combine(rootB, "db1"));
-            File.WriteAllText(Path.Combine(rootB, "db1", "users.csv"), "id,name\n1,다\n",
-                              new UTF8Encoding(false));
-            DbDiffResult d = DbDiff.Compare(DbFolderReader.Read(root, null),
-                                            DbFolderReader.Read(rootB, null));
-            TableDiff td = null;
-            for (int i = 0; i < d.Tables.Count; i++) if (d.Tables[i].Name == "db1.users") td = d.Tables[i];
-            Check("폴더가 같으면 같은 표로 짝지음", td != null && td.Change == DbChange.Changed,
-                  td == null ? "못 찾음" : td.Change.ToString());
-        }
-
-        /// <summary>
-        /// .frm / .ibd 를 못 읽을 때 적는 안내가 <b>두 갈래</b>인지.
-        ///
-        /// .frm 이 함께 있으면 MySQL 5.x 이고, 그 .ibd 안에는 ibd2sdi 가 꺼낼
-        /// SDI 가 없습니다 (8.0 부터 들어갑니다). 그런 폴더에 "ibd2sdi 경로를
-        /// 적으세요" 라고 안내하면 적어 보고 또 안 되는 길로 보내는 셈입니다.
-        /// </summary>
-        private static void DbFrmIbdNote()
-        {
-            Say("DB — .frm / .ibd 안내가 갈라지는지");
-
-            // 5.x : 표마다 .frm + .ibd 짝
-            string five = Path.Combine(_dir, "five");
-            Directory.CreateDirectory(five);
-            File.WriteAllBytes(Path.Combine(five, "recipe.frm"), new byte[] { 0xFE, 0x01, 0x0A });
-            File.WriteAllBytes(Path.Combine(five, "recipe.ibd"), new byte[] { 1, 2, 3 });
-
-            string note5 = string.Join(" / ", DbFolderReader.Read(five, null).Notes.ToArray());
-            Check("5.x 임을 알려 줌", note5.Contains("5.x"), note5);
-            Check("ibd2sdi 로는 안 된다고 알려 줌",
-                  note5.Contains("SDI") && note5.Contains("8.0"), note5);
-            Check("5.x 에 ibd2sdi 경로를 적으라고 하지 않음",
-                  !note5.Contains("ibd2sdi 경로를"), note5);
-            Check("대신 덤프 길을 알려 줌",
-                  note5.Contains("mysqldump") && note5.Contains("ibdata1"), note5);
-
-            // 8.0 : .ibd 만 (.frm 없음)
-            string eight = Path.Combine(_dir, "eight");
-            Directory.CreateDirectory(eight);
-            File.WriteAllBytes(Path.Combine(eight, "recipe.ibd"), new byte[] { 1, 2, 3 });
-
-            string note8 = string.Join(" / ", DbFolderReader.Read(eight, null).Notes.ToArray());
-            Check("8.0 쪽은 ibd2sdi 경로를 알려 줌", note8.Contains("ibd2sdi 경로를"), note8);
-            Check("8.0 쪽은 5.x 라고 하지 않음", !note8.Contains("5.x"), note8);
-            Check("값은 못 읽는다고 밝힘", note8.Contains("값은 못 읽"), note8);
-        }
-
-        /// <summary>
-        /// .frm 자리값대로 파일을 <b>만들어서</b> 읽혀 봅니다.
-        ///
-        /// <b>이 시험의 한계를 분명히 해 둡니다.</b> 만드는 쪽과 읽는 쪽이 같은
-        /// 자리값 표를 쓰므로, 이 시험이 지키는 것은 "자리값 표대로 읽는가" 와
-        /// "어긋난 파일에서 터지지 않고 이유를 적는가" 입니다. <b>진짜 MySQL 이
-        /// 쓴 파일과 맞는지는 증명하지 못합니다</b> — 그건 실제 .frm 하나를
-        /// 읽혀 봐야 합니다. 그래서 읽은 판 번호를 화면에 적게 해 뒀습니다
-        /// (5.6.19 로 찍히면 머리 부분은 제대로 읽은 것입니다).
-        /// </summary>
-        private static void FrmShape()
-        {
-            Say("DB — .frm 에서 표 모양 읽기");
-
-            byte[] frm = BuildFrm(50619);
-            FrmReader.Result r = FrmReader.Read(frm, "recipe");
-
-            Check("읽음", r.Ok, r.Why);
-            Check("판 번호", r.VersionId == 50619, "실제 " + r.VersionId);
-            Check("판 번호 글자", DbFolderReader.VersionText(r.VersionId) == "5.6.19",
-                  DbFolderReader.VersionText(r.VersionId));
-
-            DbTable t = r.Table;
-            Check("표 이름", t.Name == "recipe", t.Name);
-            Check("값은 없음", !t.HasRows, null);
-            Check("열 다섯", t.Columns.Count == 5, "실제 " + t.Columns.Count);
-
-            Check("열 이름 차례",
-                  t.Columns[0].Name == "id" && t.Columns[1].Name == "name"
-                  && t.Columns[2].Name == "temp_max" && t.Columns[3].Name == "made_at",
-                  string.Join(",", Names(t)));
-            // 이름은 UTF-8 입니다. 한글 열 이름이 깨지면 표가 달라 보입니다.
-            Check("한글 열 이름", t.Columns[4].Name == "상태", t.Columns[4].Name);
-
-            Check("int(11)", t.Columns[0].Type == "int(11)", t.Columns[0].Type);
-            // .frm 의 길이는 바이트입니다. 문자셋으로 안 나누면 varchar(192) 가 됩니다.
-            Check("varchar 는 글자 수로", t.Columns[1].Type == "varchar(64)", t.Columns[1].Type);
-            Check("decimal(6,2)", t.Columns[2].Type == "decimal(6,2)", t.Columns[2].Type);
-            Check("datetime(3)", t.Columns[3].Type == "datetime(3)", t.Columns[3].Type);
-            Check("enum 값까지", t.Columns[4].Type == "enum('on','off')", t.Columns[4].Type);
-
-            Check("NOT NULL 을 읽음", !t.Columns[0].Nullable, null);
-            Check("NULL 허용을 읽음", t.Columns[1].Nullable, null);
-
-            Check("기본 키를 찾음", t.Columns[0].IsKey && t.HasKey, null);
-            Check("키가 아닌 열엔 표시 없음", !t.Columns[1].IsKey, null);
-
-            // 기본값은 .frm 에서 읽지 않습니다. "없음" 이 아니라 "모름" 이어야
-            // 합니다 — 없음으로 치면 덤프 쪽(DEFAULT '0')과 견줄 때 없는 차이가
-            // 생기고, 그걸 맞추는 ALTER 까지 만들어 줍니다.
-            for (int i = 0; i < t.Columns.Count; i++)
-                if (t.Columns[i].DefaultKnown) { Check("기본값은 모른다고 둠", false, t.Columns[i].Name); break; }
-            Check("기본값은 모른다고 둠", !t.Columns[0].DefaultKnown, null);
-
-            // 타입 글자에 NOT NULL 을 섞지 않습니다 (Nullable 로 따로 들고 있습니다).
-            Check("타입에 NOT NULL 을 안 섞음", t.Columns[0].Type.IndexOf("NULL") < 0, t.Columns[0].Type);
-
-            // ---- 모양이 아닌 파일 ----
-            var res = FrmReader.Read(new byte[] { 1, 2, 3 }, "x");
-            Check("짧은 파일은 이유를 적음", !res.Ok && res.Why.Contains("짧"), res.Why);
-
-            byte[] bad = BuildFrm(50619);
-            bad[0] = 0x00;
-            res = FrmReader.Read(bad, "x");
-            Check("머리 표식이 다르면 이유를 적음", !res.Ok && res.Why.Contains("표식"), res.Why);
-
-            byte[] view = Encoding.ASCII.GetBytes("TYPE=VIEW\nquery=select 1\n" + new string(' ', 60));
-            res = FrmReader.Read(view, "v");
-            Check("뷰는 뷰라고 적음", !res.Ok && res.Why.Contains("뷰"), res.Why);
-
-            // 잘린 파일 — 터지지 않고 이유를 적어야 합니다.
-            byte[] cut = BuildFrm(50619);
-            var shorter = new byte[cut.Length - 40];
-            Array.Copy(cut, shorter, shorter.Length);
-            res = FrmReader.Read(shorter, "x");
-            Check("잘린 파일도 터지지 않음", !res.Ok && res.Why.Length > 0, res.Why);
-
-            // 열 수가 이름 수와 안 맞으면 조용히 넘기지 않습니다.
-            byte[] miscount = BuildFrm(50619);
-            Put16(miscount, FrmFormInfo + 258, 9);      // 열이 9 개라고 거짓으로 적음
-            res = FrmReader.Read(miscount, "x");
-            Check("열 수가 안 맞으면 이유를 적음", !res.Ok && res.Why.Length > 0, res.Why);
-
-            // ---- 파일 이름이 표 이름 (MySQL 은 못 쓰는 글자를 @00NN 로 바꿔 둡니다) ----
-            Check("한글 표 이름을 되돌림", FrmReader.Unescape("@c628@b3c4") == "온도",
-                  FrmReader.Unescape("@c628@b3c4"));
-            Check("@ 가 없으면 그대로", FrmReader.Unescape("recipe") == "recipe", null);
-            // 모르는 꼴은 그대로 둡니다. 억지로 바꾸면 표가 없어진 것처럼 보입니다.
-            Check("모르는 꼴은 그대로", FrmReader.Unescape("a@zz") == "a@zz", FrmReader.Unescape("a@zz"));
-
-            Check("5.0 미만", DbFolderReader.VersionText(0) == "5.0 미만", null);
-        }
-
-        private static string[] Names(DbTable t)
-        {
-            var s = new string[t.Columns.Count];
-            for (int i = 0; i < t.Columns.Count; i++) s[i] = t.Columns[i].Name;
-            return s;
-        }
-
-        /// <summary>
-        /// .frm 과 덤프를 섞어 읽을 때, <b>기본값을 모르는 쪽 때문에 없는 차이가
-        /// 생기지 않는지</b>. 이게 .frm 읽기에서 가장 조용히 틀릴 수 있는 자리입니다.
-        /// </summary>
-        private static void FrmDefaultUnknown()
-        {
-            Say("DB — 모르는 기본값을 차이로 세지 않기");
-
-            var shape = new DbColumn { Name = "a", Type = "int(11)", Nullable = true };
-            shape.Default = null; shape.DefaultKnown = false;        // .frm 에서 읽은 열
-            var dumped = new DbColumn { Name = "a", Type = "int(11)", Nullable = true };
-            dumped.Default = "0"; dumped.DefaultKnown = true;        // 덤프에서 읽은 열
-
-            var b = new DbTable { Name = "t" }; b.Columns.Add(shape);
-            var a = new DbTable { Name = "t" }; a.Columns.Add(dumped);
-
-            TableDiff td = DbDiff.CompareTable(b, a);
-            Check("기본값을 모르면 차이로 세지 않음", !td.Columns[0].DefaultChanged,
-                  td.Columns[0].What());
-            Check("모른다고 표시됨", !td.Columns[0].DefaultKnown, null);
-            Check("그래서 열이 같음으로 남음", td.Columns[0].Change == DbChange.Same,
-                  td.Columns[0].Change.ToString());
-
-            // 양쪽을 다 알면 그때는 견줍니다.
-            var k1 = new DbColumn { Name = "a", Type = "int(11)", Nullable = true, Default = "1" };
-            var k2 = new DbColumn { Name = "a", Type = "int(11)", Nullable = true, Default = "2" };
-            var b2 = new DbTable { Name = "t" }; b2.Columns.Add(k1);
-            var a2 = new DbTable { Name = "t" }; a2.Columns.Add(k2);
-            TableDiff td2 = DbDiff.CompareTable(b2, a2);
-            Check("양쪽을 알면 기본값을 견줌", td2.Columns[0].DefaultChanged, td2.Columns[0].What());
-
-            // 모양(Shape)에도 모르는 기본값은 적지 않습니다 — 적으면 이름 변경
-            // 짐작이 엉뚱해집니다.
-            Check("모양에 모르는 기본값을 안 적음", shape.Shape().IndexOf("DEFAULT") < 0, shape.Shape());
-            Check("아는 기본값은 모양에 적음", k1.Shape().IndexOf("DEFAULT") >= 0, k1.Shape());
-        }
-
-        /// <summary>폴더에서 .frm 을 읽고, 같은 이름의 덤프가 있으면 덤프가 이기는지.</summary>
-        private static void FrmInFolder()
-        {
-            Say("DB — 폴더의 .frm");
-
-            string dir = Path.Combine(_dir, "frmdir");
-            Directory.CreateDirectory(dir);
-            File.WriteAllBytes(Path.Combine(dir, "recipe.frm"), BuildFrm(50619));
-            File.WriteAllBytes(Path.Combine(dir, "recipe.ibd"), new byte[] { 1, 2, 3 });
-
-            DbSnapshot snap = DbFolderReader.Read(dir, null);
-            string notes = string.Join(" / ", snap.Notes.ToArray());
-
-            Check("frm 에서 표를 읽음", snap.Find("recipe") != null, notes);
-            Check("판 번호를 적음", notes.Contains("5.6.19"), notes);
-            Check("값은 없다고 적음", notes.Contains("값과 기본값"), notes);
-            Check("ibd 는 5.x 라고 적음", notes.Contains("5.x"), notes);
-
-            // 같은 이름의 덤프가 있으면 값까지 있는 쪽이 이깁니다. .frm 이
-            // 나중에 읽혀도 덮지 않아야 합니다 (아는 것이 줄어듭니다).
-            File.WriteAllText(Path.Combine(dir, "recipe.sql"),
-                "CREATE TABLE `recipe` (`id` int NOT NULL, PRIMARY KEY (`id`));\n" +
-                "INSERT INTO `recipe` VALUES (1);\n", new UTF8Encoding(false));
-
-            DbSnapshot both = DbFolderReader.Read(dir, null);
-            DbTable t = both.Find("recipe");
-            Check("덤프가 이김", t != null && t.HasRows, t == null ? "없음" : "HasRows=" + t.HasRows);
-            Check("표는 하나만", both.Tables.Count == 1, "실제 " + both.Tables.Count);
-            string notes2 = string.Join(" / ", both.Notes.ToArray());
-            Check("안 쓴 frm 을 밝힘", notes2.Contains("쓰지 않았습니다"), notes2);
-        }
-
-        // ---- 시험용 .frm 만들기 ----
-        //
-        // 자리값은 FrmReader 의 주석과 같은 표입니다. 그래서 이 시험은
-        // "표대로 읽는가" 만 지킵니다 (FrmShape 의 설명 참고).
-
-        private const int FrmKeyAt = 68;
-        private const int FrmKeyLen = 32;
-        private const int FrmFormInfo = FrmKeyAt + FrmKeyLen;   // 100
-
-        private static void Put16(byte[] b, int at, int v)
-        {
-            b[at] = (byte)(v & 0xFF);
-            b[at + 1] = (byte)((v >> 8) & 0xFF);
-        }
-
-        private static void Put32(byte[] b, int at, int v)
-        {
-            b[at] = (byte)(v & 0xFF);
-            b[at + 1] = (byte)((v >> 8) & 0xFF);
-            b[at + 2] = (byte)((v >> 16) & 0xFF);
-            b[at + 3] = (byte)((v >> 24) & 0xFF);
-        }
-
-        private static int Put(byte[] b, int at, byte[] v)
-        {
-            Array.Copy(v, 0, b, at, v.Length);
-            return at + v.Length;
-        }
-
-        private static byte[] BuildFrm(int versionId)
-        {
-            var names = new List<byte>();
-            names.Add(0x03);                                  // 앞 한 바이트 (버립니다)
-            foreach (string n in new string[] { "id", "name", "temp_max", "made_at", "상태" })
-            {
-                names.AddRange(new UTF8Encoding(false).GetBytes(n));
-                names.Add(0xFF);
-            }
-            names.Add(0x00); names.Add(0x00);                 // 뒤 두 바이트 (버립니다)
-
-            // ENUM 값 묶음: 앞뒤 한 바이트를 버리고 0xFF 로 가릅니다.
-            var labels = new List<byte>();
-            labels.Add(0x02);
-            labels.AddRange(Encoding.ASCII.GetBytes("on"));
-            labels.Add(0xFF);
-            labels.AddRange(Encoding.ASCII.GetBytes("off"));
-            labels.Add(0xFF);
-            labels.Add(0x00);
-
-            int columns = 5;
-            int metaLen = 17 * columns;
-            int total = FrmFormInfo + 288 + metaLen + names.Count + labels.Count + 64;
-            var b = new byte[total];
-
-            // ---- 머리 ----
-            b[0] = 0xFE; b[1] = 0x01;
-            b[3] = 0x0C;                        // InnoDB
-            Put16(b, 0x04, 0);                  // 이 뒤(64)에 forminfo 자리가 적힙니다
-            Put16(b, 0x06, FrmKeyAt);
-            Put16(b, 0x0E, FrmKeyLen);
-            Put16(b, 0x10, 0);                  // 기본값 조각 길이
-            Put32(b, 0x33, versionId);
-            Put32(b, 0x37, 0);                  // extrainfo 길이
-            Put32(b, 64, FrmFormInfo);
-
-            // ---- 키: PRIMARY (id) ----
-            int k = FrmKeyAt;
-            b[k] = 1;                           // 키 1 개
-            b[k + 1] = 1;                       // 조각 1 개
-            Put16(b, k + 4, 9);                 // 이름 조각 길이
-            int kh = k + 6;
-            Put16(b, kh + 0, 1 ^ 1);            // flags: MySQL 은 HA_NOSAME 과 XOR 해서 적습니다
-            Put16(b, kh + 2, 4);                // 길이
-            b[kh + 4] = 1;                      // 조각 수
-            b[kh + 5] = 1;                      // BTREE
-            Put16(b, kh + 6, 0);                // key_block_size
-            int kp = kh + 8;
-            Put16(b, kp + 0, 1);                // 첫 열 (1 부터)
-            Put16(b, kp + 2, 1);                // 자리
-            b[kp + 4] = 0;                      // flags
-            Put16(b, kp + 5, 0);                // key_type
-            Put16(b, kp + 7, 4);                // 길이
-            Put(b, kp + 9, new byte[] { (byte)'P', (byte)'R', (byte)'I', (byte)'M',
-                                        (byte)'A', (byte)'R', (byte)'Y', 0xFF, 0x00 });
-
-            // ---- forminfo ----
-            Put16(b, FrmFormInfo + 258, columns);
-            Put16(b, FrmFormInfo + 260, 0);                 // screens 길이
-            Put16(b, FrmFormInfo + 268, names.Count);
-            Put16(b, FrmFormInfo + 274, labels.Count);
-            Put16(b, FrmFormInfo + 282, 3);                 // NULL 허용 열 수
-            Put16(b, FrmFormInfo + 284, 0);                 // 주석 길이
-
-            // ---- 열 정보 (17 바이트씩) ----
-            int m = FrmFormInfo + 288;
-            //            길이  flags                 타입  문자셋  label
-            PutColumn(b, m + 17 * 0, 11, 1, 3, 63, 0);                  // int(11) NOT NULL
-            PutColumn(b, m + 17 * 1, 192, 32768, 15, 33, 0);            // varchar(64) NULL (utf8)
-            PutColumn(b, m + 17 * 2, 8, 32768 | (2 << 8), 246, 63, 0);  // decimal(6,2) NULL
-            PutColumn(b, m + 17 * 3, 23, 1, 18, 63, 0);                 // datetime(3) NOT NULL
-            PutColumn(b, m + 17 * 4, 3, 32768, 247, 33, 1);             // enum('on','off') NULL
-
-            int at = m + metaLen;
-            at = Put(b, at, names.ToArray());
-            at = Put(b, at, labels.ToArray());
-
-            var cut = new byte[at];
-            Array.Copy(b, cut, at);
-            return cut;
-        }
-
-        private static void PutColumn(byte[] b, int at, int length, int flags,
-                                      int type, int charset, int labelId)
-        {
-            Put16(b, at + 3, length);
-            Put16(b, at + 8, flags);
-            b[at + 10] = 0;                             // unireg
-            b[at + 11] = (byte)((charset >> 8) & 0xFF);
-            b[at + 12] = (byte)labelId;
-            b[at + 13] = (byte)type;
-            b[at + 14] = (byte)(charset & 0xFF);
-            Put16(b, at + 15, 0);                       // 주석 길이
+            Check("없는 자리는 그렇다고만", none.Tables.Count == 0 && none.Notes.Count == 1, null);
         }
 
 
@@ -2606,7 +2174,7 @@ namespace LogScope.Tests
         }
 
         /// <summary>
-        /// 폴더가 아니라 <b>파일 하나</b>를 줘도 읽히는지. 세 가지 다 봅니다.
+        /// <b>파일 하나</b>를 읽는지 (1.90 부터 이것만 — 폴더 · .frm 은 뺌).
         ///
         /// 화면에서 [파일] 로 고르거나 칸에 파일을 끌어다 놓으면 이 길로
         /// 들어옵니다. 폴더만 되는 줄 알고 쓰면 "읽을 게 없다" 는 말만 보게
@@ -2630,21 +2198,20 @@ namespace LogScope.Tests
             Check(".csv 하나", b.Find("설비") != null, Join(b.Notes));
             Check(".csv 하나는 행 둘", b.Find("설비").Rows.Count == 2, null);
 
+            // 1.90: .frm · .ibd 는 읽지 않음 — 그렇다고 적음
             string frm = Path.Combine(_dir, "온도.frm");
-            File.WriteAllBytes(frm, BuildFrm(50619));
+            File.WriteAllBytes(frm, new byte[] { 0xFE, 0x01, 0x0A });
             DbSnapshot c = DbFolderReader.Read(frm, null);
-            Check(".frm 하나", c.Tables.Count == 1, Join(c.Notes));
-            Check(".frm 하나는 모양만", !c.Tables[0].HasRows, null);
-            Check(".frm 하나도 판 번호를 적음", Join(c.Notes).Contains("5.6.19"), Join(c.Notes));
+            Check(".frm 은 안 읽고 그렇다고 적음 (1.90)", c.Tables.Count == 0 && Join(c.Notes).Contains("읽지 않습니다"), Join(c.Notes));
 
             // 없는 파일과 읽을 수 없는 파일은 조용히 넘기지 않습니다.
             DbSnapshot none = DbFolderReader.Read(Path.Combine(_dir, "없는파일.sql"), null);
             Check("없는 자리는 그렇다고", none.Tables.Count == 0 && none.Notes.Count > 0, null);
 
-            string junk = WriteText("쓰레기.frm", "이건 frm 이 아닙니다");
+            string junk = WriteText("쓰레기.sql", "이건 sql 이 아닙니다");
             DbSnapshot bad = DbFolderReader.Read(junk, null);
-            Check("못 읽은 파일은 이유를 적음",
-                  bad.Tables.Count == 0 && Join(bad.Notes).Contains("읽지 못"), Join(bad.Notes));
+            Check("표가 없는 파일은 이유를 적음",
+                  bad.Tables.Count == 0 && bad.Notes.Count > 0, Join(bad.Notes));
         }
 
         private static string Join(List<string> notes)
@@ -5915,7 +5482,7 @@ namespace LogScope.Tests
             File.WriteAllText(file, "a,b\n");
             try
             {
-                Check("폴더는 폴더라고", DbPathText.Note(dir) == "폴더", DbPathText.Note(dir));
+                Check("폴더는 폴더 · 안 읽는다고 (1.90)", DbPathText.Note(dir).StartsWith("폴더") && DbPathText.Note(dir).Contains("읽지 않"), DbPathText.Note(dir));
                 Check("파일은 파일이라고", DbPathText.Note(file) == "파일", DbPathText.Note(file));
             }
             finally
@@ -6120,89 +5687,6 @@ namespace LogScope.Tests
             int n = 0;
             for (int i = 0; i < csv.Length; i++) if (csv[i] == '\n') n++;
             return n;
-        }
-
-        private static void DbScript()
-        {
-            Say("DB — SQL 글 만들기");
-
-            var b = new DbSnapshot();
-            SqlDumpReader.Read(WriteText("sc_before.sql",
-                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
-                " `temp_max` decimal(6,2) DEFAULT NULL, PRIMARY KEY (`id`));\n" +
-                "INSERT INTO `recipe` VALUES (1,'가열 A',182.50),(3,'지울 행',1.00);\n"), b, 0);
-
-            var a = new DbSnapshot();
-            SqlDumpReader.Read(WriteText("sc_after.sql",
-                "CREATE TABLE `recipe` (`id` int NOT NULL, `name` varchar(64) NOT NULL," +
-                " `temp_max` decimal(6,2) DEFAULT NULL, `added` int DEFAULT '0', PRIMARY KEY (`id`));\n" +
-                "INSERT INTO `recipe` VALUES (1,'가열 A2',999.90,5),(4,'새 행',2.00,6);\n"), a, 0);
-
-            DbDiffResult d = DbDiff.Compare(b, a);
-            string sql = SqlScript.Build(d, null);
-
-            Check("UPDATE 를 만듦", sql.Contains("UPDATE `recipe` SET"), null);
-            Check("바뀐 값이 들어감", sql.Contains("999.90"), null);
-            Check("WHERE 가 키로", sql.Contains("WHERE `id` = 1"), null);
-            Check("새 열은 ADD COLUMN", sql.Contains("ADD COLUMN `added`"), null);
-            Check("INSERT 를 만듦", sql.Contains("INSERT INTO `recipe`"), null);
-
-            // 지우는 문장은 늘 주석입니다. 글만 보고 돌렸을 때 값이 사라지면 안 됩니다.
-            int at = sql.IndexOf("DELETE FROM");
-            Check("DELETE 가 들어감", at > 0, null);
-            int lineStart = sql.LastIndexOf('\n', at) + 1;
-            Check("DELETE 는 주석으로", sql.Substring(lineStart, at - lineStart).Trim().StartsWith("--"),
-                  sql.Substring(lineStart, Math.Min(40, sql.Length - lineStart)));
-
-            // 따옴표가 든 값은 반드시 막아야 합니다. 안 막으면 글이 깨지고,
-            // 깨진 글을 사람이 돌리면 엉뚱한 문장이 됩니다.
-            Check("따옴표를 막음", SqlScript.Literal("가열 A'") == "'가열 A\\''", SqlScript.Literal("가열 A'"));
-            Check("역슬래시도 막음", SqlScript.Literal("a\\b") == "'a\\\\b'", SqlScript.Literal("a\\b"));
-            Check("NULL 은 따옴표 없이", SqlScript.Literal(null) == "NULL", SqlScript.Literal(null));
-            Check("숫자는 따옴표 없이", SqlScript.Literal("182.50") == "182.50", SqlScript.Literal("182.50"));
-            Check("이름의 역따옴표를 막음", SqlScript.Quote("a`b") == "`a``b`", SqlScript.Quote("a`b"));
-
-            // 방향은 하나뿐입니다 (0.88 에 되돌리는 방향을 뺐습니다).
-            // 만든 글의 머리에 어느 방향인지 적혀 있어야 합니다 — 저장한
-            // .sql 을 나중에 열어 본 사람이 짐작하게 두면 안 됩니다.
-            Check("글 머리에 방향이 적힘", sql.StartsWith("-- 이전 DB 를 이후와 같게"),
-                  sql.Substring(0, Math.Min(40, sql.Length)));
-
-            // 명령 줄 나누기
-            string exe, args;
-            Check("따옴표 경로를 나눔",
-                  DbTools.SplitCommand("\"C:\\My Tools\\mysqldump.exe\" -u root db", out exe, out args)
-                  && exe == "C:\\My Tools\\mysqldump.exe" && args == "-u root db", exe + " | " + args);
-            Check("따옴표 없는 것도", DbTools.SplitCommand("mysqldump db", out exe, out args)
-                  && exe == "mysqldump" && args == "db", exe + " | " + args);
-            Check("빈 줄은 거짓", !DbTools.SplitCommand("   ", out exe, out args), null);
-
-            // 실행 파일 경로를 따로 적어 두면 아래 줄은 인수만입니다.
-            Check("경로 + 인수",
-                  DbTools.Resolve("C:\\MySQL\\bin\\mysqldump.exe", "--login-path=old --databases mydb",
-                                  out exe, out args)
-                  && exe == "C:\\MySQL\\bin\\mysqldump.exe"
-                  && args == "--login-path=old --databases mydb", exe + " | " + args);
-
-            // 경로에 따옴표를 붙여 적어도 됩니다 — 공백이 든 경로를 그렇게 적는
-            // 습관이 있어서, 그걸 그대로 실행 파일 이름으로 넘기면 못 찾습니다.
-            Check("경로의 따옴표는 떼어 냄",
-                  DbTools.Resolve("\"C:\\My Tools\\mysqldump.exe\"", "--databases mydb",
-                                  out exe, out args)
-                  && exe == "C:\\My Tools\\mysqldump.exe", exe);
-
-            // 경로를 안 적었으면 아래 줄이 명령 줄 전체입니다 (예전 방식).
-            Check("경로가 없으면 명령 줄 전체로",
-                  DbTools.Resolve("", "\"C:\\My Tools\\mysqldump.exe\" --databases mydb",
-                                  out exe, out args)
-                  && exe == "C:\\My Tools\\mysqldump.exe" && args == "--databases mydb",
-                  exe + " | " + args);
-
-            Check("경로만 있고 인수가 없어도 됨",
-                  DbTools.Resolve("mysqldump.exe", "", out exe, out args)
-                  && exe == "mysqldump.exe" && args == "", exe + " | " + args);
-
-            Check("둘 다 비면 거짓", !DbTools.Resolve("", "", out exe, out args), null);
         }
 
         /// <summary>

@@ -130,9 +130,8 @@ namespace LogScope.Analysis2
         /// <summary>
         /// <b>이름이 달랐는데 짝지은 경우</b> 이후 쪽 표 이름. 같으면 빈 글자입니다.
         ///
-        /// <see cref="Name"/> 을 "a ↔ b" 처럼 바꾸지 않은 이유: 그 이름이
-        /// 그대로 <c>ALTER TABLE</c> 의 식별자로 나갑니다 (DbSql). 거기에
-        /// 화살표가 섞이면 돌아가지 않는 SQL 이 나옵니다.
+        /// <see cref="Name"/> 을 "a ↔ b" 처럼 바꾸지 않습니다 — 이름은 표 이름 그대로 두고 (목록 · LLM 글이 씀),
+        /// 짝지은 이후 쪽 이름은 여기 따로 둡니다.
         /// </summary>
         public string PairedName = string.Empty;
 
@@ -169,11 +168,6 @@ namespace LogScope.Analysis2
         public List<string> Notes = new List<string>();
 
         public int TablesOnlyBefore, TablesOnlyAfter, TablesChanged, TablesSame;
-
-        public bool AnyChange
-        {
-            get { return TablesOnlyBefore + TablesOnlyAfter + TablesChanged > 0; }
-        }
     }
 
     /// <summary>

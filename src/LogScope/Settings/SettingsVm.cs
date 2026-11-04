@@ -284,34 +284,6 @@ namespace LogScope.Settings
             set { _s.LlmServer = (value ?? string.Empty).Trim(); Raise(); }
         }
 
-        /// <summary>
-        /// DB 쪽 바깥 도구. 전에는 config.txt 에 적었습니다 — 손으로 고치는
-        /// 파일에 "띄울 실행 파일의 자리" 를 적어 두지 않기로 했습니다.
-        /// </summary>
-        public string MysqlDumpPath
-        {
-            get { return _s.MysqlDumpPath ?? string.Empty; }
-            set { _s.MysqlDumpPath = value ?? string.Empty; Raise(); }
-        }
-
-        public string Ibd2SdiPath
-        {
-            get { return _s.Ibd2SdiPath ?? string.Empty; }
-            set { _s.Ibd2SdiPath = value ?? string.Empty; Raise(); }
-        }
-
-        public string DbDumpBefore
-        {
-            get { return _s.DbDumpBefore ?? string.Empty; }
-            set { _s.DbDumpBefore = value ?? string.Empty; Raise(); }
-        }
-
-        public string DbDumpAfter
-        {
-            get { return _s.DbDumpAfter ?? string.Empty; }
-            set { _s.DbDumpAfter = value ?? string.Empty; Raise(); }
-        }
-
         // ---------------- 정보 ----------------
 
         public string VersionText

@@ -59,16 +59,9 @@
                 <WrapPanel>
                     <TextBlock Text="{Binding ScreenTitle}" Style="{StaticResource H2}"
                                VerticalAlignment="Center" Margin="0,0,14,0" />
-                    <Button Content="{x:Static t:DbTexts.Read}" Click="OnRead" Margin="0,0,6,0"
+                    <Button Content="{x:Static t:DbTexts.Read}" Click="OnRead" Margin="0,0,14,0"
                             ToolTip="{x:Static t:DbTexts.ReadTip}" />
-                    <Button Content="{x:Static t:DbTexts.ShowScript}" Click="OnShowScript" Margin="0,0,14,0"
-                            ToolTip="{x:Static t:DbTexts.ShowScriptTip}" />
 
-                    <!--
-                      맞출 방향(이전 → 이후 / 이후 → 이전) 고르기를 뺐습니다.
-                      늘 "이전 → 이후" 입니다 — 이전 DB 를 이후와 같게 만드는
-                      글입니다. 만든 글의 머리에 어느 방향인지 적혀 있습니다.
-                    -->
                 </WrapPanel>
 
                 <!--
@@ -83,7 +76,7 @@
                   없어서 처음부터 됐던 것입니다.
                 -->
                 <!-- "견줄 DB (칸에 끌어다 놓으면 …)" 머리글을 1.06 에서 뺐습니다.
-                     칸 자체가 테두리 상자라 놓을 자리로 보이고, [폴더] [파일]
+                     칸 자체가 테두리 상자라 놓을 자리로 보이고, [파일]
                      단추 풍선말이 같은 말을 합니다. 줄 번호는 그대로 둡니다
                      (0 번 줄이 비어 높이 0). -->
                 <Grid Margin="0,8,0,0">
@@ -117,9 +110,6 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="{x:Static t:DbTexts.PickPath}" Tag="before" Click="OnPickPath"
-                                            Padding="8,1" Margin="0,0,4,0"
-                                            ToolTip="{x:Static t:DbTexts.PickPathTip}" />
                                     <Button Content="{x:Static t:DbTexts.PickFile}" Tag="before" Click="OnPickFile"
                                             Padding="8,1"
                                             ToolTip="{x:Static t:DbTexts.PickFileTip}" />
@@ -157,8 +147,6 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="{x:Static t:DbTexts.PickPath}" Tag="after" Click="OnPickPath"
-                                            Padding="8,1" Margin="0,0,4,0" />
                                     <Button Content="{x:Static t:DbTexts.PickFile}" Tag="after" Click="OnPickFile"
                                             Padding="8,1" />
                                 </StackPanel>

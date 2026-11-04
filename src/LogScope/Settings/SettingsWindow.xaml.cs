@@ -158,28 +158,5 @@ namespace LogScope.Settings
                 return dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK ? dlg.SelectedPath : null;
             }
         }
-
-        // ---- 파일 고르기 ----
-
-        private void OnPickMysqlDump(object sender, RoutedEventArgs e)
-        {
-            string picked = PickFile("실행 파일 (*.exe)|*.exe|모든 파일 (*.*)|*.*", _vm.MysqlDumpPath);
-            if (picked != null) _vm.MysqlDumpPath = picked;
-        }
-
-        private void OnPickIbd2Sdi(object sender, RoutedEventArgs e)
-        {
-            string picked = PickFile("실행 파일 (*.exe)|*.exe|모든 파일 (*.*)|*.*", _vm.Ibd2SdiPath);
-            if (picked != null) _vm.Ibd2SdiPath = picked;
-        }
-
-        private string PickFile(string filter, string start)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = filter;
-            dlg.CheckFileExists = true;
-            if (!string.IsNullOrEmpty(start) && File.Exists(start)) dlg.FileName = start;
-            return dlg.ShowDialog(this) == true ? dlg.FileName : null;
-        }
     }
 }

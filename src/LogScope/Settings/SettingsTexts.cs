@@ -117,24 +117,6 @@ namespace LogScope.Settings
         /// <summary>글</summary>
         public const string Note8 = "오차는 그 순간의 값끼리 견줍니다.\n\n    오차(%) = |이후 − 이전| / |이전| x 100\n\n위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,\n히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.\n어느 채널이든 같은 잣대입니다.\n\n이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).\n0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면\n절대 오차를 함께 걸어 두세요.\n\n이 값은 대시보드 · 그래프 차이 영역 표시 · 히트맵이 모두 함께 씁니다.\n여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다.";
 
-        // ---- DB 도구 ----
-
-        /// <summary>TabItem 머리글</summary>
-        public const string TabHeader4 = "DB 도구 (선택)";
-        /// <summary>글</summary>
-        public const string MysqlDumpPathLabel = "mysqldump 경로";
-        /// <summary>단추 이름</summary>
-        public const string PickMysqlDump = "파일 고르기";
-        /// <summary>글</summary>
-        public const string DbDumpBeforeLabel = "이전 덤프 인수";
-        /// <summary>글</summary>
-        public const string DbDumpAfterLabel = "이후 덤프 인수";
-        /// <summary>글</summary>
-        public const string Ibd2SdiPathLabel = "ibd2sdi 경로";
-        /// <summary>단추 이름</summary>
-        public const string PickIbd2Sdi = "파일 고르기";
-        /// <summary>글</summary>
-        public const string MysqldumpFrmNote = "전부 비워 두어도 됩니다. 비워 두면 DB 화면은 폴더·파일만 읽습니다.\n\nmysqldump 는 돌고 있는 서버에 접속해서 뽑습니다 — 멈춘 데이터 폴더(.frm/.ibd)만으로는 뽑을 수 없습니다.\n덤프 인수에 암호를 적으면 작업 관리자에 그대로 보입니다. --login-path 나 --defaults-extra-file 을 쓰세요.\n여기 적은 실행 파일을 자식 프로세스로 띄웁니다. 남이 고쳐 쓸 수 있는 폴더를 가리키지 마세요.\n\nibd2sdi 는 멈춘 .ibd 에서 표와 열 이름만 꺼냅니다 (값은 못 꺼냅니다). MySQL 8.0 의 .ibd 에만 통합니다.";
         // ---- 정보 ----
 
         /// <summary>TabItem 머리글</summary>

@@ -190,3 +190,4 @@
 | `181-heatmap-bucket-1s-5s.md` | 1.89 — 히트맵 칸 폭을 고르면 바로 다시 셈 (전에는 옛 칸이 남음) · 1 초 · 5 초 · 정각 경계 · 칸 수 상한 IO 수에 맞춤 · 시각 아니면 고르기 꺼짐 |
 | `182-analysis2-csv-where.md` | (질문) 분석 2 의 .csv 읽기 자리: DbRead.cs TakeFile → CsvTableReader → Common/CsvReader |
 | `183-score-judge-how.md` | (질문) 분석 1 점수 · 판정 방법: 시간 여유 띠 · 양쪽 검사 · 100 칸 오차율 · 100 − 평균 · 등급 |
+| `184-analysis2-cleanup.md` | 1.90 — 분석 2 정리: 폴더 · .frm/.ibd · 바깥 프로그램 (mysqldump · ibd2sdi) · [SQL 문 출력] 뺌 (사용자 확인), 파일 하나씩 .sql / .csv |

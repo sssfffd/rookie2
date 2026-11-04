@@ -11,9 +11,10 @@ namespace LogScope.Analysis2
     /// <summary>
     /// 분석 2 — DB 분석.
     ///
-    /// 두 DB 한 벌을 읽어 견주고, 차이를 <b>SQL 글</b>로 적어 줍니다.
+    /// 두 DB 한 벌 (.sql / .csv 파일 하나씩) 을 읽어 견주고 차이 목록을 보여 줍니다
+    /// (1.90: SQL 글 만들기 · 폴더 · .frm · 바깥 프로그램은 뺌).
     ///
-    /// 어디를 읽을지는 <b>이 화면</b>에서 정합니다 (칸에 타 넣거나 [폴더] ·
+    /// 어디를 읽을지는 <b>이 화면</b>에서 정합니다 (칸에 타 넣거나
     /// [파일] 로 고르거나 끌어다 놓기). 정한 자리는 프로그램이 설정에
     /// 저장하므로 다음에 켤 때도 그대로입니다. 0.77 까지는 config.txt 에도
     /// 적을 수 있었는데 빼냈습니다 — 두 군데에 있으면 "지금 읽는 자리가
@@ -50,14 +51,13 @@ namespace LogScope.Analysis2
         {
             _settings = settings;
             Raise("BeforePath"); Raise("AfterPath");
-            Raise("BeforeChosen"); Raise("AfterChosen");
             Raise("BeforeNote"); Raise("AfterNote");
             Raise("HasPaths");
         }
 
         /// <summary>
         /// 견줄 자리. <b>화면에서 고칠 수 있습니다</b> — 타 넣거나 붙여넣어도
-        /// 되고, 끌어다 놓아도 됩니다. 폴더든 파일이든 됩니다.
+        /// 되고, 끌어다 놓아도 됩니다. 파일 하나 (.sql / .csv, 1.90 — 폴더는 뺌).
         /// </summary>
         public string BeforePath
         {
@@ -69,30 +69,6 @@ namespace LogScope.Analysis2
         {
             get { return _settings == null ? string.Empty : _settings.DbAfterPath ?? string.Empty; }
             set { SetPath(false, value); }
-        }
-
-        // ---- 바깥 도구 (선택). 설정 창의 [DB 도구] 칸입니다 ----
-        //
-        // 화면이 AppSettings 를 직접 뒤지지 않게 여기로 통해 줍니다.
-
-        public string MysqlDumpPath
-        {
-            get { return _settings == null ? string.Empty : _settings.MysqlDumpPath ?? string.Empty; }
-        }
-
-        public string DumpBefore
-        {
-            get { return _settings == null ? string.Empty : _settings.DbDumpBefore ?? string.Empty; }
-        }
-
-        public string DumpAfter
-        {
-            get { return _settings == null ? string.Empty : _settings.DbDumpAfter ?? string.Empty; }
-        }
-
-        public string Ibd2SdiPath
-        {
-            get { return _settings == null ? string.Empty : _settings.Ibd2SdiPath ?? string.Empty; }
         }
 
         /// <summary>
@@ -148,17 +124,6 @@ namespace LogScope.Analysis2
         /// <summary>읽고 견준 뒤. 메인 화면 칸이 이걸 듣습니다.</summary>
         public event EventHandler ResultChanged;
 
-        /// <summary>자리가 정해졌는지 (지우기 단추를 보일지).</summary>
-        public bool BeforeChosen
-        {
-            get { return BeforePath.Length > 0; }
-        }
-
-        public bool AfterChosen
-        {
-            get { return AfterPath.Length > 0; }
-        }
-
         /// <summary>
         /// 화면에서 고른 자리를 적습니다. 저장은 부르는 쪽(창)이 합니다.
         /// </summary>
@@ -170,7 +135,6 @@ namespace LogScope.Analysis2
             else _settings.DbAfterPath = v;
 
             Raise("BeforePath"); Raise("AfterPath");
-            Raise("BeforeChosen"); Raise("AfterChosen");
             Raise("BeforeNote"); Raise("AfterNote");
             Raise("HasPaths");
 
@@ -382,13 +346,6 @@ namespace LogScope.Analysis2
             Raise("Notes");
         }
 
-        private string _script = string.Empty;
-        public string ScriptText
-        {
-            get { return _script; }
-            private set { Set(ref _script, value); }
-        }
-
         /// <summary>읽은 결과를 받습니다. 읽는 일은 창(DbView)이 맡습니다 — 진행 창을 띄워야 합니다.</summary>
         public void Take(DbSnapshot before, DbSnapshot after)
         {
@@ -414,18 +371,9 @@ namespace LogScope.Analysis2
             _hasTally = true;
 
             Rebuild();
-            BuildScript();
 
             EventHandler h = ResultChanged;
             if (h != null) h(this, EventArgs.Empty);
-        }
-
-        public void BuildScript()
-        {
-            if (_diff == null) { ScriptText = string.Empty; return; }
-
-            // 늘 "이전 → 이후" 입니다 (SqlScript 가 한 방향만 만듭니다).
-            ScriptText = SqlScript.Build(_diff, null);
         }
     }
 }

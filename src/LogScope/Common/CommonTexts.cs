@@ -10,7 +10,7 @@ namespace LogScope.Common
     /// scripts/check_sources.py 가 "x:Static 대상 없음" 으로 알려 줍니다.
     /// 줄바꿈은 \n 입니다.
     ///
-    /// 화면 파일: src/LogScope/Shell/Analysis3Placeholder.xaml (분석 3 자리) · src/LogScope/Common/LoadingWindow.xaml · src/LogScope/Common/TextInputWindow.xaml · src/LogScope/Common/TextViewWindow.xaml
+    /// 화면 파일: src/LogScope/Shell/Analysis3Placeholder.xaml (분석 3 자리) · src/LogScope/Common/LoadingWindow.xaml · src/LogScope/Common/TextInputWindow.xaml
     /// </summary>
     public static class CommonTexts
     {
@@ -43,16 +43,5 @@ namespace LogScope.Common
         public const string InputOk = "확인";
         /// <summary>단추 이름</summary>
         public const string InputButton = "취소";
-
-        // ---- TextViewWindow ----
-
-        /// <summary>창 제목</summary>
-        public const string TextViewWindowTitle = "글 보기";
-        /// <summary>단추 이름</summary>
-        public const string TextViewCopy = "글 복사";
-        /// <summary>단추 이름</summary>
-        public const string TextViewSave = "파일로 저장";
-        /// <summary>단추 이름</summary>
-        public const string TextViewButton = "닫기";
     }
 }

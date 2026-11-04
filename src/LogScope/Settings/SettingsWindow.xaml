@@ -254,50 +254,6 @@
               </ScrollViewer>
             </TabItem>
 
-            <!-- ===================== DB 도구 ===================== -->
-            <TabItem Header="{x:Static t:SettingsTexts.TabHeader4}">
-                <StackPanel Margin="14">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static t:SettingsTexts.MysqlDumpPathLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="0" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding MysqlDumpPath, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Row="0" Grid.Column="2" Content="{x:Static t:SettingsTexts.PickMysqlDump}" Click="OnPickMysqlDump" />
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static t:SettingsTexts.DbDumpBeforeLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding DbDumpBefore, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Static t:SettingsTexts.DbDumpAfterLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="2" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding DbDumpAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{x:Static t:SettingsTexts.Ibd2SdiPathLabel}"
-                                   Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="3" Grid.Column="1" Margin="0,3"
-                                 Text="{Binding Ibd2SdiPath, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Row="3" Grid.Column="2" Content="{x:Static t:SettingsTexts.PickIbd2Sdi}" Click="OnPickIbd2Sdi" />
-                    </Grid>
-
-                    <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
-                               Text="{x:Static t:SettingsTexts.MysqldumpFrmNote}" />
-                </StackPanel>
-            </TabItem>
-
             <!-- AI 모듈 (선택) 탭은 1.57 에 뺐습니다 — LLM 종합 분석으로 바뀜. -->
 
             <!-- ===================== LLM 서버 (1.51) =====================
