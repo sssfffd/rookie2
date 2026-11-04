@@ -2175,3 +2175,9 @@
 > 아 그리고 히트맵 뜨는 칸이 위에 설정한거랑 안맞는거 같은데 맞춰주고 1초랑 5초 설정도 추가해줘
 
 → 답변: [181-heatmap-bucket-1s-5s.md](181-heatmap-bucket-1s-5s.md)
+
+## 요청 209 — (질문) 분석 2 의 .csv 읽기 · 파싱은 어디
+
+> 이게 분석2에 .csv읽고 파싱하는거 어디있음?
+
+→ 답변: [182-analysis2-csv-where.md](182-analysis2-csv-where.md)
