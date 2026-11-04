@@ -364,6 +364,13 @@ for proj in glob.glob(ROOT + '/src/*/*.csproj'):
         if rel.endswith(('.cs','.xaml')) and not os.path.exists(os.path.join(d, rel)):
             bad('파일 없음 %s (%s 에 적혀 있음)' % (rel, os.path.basename(proj)))
 
+# 1.84: 적어 넣는 콤보 (IsEditable) 가 있으면 공용 콤보 모양에 글 칸 (PART_EditableTextBox) 이 있어야 합니다.
+# 없으면 적힌 글이 안 보이고 적을 수도 없습니다 (설정 창 IO 별 허용 오차의 IO 이름이 안 보이던 일).
+if any(re.search(r'<ComboBox\b[^>]*IsEditable="True"', read(x)) for x in xamls):
+    theme = read(os.path.join(APP, 'Themes/Controls.xaml'))
+    if 'PART_EditableTextBox' not in theme:
+        bad('Themes/Controls.xaml 의 ComboBox 모양에 PART_EditableTextBox 가 없음 (IsEditable 콤보의 글이 안 보임)')
+
 print('\n'.join(fail) if fail else 'OK — 지적 사항 없음')
 print('-- xaml %d, cs %d' % (len(xamls), len(css)))
 sys.exit(1 if fail else 0)

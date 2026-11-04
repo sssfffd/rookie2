@@ -318,11 +318,23 @@
                         <ToggleButton x:Name="Toggle" Style="{StaticResource ComboToggle}"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
                                                   RelativeSource={RelativeSource TemplatedParent}}" />
-                        <ContentPresenter IsHitTestVisible="False" Margin="9,0,26,0"
+                        <ContentPresenter x:Name="Shown" IsHitTestVisible="False" Margin="9,0,26,0"
                                           VerticalAlignment="Center" HorizontalAlignment="Left"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                           ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+                        <!--
+                          1.84: 적어 넣는 콤보 (IsEditable — 설정 창 IO 별 허용 오차의 IO 이름) 의 글 칸.
+                          이 칸 (PART_EditableTextBox) 이 없으면 WPF 가 적힌 글을 보여 줄 데가 없어
+                          IO 이름이 <b>안 보이고</b> 적을 수도 없습니다. 오른쪽 26 px 는 화살표 (펼치기) 자리로 남깁니다.
+                        -->
+                        <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed"
+                                 Margin="5,2,26,2" Padding="2,0" MinHeight="0"
+                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 CaretBrush="{TemplateBinding Foreground}"
+                                 IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}" />
                         <Popup x:Name="PART_Popup" Placement="Bottom" Focusable="False"
                                AllowsTransparency="True"
                                IsOpen="{TemplateBinding IsDropDownOpen}">
@@ -341,6 +353,10 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Shown" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

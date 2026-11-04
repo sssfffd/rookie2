@@ -182,3 +182,4 @@
 | `173-analysis1-score.md` | 1.81 — 분석 1 은 점수 (100 − 차이 난 IO 의 평균 오차율), 옆에 차이 a / b IO, 그 아래 평균 오차율 (100 칸) |
 | `174-sql-user-reader.md` | 1.82 — 분석 2 .sql 읽기를 직접 만드는 자리: Analysis2/SqlUserReader.cs (false 면 내장 읽기) |
 | `175-gallery-back-wheel-layout.md` | 1.83 — 갤러리 [◀ 갤러리로] · 고른 그래프 위에서만 휠 확대 (테두리) · 메인 배치 (분석 1 크게, 2 · 3 아래, 종합 분석 결과는 그 아래) |
+| `176-tolerance-io-name.md` | 1.84 — 설정 창 IO 별 허용 오차의 IO 이름이 안 보이던 것: 공용 콤보 모양에 글 칸 (PART_EditableTextBox) 추가 |

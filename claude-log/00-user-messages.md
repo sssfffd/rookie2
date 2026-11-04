@@ -2131,3 +2131,9 @@
 > 그리고 분석 1이 메인이 되야되서 분석 1 크게 띄워주고 분석 2,3그 밑에 되게 해주셈(123 배치는 더 좋아보이는 거 있으면 바꿔도 됨)
 
 → 답변: [175-gallery-back-wheel-layout.md](175-gallery-back-wheel-layout.md)
+
+## 요청 203 — 설정 창 IO 별 허용 오차에서 IO 이름이 안 보임
+
+> 아니 분석 1에서 설정에 IO별 허용 오차 설정하니까 애가 IO명이 안보이는데? 설정창에서?
+
+→ 답변: [176-tolerance-io-name.md](176-tolerance-io-name.md)
