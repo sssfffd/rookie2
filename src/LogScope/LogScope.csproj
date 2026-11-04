@@ -196,6 +196,7 @@
     <Compile Include="Settings\DiffMetric.cs" />
     <Compile Include="Settings\GroupFile.cs" />
     <Compile Include="Settings\SettingsStore.cs" />
+    <Compile Include="Settings\ToleranceFile.cs" />
     <Compile Include="Settings\ToleranceRule.cs" />
     <Compile Include="Settings\ToleranceTable.cs" />
     <!-- 버전 · 커밋 (1.25). 평범한 코드 파일이고, 값은 아래 리소스에서 실행할 때 읽습니다. -->

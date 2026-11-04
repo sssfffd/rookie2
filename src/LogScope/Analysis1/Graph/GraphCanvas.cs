@@ -3249,12 +3249,41 @@ namespace LogScope.Analysis1.Graph
             EnterLaneTime(ck, out cs0, out cs1);
             double t = XToTime(upAt.X);
             LeaveLaneTime(ck, cs0, cs1, false);
+            // 1.86: 커서 자리에서 좌우 몇 px 가 어느 시각인지 (같은 커서를 다시 눌렀는지 보려고). 같은 줄의 시간으로.
+            EnterLaneTime(ck, out cs0, out cs1);
+            double tl = XToTime(upAt.X - CursorHitPx), tr = XToTime(upAt.X + CursorHitPx);
+            LeaveLaneTime(ck, cs0, cs1, false);
             // 칸 사이의 금을 누르면 가리키는 시각이 없습니다 (NaN).
             // 커서를 거기 두면 값이 전부 "-" 로 나오니 그냥 둡니다.
             if (double.IsNaN(t)) return;
-            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) _cursorB = t; else _cursorA = t;
+            bool b = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+            // 1.86: <b>같은 커서를 다시 누르면 그 커서를 지웁니다</b> (A = 그냥 누르기, B = Shift + 누르기).
+            if (NearCursor(b ? _cursorB : _cursorA, t, tl, tr)) t = double.NaN;
+            if (b) _cursorB = t; else _cursorA = t;
             InvalidateVisual();
             RaiseViewChanged();
+        }
+
+        /// <summary>같은 커서를 다시 누른 것으로 볼 거리 (px, 좌우로) — 1.86.</summary>
+        private const double CursorHitPx = 5.0;
+
+        /// <summary>커서 시각이 누른 자리 ± CursorHitPx 안인지. 칸 끝이라 한쪽이 NaN 이면 누른 시각까지만.</summary>
+        public static bool NearCursor(double cursor, double t, double tl, double tr)
+        {
+            if (double.IsNaN(cursor) || double.IsNaN(t)) return false;
+            double lo = double.IsNaN(tl) ? t : tl, hi = double.IsNaN(tr) ? t : tr;
+            if (lo > hi) { double x = lo; lo = hi; hi = x; }
+            return cursor >= lo && cursor <= hi;
+        }
+
+        /// <summary>커서 A · B 를 둘 다 지움 (Delete · Esc). 지운 것이 있으면 true — 1.86.</summary>
+        public bool ClearCursors()
+        {
+            if (double.IsNaN(_cursorA) && double.IsNaN(_cursorB)) return false;
+            _cursorA = double.NaN; _cursorB = double.NaN;
+            InvalidateVisual();
+            RaiseViewChanged();
+            return true;
         }
 
         // ---------------- 오른쪽 단추로 네모 확대 ----------------
@@ -3456,12 +3485,9 @@ namespace LogScope.Analysis1.Graph
                 case Key.Home: ResetTime(); e.Handled = true; return;
                 // Delete = 커서 A · B 를 둘 다 지웁니다 (1.15). 그래프를
                 // 한 번 누르면 이 판이 키를 받습니다 (누를 때 Focus()).
+                // 1.86: Esc 도 같은 일 (창이 먼저 받아 여기로 넘깁니다 — ShellWindow).
                 case Key.Delete:
-                    if (double.IsNaN(_cursorA) && double.IsNaN(_cursorB)) return;
-                    _cursorA = double.NaN; _cursorB = double.NaN;
-                    e.Handled = true;
-                    InvalidateVisual();
-                    RaiseViewChanged();
+                    if (ClearCursors()) e.Handled = true;
                     return;
                 case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;
                 case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.3); e.Handled = true; return;

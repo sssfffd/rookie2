@@ -24,6 +24,7 @@ namespace LogScope.Settings
         {
             InitializeComponent();
             _vm = new SettingsVm(settings, ioNames);
+            _vm.TolerancesFromFile = App.TolerancesFromFile;   // 1.86
             DataContext = _vm;
 
             // LLM 서버 상태 줄 (1.51) — 확인은 배경 스레드라 화면 스레드로 넘겨 고칩니다.
@@ -79,6 +80,31 @@ namespace LogScope.Settings
         private void OnAddTolerance(object sender, RoutedEventArgs e)
         {
             _vm.AddTolerance();
+        }
+
+        /// <summary>
+        /// [tolerances.txt 글 복사] (1.86) — groups.txt 의 것과 같습니다. 파일로 바로 저장하지 않는 이유도 같습니다:
+        /// 저장할 자리는 <b>저장소의</b> tolerances.txt 이고, 그건 이 프로그램이 도는 폴더가 아닙니다.
+        /// </summary>
+        private void OnCopyToleranceFile(object sender, RoutedEventArgs e)
+        {
+            string text = _vm.ToleranceFileText();
+            try
+            {
+                Clipboard.SetText(text);
+                MessageBox.Show(this,
+                    "tolerances.txt 글을 클립보드에 담았습니다.\n\n"
+                    + "저장소의 tolerances.txt 에 붙여넣고 빌드하면 그 규칙으로 켜집니다.\n"
+                    + "(out\\tolerances.txt 를 바로 고쳐도 됩니다 — 그때는 빌드할 필요가 없습니다.)",
+                    "IO 별 허용 오차", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException
+                                    || ex is InvalidOperationException)
+            {
+                // 클립보드는 다른 프로그램이 잡고 있으면 실패합니다.
+                MessageBox.Show(this, "클립보드에 담지 못했습니다.\n\n" + ex.Message,
+                    "IO 별 허용 오차", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         /// <summary>[허용한 오차] 의 [지우기] (1.59).</summary>

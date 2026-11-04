@@ -252,6 +252,13 @@ if not exist "%OUT%\groups.txt" (
   if exist "%ROOT%groups.txt" copy /y "%ROOT%groups.txt" "%OUT%\" >nul
 )
 
+rem  tolerances.txt: hand-edited per-IO tolerances (1.86). Same rule as
+rem  groups.txt -- read from the exe folder, never overwritten here, and it
+rem  wins over the settings file only if it defines at least one rule.
+if not exist "%OUT%\tolerances.txt" (
+  if exist "%ROOT%tolerances.txt" copy /y "%ROOT%tolerances.txt" "%OUT%\" >nul
+)
+
 echo.
 echo   ============================================================
 call :msg " ¿Ï·á." " Done."

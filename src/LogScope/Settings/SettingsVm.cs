@@ -173,6 +173,15 @@ namespace LogScope.Settings
 
         public bool HasTolerances { get { return Tolerances.Count > 0; } }
 
+        /// <summary>IO 별 허용 오차를 tolerances.txt 가 정했는지 (1.86). 창이 켤 때 알려 줍니다.</summary>
+        public bool TolerancesFromFile { get; set; }
+
+        /// <summary>지금 규칙을 tolerances.txt 꼴로 (빈 줄 · 두 칸 다 빈 줄은 뺌). 저장소의 파일에 붙여넣는 데 씁니다.</summary>
+        public string ToleranceFileText()
+        {
+            return ToleranceFile.Write(_s.Tolerances);
+        }
+
         /// <summary>빈 줄을 하나 답니다. IO 이름은 화면에서 고릅니다.</summary>
         public void AddTolerance()
         {

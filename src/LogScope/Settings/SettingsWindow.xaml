@@ -238,8 +238,15 @@
                         </ScrollViewer>
                     </Border>
 
-                    <Button HorizontalAlignment="Left" Margin="0,8,0,0" Content="{x:Static t:SettingsTexts.AddTolerance}"
-                            Click="OnAddTolerance" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="{x:Static t:SettingsTexts.AddTolerance}" Click="OnAddTolerance" />
+                        <!-- 1.86: groups.txt 처럼 파일로 빼 두기 -->
+                        <Button Margin="6,0,0,0" Content="{x:Static t:SettingsTexts.CopyToleranceFile}"
+                                Click="OnCopyToleranceFile" ToolTip="{x:Static t:SettingsTexts.CopyToleranceFileTip}" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="{x:Static t:SettingsTexts.ToleranceFromFileNote}"
+                               Visibility="{Binding TolerancesFromFile, Converter={StaticResource BoolToVisibility}}" />
 
                     <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0"
                                Text="{x:Static t:SettingsTexts.Note8}" />

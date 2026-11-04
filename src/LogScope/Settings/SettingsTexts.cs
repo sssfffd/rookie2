@@ -108,6 +108,12 @@ namespace LogScope.Settings
         public const string RemoveTolerance = "지우기";
         /// <summary>단추 이름</summary>
         public const string AddTolerance = "IO 추가";
+        /// <summary>단추 이름 (1.86)</summary>
+        public const string CopyToleranceFile = "tolerances.txt 글 복사";
+        /// <summary>단추 설명 (1.86)</summary>
+        public const string CopyToleranceFileTip = "지금 건 IO 별 허용 오차를 tolerances.txt 꼴로 클립보드에 담습니다.\n저장소의 tolerances.txt 에 붙여넣고 빌드하면 그 규칙으로 켜집니다\n(out\\tolerances.txt 를 바로 고쳐도 됩니다 — 그때는 빌드할 필요가 없습니다).";
+        /// <summary>tolerances.txt 가 규칙을 정할 때만 보이는 글 (1.86)</summary>
+        public const string ToleranceFromFileNote = "IO 별 허용 오차는 tolerances.txt 가 정합니다. 여기서 고친 것은 지금은 먹지만 다시 켜면 그 파일 쪽으로 돌아갑니다 — 그대로 두려면 파일을 고치세요. [tolerances.txt 글 복사] 로 지금 것을 그 꼴로 뽑을 수 있습니다.";
         /// <summary>글</summary>
         public const string Note8 = "오차는 그 순간의 값끼리 견줍니다.\n\n    오차(%) = |이후 − 이전| / |이전| x 100\n\n위 칸에 적는 퍼센트가 바로 이 값입니다. 대시보드의 [최대 오차 %] 칸,\n히트맵 칸에 적히는 퍼센트도 모두 같은 값이라 눈으로 바로 견줄 수 있습니다.\n어느 채널이든 같은 잣대입니다.\n\n이전 값이 0 이면 나눌 수가 없어 100% 로 봅니다 (0 → 0 은 0%).\n0 언저리에서 잘게 흔들리는 것까지 100% 로 잡히는 게 싫으면\n절대 오차를 함께 걸어 두세요.\n\n이 값은 대시보드 · 그래프 차이 영역 표시 · 히트맵이 모두 함께 씁니다.\n여기서 바꾼 값은 위 메뉴의 [비교 다시 하기] 를 눌러야 반영됩니다.";
 

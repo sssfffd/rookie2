@@ -163,6 +163,7 @@ namespace LogScope.Tests
                 GraphPanStableRules();
                 JudgeScoreRules();
                 GalleryBackRules();
+                ToleranceFileRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4725,6 +4726,44 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>tolerances.txt (1.86) · 같은 커서 다시 누르기.</summary>
+        private static void ToleranceFileRules()
+        {
+            Say("tolerances.txt · 같은 커서 다시 누르기");
+            List<ToleranceOverride> r = ToleranceFile.Parse(new[]
+            {
+                "# 주석",
+                "",
+                "TT-01  = 20",
+                "VALVE  = , 0",
+                "PT-01  = 5%, 0.1",
+                "BAD    = 일, 이",          // 숫자 아님 → 두 칸 다 빔 → 줄 건너뜀
+                "OVER   = 150, -1",         // 범위 밖 → 건너뜀
+                "등호없음 20",
+                "PT 01  = 7",               // 느슨하게 같은 IO (PT-01) → 뒤의 줄이 이김
+                "A=B    = 3",               // 등호는 마지막 것으로
+            });
+            Check("tolerances.txt 읽기 — 4 줄 (틀린 줄 · 범위 밖 건너뜀, 같은 IO 는 하나)", r.Count == 4, r.Count.ToString());
+            Check("퍼센트만 / 절대값만", r[0].Io == "TT-01" && r[0].Percent == 20 && !r[0].HasAbsolute
+                  && r[1].Io == "VALVE" && !r[1].HasPercent && r[1].Absolute == 0, "");
+            Check("같은 IO 는 뒤의 줄 (PT 01 = 7, 절대값 없음)", r[2].Io == "PT 01" && r[2].Percent == 7 && !r[2].HasAbsolute, r[2].Io);
+            Check("이름에 등호", r[3].Io == "A=B" && r[3].Percent == 3, r[3].Io);
+            Check("전부 주석이면 빈 목록 (주인 아님)", ToleranceFile.Parse(new[] { "# TT-01 = 20", "" }).Count == 0, "");
+
+            string text = ToleranceFile.Write(r);
+            List<ToleranceOverride> back = ToleranceFile.Parse(text.Replace("\r\n", "\n").Split('\n'));
+            bool same = back.Count == r.Count;
+            for (int i = 0; same && i < r.Count; i++)
+                same = back[i].Io == r[i].Io && back[i].HasPercent == r[i].HasPercent && back[i].HasAbsolute == r[i].HasAbsolute
+                       && (!r[i].HasPercent || back[i].Percent == r[i].Percent) && (!r[i].HasAbsolute || back[i].Absolute == r[i].Absolute);
+            Check("글 복사 → 다시 읽기 = 그대로", same, text);
+
+            Check("같은 커서 다시 누르기 — 가까우면 지움", GraphCanvas.NearCursor(10.0, 10.2, 9.5, 10.7), "");
+            Check("멀면 옮김", !GraphCanvas.NearCursor(10.0, 12.0, 11.5, 12.5), "");
+            Check("커서 없으면 놓기", !GraphCanvas.NearCursor(double.NaN, 10.0, 9.5, 10.5), "");
+            Check("칸 끝 (한쪽 NaN) 도 누른 시각까지", GraphCanvas.NearCursor(10.0, 10.0, 9.5, double.NaN), "");
         }
 
         /// <summary>갤러리 → IO 하나 → [◀ 갤러리로] (1.83) · 메인 칸 자리.</summary>

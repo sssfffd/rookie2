@@ -2145,3 +2145,15 @@
 > 한꺼번에 다 되게하지말고 선택된창만 확대축소되게해주셈
 
 → 답변: [177-wheel-selected-only.md](177-wheel-selected-only.md)
+
+## 요청 205 — Esc 로 커서 지우기 · 같은 커서 다시 누르면 지움 · IO 별 허용 오차를 파일로
+
+> 분석1에 Esc로 커서 제거 기능 추가좀
+>
+> 그리고 같은커서 다시 클릭하면 커서 사라지게 해주고
+>
+> 그리고 그룹설정처럼
+>
+> IO별 허용오차 설정한것도 빼줄수 있음?
+
+→ 답변: [178-cursor-esc-tolerance-file.md](178-cursor-esc-tolerance-file.md)

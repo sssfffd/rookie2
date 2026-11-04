@@ -1222,6 +1222,8 @@ namespace LogScope.Shell
                 case Key.F2: _vm.GoGraph(); e.Handled = true; break;
                 case Key.F3: _vm.GoHeatmap(); e.Handled = true; break;
                 case Key.Escape:
+                    // 1.86: 분석 1 그래프에 커서가 있으면 Esc 는 먼저 커서를 지웁니다. 커서가 없을 때 Esc = 메인으로.
+                    if (_vm.Screen == ShellVm.ScreenAnalysis1 && _vm.ShowGraph && Graph.ClearCursors()) { e.Handled = true; break; }
                     if (_vm.Screen != ShellVm.ScreenMain) { _vm.GoMain(); e.Handled = true; }
                     break;
                 case Key.F5: OnRecompare(this, null); e.Handled = true; break;

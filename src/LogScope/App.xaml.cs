@@ -19,6 +19,9 @@ namespace LogScope
         /// </summary>
         public static bool GroupsFromFile { get; private set; }
 
+        /// <summary>IO 별 허용 오차를 tolerances.txt 가 정했는지 (1.86). 설정 창이 그렇다고 적습니다.</summary>
+        public static bool TolerancesFromFile { get; private set; }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -46,6 +49,15 @@ namespace LogScope
             {
                 settings.Groups = fromFile;
                 GroupsFromFile = true;
+            }
+
+            // 손으로 고치는 IO 별 허용 오차 파일 (실행 파일 옆의 tolerances.txt, 1.86). groups.txt 와 같은 규칙 —
+            // 하나라도 정해 두면 그 파일이 주인, 전부 주석이면 아무것도 안 함.
+            List<ToleranceOverride> tolFromFile = ToleranceFile.Load(ToleranceFile.ResolvePath());
+            if (tolFromFile.Count > 0)
+            {
+                settings.Tolerances = tolFromFile;
+                TolerancesFromFile = true;
             }
 
             ThemeManager.Apply(settings.Theme);

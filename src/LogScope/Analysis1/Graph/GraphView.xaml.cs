@@ -203,6 +203,12 @@ namespace LogScope.Analysis1.Graph
         /// 되돌리는데, 단계를 고른 사람은 그 단계만 보려고 고른 것입니다.
         /// </summary>
         /// <summary>그림만 다시 (판정 허용이 바뀌었을 때 — 오차 구간 색, 1.63).</summary>
+        /// <summary>커서 A · B 를 지움 (Esc, 1.86). 지운 것이 있으면 true.</summary>
+        public bool ClearCursors()
+        {
+            return Plot.ClearCursors();
+        }
+
         public void Repaint()
         {
             Plot.InvalidateVisual();
