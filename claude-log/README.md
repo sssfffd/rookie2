@@ -189,3 +189,4 @@
 | `180-analysis1-consistency.md` | 1.88 — 분석 1 앞뒤 안 맞던 것: "모두 같이" 조작이 따로 구간 그래프를 빠뜨림 · Value Scale 일부만 · 그래프 하나일 때 휠 안 먹음 · 두 번 누르기 커서 · 오차율 0 % 차이 IO · 낡은 안내 글 |
 | `181-heatmap-bucket-1s-5s.md` | 1.89 — 히트맵 칸 폭을 고르면 바로 다시 셈 (전에는 옛 칸이 남음) · 1 초 · 5 초 · 정각 경계 · 칸 수 상한 IO 수에 맞춤 · 시각 아니면 고르기 꺼짐 |
 | `182-analysis2-csv-where.md` | (질문) 분석 2 의 .csv 읽기 자리: DbRead.cs TakeFile → CsvTableReader → Common/CsvReader |
+| `183-score-judge-how.md` | (질문) 분석 1 점수 · 판정 방법: 시간 여유 띠 · 양쪽 검사 · 100 칸 오차율 · 100 − 평균 · 등급 |

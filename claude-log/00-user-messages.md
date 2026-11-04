@@ -2181,3 +2181,9 @@
 > 이게 분석2에 .csv읽고 파싱하는거 어디있음?
 
 → 답변: [182-analysis2-csv-where.md](182-analysis2-csv-where.md)
+
+## 요청 210 — (질문) 점수 · 판정 방법
+
+> 그리고 점수내는거 지금 판정 방법좀 알려주셈
+
+→ 답변: [183-score-judge-how.md](183-score-judge-how.md)
