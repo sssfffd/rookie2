@@ -166,6 +166,7 @@ namespace LogScope.Tests
                 ToleranceFileRules();
                 GalleryOneZoomRules();
                 ScoreAtLeastOneBucket();
+                HeatmapAlignedCells();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4728,6 +4729,33 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>히트맵 칸: 정각에 맞춘 경계 · 1 초 · 칸 수 상한 (1.89).</summary>
+        private static void HeatmapAlignedCells()
+        {
+            Say("히트맵 칸 — 정각 경계 · 1 초 · 상한");
+            // 10:03:27.400 ~ 10:06:10.000 (자정부터 ms), 1 분 칸
+            double t0 = (10 * 3600 + 3 * 60 + 27.4) * 1000, t1 = (10 * 3600 + 6 * 60 + 10) * 1000;
+            HeatBuckets b = HeatBuckets.Uniform(t0, t1, 60000, true);
+            double m = 60000;
+            Check("1 분 칸 경계가 정각 — 27.4 초 ~ 04:00 · 04:00 ~ 05:00 · 05:00 ~ 06:00 · 06:00 ~ 끝",
+                  b.Count == 4 && b.From(0) == t0 && b.To(0) == (10 * 60 + 4) * m && b.From(1) == (10 * 60 + 4) * m
+                  && b.To(2) == (10 * 60 + 6) * m && b.From(3) == (10 * 60 + 6) * m && b.To(3) >= t1, b.Count.ToString());
+            bool covered = true;
+            for (double t = t0; t <= t1; t += 777) if (b.Find(t) < 0) covered = false;
+            Check("빈틈 없이 덮음 (겹치는 구간 안)", covered && b.Find(t1) == 3 && b.Find(t0 - 1) < 0, "");
+
+            HeatBuckets s1 = HeatBuckets.Uniform(t0, t0 + 10000, 1000, true);
+            Check("1 초 칸 — 27.4 ~ 28 · … · 37 ~ 37.4 (11 칸, 경계는 정수 초)",
+                  s1.Count == 11 && s1.To(0) == (10 * 3600 + 3 * 60 + 28) * 1000.0 && s1.From(10) == (10 * 3600 + 3 * 60 + 37) * 1000.0, s1.Count.ToString());
+
+            HeatBuckets u = HeatBuckets.Uniform(t0, t1, 60000, false);
+            Check("시각이 아니면 예전처럼 시작부터 (정각 맞춤 없음)", u.From(1) == t0 + 60000, "");
+
+            Check("칸 수 상한 — IO 60 개 20000 · 200 개 15000 · 2000 개 4000",
+                  HeatmapBuilder.AutoMaxBuckets(60) == 20000 && HeatmapBuilder.AutoMaxBuckets(200) == 15000
+                  && HeatmapBuilder.AutoMaxBuckets(2000) == 4000, "");
         }
 
         /// <summary>차이 난 IO 의 오차율은 0 % 가 아님 (1.88).</summary>

@@ -35,7 +35,8 @@ namespace LogScope.Analysis1.Heatmap
         {
             // 1.55: "10초" 를 더했습니다. 0.1 초 기록에서 1 분 칸은 600 표본이 한 칸에 묶여
             // 아킹 같은 짧은 튐이 어느 순간인지 가늠하기 어렵습니다.
-            get { return new[] { "자동 (시각이면 1분)", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
+            // 1.89: "1초" · "5초" 를 더했습니다 (사용자 요청 — 짧은 튐을 칸 하나로).
+            get { return new[] { "자동 (시각이면 1분)", "1초", "5초", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
         }
 
         private int _bucketIndex;
@@ -56,12 +57,14 @@ namespace LogScope.Analysis1.Heatmap
 
                 switch (_bucketIndex)
                 {
-                    case 1: return 10000.0;
-                    case 2: return 60000.0;
-                    case 3: return 5 * 60000.0;
-                    case 4: return 10 * 60000.0;
-                    case 5: return 30 * 60000.0;
-                    case 6: return 60 * 60000.0;
+                    case 1: return 1000.0;
+                    case 2: return 5000.0;
+                    case 3: return 10000.0;
+                    case 4: return 60000.0;
+                    case 5: return 5 * 60000.0;
+                    case 6: return 10 * 60000.0;
+                    case 7: return 30 * 60000.0;
+                    case 8: return 60 * 60000.0;
                     default: return 0;
                 }
             }
@@ -78,8 +81,9 @@ namespace LogScope.Analysis1.Heatmap
                 LogDataset ds = _state.TimeReference;
                 bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
                 return clock
-                    ? "시간축이 시각이라 초 · 분 단위로 자를 수 있습니다. 칸이 4000 개를 넘으면 폭을 넓힙니다."
-                    : "시간축이 시각이 아니라(샘플 번호 또는 단위 없는 숫자) 전체를 60 칸으로 나눕니다.";
+                    ? "시간축이 시각이라 초 · 분 단위로 자르고, 칸 경계를 정각 (00 초 · 00 분) 에 맞춥니다."
+                      + " 칸이 너무 많으면 (IO 수에 따라 4000 ~ 20000 칸) 폭을 두 배씩 넓히고 아래 칸 폭 글에 적습니다."
+                    : "시간축이 시각이 아니라(샘플 번호 또는 단위 없는 숫자) 전체를 60 칸으로 나눕니다 — 칸 폭은 고를 수 없습니다.";
             }
         }
 
@@ -103,7 +107,16 @@ namespace LogScope.Analysis1.Heatmap
         /// 것이 없습니다 — 고를 수 있게 두면 골라 놓고 왜 안 먹는지
         /// 찾게 됩니다.
         /// </summary>
-        public bool CanChooseSpan { get { return !_byStep; } }
+        /// 1.89: 시간축이 시각이 아니어도 못 고릅니다 (초 · 분이 뜻이 없어 60 칸으로 나눔 — 골라도 안 먹던 것).
+        public bool CanChooseSpan
+        {
+            get
+            {
+                if (_byStep && HasSteps) return false;
+                LogDataset ds = _state.TimeReference;
+                return ds == null || ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs;
+            }
+        }
 
         /// <summary>
         /// 고를 수 있는 단계가 있는지. 없으면 단추를 끕니다 — 눌러도
@@ -117,7 +130,7 @@ namespace LogScope.Analysis1.Heatmap
         /// </summary>
         public void Reload()
         {
-            Raise("HasSteps"); Raise("StepHint"); Raise("BucketHint");
+            Raise("HasSteps"); Raise("StepHint"); Raise("BucketHint"); Raise("CanChooseSpan");
 
             // 단계가 없어졌으면 단추도 내립니다. 켜진 채로 두면 가로가
             // 단계인 줄 알고 읽는데, 실제로는 시간으로 그려집니다.

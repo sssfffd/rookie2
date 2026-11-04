@@ -2169,3 +2169,9 @@
 > 그리고 분석1쪽에 전반적으로 불합리 있는 것들 고쳐줘
 
 → 답변: [180-analysis1-consistency.md](180-analysis1-consistency.md)
+
+## 요청 208 — 히트맵 칸이 고른 폭과 맞게 · 1 초 · 5 초
+
+> 아 그리고 히트맵 뜨는 칸이 위에 설정한거랑 안맞는거 같은데 맞춰주고 1초랑 5초 설정도 추가해줘
+
+→ 답변: [181-heatmap-bucket-1s-5s.md](181-heatmap-bucket-1s-5s.md)

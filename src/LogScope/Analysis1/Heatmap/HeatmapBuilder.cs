@@ -86,7 +86,9 @@ namespace LogScope.Analysis1.Heatmap
                 }
 
                 span = ChooseBucketSpan(before, t0, t1, opt, res);
-                cuts = HeatBuckets.Uniform(t0, t1, span);
+                // 1.89: 시각 로그면 칸 경계를 정각 (span 의 배수 — 00 초 · 00 분) 에 맞춤. 첫 · 끝 칸은 겹치는 구간에서 잘림.
+                bool clockAxis = before.TimeKind == TimeKind.ClockMs || before.TimeKind == TimeKind.DateMs;
+                cuts = HeatBuckets.Uniform(t0, t1, span, clockAxis);
                 buckets = cuts.Count;
             }
 
@@ -175,17 +177,29 @@ namespace LogScope.Analysis1.Heatmap
                                                HeatmapOptions opt, HeatmapResult res)
         {
             double total = t1 - t0;
+            int cap = opt.MaxBuckets > 0 ? opt.MaxBuckets : AutoMaxBuckets(before.ChannelCount);
 
             if (opt.BucketSpan > 0)
             {
                 res.BucketLabel = DescribeSpan(before.TimeKind, opt.BucketSpan);
-                return GrowToFit(opt.BucketSpan, total, opt.MaxBuckets, before.TimeKind, res);
+                return GrowToFit(opt.BucketSpan, total, cap, before.TimeKind, res);
             }
 
             bool clock = before.TimeKind == TimeKind.ClockMs || before.TimeKind == TimeKind.DateMs;
             double span = clock ? OneMinuteMs : Math.Max(total / 60.0, 1e-9);
             res.BucketLabel = DescribeSpan(before.TimeKind, span);
-            return GrowToFit(span, total, opt.MaxBuckets, before.TimeKind, res);
+            return GrowToFit(span, total, cap, before.TimeKind, res);
+        }
+
+        /// <summary>
+        /// 칸 수 상한 (1.89). 칸 하나가 IO 마다 28 바이트라 IO 수 × 칸 수가 300 만 칸 (≈ 84 MB) 을 넘지 않게,
+        /// 그래도 4000 칸보다는 적지 않게, 20000 칸보다는 많지 않게. 1 초 칸으로 IO 60 개면 20000 칸 (5 시간 반) 까지.
+        /// 판은 보이는 칸만 그려서 칸 수가 그리기를 느리게 하지는 않습니다.
+        /// </summary>
+        public static int AutoMaxBuckets(int ioCount)
+        {
+            long byMemory = 3000000L / Math.Max(1, ioCount);
+            return (int)Math.Max(4000, Math.Min(20000, byMemory));
         }
 
         private static double GrowToFit(double span, double total, int maxBuckets,
@@ -574,8 +588,8 @@ namespace LogScope.Analysis1.Heatmap
         /// </summary>
         public ToleranceTable Tolerances;
 
-        /// <summary>칸이 너무 많아지지 않게 하는 상한.</summary>
-        public int MaxBuckets = 4000;
+        /// <summary>칸이 너무 많아지지 않게 하는 상한. 0 이면 IO 수에 맞춰 (4000 ~ 20000, 1.89 — <see cref="HeatmapBuilder.AutoMaxBuckets"/>).</summary>
+        public int MaxBuckets;
 
         /// <summary>차이가 없는 IO 도 줄로 넣을지.</summary>
         public bool IncludeUnchanged;
@@ -811,9 +825,10 @@ namespace LogScope.Analysis1.Heatmap
         // ================= 자르는 길 =================
 
         /// <summary>일정한 시간 폭으로 자릅니다. 칸이 빈틈 없이 붙습니다.</summary>
-        public static HeatBuckets Uniform(double t0, double t1, double span)
+        public static HeatBuckets Uniform(double t0, double t1, double span, bool alignToSpan)
         {
             if (!(span > 0)) span = Math.Max((t1 - t0) / 60.0, 1e-9);
+            if (alignToSpan) return Aligned(t0, t1, span);
             int n = (int)Math.Ceiling((t1 - t0) / span);
             if (n < 1) n = 1;
 
@@ -828,6 +843,35 @@ namespace LogScope.Analysis1.Heatmap
                                    : t0 + (i + 1) * span;
             }
             return new HeatBuckets(from, to, null, null, false, span);
+        }
+
+        /// <summary>
+        /// 경계를 span 의 배수 (시각이면 정각 — 00 초 · 00 분) 에 둔 칸 (1.89). 첫 칸은 t0 부터 다음 정각까지,
+        /// 끝 칸은 마지막 정각부터 t1 까지 (겹치는 구간 밖은 안 봄 — 그 밖은 한쪽 로그에만 표본이 있어 가짜 차이가 남).
+        /// 경계는 (k × span) 으로 셈해 더해 가며 쌓이는 오차가 없게.
+        /// </summary>
+        private static HeatBuckets Aligned(double t0, double t1, double span)
+        {
+            var from = new List<double>();
+            var to = new List<double>();
+            double k = Math.Floor(t0 / span) + 1;
+            double a = t0;
+            while (true)
+            {
+                double edge = k * span;
+                if (edge <= a) { k++; continue; }   // 소수 셈이 t0 위에 걸친 경우
+                if (edge >= t1)
+                {
+                    from.Add(a);
+                    to.Add(t1 + Math.Abs(t1) * 1e-12 + 1e-9);   // 마지막 표본까지 덮기 (Uniform 과 같은 까닭)
+                    break;
+                }
+                from.Add(a);
+                to.Add(edge);
+                a = edge;
+                k++;
+            }
+            return new HeatBuckets(from.ToArray(), to.ToArray(), null, null, false, span);
         }
 
         /// <summary>

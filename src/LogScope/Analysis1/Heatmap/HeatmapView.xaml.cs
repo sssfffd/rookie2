@@ -61,6 +61,9 @@ namespace LogScope.Analysis1.Heatmap
         private void OnVmChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == "Search") SyncLayout();
+            // 1.89: 칸 폭을 바꾸면 바로 다시 셉니다. 전에는 [다시 계산] 전까지 옛 폭의 칸이 그대로 남아,
+            // 위에 고른 폭과 보이는 칸이 달랐습니다.
+            else if (e.PropertyName == "BucketIndex") Recalculate(false);
         }
 
         // ---------------- 그룹 · 검색 (1.07) ----------------

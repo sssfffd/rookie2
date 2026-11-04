@@ -42,7 +42,8 @@
                 <TextBlock Text="{x:Static t:HeatmapTexts.BucketIndexLabel}" Style="{StaticResource FieldLabel}" Margin="12,0,8,0" />
                 <ComboBox MinWidth="150" ItemsSource="{Binding BucketChoices}"
                           SelectedIndex="{Binding BucketIndex, Mode=TwoWay}"
-                          IsEnabled="{Binding CanChooseSpan}" />
+                          IsEnabled="{Binding CanChooseSpan}"
+                          ToolTip="{Binding BucketHint}" ToolTipService.ShowOnDisabled="True" />
 
                 <TextBlock Text="{x:Static t:HeatmapTexts.RelativeTolerancePercentLabel}" Style="{StaticResource FieldLabel}"
                            Margin="12,0,8,0" />

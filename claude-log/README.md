@@ -187,3 +187,4 @@
 | `178-cursor-esc-tolerance-file.md` | 1.86 — Esc 로 커서 지우기 · 같은 커서 다시 누르면 지움 · IO 별 허용 오차를 tolerances.txt 로 (groups.txt 처럼) |
 | `179-one-io-zoom-ctrl-wheel.md` | 1.87 — 갤러리 → IO 하나에서 확대한 것은 그 IO 칸에만 (뒤로 오면 나머지는 그대로) · Ctrl + 휠 = 모든 그래프 같이 |
 | `180-analysis1-consistency.md` | 1.88 — 분석 1 앞뒤 안 맞던 것: "모두 같이" 조작이 따로 구간 그래프를 빠뜨림 · Value Scale 일부만 · 그래프 하나일 때 휠 안 먹음 · 두 번 누르기 커서 · 오차율 0 % 차이 IO · 낡은 안내 글 |
+| `181-heatmap-bucket-1s-5s.md` | 1.89 — 히트맵 칸 폭을 고르면 바로 다시 셈 (전에는 옛 칸이 남음) · 1 초 · 5 초 · 정각 경계 · 칸 수 상한 IO 수에 맞춤 · 시각 아니면 고르기 꺼짐 |
