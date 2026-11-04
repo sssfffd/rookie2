@@ -494,6 +494,86 @@ namespace LogScope.Analysis1.Graph
             InvalidateVisual();
         }
 
+        // ---- 갤러리 → IO 하나 → 뒤로 (1.87) ----
+        //
+        // IO 하나로 들어가 확대한 것이 <b>그 IO 에만</b> 남게: 들어갈 때 갤러리의 보기 (공통 구간 · 칸마다 구간 ·
+        // 칸마다 세로) 를 통째로 적어 두고, 뒤로 올 때 되살린 뒤 그 IO 칸에만 들어가서 본 구간 · 세로를 얹습니다.
+
+        /// <summary>보기 한 벌 (시간 · 줄마다 시간 · 줄마다 세로).</summary>
+        public sealed class ViewSnapshot
+        {
+            internal double T0, T1;
+            internal Dictionary<string, double[]> LaneTimes;
+            internal Dictionary<string, LaneYCopy> Lanes;
+        }
+
+        internal struct LaneYCopy { public double Zoom, Center; }
+
+        /// <summary>그 줄이 자기 구간을 가졌으면 그 구간 (시험 · 확인용). 없으면 false.</summary>
+        public bool TryLaneTime(string key, out double t0, out double t1)
+        {
+            double[] r;
+            t0 = t1 = double.NaN;
+            if (key == null || !_laneTimes.TryGetValue(key, out r)) return false;
+            t0 = r[0]; t1 = r[1];
+            return true;
+        }
+
+        public ViewSnapshot TakeSnapshot()
+        {
+            var s = new ViewSnapshot { T0 = _t0, T1 = _t1 };
+            s.LaneTimes = new Dictionary<string, double[]>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, double[]> kv in _laneTimes) s.LaneTimes[kv.Key] = (double[])kv.Value.Clone();
+            s.Lanes = new Dictionary<string, LaneYCopy>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, LaneY> kv in _lanes) s.Lanes[kv.Key] = new LaneYCopy { Zoom = kv.Value.Zoom, Center = kv.Value.Center };
+            return s;
+        }
+
+        /// <summary>갤러리 칸 하나로 들어온 뒤: 그 칸이 보던 구간 · 세로로 시작 (다른 칸 것은 안 가져옴).</summary>
+        public void EnterOne(ViewSnapshot s, string key)
+        {
+            if (s == null || key == null) return;
+            double[] r;
+            if (s.LaneTimes.TryGetValue(key, out r)) { _t0 = r[0]; _t1 = r[1]; }
+            else { _t0 = s.T0; _t1 = s.T1; }
+            _timeInit = true;
+            _laneTimes.Clear();
+            _lanes.Clear();
+            LaneYCopy y;
+            if (s.Lanes.TryGetValue(key, out y)) { LaneY ly = LaneFor(key); ly.Zoom = y.Zoom; ly.Center = y.Center; }
+            InvalidateVisual();
+            RaiseViewChanged();
+        }
+
+        /// <summary>
+        /// 갤러리로 돌아올 때: 들어가기 전 보기 (s) 를 되살리고, 그 IO 칸에만 IO 하나로 본 구간 · 세로 (one —
+        /// 갤러리로 바꾸기 <b>전에</b> 적어 둔 것. 보기를 바꾸면 세로 확대가 지워지므로) 를 얹습니다.
+        /// 본 구간이 갤러리 공통 구간과 같으면 그 칸에 따로 구간을 두지 않습니다.
+        /// </summary>
+        public void LeaveOne(ViewSnapshot s, ViewSnapshot one, string key)
+        {
+            if (s == null) return;
+            double t0 = one != null ? one.T0 : _t0, t1 = one != null ? one.T1 : _t1;
+            LaneYCopy nowY = new LaneYCopy { Zoom = 1.0, Center = double.NaN };
+            bool hasY = key != null && one != null && one.Lanes.TryGetValue(key, out nowY);
+
+            _t0 = s.T0; _t1 = s.T1;
+            _laneTimes.Clear();
+            foreach (KeyValuePair<string, double[]> kv in s.LaneTimes) _laneTimes[kv.Key] = (double[])kv.Value.Clone();
+            _lanes.Clear();
+            foreach (KeyValuePair<string, LaneYCopy> kv in s.Lanes) { LaneY ly = LaneFor(kv.Key); ly.Zoom = kv.Value.Zoom; ly.Center = kv.Value.Center; }
+
+            if (key != null)
+            {
+                if (t1 > t0 && (t0 != s.T0 || t1 != s.T1)) _laneTimes[key] = new[] { t0, t1 };
+                else _laneTimes.Remove(key);
+                if (hasY) { LaneY ly = LaneFor(key); ly.Zoom = nowY.Zoom; ly.Center = nowY.Center; }
+            }
+            _timeInit = true;
+            InvalidateVisual();
+            RaiseViewChanged();
+        }
+
         // ---- 가로축 0 자리 ----
         //
         // 단계 하나를 볼 때 가로축을 <b>그 단계 시작부터</b> 세고 싶습니다.
@@ -2967,8 +3047,30 @@ namespace LogScope.Analysis1.Graph
             double factor = Math.Pow(1.14, notches);
             Point at = Pos(e);
 
-            // 1.83: 고른 그래프 위가 아니면 확대하지 않고 목록을 굴립니다 (굴릴 것이 없으면 부모 창이 굴림).
             string under = GraphKeyAt(at);
+
+            // 1.87: <b>Ctrl + 휠 = 모든 그래프 같이</b> (그래프 위면 고르지 않아도). 줄마다 따로 가진 구간도 같은 비율로.
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != 0 && under != null)
+            {
+                if (StepMode) ZoomAllSteps(factor);
+                else
+                {
+                    foreach (string key in new List<string>(_laneTimes.Keys))
+                    {
+                        double s0, s1;
+                        if (!EnterLaneTime(key, out s0, out s1)) continue;
+                        ZoomTimeAround(XToTime(at.X), factor);
+                        LeaveLaneTime(key, s0, s1, true);
+                    }
+                    ZoomTimeAround(XToTime(at.X), factor);
+                }
+                InvalidateVisual();
+                RaiseViewChanged();
+                e.Handled = true;
+                return;
+            }
+
+            // 1.83: 고른 그래프 위가 아니면 확대하지 않고 목록을 굴립니다 (굴릴 것이 없으면 부모 창이 굴림).
             if (_selectedKey == null || under != _selectedKey)
             {
                 if (ScrollByWheel(notches)) e.Handled = true;
@@ -2995,7 +3097,7 @@ namespace LogScope.Analysis1.Graph
                 // 1.85: 휠은 <b>고른 그래프만</b> 확대 · 축소 (사용자 요청). 위에서 고른 그래프 위인 것을 이미 봤습니다.
                 // Lane 줄 · 갤러리 칸이 여럿이면 그 줄이 자기 구간을 갖게 되고 (끌기 · 오른쪽 네모와 같은 자리),
                 // 다른 줄은 그대로. 겹쳐보기 · 줄 하나는 그래프가 하나뿐이라 그 판 전체.
-                // 모든 줄을 같이 바꾸는 것은 Time Scale [+] [−] · + − ← → · Home.
+                // 모든 줄을 같이 바꾸는 것은 Ctrl + 휠 (1.87) · Time Scale [+] [−] · + − ← → · Home.
                 if (PerLaneTime)
                 {
                     double s0, s1;

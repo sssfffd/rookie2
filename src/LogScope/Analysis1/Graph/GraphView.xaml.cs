@@ -38,23 +38,37 @@ namespace LogScope.Analysis1.Graph
             Plot.GalleryCellClicked += delegate (object s, string name)
             {
                 if (_vm == null || string.IsNullOrEmpty(name)) return;
+                // 1.87: 갤러리 보기를 적어 두고 (뒤로 올 때 되살림), IO 하나는 그 칸이 보던 구간 · 세로로 시작.
+                _backView = Plot.TakeSnapshot();
+                _backIo = name;
                 _vm.RememberBack();
                 FocusOnIo(name);
-                _vm.LaneMode = true;
+                _vm.LaneMode = true;          // 보기를 바꾸면 세로 확대가 지워지므로 그 뒤에
+                Plot.EnterOne(_backView, name);
             };
         }
 
-        /// <summary>[◀ 갤러리로] (1.83) — 갤러리에서 IO 하나로 들어오기 전에 고른 IO 들 · 갤러리로 되돌림.</summary>
+        /// <summary>갤러리 칸 하나로 들어가기 전의 갤러리 보기 · 그 IO (1.87).</summary>
+        private GraphCanvas.ViewSnapshot _backView;
+        private string _backIo;
+
+        /// <summary>
+        /// [◀ 갤러리로] (1.83) — 갤러리에서 IO 하나로 들어오기 전에 고른 IO 들 · 갤러리로 되돌림.
+        /// 1.87: 보기도 들어가기 전 그대로 — IO 하나에서 확대한 것은 <b>그 IO 칸에만</b> 남습니다.
+        /// </summary>
         private void OnBackToGallery(object sender, RoutedEventArgs e)
         {
             if (_vm == null) return;
             List<string> names = _vm.TakeBack();
             if (names == null) return;
+            GraphCanvas.ViewSnapshot one = Plot.TakeSnapshot();   // 보기를 바꾸기 전에 (세로 확대가 지워짐)
             _vm.List.Search = string.Empty;
             _vm.List.SelectOnly(names);
             _vm.GalleryMode = true;
-            Plot.ResetValueZoom();
             PushChannels();
+            if (_backView != null) Plot.LeaveOne(_backView, one, _backIo);
+            else Plot.ResetValueZoom();
+            _backView = null; _backIo = null;
         }
 
         /// <summary>창이 상태를 넘겨 줍니다.</summary>
@@ -197,23 +211,23 @@ namespace LogScope.Analysis1.Graph
             PushChannels();
         }
 
-        /// <summary>
-        /// 선과 설정만 다시 밀어 넣습니다 (보이는 구간은 그대로).
-        /// 단계를 고를 때 씁니다 — OnDataChanged 는 구간을 전체로
-        /// 되돌리는데, 단계를 고른 사람은 그 단계만 보려고 고른 것입니다.
-        /// </summary>
-        /// <summary>그림만 다시 (판정 허용이 바뀌었을 때 — 오차 구간 색, 1.63).</summary>
         /// <summary>커서 A · B 를 지움 (Esc, 1.86). 지운 것이 있으면 true.</summary>
         public bool ClearCursors()
         {
             return Plot.ClearCursors();
         }
 
+        /// <summary>그림만 다시 (판정 허용이 바뀌었을 때 — 오차 구간 색, 1.63).</summary>
         public void Repaint()
         {
             Plot.InvalidateVisual();
         }
 
+        /// <summary>
+        /// 선과 설정만 다시 밀어 넣습니다 (보이는 구간은 그대로).
+        /// 단계를 고를 때 씁니다 — OnDataChanged 는 구간을 전체로
+        /// 되돌리는데, 단계를 고른 사람은 그 단계만 보려고 고른 것입니다.
+        /// </summary>
         public void PushAll()
         {
             PushOptions();

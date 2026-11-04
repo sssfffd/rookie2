@@ -164,6 +164,7 @@ namespace LogScope.Tests
                 JudgeScoreRules();
                 GalleryBackRules();
                 ToleranceFileRules();
+                GalleryOneZoomRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4726,6 +4727,36 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>갤러리 → IO 하나에서 확대 → 뒤로: 그 IO 칸에만 남음 (1.87).</summary>
+        private static void GalleryOneZoomRules()
+        {
+            Say("갤러리 → IO 하나 확대 → 뒤로 = 그 칸만");
+            var c = new GraphCanvas();
+            c.SetTimeRange(0, 100);                       // 갤러리 공통 구간
+            GraphCanvas.ViewSnapshot gallery = c.TakeSnapshot();
+
+            c.EnterOne(gallery, "SPIKE");
+            Check("들어가면 그 칸이 보던 구간으로 시작", c.VisibleStart == 0 && c.VisibleEnd == 100, c.VisibleStart + "~" + c.VisibleEnd);
+
+            c.SetTimeRange(40, 50);                       // IO 하나에서 확대 (공통 구간이 바뀜)
+            GraphCanvas.ViewSnapshot one = c.TakeSnapshot();
+            c.LeaveOne(gallery, one, "SPIKE");
+            double a, b, x, y;
+            Check("뒤로 → 갤러리 공통 구간은 그대로", c.VisibleStart == 0 && c.VisibleEnd == 100, c.VisibleStart + "~" + c.VisibleEnd);
+            Check("확대한 것은 그 IO 칸에만", c.TryLaneTime("SPIKE", out a, out b) && a == 40 && b == 50, a + "~" + b);
+            Check("다른 칸은 따로 구간 없음", !c.TryLaneTime("FLAT", out x, out y), "");
+
+            // 다시 들어가면 그 칸 구간으로, 확대 안 하고 나오면 그 칸 구간 그대로
+            GraphCanvas.ViewSnapshot g2 = c.TakeSnapshot();
+            c.EnterOne(g2, "SPIKE");
+            Check("다시 들어가면 그 칸 구간 (40~50)", c.VisibleStart == 40 && c.VisibleEnd == 50, c.VisibleStart + "~" + c.VisibleEnd);
+            c.EnterOne(g2, "FLAT");
+            Check("다른 칸으로 들어가면 공통 구간", c.VisibleStart == 0 && c.VisibleEnd == 100, "");
+            c.LeaveOne(g2, c.TakeSnapshot(), "FLAT");
+            Check("공통 구간 그대로 나오면 그 칸에 따로 구간을 두지 않음 · SPIKE 는 남음",
+                  !c.TryLaneTime("FLAT", out x, out y) && c.TryLaneTime("SPIKE", out a, out b) && a == 40, "");
         }
 
         /// <summary>tolerances.txt (1.86) · 같은 커서 다시 누르기.</summary>

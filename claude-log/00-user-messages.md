@@ -2157,3 +2157,9 @@
 > IO별 허용오차 설정한것도 빼줄수 있음?
 
 → 답변: [178-cursor-esc-tolerance-file.md](178-cursor-esc-tolerance-file.md)
+
+## 요청 206 — IO 하나에서 확대한 것은 그 IO 에만 · Ctrl + 휠 = 모두 같이
+
+> 아 그리고 그래프 하나 들어가서 확대하는것도 전체적용되던데 이거 하나만 적용되게하고 휠은 전체적용안되는데 컨트롤휠은 전체되는것도 다시바꿔주셈
+
+→ 답변: [179-one-io-zoom-ctrl-wheel.md](179-one-io-zoom-ctrl-wheel.md)
