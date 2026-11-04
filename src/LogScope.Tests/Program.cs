@@ -72,6 +72,9 @@ namespace LogScope.Tests
             catch (NotSupportedException) { }
         }
 
+        // 1.91: STA — 시험이 WPF 그림판 (GraphCanvas, 1.87 갤러리 시험) 을 만들기 때문.
+        // 없으면 Windows 에서 "The calling thread must be STA" 로 멈춥니다 (리눅스 흉내 WPF 에서는 안 걸려서 못 봤던 것).
+        [STAThread]
         private static int Main(string[] args)
         {
             UseConsoleEncoding();

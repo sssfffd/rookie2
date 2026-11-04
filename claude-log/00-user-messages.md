@@ -2205,3 +2205,9 @@
 > csv랑 .sql도 비교 가능한가?
 
 → 답변: [185-analysis2-csv-vs-sql.md](185-analysis2-csv-vs-sql.md)
+
+## 요청 213 — 빌드 시험 "The calling thread must be STA"
+
+> the calling thread must be sta라는 빌드에러뜨는대 왜이럼? 분석1쪽인듯, 아마 test?
+
+→ 답변: [186-tests-sta-thread.md](186-tests-sta-thread.md)

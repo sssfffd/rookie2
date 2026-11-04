@@ -371,6 +371,15 @@ if any(re.search(r'<ComboBox\b[^>]*IsEditable="True"', read(x)) for x in xamls):
     if 'PART_EditableTextBox' not in theme:
         bad('Themes/Controls.xaml 의 ComboBox 모양에 PART_EditableTextBox 가 없음 (IsEditable 콤보의 글이 안 보임)')
 
+# 1.91: 시험이 WPF 화면 부품을 만들면 Main 에 [STAThread] 가 있어야 합니다. 리눅스 흉내 WPF 는 안 따져서
+# 여기서 못 보고 Windows 빌드 (build.bat 의 시험) 에서 "The calling thread must be STA" 로 멈췄습니다.
+_tp = os.path.join(ROOT, 'src/LogScope.Tests/Program.cs')
+if os.path.exists(_tp):
+    _tt = read(_tp)
+    _ui = re.search(r'new\s+(GraphCanvas|HeatmapCanvas|\w+(View|Window|Canvas))\s*\(', _tt)
+    if _ui and not re.search(r'\[STAThread\]\s*(?://[^\n]*\n\s*)*(?:private|public|internal)?\s*static\s+\w+\s+Main\s*\(', _tt):
+        bad('LogScope.Tests: 시험이 WPF 부품 (' + _ui.group(1) + ') 을 만드는데 Main 에 [STAThread] 가 없음 — Windows 에서 "The calling thread must be STA"')
+
 print('\n'.join(fail) if fail else 'OK — 지적 사항 없음')
 print('-- xaml %d, cs %d' % (len(xamls), len(css)))
 sys.exit(1 if fail else 0)
