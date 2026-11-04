@@ -173,6 +173,8 @@ namespace LogScope.Analysis1.Judge
             {
                 int n = 0;
                 foreach (bool x in kv.Value) if (x) n++;
+                // 1.88: 차이 난 IO 로 세면서 오차율 0 % 는 말이 안 됨 (오차가 이전 로그 시간 밖에만 있을 때) — 적어도 한 칸.
+                if (n == 0) n = 1;
                 s.Rates[kv.Key] = n * 100.0 / Buckets;
             }
             foreach (string io in full) s.Rates[io] = 100.0;

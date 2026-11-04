@@ -186,3 +186,4 @@
 | `177-wheel-selected-only.md` | 1.85 — 휠 확대 · 축소는 고른 그래프 하나만 (Lane 줄 · 갤러리 칸이 자기 구간을 가짐), 모든 줄 같이는 Time Scale · 키 |
 | `178-cursor-esc-tolerance-file.md` | 1.86 — Esc 로 커서 지우기 · 같은 커서 다시 누르면 지움 · IO 별 허용 오차를 tolerances.txt 로 (groups.txt 처럼) |
 | `179-one-io-zoom-ctrl-wheel.md` | 1.87 — 갤러리 → IO 하나에서 확대한 것은 그 IO 칸에만 (뒤로 오면 나머지는 그대로) · Ctrl + 휠 = 모든 그래프 같이 |
+| `180-analysis1-consistency.md` | 1.88 — 분석 1 앞뒤 안 맞던 것: "모두 같이" 조작이 따로 구간 그래프를 빠뜨림 · Value Scale 일부만 · 그래프 하나일 때 휠 안 먹음 · 두 번 누르기 커서 · 오차율 0 % 차이 IO · 낡은 안내 글 |

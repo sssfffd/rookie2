@@ -117,11 +117,11 @@ namespace LogScope.Analysis1.Graph
         /// <summary>단추 이름</summary>
         public const string ZoomTimeIn = "+";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ZoomTimeInTip = "시간축 확대. 휠로도 됩니다.";
+        public const string ZoomTimeInTip = "시간축 확대 — 모든 그래프 같이 (Ctrl + 휠, + 키와 같음).\n그래프 하나만은 그 그래프를 눌러 고른 뒤 휠.";
         /// <summary>단추 이름</summary>
         public const string ZoomTimeOut = "−";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ZoomTimeOutTip = "시간축 축소. 휠로도 됩니다.";
+        public const string ZoomTimeOutTip = "시간축 축소 — 모든 그래프 같이 (Ctrl + 휠, − 키와 같음).\n그래프 하나만은 그 그래프를 눌러 고른 뒤 휠.";
         /// <summary>단추 이름</summary>
         public const string ResetTime = "초기화";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
@@ -131,11 +131,11 @@ namespace LogScope.Analysis1.Graph
         /// <summary>단추 이름</summary>
         public const string ZoomValueIn = "+";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ZoomValueInTip = "값 축 확대. Shift+휠로도 됩니다.";
+        public const string ZoomValueInTip = "값 축 확대 — 모든 그래프 같이.\n그래프 하나만은 그 그래프를 눌러 고른 뒤 Shift + 휠.";
         /// <summary>단추 이름</summary>
         public const string ZoomValueOut = "−";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string ZoomValueOutTip = "값 축 축소. Shift+휠로도 됩니다.";
+        public const string ZoomValueOutTip = "값 축 축소 — 모든 그래프 같이.\n그래프 하나만은 그 그래프를 눌러 고른 뒤 Shift + 휠.";
         /// <summary>단추 이름</summary>
         public const string ResetValueZoom = "초기화";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>

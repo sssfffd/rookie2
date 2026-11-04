@@ -113,6 +113,9 @@ namespace LogScope.Analysis1.Graph
             return LaneAt(at, out k, out r, out i) ? k : null;
         }
 
+        /// <summary>그래프가 하나뿐인지 (겹쳐보기, Lane · 갤러리에 IO 하나) — 1.88.</summary>
+        private bool SingleGraph { get { return !_laneMode || _channels.Count == 1; } }
+
         /// <summary>목록을 휠만큼 굴림. 굴릴 것이 없으면 false (부모 창이 굴리게 둠).</summary>
         private bool ScrollByWheel(int notches)
         {
@@ -229,8 +232,8 @@ namespace LogScope.Analysis1.Graph
         // ---------------- 갤러리 (1.60) ----------------
         //
         // 가로 3 칸 격자로 IO 하나씩 (작은 그래프 여러 개). Lane 처럼 IO 마다 세로 눈금이 따로이고,
-        // 가로(시간)는 <b>모든 칸이 같은 구간</b>입니다 — 한 칸에서 휠 · 끌기 · 네모 확대를 하면
-        // 모든 칸이 같이 움직입니다. 마우스 자리는 Pos() 가 "그 칸 안의 위치 → 판 전체 위치" 로
+        // 가로(시간)는 처음엔 모든 칸이 같은 구간이고, 휠 (고른 칸) · 끌기 · 네모 확대는 그 칸만 자기 구간을 갖게 합니다
+        // (1.77 · 1.85). Ctrl + 휠 · Time Scale · 키는 모든 칸 같이. 마우스 자리는 Pos() 가 "그 칸 안의 위치 → 판 전체 위치" 로
         // 바꿔서, 확대 · 이동 · 커서 코드는 Lane 과 같은 것을 그대로 씁니다.
 
         private bool _galleryMode;
@@ -686,21 +689,36 @@ namespace LogScope.Analysis1.Graph
         {
             // 칸으로 나눠 보는 중이면 모든 칸을 같은 배율로 — 단계마다
             // 같은 자리를 보게 해서 서로 견주려는 것입니다.
+            // 1.88: 자기 구간을 가진 줄 (휠 · 끌기로 따로 본 줄) 도 같이 — "모든 그래프 같이" 가 말 그대로가 되게.
             if (StepMode) ZoomAllSteps(factor);
-            else ZoomTimeAround((_t0 + _t1) * 0.5, factor);
+            else AllLaneTimes(delegate { ZoomTimeAround((_t0 + _t1) * 0.5, factor); });
 
             InvalidateVisual();
             RaiseViewChanged();
         }
 
+        /// <summary>
+        /// 공통 구간과 <b>자기 구간을 가진 줄 모두</b>에 같은 일을 (1.88). 그 일은 _t0 · _t1 을 바꾸면 됩니다 —
+        /// 줄마다 그 줄의 구간을 _t0 · _t1 에 끼워 부르고 돌려받습니다.
+        /// </summary>
+        private void AllLaneTimes(Action change)
+        {
+            foreach (string key in new List<string>(_laneTimes.Keys))
+            {
+                double s0, s1;
+                if (!EnterLaneTime(key, out s0, out s1)) continue;
+                change();
+                LeaveLaneTime(key, s0, s1, true);
+            }
+            change();
+        }
+
         public void ZoomValue(double factor)
         {
-            if (_lanes.Count == 0)
-            {
-                // 아직 손대지 않았으면 지금 보이는 레인들을 먼저 만들어 둡니다.
-                if (_laneMode) { foreach (IoRowVm vm in _channels) LaneFor(vm.Name); }
-                else LaneFor(OverlayLaneKey);
-            }
+            // 지금 보이는 레인들을 먼저 만들어 둡니다. 1.88: <b>늘</b> — 전에는 하나도 없을 때만 만들어서,
+            // 한 줄을 Shift + 휠로 손댄 뒤에는 [+] [−] 가 그 줄만 바꿨습니다.
+            if (_laneMode) { foreach (IoRowVm vm in _channels) LaneFor(vm.Name); }
+            else LaneFor(OverlayLaneKey);
             foreach (KeyValuePair<string, LaneY> kv in _lanes) kv.Value.Zoom *= factor;
             ClampZooms();
             InvalidateVisual();
@@ -1272,7 +1290,7 @@ namespace LogScope.Analysis1.Graph
             dc.DrawRectangle(p.AxisStripBrush, null, strip);
             dc.DrawLine(p.BorderPen, new Point(0, strip.Top), new Point(strip.Right, strip.Top));
             string range = StepMode ? "단계로 나눠 보는 중 — 칸마다 같은 단계 칸"
-                         : AnyLaneTime ? "칸마다 따로 (휠 · 끌기는 마우스가 있는 칸만) — Home 을 누르면 모든 칸이 같은 구간으로"
+                         : AnyLaneTime ? "칸마다 따로 (휠 = 고른 칸 · 끌기 = 그 칸 · Ctrl + 휠 = 모든 칸) — Home 을 누르면 모든 칸이 같은 구간으로"
                          : "모든 칸 같은 구간  " + TimeLabel(refDs, _t0) + "  ~  " + TimeLabel(refDs, _t1);
             dc.DrawText(Text(range, FontSmall, p.MutedBrush), new Point(10, strip.Top + 5));
 
@@ -3053,17 +3071,7 @@ namespace LogScope.Analysis1.Graph
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0 && under != null)
             {
                 if (StepMode) ZoomAllSteps(factor);
-                else
-                {
-                    foreach (string key in new List<string>(_laneTimes.Keys))
-                    {
-                        double s0, s1;
-                        if (!EnterLaneTime(key, out s0, out s1)) continue;
-                        ZoomTimeAround(XToTime(at.X), factor);
-                        LeaveLaneTime(key, s0, s1, true);
-                    }
-                    ZoomTimeAround(XToTime(at.X), factor);
-                }
+                else AllLaneTimes(delegate { ZoomTimeAround(XToTime(at.X), factor); });
                 InvalidateVisual();
                 RaiseViewChanged();
                 e.Handled = true;
@@ -3071,7 +3079,8 @@ namespace LogScope.Analysis1.Graph
             }
 
             // 1.83: 고른 그래프 위가 아니면 확대하지 않고 목록을 굴립니다 (굴릴 것이 없으면 부모 창이 굴림).
-            if (_selectedKey == null || under != _selectedKey)
+            // 1.88: 그래프가 <b>하나뿐</b>이면 (겹쳐보기 · IO 하나) 굴릴 것도 고를 것도 없으니 고르지 않아도 확대.
+            if (under == null || (under != _selectedKey && !SingleGraph))
             {
                 if (ScrollByWheel(notches)) e.Handled = true;
                 return;
@@ -3210,8 +3219,16 @@ namespace LogScope.Analysis1.Graph
             if (e.ClickCount == 2 && _galleryMode && _hitCell >= 0 && _hitCell < _channels.Count)
             {
                 EventHandler<string> g = GalleryCellClicked;
-                if (g != null) { g(this, _channels[_hitCell].Name); e.Handled = true; return; }
+                if (g != null)
+                {
+                    // 1.88: 첫 번째 누르기가 놓은 (또는 지운) 커서를 되돌림 — 들어가려고 두 번 누른 것이지 커서가 아님.
+                    _cursorA = _beforeClickA; _cursorB = _beforeClickB;
+                    g(this, _channels[_hitCell].Name); e.Handled = true; return;
+                }
             }
+            // 1.88: 두 번 누르기의 두 번째는 커서를 다시 건드리지 않음 (같은 자리라 "다시 누르면 지움" 이 걸려 방금 놓은 커서가 사라짐)
+            _secondClick = e.ClickCount >= 2;
+            if (!_secondClick) { _beforeClickA = _cursorA; _beforeClickB = _cursorB; }
 
             // 1.83: 누른 그래프를 고름 (테두리) — 그래프 밖이면 풀림
             string pick = GraphKeyAt(downAt);
@@ -3358,6 +3375,7 @@ namespace LogScope.Analysis1.Graph
             // 칸 사이의 금을 누르면 가리키는 시각이 없습니다 (NaN).
             // 커서를 거기 두면 값이 전부 "-" 로 나오니 그냥 둡니다.
             if (double.IsNaN(t)) return;
+            if (_secondClick) return;
             bool b = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
             // 1.86: <b>같은 커서를 다시 누르면 그 커서를 지웁니다</b> (A = 그냥 누르기, B = Shift + 누르기).
             if (NearCursor(b ? _cursorB : _cursorA, t, tl, tr)) t = double.NaN;
@@ -3365,6 +3383,10 @@ namespace LogScope.Analysis1.Graph
             InvalidateVisual();
             RaiseViewChanged();
         }
+
+        /// <summary>두 번 누르기의 두 번째인지 · 누르기 전 커서 (갤러리 두 번 누르기가 되돌림) — 1.88.</summary>
+        private bool _secondClick;
+        private double _beforeClickA = double.NaN, _beforeClickB = double.NaN;
 
         /// <summary>같은 커서를 다시 누른 것으로 볼 거리 (px, 좌우로) — 1.86.</summary>
         private const double CursorHitPx = 5.0;
@@ -3569,7 +3591,6 @@ namespace LogScope.Analysis1.Graph
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            double span = _t1 - _t0;
 
             // 단계별로 나눠 보는 중에는 가로로 움직이는 키를 안 받습니다
             // (휠·끌기와 같은 까닭). 세로 확대 키는 그대로입니다.
@@ -3578,12 +3599,13 @@ namespace LogScope.Analysis1.Graph
                 // 키보드는 <b>모든 칸을 같이</b> 움직입니다 — 단계마다
                 // 같은 자리를 보게 해서 서로 견주려는 것입니다. 휠과 끌기는
                 // 커서를 올려 둔 칸 하나만 움직입니다.
+                // 1.88: 자기 구간을 가진 줄도 같이 (줄마다 그 줄 폭의 10 %).
                 case Key.Left:
                     if (StepMode) { PanAllSteps(-0.1); break; }
-                    _t0 -= span * 0.1; _t1 -= span * 0.1; break;
+                    AllLaneTimes(delegate { double w = _t1 - _t0; _t0 -= w * 0.1; _t1 -= w * 0.1; }); break;
                 case Key.Right:
                     if (StepMode) { PanAllSteps(+0.1); break; }
-                    _t0 += span * 0.1; _t1 += span * 0.1; break;
+                    AllLaneTimes(delegate { double w = _t1 - _t0; _t0 += w * 0.1; _t1 += w * 0.1; }); break;
                 case Key.Home: ResetTime(); e.Handled = true; return;
                 // Delete = 커서 A · B 를 둘 다 지웁니다 (1.15). 그래프를
                 // 한 번 누르면 이 판이 키를 받습니다 (누를 때 Focus()).
@@ -3591,8 +3613,9 @@ namespace LogScope.Analysis1.Graph
                 case Key.Delete:
                     if (ClearCursors()) e.Handled = true;
                     return;
-                case Key.OemPlus: case Key.Add: ZoomTime(1.3); e.Handled = true; return;
-                case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.3); e.Handled = true; return;
+                // 1.88: [+] [−] 단추와 같은 배율 (전에는 키 1.3 · 단추 1.35 로 달랐음)
+                case Key.OemPlus: case Key.Add: ZoomTime(1.35); e.Handled = true; return;
+                case Key.OemMinus: case Key.Subtract: ZoomTime(1 / 1.35); e.Handled = true; return;
                 default: return;
             }
             e.Handled = true;

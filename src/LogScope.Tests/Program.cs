@@ -165,6 +165,7 @@ namespace LogScope.Tests
                 GalleryBackRules();
                 ToleranceFileRules();
                 GalleryOneZoomRules();
+                ScoreAtLeastOneBucket();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4727,6 +4728,23 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>차이 난 IO 의 오차율은 0 % 가 아님 (1.88).</summary>
+        private static void ScoreAtLeastOneBucket()
+        {
+            Say("점수 — 차이 난 IO 는 적어도 한 칸");
+            var st = new AppState();
+            st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            var r = new JudgeResult();
+            var it = new JudgeItem();
+            it.Kind = JudgeKind.Value; it.Io = "SPIKE";
+            it.Start = st.Before.TimeEnd + 10; it.End = st.Before.TimeEnd + 20;   // 이전 로그 시간 밖
+            r.Items.Add(it);
+            JudgeScore js = JudgeScore.Of(r, st.Before, st.After, null);
+            Check("시간 밖 오차만 있는 IO 도 1 % (0 % 아님)", js.DiffIos == 1 && js.Rates["SPIKE"] == 1.0 && js.Score == 99.0,
+                  js.DiffIos + " / " + js.Score);
         }
 
         /// <summary>갤러리 → IO 하나에서 확대 → 뒤로: 그 IO 칸에만 남음 (1.87).</summary>
