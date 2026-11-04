@@ -316,6 +316,10 @@
                             <RadioButton GroupName="viewmode" Style="{StaticResource SegmentButton}"
                                          Content="{x:Static t:GraphTexts.GalleryMode}" IsChecked="{Binding GalleryMode, Mode=TwoWay}"
                                          ToolTip="{x:Static t:GraphTexts.GalleryModeTip}" />
+                            <!-- 1.83: 갤러리에서 칸을 두 번 눌러 IO 하나로 들어왔을 때만 -->
+                            <Button Content="{x:Static t:GraphTexts.BackToGallery}" Click="OnBackToGallery"
+                                    ToolTip="{x:Static t:GraphTexts.BackToGalleryTip}" Margin="8,0,0,0" Padding="8,2"
+                                    Visibility="{Binding HasBack, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </Border>
 

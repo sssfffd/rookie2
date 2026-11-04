@@ -34,13 +34,27 @@ namespace LogScope.Analysis1.Graph
             {
                 if (_vm != null) _vm.Step.ToggleBand(pair);
             };
-            // 갤러리 칸을 누르면 그 IO 하나만 Lane 으로 (1.77).
+            // 갤러리 칸을 두 번 누르면 그 IO 하나만 Lane 으로 (1.77 · 1.83). 그 전에 고른 IO 들은 [◀ 갤러리로] 로 되돌림.
             Plot.GalleryCellClicked += delegate (object s, string name)
             {
                 if (_vm == null || string.IsNullOrEmpty(name)) return;
+                _vm.RememberBack();
                 FocusOnIo(name);
                 _vm.LaneMode = true;
             };
+        }
+
+        /// <summary>[◀ 갤러리로] (1.83) — 갤러리에서 IO 하나로 들어오기 전에 고른 IO 들 · 갤러리로 되돌림.</summary>
+        private void OnBackToGallery(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+            List<string> names = _vm.TakeBack();
+            if (names == null) return;
+            _vm.List.Search = string.Empty;
+            _vm.List.SelectOnly(names);
+            _vm.GalleryMode = true;
+            Plot.ResetValueZoom();
+            PushChannels();
         }
 
         /// <summary>창이 상태를 넘겨 줍니다.</summary>

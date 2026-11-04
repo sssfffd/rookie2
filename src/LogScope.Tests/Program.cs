@@ -162,6 +162,7 @@ namespace LogScope.Tests
                 SimilarIosRules();
                 GraphPanStableRules();
                 JudgeScoreRules();
+                GalleryBackRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4724,6 +4725,45 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>갤러리 → IO 하나 → [◀ 갤러리로] (1.83) · 메인 칸 자리.</summary>
+        private static void GalleryBackRules()
+        {
+            Say("갤러리 → IO 하나 → 뒤로 · 메인 칸 자리");
+            var st = new AppState();
+            st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            st.Recompare(null);
+            var g = new GraphVm(st, new AlignVm(st), new StepVm(st));
+            g.Reload();
+            g.List.SelectOnly(new[] { "FLAT", "SPIKE", "BIG" });
+            g.GalleryMode = true;
+            Check("처음엔 뒤로가기 없음", !g.HasBack, "");
+
+            // 칸을 두 번 눌러 SPIKE 하나만 Lane (창이 하는 차례 그대로)
+            g.RememberBack();
+            g.List.SelectOnly(new[] { "SPIKE" });
+            g.LaneMode = true;
+            Check("IO 하나로 들어가면 뒤로가기 보임", g.HasBack && g.LaneMode && g.List.SelectedNames().Count == 1, "");
+
+            List<string> back = g.TakeBack();
+            g.List.SelectOnly(back);
+            g.GalleryMode = true;
+            List<string> now = g.List.SelectedNames();
+            Check("뒤로 → 갤러리 · 고른 IO 셋 그대로", !g.HasBack && g.GalleryMode && now.Count == 3
+                  && now.Contains("FLAT") && now.Contains("SPIKE") && now.Contains("BIG"), string.Join(",", now.ToArray()));
+
+            g.RememberBack();
+            g.LaneMode = true;
+            g.GalleryMode = true;   // 손으로 갤러리로
+            Check("손으로 갤러리로 오면 뒤로가기는 사라짐", !g.HasBack, "");
+
+            var main = new MainVm(st);
+            AnalysisCardVm c1 = main.Cards[0], c2 = main.Cards[1], c3 = main.Cards[2];
+            Check("메인 칸 자리 — 분석 1 위 한 줄 통째로, 2 · 3 아래 나란히", c1.LayoutRow == 0 && c1.LayoutSpan == 2
+                  && c2.LayoutRow == 1 && c2.LayoutColumn == 0 && c3.LayoutRow == 1 && c3.LayoutColumn == 1
+                  && c1.CardMinHeight > c2.CardMinHeight, "");
         }
 
         /// <summary>

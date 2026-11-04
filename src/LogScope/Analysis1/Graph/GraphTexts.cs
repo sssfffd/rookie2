@@ -97,7 +97,11 @@ namespace LogScope.Analysis1.Graph
         /// <summary>단추 이름 (1.60)</summary>
         public const string GalleryMode = "갤러리";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
-        public const string GalleryModeTip = "IO 하나씩 작은 그래프로 가로 3 칸씩 늘어놓습니다. 시간 구간은 모든 칸이 같아서, 한 칸에서 확대 · 이동하면 모두 같이 움직입니다.";
+        public const string GalleryModeTip = "IO 하나씩 작은 그래프로 가로 3 칸씩 늘어놓습니다. 칸을 누르면 고르고 (테두리 — 휠 확대는 고른 칸에서만), 두 번 누르면 그 IO 하나만 Lane 으로 봅니다.";
+        /// <summary>단추 이름 (1.83)</summary>
+        public const string BackToGallery = "◀ 갤러리로";
+        /// <summary>단추 마우스를 올리면 뜨는 설명 (1.83)</summary>
+        public const string BackToGalleryTip = "IO 하나로 들어오기 전의 갤러리 (그때 고른 IO 들) 로 돌아갑니다.";
         /// <summary>글</summary>
         public const string ScaleRawCaption = "세로 눈금";
         /// <summary>고르기 단추 이름</summary>

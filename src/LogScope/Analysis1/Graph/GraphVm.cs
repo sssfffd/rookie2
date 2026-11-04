@@ -89,9 +89,42 @@ namespace LogScope.Analysis1.Graph
             {
                 if (!value || S.GalleryMode) return;
                 S.GalleryMode = true;
+                ForgetBack();   // 손으로 갤러리로 오면 뒤로가기는 필요 없음
                 RaiseModes();
                 Changed();
             }
+        }
+
+        // ---- 갤러리 → IO 하나 → 뒤로 (1.83) ----
+        //
+        // 갤러리에서 칸을 두 번 눌러 IO 하나만 Lane 으로 볼 때, 그 전에 고른 IO 들을 적어 두었다가 [◀ 갤러리로] 로 그대로 되돌립니다.
+        // (예전에는 갤러리로 돌아가면 IO 를 다시 골라야 했음)
+
+        private List<string> _backNames;
+
+        /// <summary>[◀ 갤러리로] 를 보일지.</summary>
+        public bool HasBack { get { return _backNames != null; } }
+
+        /// <summary>지금 고른 IO 들을 적어 둠 (갤러리 → IO 하나로 들어가기 전에).</summary>
+        public void RememberBack()
+        {
+            _backNames = List.SelectedNames();
+            Raise("HasBack");
+        }
+
+        /// <summary>적어 둔 IO 들을 꺼내고 지움. 없으면 null.</summary>
+        public List<string> TakeBack()
+        {
+            List<string> n = _backNames;
+            ForgetBack();
+            return n;
+        }
+
+        private void ForgetBack()
+        {
+            if (_backNames == null) return;
+            _backNames = null;
+            Raise("HasBack");
         }
 
         private void RaiseModes()

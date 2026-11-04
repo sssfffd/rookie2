@@ -466,6 +466,15 @@ namespace LogScope.Main
             _stats = new List<StatVm>();
         }
 
+        // ---- 메인 화면 자리 (1.83) — 분석 1 은 위 한 줄 통째로 (메인), 분석 2 · 3 은 그 아래 나란히 ----
+
+        public int LayoutRow { get { return Number == 1 ? 0 : 1; } }
+        public int LayoutColumn { get { return Number == 3 ? 1 : 0; } }
+        public int LayoutSpan { get { return Number == 1 ? 2 : 1; } }
+
+        /// <summary>칸의 바닥 높이 — 분석 1 은 390 (그대로), 아래 둘은 300 (한 화면에 덜 길게).</summary>
+        public double CardMinHeight { get { return Number == 1 ? 390.0 : 300.0; } }
+
         /// <summary>만점. 점수를 백분율처럼 읽을 수 있게 100 으로 둡니다.</summary>
         public const double MaxScore = 100.0;
 

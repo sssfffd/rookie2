@@ -98,6 +98,30 @@ namespace LogScope.Analysis1.Graph
         private readonly Dictionary<string, double[]> _laneTimes = new Dictionary<string, double[]>(StringComparer.Ordinal);
         private string _dragTimeKey;
 
+        // ---- 고른 그래프 (1.83) ----
+        //
+        // 그래프 (Lane 줄 · 갤러리 칸 · 겹쳐보기 판) 를 누르면 그것이 "고른 그래프" 가 되고 테두리를 둘러 표시합니다.
+        // 휠은 <b>고른 그래프 위에서만</b> 확대 · 축소, 그 밖에서는 목록을 굴립니다 (갤러리 · Lane 이 길어 굴려야 할 때).
+        // 그래프 밖 (칸 사이 틈 · 눈금 자리) 을 누르면 고른 것이 풀립니다.
+        private string _selectedKey;
+
+        /// <summary>그 자리의 그래프 이름 (Lane · 갤러리 = IO 이름, 겹쳐보기 = 판 하나). 그래프 밖이면 null.</summary>
+        private string GraphKeyAt(Point at)
+        {
+            string k; Rect r; IoRowVm[] i;
+            return LaneAt(at, out k, out r, out i) ? k : null;
+        }
+
+        /// <summary>목록을 휠만큼 굴림. 굴릴 것이 없으면 false (부모 창이 굴리게 둠).</summary>
+        private bool ScrollByWheel(int notches)
+        {
+            if (!(ScrollMaximum > 0)) return false;
+            double v = VerticalOffset - notches * 60.0;
+            VerticalOffset = Math.Max(0, Math.Min(ScrollMaximum, v));
+            InvalidateVisual();
+            return true;
+        }
+
         /// <summary>줄마다 시간을 따로 둘 수 있는 화면인지 (Lane · 갤러리, 줄이 둘 이상, 단계 나눠 보기 아님).</summary>
         private bool PerLaneTime { get { return _laneMode && !StepMode && _channels.Count > 1; } }
 
@@ -674,7 +698,7 @@ namespace LogScope.Analysis1.Graph
         /// </summary>
         public event EventHandler<int> StepHeadClicked;
 
-        /// <summary>갤러리에서 칸 하나를 눌렀을 때 (1.77) — 그 IO 이름. 창이 그 IO 만 Lane 으로 바꿉니다.</summary>
+        /// <summary>갤러리에서 칸 하나를 두 번 눌렀을 때 (1.77, 1.83 부터 두 번) — 그 IO 이름. 창이 그 IO 만 Lane 으로 바꿉니다.</summary>
         public event EventHandler<string> GalleryCellClicked;
 
         private double XToTime(double x)
@@ -1597,6 +1621,14 @@ namespace LogScope.Analysis1.Graph
 
             DrawJudgeMarks(dc, p, inner, ios);
             DrawLaneHeader(dc, p, rect, ios);
+
+            // 1.83: 고른 그래프는 테두리 (휠 확대가 이 그래프에서만 됨)
+            if (_selectedKey != null && laneKey == _selectedKey)
+            {
+                var sel = new Pen(Frozen(p.Accent), 2.0);
+                sel.Freeze();
+                dc.DrawRectangle(null, sel, new Rect(rect.X + 1, rect.Y + 1, Math.Max(0, rect.Width - 2), Math.Max(0, rect.Height - 2)));
+            }
         }
 
         /// <summary>단계 IO — 차이를 칠하지 않음 (1.66, AppState.NoDiffKeys).</summary>
@@ -2934,6 +2966,14 @@ namespace LogScope.Analysis1.Graph
             double factor = Math.Pow(1.14, notches);
             Point at = Pos(e);
 
+            // 1.83: 고른 그래프 위가 아니면 확대하지 않고 목록을 굴립니다 (굴릴 것이 없으면 부모 창이 굴림).
+            string under = GraphKeyAt(at);
+            if (_selectedKey == null || under != _selectedKey)
+            {
+                if (ScrollByWheel(notches)) e.Handled = true;
+                return;
+            }
+
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) ZoomValueAt(at, factor);
             else if (StepMode)
             {
@@ -3059,9 +3099,22 @@ namespace LogScope.Analysis1.Graph
                 return;
             }
 
+            Point downAt = Pos(e);
+
+            // 1.83: 갤러리 칸을 두 번 누르면 그 IO 하나만 Lane 으로 (한 번 누르기는 고르기)
+            if (e.ClickCount == 2 && _galleryMode && _hitCell >= 0 && _hitCell < _channels.Count)
+            {
+                EventHandler<string> g = GalleryCellClicked;
+                if (g != null) { g(this, _channels[_hitCell].Name); e.Handled = true; return; }
+            }
+
+            // 1.83: 누른 그래프를 고름 (테두리) — 그래프 밖이면 풀림
+            string pick = GraphKeyAt(downAt);
+            if (pick != _selectedKey) { _selectedKey = pick; InvalidateVisual(); }
+
             _dragging = true;
             _moved = false;
-            _dragPoint = Pos(e);
+            _dragPoint = downAt;
             _captureCell = _hitCell;   // 갤러리: 끄는 동안 이 칸 기준 (1.60)
             _dragLast = _dragPoint;
             // 1.77: 끌기도 누른 줄만 — 그 줄의 지금 구간에서 시작
@@ -3185,12 +3238,7 @@ namespace LogScope.Analysis1.Graph
             // 갤러리에서 칸 사이 틈을 누른 것은 커서가 아닙니다.
             if (_galleryMode && _hitCell < 0) return;
 
-            // 1.77: 갤러리에서 칸을 (끌지 않고) 누르면 그 IO 하나만 Lane 으로 — 창 (GraphView) 이 받아 바꿈.
-            if (_galleryMode && _hitCell < _channels.Count)
-            {
-                EventHandler<string> g = GalleryCellClicked;
-                if (g != null) { g(this, _channels[_hitCell].Name); return; }
-            }
+            // (1.77 의 "한 번 누르면 Lane" 은 1.83 에 두 번 누르기로 옮김 — 한 번 누르기는 그래프 고르기)
 
             // 끌지 않고 그냥 눌렀으면 커서를 놓습니다 (1.77: 그 줄의 시간으로).
             string ck = TimeKeyAt(upAt);
