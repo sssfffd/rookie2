@@ -2197,3 +2197,11 @@
 (물어봄 → 넷 다 빼기: .frm / .ibd 읽기 · 폴더 통째 읽기 · [SQL 글 보기] · 바깥 프로그램 실행)
 
 → 답변: [184-analysis2-cleanup.md](184-analysis2-cleanup.md)
+
+## 요청 212 — (질문) 분석 2 에서 .csv 와 .sql 비교
+
+> 이거 분석 2
+>
+> csv랑 .sql도 비교 가능한가?
+
+→ 답변: [185-analysis2-csv-vs-sql.md](185-analysis2-csv-vs-sql.md)

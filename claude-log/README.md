@@ -191,3 +191,4 @@
 | `182-analysis2-csv-where.md` | (질문) 분석 2 의 .csv 읽기 자리: DbRead.cs TakeFile → CsvTableReader → Common/CsvReader |
 | `183-score-judge-how.md` | (질문) 분석 1 점수 · 판정 방법: 시간 여유 띠 · 양쪽 검사 · 100 칸 오차율 · 100 − 평균 · 등급 |
 | `184-analysis2-cleanup.md` | 1.90 — 분석 2 정리: 폴더 · .frm/.ibd · 바깥 프로그램 (mysqldump · ibd2sdi) · [SQL 문 출력] 뺌 (사용자 확인), 파일 하나씩 .sql / .csv |
+| `185-analysis2-csv-vs-sql.md` | (질문) 분석 2 .csv ↔ .sql — 표 이름 · 열 이름이 같으면 됨 (타입 줄 덤), 다르면 짝 못 지음. 고칠 길 둘 |
