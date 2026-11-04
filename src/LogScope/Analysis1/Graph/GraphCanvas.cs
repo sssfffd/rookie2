@@ -102,6 +102,7 @@ namespace LogScope.Analysis1.Graph
         //
         // 그래프 (Lane 줄 · 갤러리 칸 · 겹쳐보기 판) 를 누르면 그것이 "고른 그래프" 가 되고 테두리를 둘러 표시합니다.
         // 휠은 <b>고른 그래프 위에서만</b> 확대 · 축소, 그 밖에서는 목록을 굴립니다 (갤러리 · Lane 이 길어 굴려야 할 때).
+        // 1.85: 확대 · 축소도 <b>고른 그래프 하나만</b> (다른 줄은 그대로).
         // 그래프 밖 (칸 사이 틈 · 눈금 자리) 을 누르면 고른 것이 풀립니다.
         private string _selectedKey;
 
@@ -2991,16 +2992,18 @@ namespace LogScope.Analysis1.Graph
             }
             else
             {
-                // 1.78: 휠은 예전처럼 <b>모든 줄이 같이</b> (사용자 요청 — 1.77 에 마우스가 있는 줄만으로 했다가 되돌림).
-                // 끌기 · 오른쪽 네모로 자기 구간을 가진 줄도 같은 비율로, 마우스 가로 자리를 중심으로 같이 확대 · 축소.
-                foreach (string key in new List<string>(_laneTimes.Keys))
+                // 1.85: 휠은 <b>고른 그래프만</b> 확대 · 축소 (사용자 요청). 위에서 고른 그래프 위인 것을 이미 봤습니다.
+                // Lane 줄 · 갤러리 칸이 여럿이면 그 줄이 자기 구간을 갖게 되고 (끌기 · 오른쪽 네모와 같은 자리),
+                // 다른 줄은 그대로. 겹쳐보기 · 줄 하나는 그래프가 하나뿐이라 그 판 전체.
+                // 모든 줄을 같이 바꾸는 것은 Time Scale [+] [−] · + − ← → · Home.
+                if (PerLaneTime)
                 {
                     double s0, s1;
-                    if (!EnterLaneTime(key, out s0, out s1)) continue;
+                    EnterLaneTime(_selectedKey, out s0, out s1);
                     ZoomTimeAround(XToTime(at.X), factor);
-                    LeaveLaneTime(key, s0, s1, true);
+                    LeaveLaneTime(_selectedKey, s0, s1, true);
                 }
-                ZoomTimeAround(XToTime(at.X), factor);
+                else ZoomTimeAround(XToTime(at.X), factor);
             }
 
             InvalidateVisual();

@@ -183,3 +183,4 @@
 | `174-sql-user-reader.md` | 1.82 — 분석 2 .sql 읽기를 직접 만드는 자리: Analysis2/SqlUserReader.cs (false 면 내장 읽기) |
 | `175-gallery-back-wheel-layout.md` | 1.83 — 갤러리 [◀ 갤러리로] · 고른 그래프 위에서만 휠 확대 (테두리) · 메인 배치 (분석 1 크게, 2 · 3 아래, 종합 분석 결과는 그 아래) |
 | `176-tolerance-io-name.md` | 1.84 — 설정 창 IO 별 허용 오차의 IO 이름이 안 보이던 것: 공용 콤보 모양에 글 칸 (PART_EditableTextBox) 추가 |
+| `177-wheel-selected-only.md` | 1.85 — 휠 확대 · 축소는 고른 그래프 하나만 (Lane 줄 · 갤러리 칸이 자기 구간을 가짐), 모든 줄 같이는 Time Scale · 키 |

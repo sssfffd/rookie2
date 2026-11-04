@@ -2137,3 +2137,11 @@
 > 아니 분석 1에서 설정에 IO별 허용 오차 설정하니까 애가 IO명이 안보이는데? 설정창에서?
 
 → 답변: [176-tolerance-io-name.md](176-tolerance-io-name.md)
+
+## 요청 204 — 휠은 고른 그래프만 확대 · 축소
+
+> 그리고 그래프에서 휠돌리는거
+>
+> 한꺼번에 다 되게하지말고 선택된창만 확대축소되게해주셈
+
+→ 답변: [177-wheel-selected-only.md](177-wheel-selected-only.md)
