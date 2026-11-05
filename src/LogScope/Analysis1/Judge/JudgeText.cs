@@ -36,9 +36,15 @@ namespace LogScope.Analysis1.Judge
                 sb.Append("- 점수: **").Append(score.Score.ToString("0.#", Inv)).Append(" / 100** — 차이 난 IO ")
                   .Append(score.DiffIos.ToString("N0")).Append(" / 전체 ").Append(score.TotalIos.ToString("N0"))
                   .Append(" 개, 평균 오차율 ").Append(score.MeanErrorRate.ToString("0.#", Inv)).Append(" %")
-                  .Append(" (오차율 = 이전 로그 전체 시간을 100 칸으로 나눠 허용 안 된 오차가 걸친 칸 수, 평균은 차이 난 IO 만, 점수 = 100 − 평균)\n");
+                  .Append(" (오차율 = 이전 로그 전체 시간을 100 칸으로 나눠 허용 안 된 오차가 걸친 칸 수, 평균은 차이 난 IO 만,")
+                  .Append(" 점수 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 평균 오차율 / 100))\n");
+                // 1.92: 메인 화면의 최종 판정 = 분석 1 점수 판정 (config.txt score.good · score.warn).
+                Settings.AppConfig cfg = Settings.AppConfig.Current;
+                string word = score.Score >= cfg.ScoreGood ? "정상" : score.Score >= cfg.ScoreWarn ? "주의" : "이상";
+                sb.Append("- 최종 판정 (분석 1 점수 기준 — 정상 ").Append(cfg.ScoreGood.ToString("0.#", Inv)).Append(" 이상 · 주의 ")
+                  .Append(cfg.ScoreWarn.ToString("0.#", Inv)).Append(" 이상 · 그 아래 이상): **").Append(word).Append("**\n");
             }
-            sb.Append("- 판정: **").Append(r.Word).Append("** — 오차가 있는 IO ").Append(r.OpenIoCount.ToString("N0"))
+            sb.Append("- 오차 IO 수 등급: **").Append(r.Word).Append("** — 오차가 있는 IO ").Append(r.OpenIoCount.ToString("N0"))
               .Append(" 개 (허용 안 된 오차 구간 ").Append(r.OpenCount.ToString("N0")).Append(" 개)")
               .Append(", 사용자가 허용한 오차 ").Append(r.AllowedCount.ToString("N0")).Append(" 개\n");
             sb.Append("- 비교 방법: ").Append(r.ByStep ? "단계마다 시작을 맞춤 (단계 " + r.StepCount + " 개)" : "단계 없이 전체를 한 구간으로")

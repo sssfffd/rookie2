@@ -21,6 +21,9 @@ namespace LogScope.Main
 
         public List<AnalysisCardVm> Cards { get; private set; }
 
+        /// <summary>최종 판정 (1.92) — 분석 1 판정, 분석 2 · 3 은 참고.</summary>
+        public OverallVm Overall { get; private set; }
+
         public MainVm(AppState state)
         {
             _state = state;
@@ -37,6 +40,7 @@ namespace LogScope.Main
                 // 결과는 Common/Analysis3Link 로 올라옵니다.
                 new AnalysisCardVm(3, names.Title(3), names.Summary(3), true),
             };
+            Overall = new OverallVm(Cards);   // 1.92: 왼쪽 기둥의 최종 판정 (분석 1 기준, 2 · 3 은 참고)
             Llm = new LlmPanelVm();
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();
@@ -78,7 +82,7 @@ namespace LogScope.Main
                     string note = picked != null
                         ? "그래프에서 고른 단계 '" + picked.Label + "' 맞춤 반영 중 — [전체 구간] 으로 돌리면 원래 수"
                         : string.Empty;
-                    // 1.81: 점수 (100 − 차이 난 IO 의 평균 오차율) · 옆에 "차이 a / b IO" · 그 아래 평균 오차율 (JudgeScore).
+                    // 1.81: 점수 · 옆에 "차이 a / b IO" · 그 아래 평균 오차율 (JudgeScore — 1.92 셈: 100 × (1 − 차이 IO 비율) × (1 − 평균 오차율)).
                     JudgeScore js = JudgeScore.Of(judge, _state.Before, _state.After, _state.NoDiffKeys());
                     Cards[0].ClearVerdict();
                     Cards[0].SetCount(string.Empty);

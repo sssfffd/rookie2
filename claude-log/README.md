@@ -193,3 +193,4 @@
 | `184-analysis2-cleanup.md` | 1.90 — 분석 2 정리: 폴더 · .frm/.ibd · 바깥 프로그램 (mysqldump · ibd2sdi) · [SQL 문 출력] 뺌 (사용자 확인), 파일 하나씩 .sql / .csv |
 | `185-analysis2-csv-vs-sql.md` | (질문) 분석 2 .csv ↔ .sql — 표 이름 · 열 이름이 같으면 됨 (타입 줄 덤), 다르면 짝 못 지음. 고칠 길 둘 |
 | `186-tests-sta-thread.md` | 1.91 — 빌드 시험 "calling thread must be STA": 시험이 GraphCanvas 를 만드는데 Main 에 [STAThread] 없음 → 붙이고 점검 추가 |
+| `187-main-verdict-pillar.md` | 1.92 — 메인: 왼쪽 판정 기둥 (최종 = 분석 1, 2 · 3 참고) · 칸 셋이 정상 · 주의 · 이상 · 뜻 한 줄 · 점수 셈 100 × (1 − 차이 IO 비율) × (1 − 평균 오차율) · 경계 config.txt |

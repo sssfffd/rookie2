@@ -13,9 +13,52 @@
              Foreground="{DynamicResource Brush.Text}"
              FontFamily="Segoe UI" FontSize="12">
 
+    <!--
+      1.92: 판정 등 (정상 · 주의 · 이상) — 왼쪽 기둥과 칸 머리가 같은 모양. LampGrade (good · warn · bad · none) 로 색.
+    -->
+    <UserControl.Resources>
+        <Style x:Key="LampBadge" TargetType="{x:Type Border}">
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Window}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.GoodSoft}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Good}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.WarnSoft}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warn}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                    <Setter Property="Background" Value="{DynamicResource Brush.BadSoft}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bad}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LampText" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeGood}">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeWarn}">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Warn}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeBad}">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <!-- 아주 넓은 화면에서 칸이 끝없이 늘어나지 않게 가둡니다. -->
-        <StackPanel Margin="20,16,20,22" MaxWidth="1180" HorizontalAlignment="Stretch">
+        <!-- 아주 넓은 화면에서 칸이 끝없이 늘어나지 않게 가둡니다. 1.92: 왼쪽 판정 기둥 (230) 만큼 넓힘 1180 → 1400. -->
+        <StackPanel Margin="20,16,20,22" MaxWidth="1400" HorizontalAlignment="Stretch">
 
             <!-- "분석 결과" 와, History 를 펼쳐 보는 중이면 그 띠 (1.42). 칸 셋이 지금 결과가
                  아니라는 것이 한눈에 보여야 합니다 — 안 그러면 옛 요약을 지금 것으로 읽습니다. -->
@@ -57,7 +100,77 @@
               1.83: 분석 1 이 메인 — 위에 <b>한 줄 통째로</b> 크게, 분석 2 · 3 은 그 아래 나란히 (사용자 요청).
               자리는 칸 VM 의 LayoutRow · LayoutColumn · LayoutSpan (AnalysisCardVm).
             -->
-            <ItemsControl ItemsSource="{Binding Cards}">
+            <!--
+              1.92: 왼쪽 <b>판정 기둥</b> + 오른쪽 분석 칸 (사용자 결정). 최종 판정 = 분석 1 판정 (OverallVm),
+              분석 2 · 3 은 참고 (분석 1 보다 나쁘면 기둥에 "참고:" 로 적음). 기둥 아래에 분석마다 등 · 근거 · 뜻.
+
+                ┌ 최종 판정 ───┐┌──── 분석 1 (넓게) ────┐
+                │  ⚠ 주의      │└────────────────────────┘
+                │  분석 1 기준 ││┌ 분석 2 ┐┌ 분석 3 ┐
+                │  1 ⚠ 주의    │
+                │  2 ✔ 정상    │
+                │  3 ✔ 정상    │
+                └──────────────┘
+            -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" DataContext="{Binding Overall}" Background="{DynamicResource Brush.Panel}"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="5"
+                        Padding="14,12" Margin="6" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="{x:Static t:MainTexts.FinalVerdict}" Style="{StaticResource H2}" />
+                        <Border Style="{StaticResource LampBadge}" Padding="12,8" Margin="0,8,0,8" HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding Icon}" FontSize="28" Style="{StaticResource LampText}" FontFamily="Segoe UI Symbol" />
+                                <TextBlock Text="{Binding Word}" FontSize="30" Margin="10,0,0,0" Style="{StaticResource LampText}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" FontSize="12" />
+                        <TextBlock Text="{Binding ReferenceNote}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource Brush.Warn}"
+                                   Visibility="{Binding HasReference, Converter={StaticResource BoolToVisibility}}" />
+
+                        <Border Height="1" Background="{DynamicResource Brush.Border}" Margin="0,12,0,10" />
+                        <TextBlock Text="{x:Static t:MainTexts.EachVerdict}" Style="{StaticResource Muted}" FontSize="11" Margin="0,0,0,4" />
+
+                        <ItemsControl ItemsSource="{Binding DataContext.Cards, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type main:AnalysisCardVm}">
+                                    <StackPanel Margin="0,4,0,6" ToolTip="{Binding Meaning}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="22" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding LampIcon}" FontSize="14" FontFamily="Segoe UI Symbol"
+                                                       Style="{StaticResource LampText}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="2" Style="{StaticResource LampBadge}" Padding="6,0">
+                                                <TextBlock Text="{Binding LampWord}" FontSize="12" Style="{StaticResource LampText}" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="{Binding LampLine}" Margin="22,2,0,0" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding LampLine}" />
+                                        <TextBlock Text="{Binding Meaning}" Margin="22,1,0,0" FontSize="10" TextWrapping="Wrap"
+                                                   Style="{StaticResource Muted}" MaxHeight="28" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Height="1" Background="{DynamicResource Brush.Border}" Margin="0,8,0,8" />
+                        <TextBlock Text="{x:Static t:MainTexts.VerdictLegend}" TextWrapping="Wrap" FontSize="10" Style="{StaticResource Muted}" />
+                        <TextBlock Text="{Binding BandsText}" TextWrapping="Wrap" FontSize="10" Margin="0,2,0,0" Style="{StaticResource Muted}" />
+                    </StackPanel>
+                </Border>
+
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding Cards}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Grid>
@@ -107,13 +220,23 @@
                                 <StackPanel IsEnabled="{Binding IsUsable}">
 
                                     <!-- 번호표 · 이름 · (분석 3: 분석) · 이동 화살표 -->
-                                    <Grid Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
+
+                                        <!-- 1.92: 판정 등 (정상 · 주의 · 이상) — 칸 셋이 같은 말 -->
+                                        <Border Grid.Column="2" Style="{StaticResource LampBadge}" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                ToolTip="{Binding LampLine}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding LampIcon}" FontSize="13" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
+                                                <TextBlock Text="{Binding LampWord}" FontSize="13" Margin="5,0,0,0" Style="{StaticResource LampText}" />
+                                            </StackPanel>
+                                        </Border>
 
                                         <Border Grid.Column="0" Background="{DynamicResource Brush.AccentSoft}"
                                                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
@@ -140,18 +263,25 @@
                                           그래서 높이를 화살표 단추와 같은 26 으로 맞추고 (기본 단추는
                                           MinHeight 28 · 위아래 여백 3) 머리 줄 높이가 변하지 않게 합니다.
                                         -->
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top"
                                                     Margin="0,0,6,0">
                                             <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
                                                     Click="OnCardAnalyze" Tag="{Binding Number}" ToolTip="{Binding AnalyzeTip}"
                                                     Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
                                         </StackPanel>
 
-                                        <Button Grid.Column="3" Style="{StaticResource ArrowButton}"
+                                        <Button Grid.Column="4" Style="{StaticResource ArrowButton}"
                                                 Content="{x:Static t:MainTexts.CardClick}" Click="OnCardClick" Tag="{Binding Number}"
                                                 VerticalAlignment="Top"
                                                 ToolTip="{x:Static t:MainTexts.CardClickTip}" />
                                     </Grid>
+
+                                    <!-- 1.92: "뜻" — 이 분석이 무엇을 보는지 (config.txt analysisN 의 설명). 한 줄, 길면 … · 마우스로 전체. -->
+                                    <TextBlock Margin="0,0,0,8" FontSize="11" Style="{StaticResource Muted}"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Meaning}">
+                                        <Run Text="{x:Static t:MainTexts.MeaningLabel}" FontWeight="SemiBold" />
+                                        <Run Text="{Binding Meaning, Mode=OneWay}" />
+                                    </TextBlock>
 
                                     <!-- 점수 (또는 판정 낱말) — <b>한 줄, 높이 고정</b> (1.09).
 
@@ -960,6 +1090,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </Grid>
 
             <!-- ===== 종합 분석 결과 (LLM, 1.45) — 1.83: 분석 칸들 아래로 (사용자 요청) =====
                  1.44 까지의 한 줄 판정 · 기준 · 안내를 빼고, 사용자가 만든 LLM 분석의 결과를 보입니다.

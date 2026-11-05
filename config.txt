@@ -24,5 +24,10 @@ name = LogScope
 fullname = Log 비교 · 분석 도구
 
 analysis1 = 로그 비교 | 이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.
-analysis2 = DB 분석 | 두 DB 의 표·열·값 차이를 보고 맞추는 SQL 을 만듭니다.
+analysis2 = DB 분석 | 두 DB (.sql / .csv) 의 값이 달라진 항목을 찾습니다.
 analysis3 = 분석 3 | 아직 정해지지 않았습니다.
+
+# 분석 1 점수 → 판정 경계 (1.92). good 이상 = 정상, warn 이상 = 주의, 그 아래 = 이상.
+# 최종 판정은 분석 1 판정입니다 (분석 2 · 3 은 참고로 함께 보입니다).
+score.good = 90
+score.warn = 70

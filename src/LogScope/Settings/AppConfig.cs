@@ -61,9 +61,21 @@ namespace LogScope.Settings
         private static readonly string[] DefaultSummaries =
         {
             "이전 Log 파일과 이후 Log 파일을 비교합니다. 대시보드 · 그래프 · 히트맵.",
-            "두 DB 의 표·열·값 차이를 보고 맞추는 SQL 을 만듭니다.",
+            "두 DB (.sql / .csv) 의 값이 달라진 항목을 찾습니다.",
             "아직 정해지지 않았습니다.",
         };
+
+        // ---- 분석 1 점수 → 판정 경계 (1.92) ----
+        /// <summary>이 점수부터 정상 (초록). config.txt 의 score.good.</summary>
+        public const double DefaultScoreGood = 90;
+        /// <summary>이 점수부터 주의 (노랑), 그 아래는 이상 (빨강). config.txt 의 score.warn.</summary>
+        public const double DefaultScoreWarn = 70;
+        private double _scoreGood = DefaultScoreGood, _scoreWarn = DefaultScoreWarn;
+
+        /// <summary>정상 경계. 0 ~ 100, 주의 경계보다 커야 합니다 (아니면 둘 다 기본값).</summary>
+        public double ScoreGood { get { return _scoreGood; } }
+        /// <summary>주의 경계.</summary>
+        public double ScoreWarn { get { return _scoreWarn; } }
 
         private string _name = DefaultName;
         private string _fullName = string.Empty;
@@ -284,6 +296,8 @@ namespace LogScope.Settings
 
                 if (key == "name") { it._name = value; continue; }
                 if (key == "fullname") { it._fullName = value; continue; }
+                if (key == "score.good") { it._scoreGood = Number(value, DefaultScoreGood); continue; }
+                if (key == "score.warn") { it._scoreWarn = Number(value, DefaultScoreWarn); continue; }
 
 
                 for (int n = 0; n < Count; n++)
@@ -293,7 +307,19 @@ namespace LogScope.Settings
                     break;
                 }
             }
+            // 경계가 뒤집혔으면 (정상 ≤ 주의) 둘 다 기본값 — 반쪽만 맞추면 판정이 엉뚱하게 갈립니다.
+            if (!(it._scoreGood > it._scoreWarn)) { it._scoreGood = DefaultScoreGood; it._scoreWarn = DefaultScoreWarn; }
             return it;
+        }
+
+        /// <summary>0 ~ 100 의 숫자. 아니면 기본값.</summary>
+        private static double Number(string text, double fallback)
+        {
+            double v;
+            if (!double.TryParse(text, System.Globalization.NumberStyles.Float,
+                                 System.Globalization.CultureInfo.InvariantCulture, out v)) return fallback;
+            if (double.IsNaN(v) || v < 0 || v > 100) return fallback;
+            return v;
         }
 
         /// <summary>"이름 | 설명" 한 줄. 이름을 비워 두면 그 자리의 기본값입니다.</summary>
@@ -326,6 +352,9 @@ namespace LogScope.Settings
             sb.AppendLine("#             (실행 파일 이름은 build.bat 이 붙이므로 다시 빌드해야 바뀝니다).");
             sb.AppendLine("# fullname  : 창 제목에 들어가는 긴 이름. 길이는 마음대로 (화면을 안 먹습니다).");
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
+            sb.AppendLine("#             한 줄 설명은 메인 화면 칸에 \"뜻\" 으로 나옵니다 (1.92).");
+            sb.AppendLine("# score.good · score.warn : 분석 1 점수 → 판정 경계 (1.92). good 이상 = 정상,");
+            sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상. 최종 판정은 분석 1 판정입니다.");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine("fullname = Log 비교 · 분석 도구");
@@ -334,6 +363,9 @@ namespace LogScope.Settings
             {
                 sb.AppendLine("analysis" + (i + 1) + " = " + DefaultTitles[i] + " | " + DefaultSummaries[i]);
             }
+            sb.AppendLine();
+            sb.AppendLine("score.good = " + DefaultScoreGood.ToString("0"));
+            sb.AppendLine("score.warn = " + DefaultScoreWarn.ToString("0"));
             sb.AppendLine();
             return sb.ToString();
         }

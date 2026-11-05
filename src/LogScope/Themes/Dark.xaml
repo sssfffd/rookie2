@@ -25,6 +25,8 @@
     <!-- 값이 달라진 줄을 칠하는 옅은 빨강 (0.82) -->
     <SolidColorBrush x:Key="Brush.BadSoft" Color="#4A2626" />
     <!-- 분석 2 [전체] 에서 두 쪽이 같은 줄을 칠하는 옅은 초록 (1.12) -->
+    <!-- 판정 등 "주의" 바탕 (1.92) -->
+    <SolidColorBrush x:Key="Brush.WarnSoft" Color="#FF4A3B1C" />
     <SolidColorBrush x:Key="Brush.GoodSoft" Color="#233F2B" />
 
     <SolidColorBrush x:Key="Brush.Before"       Color="#FF5AA6FF" />

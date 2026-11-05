@@ -32,6 +32,16 @@ namespace LogScope.Main
         public const string LlmNoAnalyzer = "연결된 LLM 분석 기능이 없습니다.\n\nsrc/LogScope/Main/LlmSetup.cs 의 Register 에서\nLlmLink.Analyzer = new 내분석기(); 를 넣어 주세요.";
         /// <summary>글</summary>
         public const string Heading = "분석 결과";
+
+        // ---- 판정 기둥 (1.92) ----
+        /// <summary>왼쪽 기둥 머리</summary>
+        public const string FinalVerdict = "최종 판정";
+        /// <summary>기둥 안 분석별 목록 머리</summary>
+        public const string EachVerdict = "분석별 판정";
+        /// <summary>판정 낱말 설명</summary>
+        public const string VerdictLegend = "✔ 정상 = 이전과 같음 · ⚠ 주의 = 다른 곳이 있어 확인 필요 · ✖ 이상 = 많이 다름 · ○ 아직 = 결과 없음. 최종 판정은 분석 1 판정 (분석 2 · 3 은 참고).";
+        /// <summary>칸 머리 아래 "뜻" 앞 글</summary>
+        public const string MeaningLabel = "뜻  ";
         /// <summary>단추 이름</summary>
         public const string CardClick = "↗";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>

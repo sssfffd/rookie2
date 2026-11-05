@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using LogScope.Analysis1.Judge;
 using LogScope.Common;
+using LogScope.Settings;
 
 namespace LogScope.Main
 {
@@ -13,11 +14,11 @@ namespace LogScope.Main
     /// </summary>
     public static class ScoreBands
     {
-        /// <summary>이 점수부터 초록.</summary>
-        public const double GoodFrom = 90;
+        /// <summary>이 점수부터 초록 (정상). 1.92: config.txt 의 score.good (기본 90).</summary>
+        public static double GoodFrom { get { return AppConfig.Current.ScoreGood; } }
 
-        /// <summary>이 점수부터 노랑. 그 아래는 빨강입니다.</summary>
-        public const double WarnFrom = 70;
+        /// <summary>이 점수부터 노랑 (주의). 그 아래는 빨강 (이상). 1.92: config.txt 의 score.warn (기본 70).</summary>
+        public static double WarnFrom { get { return AppConfig.Current.ScoreWarn; } }
 
         public const string GradeNone = "none";
         public const string GradeGood = "good";
@@ -429,6 +430,7 @@ namespace LogScope.Main
             _blockText = text ?? string.Empty;
             _blockDetail = detail ?? string.Empty;
             Raise("IsBlocked"); Raise("IsUsable"); Raise("BlockText"); Raise("BlockDetail");
+            RaiseLamp();
         }
 
         /// <summary>
@@ -552,6 +554,7 @@ namespace LogScope.Main
             if (_verdictCount == v) return;
             _verdictCount = v;
             Raise("VerdictCount");
+            RaiseLamp();
         }
 
         public void ClearVerdict()
@@ -593,6 +596,7 @@ namespace LogScope.Main
             _countMain = main ?? string.Empty;
             _countSub = sub ?? string.Empty;
             Raise("CountMain"); Raise("CountSub"); Raise("HasCountBlock");
+            RaiseLamp();
         }
 
         /// <summary>점수 칸일 때 점수 옆 작은 글 (예: 고른 단계 반영 중).</summary>
@@ -615,6 +619,75 @@ namespace LogScope.Main
             Raise("HasScore"); Raise("Score");
             Raise("ScoreText"); Raise("ScoreNote"); Raise("Grade");
             Raise("ScoreOutOf"); Raise("ScoreSize"); Raise("HasScoreText");
+            RaiseLamp();
+        }
+
+        // ---- 판정 등 (1.92) — 칸 셋이 <b>같은 말</b> (정상 · 주의 · 이상) 로 ----
+        //
+        // 분석 1 은 점수, 분석 2 는 PASS · WARNING · CRITICAL, 분석 3 은 모듈이 정한 것이라 칸마다 읽는 법이
+        // 달랐습니다 (사용자 피드백 — 한눈에 안 보임). 색 (Grade) 은 이미 셋이 같은 세 가지라 그것을 낱말로 바꿉니다.
+
+        /// <summary>등의 색. 칸을 못 쓸 때 (분석 3 — LLM 서버에 안 닿음) 는 회색 — 옛 판정을 지금 것으로 읽지 않게.</summary>
+        public string LampGrade { get { return _blocked ? ScoreBands.GradeNone : Grade; } }
+
+        /// <summary>판정 낱말 — 정상 · 주의 · 이상, 결과가 없으면 "아직", 못 쓰면 "못 씀".</summary>
+        public string LampWord { get { return _blocked ? "못 씀" : WordOf(Grade); } }
+
+        /// <summary>판정 표시 — ✔ · ⚠ · ✖ · ○ (못 쓰면 –).</summary>
+        public string LampIcon { get { return _blocked ? "–" : IconOf(Grade); } }
+
+        /// <summary>그 판정의 근거 한 줄 ("점수 73.1 · 차이 5 / 120 IO", "바뀐 값 3 개" …).</summary>
+        public string LampLine
+        {
+            get
+            {
+                if (_blocked) return _blockText;
+                if (Number == 1)
+                {
+                    if (!_has) return "아직 비교 전";
+                    return "점수 " + _score.ToString("0.#") + (_countMain.Length > 0 ? " · 차이 " + _countMain + " IO" : string.Empty);
+                }
+                if (HasVerdict)
+                {
+                    if (_verdictCount.Length > 0) return "바뀐 값 " + _verdictCount + " 개";
+                    return _wordNote.Length > 0 ? _wordNote : _word;
+                }
+                if (_has) return "점수 " + _score.ToString("0.#");
+                return Number == 2 ? "아직 읽기 전" : "아직 결과 없음";
+            }
+        }
+
+        /// <summary>이 분석이 무엇을 보는지 — "뜻" (config.txt 의 analysisN 설명).</summary>
+        public string Meaning { get { return Summary ?? string.Empty; } }
+
+        public static string WordOf(string grade)
+        {
+            if (grade == ScoreBands.GradeGood) return "정상";
+            if (grade == ScoreBands.GradeWarn) return "주의";
+            if (grade == ScoreBands.GradeBad) return "이상";
+            return "아직";
+        }
+
+        public static string IconOf(string grade)
+        {
+            if (grade == ScoreBands.GradeGood) return "✔";
+            if (grade == ScoreBands.GradeWarn) return "⚠";
+            if (grade == ScoreBands.GradeBad) return "✖";
+            return "○";
+        }
+
+        /// <summary>나쁜 차례 (없음 0 · 정상 1 · 주의 2 · 이상 3).</summary>
+        public static int RankOf(string grade)
+        {
+            if (grade == ScoreBands.GradeGood) return 1;
+            if (grade == ScoreBands.GradeWarn) return 2;
+            if (grade == ScoreBands.GradeBad) return 3;
+            return 0;
+        }
+
+        private void RaiseLamp()
+        {
+            Raise("LampGrade"); Raise("LampWord"); Raise("LampIcon"); Raise("LampLine");
         }
 
         /// <summary>

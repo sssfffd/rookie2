@@ -165,6 +165,7 @@ namespace LogScope.Tests
                 GalleryOneZoomRules();
                 ScoreAtLeastOneBucket();
                 HeatmapAlignedCells();
+                OverallVerdictRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4301,6 +4302,41 @@ namespace LogScope.Tests
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
         }
 
+        /// <summary>메인 최종 판정 · 칸마다 판정 등 (1.92).</summary>
+        private static void OverallVerdictRules()
+        {
+            Say("메인 — 최종 판정 (분석 1 기준) · 판정 등");
+            var main = new MainVm(new AppState());
+            AnalysisCardVm c1 = main.Cards[0], c2 = main.Cards[1], c3 = main.Cards[2];
+            OverallVm o = main.Overall;
+            Check("결과 전 — 최종 '아직'", o.Word == "아직" && o.Reason.Contains("분석 1 을 돌리면") && !o.HasReference, o.Word + " | " + o.Reason);
+            Check("결과 전 — 칸 등도 '아직' · 근거 줄", c1.LampWord == "아직" && c1.LampLine == "아직 비교 전" && c2.LampLine == "아직 읽기 전", c1.LampLine + " | " + c2.LampLine);
+            Check("뜻 = config 의 설명", c1.Meaning.Length > 0 && c1.Meaning == c1.Summary, c1.Meaning);
+
+            var seen = new List<string>();
+            o.PropertyChanged += delegate (object s, System.ComponentModel.PropertyChangedEventArgs e) { seen.Add(e.PropertyName); };
+            c1.SetScore(73.1);
+            c1.SetCountBlock("5 / 120", "평균 오차율 23.7 %");
+            Check("분석 1 점수 73.1 → 주의 (90 · 70)", c1.LampWord == "주의" && c1.LampIcon == "⚠" && o.Word == "주의", c1.LampWord + " " + o.Word);
+            Check("근거 줄 — 점수 · 차이 a / b IO", c1.LampLine == "점수 73.1 · 차이 5 / 120 IO" && o.Reason == "분석 1 기준 — 점수 73.1 · 차이 5 / 120 IO", o.Reason);
+            Check("칸이 바뀌면 최종도 알림", seen.Contains("Word") && seen.Contains("Reason"), string.Join(",", seen.ToArray()));
+
+            c2.SetVerdict("CRITICAL", ScoreBands.GradeBad, "바뀐 값 3 개", "3");
+            Check("분석 2 이상 → 최종은 그대로 주의 (분석 1 기준), 참고로 적음", o.Word == "주의" && o.HasReference
+                  && o.ReferenceNote.Contains("분석 2 이상") && c2.LampLine == "바뀐 값 3 개", o.ReferenceNote);
+            c1.SetScore(95);
+            c2.SetVerdict("PASS", ScoreBands.GradeGood, "", "0");
+            Check("분석 1 95 → 정상 · 2 정상이면 참고 없음", o.Word == "정상" && o.Icon == "✔" && !o.HasReference, o.ReferenceNote);
+            c3.SetBlocked(false, "", "");
+            c3.SetVerdict("WARNING", ScoreBands.GradeWarn, "조금 다름", "");
+            Check("분석 3 주의 → 참고에 분석 3", o.Word == "정상" && o.ReferenceNote.Contains("분석 3 주의") && c3.LampLine == "조금 다름", o.ReferenceNote + " | " + c3.LampLine);
+            c3.SetBlocked(true, "LLM 서버에 닿지 않습니다", "");
+            Check("분석 3 을 못 쓰면 등은 '못 씀' · 참고에서 빠짐", c3.LampWord == "못 씀" && c3.LampGrade == ScoreBands.GradeNone
+                  && !o.HasReference && c3.LampLine == "LLM 서버에 닿지 않습니다", c3.LampWord + " | " + o.ReferenceNote);
+            c1.SetScore(50);
+            Check("분석 1 이상 (50) 이면 그보다 나쁜 것만 참고 — 주의는 안 적음", o.Word == "이상" && !o.HasReference, o.ReferenceNote);
+        }
+
         /// <summary>히트맵 칸: 정각에 맞춘 경계 · 1 초 · 칸 수 상한 (1.89).</summary>
         private static void HeatmapAlignedCells()
         {
@@ -4341,7 +4377,8 @@ namespace LogScope.Tests
             it.Start = st.Before.TimeEnd + 10; it.End = st.Before.TimeEnd + 20;   // 이전 로그 시간 밖
             r.Items.Add(it);
             JudgeScore js = JudgeScore.Of(r, st.Before, st.After, null);
-            Check("시간 밖 오차만 있는 IO 도 1 % (0 % 아님)", js.DiffIos == 1 && js.Rates["SPIKE"] == 1.0 && js.Score == 99.0,
+            Check("시간 밖 오차만 있는 IO 도 1 % (0 % 아님)", js.DiffIos == 1 && js.Rates["SPIKE"] == 1.0
+                  && Math.Abs(js.Score - JudgeScore.ScoreOf(1, js.TotalIos, 1.0)) < 1e-9 && js.Score < 99.0,
                   js.DiffIos + " / " + js.Score);
         }
 
@@ -4454,7 +4491,7 @@ namespace LogScope.Tests
 
         /// <summary>
         /// 분석 1 점수 (1.81) — 오차율 = 이전 로그 전체 시간 100 칸 중 허용 안 된 오차가 걸친 칸 수,
-        /// 평균은 차이 난 IO 만, 점수 = 100 − 평균. 한쪽에만 있는 IO 는 100 %.
+        /// 평균은 차이 난 IO 만, 점수 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 평균 / 100) (1.92). 한쪽에만 있는 IO 는 100 %.
         /// </summary>
         private static void JudgeScoreRules()
         {
@@ -4478,8 +4515,14 @@ namespace LogScope.Tests
             Check("A 오차율 11 % (10 칸 + 1 칸)", Math.Abs(ra - 11) < 1e-9, ra.ToString(CultureInfo.InvariantCulture));
             Check("허용된 B 는 안 셈 · 한쪽에만 있는 C 는 100 %", !js.Rates.ContainsKey("B") && Math.Abs(rc - 100) < 1e-9, rc.ToString(CultureInfo.InvariantCulture));
             Check("차이 2 / 전체 4 (A B C D)", js.DiffIos == 2 && js.TotalIos == 4, js.DiffIos + " / " + js.TotalIos);
-            Check("평균 오차율 = 차이 난 IO 만 (11 + 100) / 2 = 55.5 · 점수 44.5", Math.Abs(js.MeanErrorRate - 55.5) < 1e-9
-                  && Math.Abs(js.Score - 44.5) < 1e-9, js.MeanErrorRate + " / " + js.Score);
+            Check("평균 오차율 = 차이 난 IO 만 (11 + 100) / 2 = 55.5 · 점수 100 × (1 − 2/4) × (1 − 0.555) = 22.25 (1.92)",
+                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.Score - 22.25) < 1e-9, js.MeanErrorRate + " / " + js.Score);
+            // 1.92 셈 — 사용자에게 보인 세 경우 (전체 IO 120)
+            Check("① IO 5 개 3 · 8 · 1 · 100 · 6.5 % → 73.1", Math.Abs(JudgeScore.ScoreOf(5, 120, 118.5 / 5) - 73.12) < 0.01,
+                  JudgeScore.ScoreOf(5, 120, 118.5 / 5).ToString("0.##"));
+            Check("② IO 1 개 2 % → 97.2", Math.Abs(JudgeScore.ScoreOf(1, 120, 2) - 97.18) < 0.01, JudgeScore.ScoreOf(1, 120, 2).ToString("0.##"));
+            Check("③ IO 30 개 각 2 % → 73.5 (전에는 98)", Math.Abs(JudgeScore.ScoreOf(30, 120, 2) - 73.5) < 1e-9, JudgeScore.ScoreOf(30, 120, 2).ToString("0.##"));
+            Check("차이 없으면 100 · 전부 다르면 0", JudgeScore.ScoreOf(0, 120, 0) == 100 && JudgeScore.ScoreOf(120, 120, 5) == 0, "");
             JudgeScore none = JudgeScore.Of(new JudgeResult(), da, db, new HashSet<string> { LogDataset.LooseKey("D") });
             Check("차이 없으면 100 점 · 단계 IO 는 전체에서 뺌", none.Score == 100 && none.DiffIos == 0 && none.TotalIos == 3,
                   none.Score + " " + none.TotalIos);
@@ -4599,6 +4642,12 @@ namespace LogScope.Tests
         private static double MeanRate(AppState st)
         {
             return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).MeanErrorRate;
+        }
+
+        /// <summary>지금 판정의 점수 (1.92 셈 — JudgeScore.ScoreOf).</summary>
+        private static double ExpectedScore(AppState st)
+        {
+            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).Score;
         }
 
         private static string F3(double v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
@@ -5103,9 +5152,10 @@ namespace LogScope.Tests
             Check("판정에 쓰는 것이 그대로면 다시 찾지 않음", ReferenceEquals(first, st.Judgement), "");
 
             var main = new MainVm(st);
-            Check("메인 분석 1 칸 = 점수 / 100 · 차이 4 / 6 IO · 평균 오차율 (1.81)", main.Cards[0].ScoreOutOf == "/ 100"
+            Check("메인 분석 1 칸 = 점수 / 100 · 차이 4 / 6 IO · 평균 오차율 (1.81, 점수 셈 1.92)", main.Cards[0].ScoreOutOf == "/ 100"
                   && main.Cards[0].CountMain == "4 / 6" && main.Cards[0].CountSub.StartsWith("평균 오차율 ")
-                  && Math.Abs(main.Cards[0].Score - (100 - MeanRate(st))) < 0.051 && main.Cards[0].Score < 100,
+                  && Math.Abs(main.Cards[0].Score - ExpectedScore(st)) < 0.051
+                  && Math.Abs(ExpectedScore(st) - 100 * (1 - 4.0 / 6) * (1 - MeanRate(st) / 100)) < 1e-9 && main.Cards[0].Score < 100,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].CountMain);
 
             // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----
@@ -5158,8 +5208,8 @@ namespace LogScope.Tests
             var bigPop = new IoErrorsVm(main, "BIG", delegate { return main.ItemsOfIo("BIG"); });
             JudgeItem big = bigPop.Rows[0].Item;
             bigPop.Allow(bigPop.Rows[0], AllowChoice.Once);
-            Check("BIG 이번만 허용 → 차이 2 · 점수는 남은 IO 의 평균으로", big.Allowed == AllowState.Once
-                  && Math.Abs(main.Cards[0].Score - (100 - MeanRate(st))) < 0.051
+            Check("BIG 이번만 허용 → 차이 2 · 점수는 남은 IO 로 다시", big.Allowed == AllowState.Once
+                  && Math.Abs(main.Cards[0].Score - ExpectedScore(st)) < 0.051
                   && main.Cards[0].CountMain.StartsWith("2 / ") && changed == 2, main.Cards[0].ScoreText);
             Check("LLM 글에 이번만 허용", main.BuildLlmRequest(null).Analysis1Judgement.Contains("| 이번만 | 값 | BIG |"), "");
 
@@ -5705,6 +5755,22 @@ namespace LogScope.Tests
             Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
             Check("기본 이름 2", def.Title(2) == "DB 분석", def.Title(2));
             Check("기본 이름 3", def.Title(3) == "분석 3", def.Title(3));
+            Check("점수 판정 경계 기본 90 · 70 (1.92)", def.ScoreGood == 90 && def.ScoreWarn == 70, def.ScoreGood + " " + def.ScoreWarn);
+            AppConfig sc = AppConfig.Parse(new[] { "score.good = 95", "score.warn = 80" });
+            Check("score.good · score.warn 읽기", sc.ScoreGood == 95 && sc.ScoreWarn == 80, sc.ScoreGood + " " + sc.ScoreWarn);
+            AppConfig flip = AppConfig.Parse(new[] { "score.good = 60", "score.warn = 80" });
+            Check("뒤집힌 경계는 둘 다 기본값", flip.ScoreGood == 90 && flip.ScoreWarn == 70, flip.ScoreGood + " " + flip.ScoreWarn);
+            AppConfig badNum = AppConfig.Parse(new[] { "score.good = 백", "score.warn = 120" });
+            Check("숫자 아님 · 범위 밖은 기본값", badNum.ScoreGood == 90 && badNum.ScoreWarn == 70, badNum.ScoreGood + " " + badNum.ScoreWarn);
+            AppConfig keep = AppConfig.Current;
+            try
+            {
+                AppConfig.Current = sc;
+                Check("판정은 config 경계를 따름 (95 · 80)", LogScope.Main.ScoreBands.GradeOf(96) == LogScope.Main.ScoreBands.GradeGood
+                      && LogScope.Main.ScoreBands.GradeOf(90) == LogScope.Main.ScoreBands.GradeWarn
+                      && LogScope.Main.ScoreBands.GradeOf(79.9) == LogScope.Main.ScoreBands.GradeBad, "");
+            }
+            finally { AppConfig.Current = keep; }
 
             AppConfig c = AppConfig.Parse(new[]
             {

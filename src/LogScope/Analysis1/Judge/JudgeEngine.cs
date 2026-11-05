@@ -109,13 +109,15 @@ namespace LogScope.Analysis1.Judge
 
     /// <summary>오차 하나 — 오차 목록의 한 줄.</summary>
     /// <summary>
-    /// 분석 1 점수 (1.81, 사용자가 정한 셈).
+    /// 분석 1 점수 (1.81, 1.92 에 셈을 바꿈 — 사용자가 정한 셈).
     /// <list type="bullet">
     /// <item><b>오차율</b> (IO 하나): 이전 로그 전체 시간을 <b>100 칸</b>으로 나눠, 허용 안 된 판정 오차가 걸친 칸 수 (%).
     ///   한쪽 로그에만 있는 IO 는 100 %.</item>
     /// <item><b>평균 오차율</b>: 차이 난 IO (허용 안 된 오차가 있는 IO) 들의 오차율 평균 — 차이 없는 IO 를 0 % 로 넣으면 IO 가 많을수록
-    ///   묽어져 크게 망가진 IO 가 있어도 점수가 거의 안 움직여서. "몇 개가 다른가" 는 옆의 차이 개수가 맡음.</item>
-    /// <item><b>점수</b> = 100 − 평균 오차율. 차이 난 IO 가 없으면 100.</item>
+    ///   묽어져 크게 망가진 IO 가 있어도 점수가 거의 안 움직여서.</item>
+    /// <item><b>점수</b> (1.92) = 100 × (1 − 차이 IO 수 / 전체 IO 수) × (1 − 평균 오차율 / 100). "몇 개가" 와 "얼마나 오래" 둘 다.
+    ///   차이 난 IO 가 없으면 100. (1.81 ~ 1.91 은 100 − 평균 오차율 — 개수가 안 들어가 IO 30 개가 2 % 씩 달라도 98 점.)</item>
+    /// <item><b>판정</b> = 점수 (config.txt score.good · score.warn, 기본 90 · 70) — 최종 판정이 이것입니다.</item>
     /// <item>차이 개수 / 전체 개수 = 차이 난 IO 수 / 두 로그의 IO 수 (합집합, 단계 IO 뺌).</item>
     /// </list>
     /// </summary>
@@ -186,8 +188,19 @@ namespace LogScope.Analysis1.Judge
                 foreach (double v in s.Rates.Values) sum += v;
                 s.MeanErrorRate = sum / s.DiffIos;
             }
-            s.Score = Math.Max(0, 100.0 - s.MeanErrorRate);
+            // 1.92 (사용자 결정): "몇 개가" 와 "얼마나 오래" 를 둘 다 — 100 × (1 − 차이 IO 비율) × (1 − 평균 오차율).
+            // 전에는 100 − 평균 오차율이라 IO 30 개가 조금씩 달라도 98 점이었습니다.
+            s.Score = ScoreOf(s.DiffIos, s.TotalIos, s.MeanErrorRate);
             return s;
+        }
+
+        /// <summary>점수 셈 한 곳 (1.92): 100 × (1 − 차이 IO / 전체 IO) × (1 − 평균 오차율 / 100).</summary>
+        public static double ScoreOf(int diffIos, int totalIos, double meanErrorRate)
+        {
+            if (diffIos <= 0) return 100.0;
+            double share = totalIos > 0 ? Math.Min(1.0, (double)diffIos / totalIos) : 1.0;
+            double mean = Math.Max(0, Math.Min(100, meanErrorRate));
+            return Math.Max(0, 100.0 * (1.0 - share) * (1.0 - mean / 100.0));
         }
     }
 
