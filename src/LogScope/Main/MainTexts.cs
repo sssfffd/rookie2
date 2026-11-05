@@ -33,15 +33,27 @@ namespace LogScope.Main
         /// <summary>글</summary>
         public const string Heading = "분석 결과";
 
-        // ---- 판정 기둥 (1.92) ----
-        /// <summary>왼쪽 기둥 머리</summary>
-        public const string FinalVerdict = "최종 판정";
-        /// <summary>기둥 안 분석별 목록 머리</summary>
-        public const string EachVerdict = "분석별 판정";
-        /// <summary>판정 낱말 설명</summary>
-        public const string VerdictLegend = "✔ 정상 = 이전과 같음 · ⚠ 주의 = 다른 곳이 있어 확인 필요 · ✖ 이상 = 많이 다름 · ○ 아직 = 결과 없음. 최종 판정은 분석 1 판정 (분석 2 · 3 은 참고).";
-        /// <summary>칸 머리 아래 "뜻" 앞 글</summary>
+        // ---- 대시보드 (1.94) ----
+        /// <summary>칸 머리 아래 "뜻" 앞 글 (1.92)</summary>
         public const string MeaningLabel = "뜻  ";
+        public const string FinalVerdictTile = "최종 판정 · 분석 1 기준";
+        public const string ScoreTile = "점수";
+        public const string DiffTile = "차이 IO";
+        public const string RateTile = "평균 오차율";
+        public const string RateTileNote = "시간 100 칸 중 오차가 걸친 칸";
+        public const string LengthTile = "로그 길이 (덮은 비율)";
+        public const string TimelineHeading = "시간대별 차이";
+        public const string TimelineNote = "이전 로그 시간을 100 칸으로 — 막대 높이 = 그 칸에서 차이 난 IO 수";
+        public const string LegendOver = "허용 오차 넘음";
+        public const string LegendBig = "이전 값보다 100 % 넘게";
+        public const string LegendGap = "이후 로그 없음";
+        public const string TopHeading = "차이 큰 IO";
+        public const string TopNote = "크기 반영 오차율 순 · 진한 막대 = 시간, 옅은 막대 = 크기 반영";
+        public const string TopEmpty = "차이 난 IO 가 없습니다.";
+        public const string GroupHeading = "그룹 상태";
+        public const string GroupNote = "차이 IO / 전체";
+        public const string GroupEmpty = "그룹이 없습니다 — 분석 1 그래프 화면에서 IO 를 묶을 수 있습니다.";
+        public const string DetailHeading = "분석별 자세히 — 파일 넣기 · [분석] · 그룹별 요약";
         /// <summary>단추 이름</summary>
         public const string CardClick = "↗";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>

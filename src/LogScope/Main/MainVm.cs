@@ -24,6 +24,9 @@ namespace LogScope.Main
         /// <summary>최종 판정 (1.92) — 분석 1 판정, 분석 2 · 3 은 참고.</summary>
         public OverallVm Overall { get; private set; }
 
+        /// <summary>1.94: 메인 위쪽 대시보드 (숫자 패널 · 시간대별 차이 · 차이 큰 IO · 그룹 상태).</summary>
+        public MainDashVm Dash { get; private set; }
+
         public MainVm(AppState state)
         {
             _state = state;
@@ -41,6 +44,7 @@ namespace LogScope.Main
                 new AnalysisCardVm(3, names.Title(3), names.Summary(3), true),
             };
             Overall = new OverallVm(Cards);   // 1.92: 왼쪽 기둥의 최종 판정 (분석 1 기준, 2 · 3 은 참고)
+            Dash = new MainDashVm();          // 1.94: 위쪽 대시보드
             Llm = new LlmPanelVm();
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();
@@ -139,6 +143,7 @@ namespace LogScope.Main
             // History 를 펼쳐 보는 중이면 지금 결과 위에 그때의 요약을 덮습니다 (1.42).
             // 지금 결과는 위에서 늘 새로 적으므로 [지금 결과로] 를 누르면 그대로 돌아옵니다.
             ApplyViewing();
+            RefreshDash(r);
 
             RefreshDeltas();
 
@@ -728,6 +733,17 @@ namespace LogScope.Main
                 if ((name == PseudoSteps && step) || (name == PseudoIos && io) || (name == PseudoLength && len)) list.Add(it);
             }
             return list;
+        }
+
+        /// <summary>1.94: 대시보드 — 판정 · 점수 그대로. History 를 보는 중이거나 판정이 없으면 비움.</summary>
+        private void RefreshDash(CompareResult r)
+        {
+            if (Dash == null) return;
+            if (IsViewingHistory) { Dash.Clear("History 를 보는 중입니다 — 대시보드는 지금 결과만 보입니다. 아래 칸이 그때의 요약입니다."); return; }
+            JudgeResult judge = _state.Judgement;
+            if (r == null || judge == null) { Dash.Clear(null); return; }
+            JudgeScore js = JudgeScore.Of(judge, _state.Before, _state.After, _state.NoDiffKeys());
+            Dash.Update(js, judge, _state.Before, _state.After, _state.HasSteps ? _state.StepPairs() : null, _state.Settings.Groups);
         }
 
         /// <summary>그룹이 아닌 줄 이름 (공정 단계 오차 · 한쪽에만 있는 IO).</summary>

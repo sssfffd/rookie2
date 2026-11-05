@@ -54,6 +54,40 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- 1.94: 대시보드 칸 (Grafana 패널처럼 — 작은 회색 이름 · 큰 숫자 · 작은 설명) -->
+        <Style x:Key="DashTile" TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="6" />
+        </Style>
+        <Style x:Key="DashTileLabel" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
+        <Style x:Key="DashTileNote" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
+        <Style x:Key="DashBig" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+        </Style>
+        <Style x:Key="DashUnit" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="4,0,0,5" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
+        <Style x:Key="DashHead" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -101,76 +135,268 @@
               자리는 칸 VM 의 LayoutRow · LayoutColumn · LayoutSpan (AnalysisCardVm).
             -->
             <!--
-              1.92: 왼쪽 <b>판정 기둥</b> + 오른쪽 분석 칸 (사용자 결정). 최종 판정 = 분석 1 판정 (OverallVm),
-              분석 2 · 3 은 참고 (분석 1 보다 나쁘면 기둥에 "참고:" 로 적음). 기둥 아래에 분석마다 등 · 근거 · 뜻.
+              1.94: 위쪽 <b>대시보드</b> (사용자 요청 — Grafana 숫자 패널 · Splunk 타임라인 · 장비 모니터링 타일 · WhaTap Top-N).
+              시안: claude-log/189. 값은 MainVm.Dash (MainDashVm) — 점수와 같은 셈 (JudgeScore). 최종 판정은 OverallVm,
+              분석 2 · 3 패널은 그 칸 VM 의 판정 등 그대로. 아래 "분석별 자세히" 가 예전 분석 칸 (파일 넣기 · [분석] · 그룹 줄).
 
-                ┌ 최종 판정 ───┐┌──── 분석 1 (넓게) ────┐
-                │  ⚠ 주의      │└────────────────────────┘
-                │  분석 1 기준 ││┌ 분석 2 ┐┌ 분석 3 ┐
-                │  1 ⚠ 주의    │
-                │  2 ✔ 정상    │
-                │  3 ✔ 정상    │
-                └──────────────┘
+                [최종 판정 ──][점수 게이지][차이 IO][평균 오차율][로그 길이][분석 2][분석 3]
+                [시간대별 차이 ▁▃▇█▇▃▁ + 공정 단계 띠 + 시각]
+                [차이 큰 IO (Top 8) ─────────────][그룹 상태 타일]
             -->
-            <Grid>
+            <Grid Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="2.2*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" DataContext="{Binding Overall}" Background="{DynamicResource Brush.Panel}"
-                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="5"
-                        Padding="14,12" Margin="6" VerticalAlignment="Top">
+                <!-- 최종 판정 -->
+                <Border Grid.Column="0" DataContext="{Binding Overall}" Style="{StaticResource LampBadge}"
+                        CornerRadius="8" Padding="16,12" Margin="6">
                     <StackPanel>
-                        <TextBlock Text="{x:Static t:MainTexts.FinalVerdict}" Style="{StaticResource H2}" />
-                        <Border Style="{StaticResource LampBadge}" Padding="12,8" Margin="0,8,0,8" HorizontalAlignment="Stretch">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="{Binding Icon}" FontSize="28" Style="{StaticResource LampText}" FontFamily="Segoe UI Symbol" />
-                                <TextBlock Text="{Binding Word}" FontSize="30" Margin="10,0,0,0" Style="{StaticResource LampText}" />
-                            </StackPanel>
-                        </Border>
+                        <TextBlock Text="{x:Static t:MainTexts.FinalVerdictTile}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Muted}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                            <TextBlock Text="{Binding Icon}" FontSize="28" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
+                            <TextBlock Text="{Binding Word}" FontSize="32" Margin="10,0,0,0" Style="{StaticResource LampText}" />
+                        </StackPanel>
                         <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" FontSize="12" />
-                        <TextBlock Text="{Binding ReferenceNote}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0"
-                                   FontWeight="SemiBold" Foreground="{DynamicResource Brush.Warn}"
+                        <TextBlock Text="{Binding DataContext.Dash.Hotspot, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0" FontWeight="SemiBold"
+                                   Visibility="{Binding DataContext.Dash.HasHotspot, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Text="{Binding ReferenceNote}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"
+                                   Foreground="{DynamicResource Brush.Warn}" FontWeight="SemiBold"
                                    Visibility="{Binding HasReference, Converter={StaticResource BoolToVisibility}}" />
-
-                        <Border Height="1" Background="{DynamicResource Brush.Border}" Margin="0,12,0,10" />
-                        <TextBlock Text="{x:Static t:MainTexts.EachVerdict}" Style="{StaticResource Muted}" FontSize="11" Margin="0,0,0,4" />
-
-                        <ItemsControl ItemsSource="{Binding DataContext.Cards, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type main:AnalysisCardVm}">
-                                    <StackPanel Margin="0,4,0,6" ToolTip="{Binding Meaning}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="22" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding LampIcon}" FontSize="14" FontFamily="Segoe UI Symbol"
-                                                       Style="{StaticResource LampText}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <Border Grid.Column="2" Style="{StaticResource LampBadge}" Padding="6,0">
-                                                <TextBlock Text="{Binding LampWord}" FontSize="12" Style="{StaticResource LampText}" />
-                                            </Border>
-                                        </Grid>
-                                        <TextBlock Text="{Binding LampLine}" Margin="22,2,0,0" FontSize="11" TextTrimming="CharacterEllipsis"
-                                                   ToolTip="{Binding LampLine}" />
-                                        <TextBlock Text="{Binding Meaning}" Margin="22,1,0,0" FontSize="10" TextWrapping="Wrap"
-                                                   Style="{StaticResource Muted}" MaxHeight="28" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <Border Height="1" Background="{DynamicResource Brush.Border}" Margin="0,8,0,8" />
-                        <TextBlock Text="{x:Static t:MainTexts.VerdictLegend}" TextWrapping="Wrap" FontSize="10" Style="{StaticResource Muted}" />
-                        <TextBlock Text="{Binding BandsText}" TextWrapping="Wrap" FontSize="10" Margin="0,2,0,0" Style="{StaticResource Muted}" />
                     </StackPanel>
                 </Border>
 
-            <ItemsControl Grid.Column="1" ItemsSource="{Binding Cards}">
+                <!-- 점수 -->
+                <Border Grid.Column="1" Style="{StaticResource DashTile}">
+                    <StackPanel>
+                        <TextBlock Text="{x:Static t:MainTexts.ScoreTile}" Style="{StaticResource DashTileLabel}" />
+                        <main:ScoreGauge Height="84" Margin="0,4,0,0" Value="{Binding Dash.Score}" Grade="{Binding Dash.ScoreGrade}" />
+                        <TextBlock Text="{Binding Dash.BandsText}" FontSize="10" HorizontalAlignment="Center" TextWrapping="Wrap"
+                                   TextAlignment="Center" Foreground="{DynamicResource Brush.Muted}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 차이 IO -->
+                <Border Grid.Column="2" Style="{StaticResource DashTile}">
+                    <StackPanel>
+                        <TextBlock Text="{x:Static t:MainTexts.DiffTile}" Style="{StaticResource DashTileLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,4">
+                            <TextBlock Text="{Binding Dash.DiffMain}" Style="{StaticResource DashBig}" />
+                            <TextBlock Text="{Binding Dash.DiffTotal}" Style="{StaticResource DashUnit}" />
+                        </StackPanel>
+                        <main:RateBar Height="10" TimeRate="{Binding Dash.DiffSharePercent}" WeightedRate="{Binding Dash.DiffSharePercent}"
+                                      Grade="{Binding Dash.DiffGrade}" />
+                        <TextBlock Text="{Binding Dash.DiffBreak}" Style="{StaticResource DashTileNote}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 평균 오차율 -->
+                <Border Grid.Column="3" Style="{StaticResource DashTile}">
+                    <StackPanel>
+                        <TextBlock Text="{x:Static t:MainTexts.RateTile}" Style="{StaticResource DashTileLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding Dash.RateMain}" Style="{StaticResource DashBig}" />
+                            <TextBlock Text=" %" Style="{StaticResource DashUnit}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Dash.RateSub}" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Text="{x:Static t:MainTexts.RateTileNote}" Style="{StaticResource DashTileNote}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 로그 길이 -->
+                <Border Grid.Column="4" Style="{StaticResource DashTile}">
+                    <StackPanel>
+                        <TextBlock Text="{x:Static t:MainTexts.LengthTile}" Style="{StaticResource DashTileLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding Dash.LengthMain}" Style="{StaticResource DashBig}" />
+                            <TextBlock Text=" %" Style="{StaticResource DashUnit}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Dash.LengthSub}" Style="{StaticResource DashTileNote}" TextWrapping="Wrap"
+                                   MaxHeight="44" TextTrimming="CharacterEllipsis" ToolTip="{Binding Dash.LengthSub}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 분석 2 · 3 — 칸 VM 의 판정 등 그대로 -->
+                <Border Grid.Column="5" Style="{StaticResource DashTile}" DataContext="{Binding Cards[1]}" ToolTip="{Binding Meaning}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource DashTileLabel}" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
+                            <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding LampLine}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding LampLine}" />
+                        <TextBlock Text="{Binding Meaning}" Style="{StaticResource DashTileNote}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="6" Style="{StaticResource DashTile}" DataContext="{Binding Cards[2]}" ToolTip="{Binding Meaning}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource DashTileLabel}" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
+                            <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding LampLine}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding LampLine}" />
+                        <TextBlock Text="{Binding Meaning}" Style="{StaticResource DashTileNote}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 결과가 없을 때 (또는 History 보는 중) -->
+            <Border Style="{StaticResource DashTile}" Visibility="{Binding Dash.IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding Dash.EmptyText}" Foreground="{DynamicResource Brush.Muted}" TextWrapping="Wrap" />
+            </Border>
+
+            <StackPanel Visibility="{Binding Dash.HasResult, Converter={StaticResource BoolToVisibility}}">
+                <!-- 시간대별 차이 -->
+                <Border Style="{StaticResource DashTile}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{x:Static t:MainTexts.TimelineHeading}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{x:Static t:MainTexts.TimelineNote}" FontSize="11" Margin="12,0,0,0"
+                                       VerticalAlignment="Center" Foreground="{DynamicResource Brush.Muted}" TextTrimming="CharacterEllipsis" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="10" Height="10" Background="{DynamicResource Brush.Warn}" Margin="0,0,4,0" />
+                                <TextBlock Text="{x:Static t:MainTexts.LegendOver}" FontSize="11" Foreground="{DynamicResource Brush.Muted}" Margin="0,0,10,0" />
+                                <Border Width="10" Height="10" Background="{DynamicResource Brush.Bad}" Margin="0,0,4,0" />
+                                <TextBlock Text="{x:Static t:MainTexts.LegendBig}" FontSize="11" Foreground="{DynamicResource Brush.Muted}" Margin="0,0,10,0" />
+                                <Border Width="10" Height="10" Background="{DynamicResource Brush.BadSoft}" BorderBrush="{DynamicResource Brush.Bad}" BorderThickness="0.5" Margin="0,0,4,0" />
+                                <TextBlock Text="{x:Static t:MainTexts.LegendGap}" FontSize="11" Foreground="{DynamicResource Brush.Muted}" />
+                            </StackPanel>
+                        </Grid>
+                        <main:TimelineStrip Height="170" Data="{Binding Dash.Timeline}" />
+                    </StackPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 차이 큰 IO -->
+                    <Border Grid.Column="0" Style="{StaticResource DashTile}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="{x:Static t:MainTexts.TopHeading}" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="{x:Static t:MainTexts.TopNote}" FontSize="11" Margin="12,2,0,0" Foreground="{DynamicResource Brush.Muted}" />
+                                <TextBlock Text="{Binding Dash.TopNote}" FontSize="11" Margin="12,2,0,0" Foreground="{DynamicResource Brush.Muted}" />
+                            </StackPanel>
+                            <TextBlock Text="{x:Static t:MainTexts.TopEmpty}" Foreground="{DynamicResource Brush.Muted}"
+                                       Visibility="{Binding Dash.NoTopIos, Converter={StaticResource BoolToVisibility}}" />
+                            <Grid Margin="0,0,0,4" Visibility="{Binding Dash.HasTopIos, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="1.3*" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="1.4*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="판정" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="1" Text="IO" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="2" Text="그룹" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="3" Text="오차율 (크기 반영)" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="4" Text="최대 차이" Style="{StaticResource DashHead}" TextAlignment="Right" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="5" Text="언제" Style="{StaticResource DashHead}" Margin="12,0,0,0" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Dash.TopIos}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type main:DashIoRow}">
+                                        <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="0,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="58" />
+                                                    <ColumnDefinition Width="1.3*" />
+                                                    <ColumnDefinition Width="0.8*" />
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="1.4*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Style="{StaticResource LampBadge}" Padding="6,1" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Word}" FontSize="12" Style="{StaticResource LampText}" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Group}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource Brush.Muted}" />
+                                                <Grid Grid.Column="3" VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <main:RateBar Height="10" TimeRate="{Binding TimeRate}" WeightedRate="{Binding WeightedRate}" Grade="{Binding LampGrade}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding RateText}" Margin="8,0,0,0" FontSize="11" />
+                                                </Grid>
+                                                <TextBlock Grid.Column="4" Text="{Binding PeakText}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="5" Text="{Binding WhenText}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource Brush.Muted}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WhenText}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 그룹 상태 -->
+                    <Border Grid.Column="1" Style="{StaticResource DashTile}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="{x:Static t:MainTexts.GroupHeading}" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="{x:Static t:MainTexts.GroupNote}" FontSize="11" Margin="12,2,0,0" Foreground="{DynamicResource Brush.Muted}" />
+                            </StackPanel>
+                            <TextBlock Text="{x:Static t:MainTexts.GroupEmpty}" Foreground="{DynamicResource Brush.Muted}" TextWrapping="Wrap"
+                                       Visibility="{Binding Dash.NoGroups, Converter={StaticResource BoolToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding Dash.Groups}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type main:DashGroupTile}">
+                                        <Border Style="{StaticResource LampBadge}" CornerRadius="6" Padding="10,8" Margin="0,0,8,8">
+                                            <StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Word}" FontSize="12" Margin="6,0,0,0" Style="{StaticResource LampText}" />
+                                                </Grid>
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding Diff}" FontSize="20" FontWeight="Bold" />
+                                                    <TextBlock Text="{Binding Total}" FontSize="12" Margin="4,0,0,3" VerticalAlignment="Bottom"
+                                                               Foreground="{DynamicResource Brush.Muted}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+
+            <TextBlock Text="{x:Static t:MainTexts.DetailHeading}" Style="{StaticResource H2}" Margin="8,18,0,2" />
+            <Grid>
+            <ItemsControl ItemsSource="{Binding Cards}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Grid>

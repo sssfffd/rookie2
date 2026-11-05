@@ -205,6 +205,8 @@
     <Compile Include="Main\AnalysisCardVm.cs" />
     <Compile Include="Main\MainVm.cs" />
     <Compile Include="Main\OverallVm.cs" />
+    <Compile Include="Main\MainDashVm.cs" />
+    <Compile Include="Main\DashVisuals.cs" />
     <Compile Include="Main\HistoryRowVm.cs" />
     <Compile Include="Analysis1\Graph\GraphVm.cs" />
     <Compile Include="Analysis1\Dashboard\DashboardVm.cs" />

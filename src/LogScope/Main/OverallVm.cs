@@ -41,15 +41,7 @@ namespace LogScope.Main
 
         public string Word { get { return AnalysisCardVm.WordOf(Grade); } }
 
-        /// <summary>판정 기준 한 줄 (config.txt 의 경계).</summary>
-        public string BandsText
-        {
-            get
-            {
-                return "분석 1 점수 " + ScoreBands.GoodFrom.ToString("0.#") + " 이상 정상 · "
-                     + ScoreBands.WarnFrom.ToString("0.#") + " 이상 주의 · 그 아래 이상";
-            }
-        }
+
 
         public string Icon { get { return AnalysisCardVm.IconOf(Grade); } }
 

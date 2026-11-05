@@ -2257,3 +2257,9 @@
 > 보기 쉽고 예쁘고 정보가 잘들어오는걸로 만들어줘
 
 → 답변: [189-main-dashboard-mockup.md](189-main-dashboard-mockup.md) (시안 먼저)
+
+## 요청 217 — 시안대로 진행
+
+> 일단 진행해봐
+
+→ 답변: [190-main-dashboard.md](190-main-dashboard.md)

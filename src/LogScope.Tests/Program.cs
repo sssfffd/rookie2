@@ -169,6 +169,7 @@ namespace LogScope.Tests
                 ShortLogRules();
                 ScoreMagnitudeRules();
                 HeatmapSignedRules();
+                MainDashRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4303,6 +4304,47 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>메인 대시보드 (1.94) — 숫자가 칸 · 점수와 같은 셈인지.</summary>
+        private static void MainDashRules()
+        {
+            Say("메인 대시보드 — 숫자 패널 · 시간대별 차이 · 차이 큰 IO · 그룹");
+            var st = new AppState();
+            st.Before = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            st.After = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            st.Settings.Groups = new List<GroupDef> { new GroupDef("가") { Members = new List<string> { "SPIKE", "FLAT" } } };
+            st.Recompare(null);
+            var main = new MainVm(st);
+            MainDashVm d = main.Dash;
+            JudgeScore js = JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys());
+            Check("결과 있음 · 점수 = 메인 칸 점수", d.HasResult && Math.Abs(d.Score - main.Cards[0].Score) < 1e-9, d.ScoreText + " / " + main.Cards[0].ScoreText);
+            Check("차이 IO = 메인 칸 a / b", main.Cards[0].CountMain == d.DiffMain + " " + d.DiffTotal.Replace("/ ", "/ "), main.Cards[0].CountMain + " | " + d.DiffMain + " " + d.DiffTotal);
+            int buckets = 0; foreach (int c in d.Timeline.Counts) buckets += c;
+            int expect = 0; foreach (KeyValuePair<string, double> kv in js.Rates) if (!js.OneSide.ContainsKey(kv.Key)) expect += (int)Math.Round(kv.Value);
+            Check("시간대별 막대 합 = 차이 IO 들의 오차 칸 합 (점수와 같은 100 칸)", d.Timeline.Counts.Length == 100 && buckets == expect, buckets + " / " + expect);
+            bool sorted = true;
+            for (int i = 1; i < d.TopIos.Count; i++) if (d.TopIos[i].WeightedRate > d.TopIos[i - 1].WeightedRate) sorted = false;
+            Check("차이 큰 IO — 크기 반영 오차율 순 · 판정 낱말", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
+                  && d.TopIos.Count == Math.Min(MainDashVm.TopCount, js.DiffIos), d.TopIos.Count + " " + js.DiffIos);
+            DashIoRow spike = d.TopIos.Find(x => x.Name == "SPIKE");
+            Check("그룹 이름 · 언제 · 최대 % 가 붙음", spike == null || (spike.Group == "가" && spike.WhenText != "-" && spike.PeakText.StartsWith("최대")),
+                  spike == null ? "SPIKE 없음" : spike.Group + " | " + spike.WhenText + " | " + spike.PeakText);
+            Check("그룹 타일 — 있는 IO 만 셈 · 차이 IO 수", d.HasGroups && d.Groups[0].Total == "/ 2"
+                  && d.Groups[0].Diff == ((js.Rates.ContainsKey("SPIKE") ? 1 : 0) + (js.Rates.ContainsKey("FLAT") ? 1 : 0)).ToString(), d.Groups[0].Diff + " " + d.Groups[0].Total);
+
+            var tl = new DashTimeline { Counts = new int[100] };
+            for (int k = 30; k < 50; k++) tl.Counts[k] = 3;
+            tl.Counts[90] = 1;
+            tl.Steps.Add(new DashStep { Name = "승온", From = 0, To = 0.3 });
+            tl.Steps.Add(new DashStep { Name = "가열 유지", From = 0.3, To = 0.55 });
+            tl.Steps.Add(new DashStep { Name = "냉각", From = 0.55, To = 1 });
+            Check("몰린 구간 — '가열 유지'", MainDashVm.HotspotOf(tl).StartsWith("'가열 유지' 구간에 몰림"), MainDashVm.HotspotOf(tl));
+            for (int k = 0; k < 100; k++) tl.Counts[k] = 1;
+            Check("고르게 퍼지면 몰린 구간 없음", MainDashVm.HotspotOf(tl) == "", MainDashVm.HotspotOf(tl));
+
+            main.Dash.Clear("History");
+            Check("비우면 결과 없음 · 글", !d.HasResult && d.EmptyText == "History", "");
         }
 
         /// <summary>히트맵 — 부호 · 100 % 넘는 값 · 이전 값 0 · 짧게 끊긴 로그 (1.93).</summary>

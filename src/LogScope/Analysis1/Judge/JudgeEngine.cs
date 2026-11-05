@@ -147,6 +147,21 @@ namespace LogScope.Analysis1.Judge
         /// <summary>1.93: IO 이름 → 크기 반영 오차율 (%, 최대 100).</summary>
         public Dictionary<string, double> WeightedRates = new Dictionary<string, double>(StringComparer.Ordinal);
 
+        // ---- 1.94: 메인 대시보드 (시간대별 차이 · 차이 큰 IO) — 점수와 같은 100 칸에서 ----
+
+        /// <summary>칸마다 차이 난 IO 수 (값 오차 — 한쪽에만 있는 IO 는 안 넣음).</summary>
+        public int[] BucketIos = new int[Buckets];
+        /// <summary>칸마다 가장 큰 무게 (1 ~ 3, 0 = 오차 없음).</summary>
+        public double[] BucketWeight = new double[Buckets];
+        /// <summary>칸마다 이후 로그가 없는지 (로그 길이 — 일찍 끝남 · 늦게 시작).</summary>
+        public bool[] BucketGap = new bool[Buckets];
+        /// <summary>IO 이름 → 허용 안 된 값 오차의 처음 · 끝 시각 (이전 로그 시간축).</summary>
+        public Dictionary<string, double[]> Spans = new Dictionary<string, double[]>(StringComparer.Ordinal);
+        /// <summary>IO 이름 → 가장 크게 벗어난 % (MaxExcessPercent 의 최대). 모르면 없음.</summary>
+        public Dictionary<string, double> Peaks = new Dictionary<string, double>(StringComparer.Ordinal);
+        /// <summary>한쪽에만 있는 IO (이름 → true = 이후에 없음, false = 이후에만).</summary>
+        public Dictionary<string, bool> OneSide = new Dictionary<string, bool>(StringComparer.Ordinal);
+
         /// <summary>
         /// 1.93: 오차 칸 하나의 무게 — 1 + 벗어난 % / sizeStep (최대 3). 허용 오차를 살짝 넘은 칸은 1 (예전과 같음),
         /// 이전 값보다 sizeStep % 벗어나면 2, 그 두 배면 3. sizeStep = config.txt score.size (기본 50).
@@ -184,10 +199,34 @@ namespace LogScope.Analysis1.Judge
             foreach (JudgeItem it in r.Items)
             {
                 if (it.IsAllowed) continue;
-                if (it.Kind == JudgeKind.LogLength) { lengthLoss += it.StepRatio; continue; }   // 1.93: 로그 길이
+                if (it.Kind == JudgeKind.LogLength)   // 1.93: 로그 길이
+                {
+                    lengthLoss += it.StepRatio;
+                    if (it.MissingInAfter && w > 0)   // 1.94: 이전 로그 시간 안에서 이후 로그가 없는 칸
+                    {
+                        int g0 = (int)Math.Floor((Math.Max(it.Start, t0) - t0) / w), g1 = (int)Math.Ceiling((Math.Min(it.End, t1) - t0) / w) - 1;
+                        for (int k = Math.Max(0, g0); k <= Math.Min(Buckets - 1, g1); k++) s.BucketGap[k] = true;
+                    }
+                    continue;
+                }
                 if (it.Io.Length == 0) continue;
-                if (it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra) { full.Add(it.Io); continue; }
+                if (it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra)
+                {
+                    full.Add(it.Io);
+                    s.OneSide[it.Io] = it.Kind == JudgeKind.IoMissing;
+                    continue;
+                }
                 if (it.Kind != JudgeKind.Value) continue;
+                // 1.94: 처음 · 끝 시각과 가장 크게 벗어난 %
+                double[] sp;
+                if (!s.Spans.TryGetValue(it.Io, out sp)) { sp = new[] { double.MaxValue, double.MinValue }; s.Spans[it.Io] = sp; }
+                sp[0] = Math.Min(sp[0], Math.Min(it.Start, it.End));
+                sp[1] = Math.Max(sp[1], Math.Max(it.Start, it.End));
+                if (!double.IsNaN(it.MaxExcessPercent))
+                {
+                    double pk; s.Peaks.TryGetValue(it.Io, out pk);
+                    if (Math.Abs(it.MaxExcessPercent) > pk) s.Peaks[it.Io] = Math.Abs(it.MaxExcessPercent);
+                }
                 double wt = WeightOf(it.MaxExcessPercent, sizeStep);
                 double[] m;
                 if (!marks.TryGetValue(it.Io, out m)) { m = new double[Buckets]; marks[it.Io] = m; }
@@ -206,7 +245,14 @@ namespace LogScope.Analysis1.Judge
             foreach (KeyValuePair<string, double[]> kv in marks)
             {
                 int n = 0; double sumW = 0;
-                foreach (double x in kv.Value) if (x > 0) { n++; sumW += x; }
+                for (int k = 0; k < Buckets; k++)
+                {
+                    double x = kv.Value[k];
+                    if (!(x > 0)) continue;
+                    n++; sumW += x;
+                    s.BucketIos[k]++;                                   // 1.94
+                    if (x > s.BucketWeight[k]) s.BucketWeight[k] = x;
+                }
                 // 1.88: 차이 난 IO 로 세면서 오차율 0 % 는 말이 안 됨 (오차가 이전 로그 시간 밖에만 있을 때) — 적어도 한 칸.
                 if (n == 0) { n = 1; sumW = maxW[kv.Key]; }
                 s.Rates[kv.Key] = n * 100.0 / Buckets;
