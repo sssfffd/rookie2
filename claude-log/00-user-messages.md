@@ -2241,3 +2241,19 @@
 > 이것도 오차랑 히트맵같은곳에도 반영되어야함
 
 → 답변: [188-score-size-signed-heatmap-short-log.md](188-score-size-signed-heatmap-short-log.md)
+
+## 요청 216 — 메인 화면을 Grafana · WhaTap · Splunk · 장비 모니터링처럼
+
+> grafana
+>
+> whatap docs
+>
+> Splunk
+>
+> EAP/ 장비모니터링 툴
+>
+> 얘네들이 로그 분석쪽이라는데 참고해서
+>
+> 보기 쉽고 예쁘고 정보가 잘들어오는걸로 만들어줘
+
+→ 답변: [189-main-dashboard-mockup.md](189-main-dashboard-mockup.md) (시안 먼저)

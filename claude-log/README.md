@@ -195,3 +195,4 @@
 | `186-tests-sta-thread.md` | 1.91 — 빌드 시험 "calling thread must be STA": 시험이 GraphCanvas 를 만드는데 Main 에 [STAThread] 없음 → 붙이고 점검 추가 |
 | `187-main-verdict-pillar.md` | 1.92 — 메인: 왼쪽 판정 기둥 (최종 = 분석 1, 2 · 3 참고) · 칸 셋이 정상 · 주의 · 이상 · 뜻 한 줄 · 점수 셈 100 × (1 − 차이 IO 비율) × (1 − 평균 오차율) · 경계 config.txt |
 | `188-score-size-signed-heatmap-short-log.md` | 1.93 — 점수에 오차 크기 (칸 무게 1 + 벗어난 % / 50, 최대 3) · 히트맵 이전 값 기준 부호 % (100 % 넘음, 이전 0 은 Δ값) · 짧게 끊긴 로그 = 판정 "로그 길이" · 점수 × 덮은 비율 · 히트맵 이후 없음 칸 |
+| `189-main-dashboard-mockup.md` | 메인 화면 대시보드 시안 (Grafana 스탯 · Splunk 타임라인 · 장비 상태 타일 · Top-N) — 코드 변경 전 확인용 |
