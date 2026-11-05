@@ -12,7 +12,7 @@
 
 ## 한 것
 
-파일: [`docs/presentation/LogScope-SW구조-기능.pptx`](../docs/presentation/LogScope-SW구조-기능.pptx) (16:9, 글꼴 맑은 고딕, 발표자 메모 포함)
+파일: `docs/presentation/LogScope-SW구조-기능.pptx` (2.01 에 지우고 `LogScope-아키텍처-기술.pptx` 로 바꿈 — 198 참고) (16:9, 글꼴 맑은 고딕, 발표자 메모 포함)
 
 | 장 | 내용 |
 |---|---|

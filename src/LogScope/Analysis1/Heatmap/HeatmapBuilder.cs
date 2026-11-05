@@ -392,7 +392,9 @@ namespace LogScope.Analysis1.Heatmap
                         // 가장 크게 벌어진 순간을 붙잡습니다. 값과 퍼센트를
                         // 같은 표본에서 가져와야 둘이 가리키는 순간이
                         // 어긋나지 않습니다.
-                        if (!double.IsNaN(pct) && pct > cell.PeakPercent)
+                        // 2.00: "가장 크게" = <b>값 차이 (최대 오차)</b> 가 가장 큰 순간 (사용자 요청). 예전에는 % 가 가장 큰
+                        //       순간이라, 이전 값이 0 가까이인 표본의 큰 % 가 칸에 적혀 실제 최대 오차와 달랐습니다.
+                        if (!double.IsNaN(pct) && (cell.OverSamples == 1 || diff > cell.PeakDiff))
                         {
                             cell.PeakPercent = (float)pct;
                             cell.PeakDiff = (float)diff;
@@ -405,6 +407,7 @@ namespace LogScope.Analysis1.Heatmap
                 }
             }
 
+            double rowPeakDiff = -1;
             for (int k = 0; k < buckets; k++)
             {
                 HeatCell cell = row.Cells[k];
@@ -433,7 +436,8 @@ namespace LogScope.Analysis1.Heatmap
                     row.OverBuckets++;
                     row.TotalOverSamples += cell.OverSamples;
                     if (cell.PeakPercent > row.PeakMean) row.PeakMean = cell.PeakPercent;
-                    if (cell.PeakPercent > row.PeakMax) row.PeakMax = cell.PeakPercent;
+                    // 2.00: 줄의 최대 오차 = 값 차이가 가장 큰 순간의 % (칸에 적는 값과 같은 규칙 — 칸 폭과 무관)
+                    if (cell.PeakDiff > rowPeakDiff || rowPeakDiff < 0) { rowPeakDiff = cell.PeakDiff; row.PeakMax = cell.PeakPercent; }
                 }
             }
 
@@ -569,7 +573,7 @@ namespace LogScope.Analysis1.Heatmap
         public int TotalOverSamples;
 
         /// <summary>
-        /// 줄 전체에서 가장 크게 벌어진 순간의 오차(%).
+        /// 줄 전체에서 가장 크게 벌어진 순간 (2.00 — 값 차이가 가장 큰 순간) 의 오차(%).
         /// 칸을 어떻게 자르든 같습니다.
         /// </summary>
         public double PeakMax;

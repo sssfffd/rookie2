@@ -171,6 +171,7 @@ namespace LogScope.Tests
                 HeatmapSignedRules();
                 MainDashRules();
                 IgnoreStartRules();
+                HeatmapPeakIsMaxError();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4305,6 +4306,26 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>2.00: 히트맵 칸의 % 는 값 차이 (최대 오차) 가 가장 큰 순간의 것.</summary>
+        private static void HeatmapPeakIsMaxError()
+        {
+            Say("히트맵 칸 % = 최대 오차 순간");
+            // 한 칸 (1 분) 안: 00:00:10 이전 100 → 이후 150 (차이 50, +50 %), 00:00:20 이전 1 → 이후 3 (차이 2, +200 %)
+            string a = "Time,V\n00:00:00,100\n00:00:10,100\n00:00:20,1\n00:00:30,100\n00:00:40,100\n";
+            string b = "Time,V\n00:00:00,100\n00:00:10,150\n00:00:20,3\n00:00:30,100\n00:00:40,100\n";
+            LogDataset da = Open(WriteCsv("peak_a.csv", a), Orientation.Auto);
+            LogDataset db = Open(WriteCsv("peak_b.csv", b), Orientation.Auto);
+            var opt = new HeatmapOptions();
+            opt.BucketSpan = 60000;
+            HeatmapResult r = HeatmapBuilder.Build(da, db, opt, null);
+            HeatRow row = r.Rows.Count > 0 ? r.Rows[0] : null;
+            HeatCell cell = row != null ? row.Cells[0] : default(HeatCell);
+            Check("칸 % = 값 차이가 가장 큰 순간 (+50 %, 200 % 아님) · 값 차이 50 · 줄 최대도 같음",
+                  row != null && Math.Abs(row.SignedPercentOf(cell) - 50) < 1e-3 && Math.Abs(row.SignedValueOf(cell) - 50) < 1e-3
+                  && Math.Abs(row.PeakMax - 50) < 1e-3,
+                  row == null ? "줄 없음" : row.SignedPercentOf(cell) + " / " + row.SignedValueOf(cell) + " / " + row.PeakMax);
         }
 
         /// <summary>1.99: 초기 오차 무시 — 처음 N 초의 오차는 판정 · 히트맵 · 비교에서 안 셈. 숫자 시간 열의 초 환산.</summary>
