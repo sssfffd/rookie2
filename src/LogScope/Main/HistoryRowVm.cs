@@ -181,7 +181,16 @@ namespace LogScope.Main
         public string Title { get { return _snap.Title; } }
         public string HeadText { get { return _snap.HeadText; } }
         public string HeadGrade { get { return _snap.HeadGrade; } }
-        public string CountText { get { return _snap.CountText; } }
+        public string CountText { get { return OneLine(_snap.CountText); } }
+
+        /// <summary>1.95: History 칸은 한 줄 — 글 안의 줄바꿈을 " · " 로.</summary>
+        private static string OneLine(string s)
+        {
+            return string.IsNullOrEmpty(s) ? string.Empty : s.Replace("\r", " ").Replace("\n", " · ");
+        }
+
+        /// <summary>1.95: History 줄 안의 자리 (0 · 1 · 2) — 분석 1 · 2 를 넓게, 3 은 좁게.</summary>
+        public int Column { get { return Number - 1; } }
         public string SummaryText { get { return _snap.SummaryText; } }
         public string InputsText { get { return _snap.InputsText; } }
 

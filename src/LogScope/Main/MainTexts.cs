@@ -36,12 +36,11 @@ namespace LogScope.Main
         // ---- 대시보드 (1.94) ----
         /// <summary>칸 머리 아래 "뜻" 앞 글 (1.92)</summary>
         public const string MeaningLabel = "뜻  ";
-        public const string FinalVerdictTile = "최종 판정 · 분석 1 기준";
-        public const string ScoreTile = "점수";
-        public const string DiffTile = "차이 IO";
-        public const string RateTile = "평균 오차율";
-        public const string RateTileNote = "시간 100 칸 중 오차가 걸친 칸";
-        public const string LengthTile = "로그 길이 (덮은 비율)";
+        public const string FinalVerdictTile = "최종 판정";
+        public const string ScoreTile = "공정 일치율";
+        public const string RateTile = "IO별 평균 오차율";
+        public const string RateTileNote = "차이 난 IO 마다 로그 시간을 100 칸으로 나눠 오차가 걸친 칸 비율, 그 평균";
+        public const string LengthTile = "공정 시간 일치율";
         public const string TimelineHeading = "시간대별 차이";
         public const string TimelineNote = "이전 로그 시간을 100 칸으로 — 막대 높이 = 그 칸에서 차이 난 IO 수";
         public const string LegendOver = "허용 오차 넘음";

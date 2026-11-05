@@ -100,8 +100,11 @@ namespace LogScope.Main
             if (!double.IsNaN(v))
                 Arc(dc, new Pen { Brush = GradeBrush(Grade, false), Thickness = thick }, c, r, 0, Math.Max(0.004, Math.Min(1, v / 100.0)));
 
-            FormattedText t = Label(double.IsNaN(v) ? "—" : v.ToString("0.#", CultureInfo.InvariantCulture), 26, Text);
-            t.SetFontWeight(FontWeights.Bold);
+            // 1.95: "공정 일치율" — % 를 붙이고, 결과가 없으면 "결과 없음" (작게)
+            FormattedText t = double.IsNaN(v)
+                ? Label(MainDashVm.NoResult, 15, Muted)
+                : Label(v.ToString("0.#", CultureInfo.InvariantCulture) + "%", 24, Text);
+            if (!double.IsNaN(v)) t.SetFontWeight(FontWeights.Bold);
             dc.DrawText(t, new Point(c.X - t.Width / 2, c.Y - t.Height - 2));
         }
     }

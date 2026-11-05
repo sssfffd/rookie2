@@ -27,6 +27,15 @@ namespace LogScope.Main
         /// <summary>차이 큰 IO 줄 수.</summary>
         public const int TopCount = 8;
 
+        /// <summary>결과가 없는 칸에 적는 글 (1.95).</summary>
+        public const string NoResult = "결과 없음";
+
+        /// <summary>"차이 IO" 칸 이름 — config.txt label.diff (1.95).</summary>
+        public string DiffLabel { get { return AppConfig.Current.DiffLabel; } }
+
+        /// <summary>결과가 있을 때만 붙는 단위 (" %").</summary>
+        public string PercentUnit { get { return _has ? " %" : string.Empty; } }
+
         private bool _has;
         private string _empty = "로그 두 개를 열고 [분석] 을 누르면 여기에 결과가 나옵니다.";
 
@@ -82,10 +91,11 @@ namespace LogScope.Main
             _has = false;
             if (!string.IsNullOrEmpty(why)) _empty = why;
             else _empty = "로그 두 개를 열고 [분석] 을 누르면 여기에 결과가 나옵니다.";
-            Score = double.NaN; ScoreText = "—"; ScoreGrade = ScoreBands.GradeNone; BandsText = string.Empty;
-            DiffMain = "—"; DiffTotal = string.Empty; DiffShare = 0; DiffBreak = string.Empty; DiffGrade = ScoreBands.GradeNone;
-            RateMain = "—"; RateSub = string.Empty;
-            LengthMain = "—"; LengthSub = string.Empty; LengthGrade = ScoreBands.GradeNone;
+            // 1.95: 결과가 없으면 "—" 대신 "결과 없음" (사용자 요청)
+            Score = double.NaN; ScoreText = NoResult; ScoreGrade = ScoreBands.GradeNone; BandsText = string.Empty;
+            DiffMain = NoResult; DiffTotal = string.Empty; DiffShare = 0; DiffBreak = string.Empty; DiffGrade = ScoreBands.GradeNone;
+            RateMain = NoResult; RateSub = string.Empty;
+            LengthMain = NoResult; LengthSub = string.Empty; LengthGrade = ScoreBands.GradeNone;
             Hotspot = string.Empty;
             Timeline = null;
             TopIos = new List<DashIoRow>(); TopNote = string.Empty;
@@ -127,7 +137,7 @@ namespace LogScope.Main
             double cover = js.LengthFactor * 100.0;
             LengthMain = cover.ToString("0.#", Inv);
             JudgeItem len = judge.Items.Find(x => x.Kind == JudgeKind.LogLength && !x.IsAllowed);
-            LengthSub = len == null ? "이전 · 이후 길이 같음" : len.What;
+            LengthSub = len == null ? "이전 · 이후 공정 시간 같음" : len.What;
             LengthGrade = len == null ? ScoreBands.GradeGood : (len.Grade == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn);
 
             Timeline = BuildTimeline(js, before, steps);
@@ -140,7 +150,7 @@ namespace LogScope.Main
 
         private void RaiseAll()
         {
-            Raise("HasResult"); Raise("IsEmpty"); Raise("EmptyText");
+            Raise("HasResult"); Raise("IsEmpty"); Raise("EmptyText"); Raise("DiffLabel"); Raise("PercentUnit");
             Raise("Score"); Raise("ScoreText"); Raise("ScoreGrade"); Raise("BandsText");
             Raise("DiffMain"); Raise("DiffTotal"); Raise("DiffShare"); Raise("DiffSharePercent"); Raise("DiffBreak"); Raise("DiffGrade");
             Raise("RateMain"); Raise("RateSub");

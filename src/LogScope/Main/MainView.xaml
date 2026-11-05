@@ -77,6 +77,14 @@
             <Setter Property="FontSize" Value="30" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Style.Triggers>
+                <!-- 1.95: 결과가 없으면 "결과 없음" 을 작게 (큰 글자면 칸에서 잘림) -->
+                <DataTrigger Binding="{Binding Dash.HasResult}" Value="False">
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="FontWeight" Value="Normal" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="DashUnit" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="13" />
@@ -168,8 +176,9 @@
                         <TextBlock Text="{Binding DataContext.Dash.Hotspot, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                    TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0" FontWeight="SemiBold"
                                    Visibility="{Binding DataContext.Dash.HasHotspot, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- 1.95: 결과가 있는 분석마다 "이름 판정" -->
                         <TextBlock Text="{Binding ReferenceNote}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"
-                                   Foreground="{DynamicResource Brush.Warn}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Muted}"
                                    Visibility="{Binding HasReference, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Border>
@@ -187,7 +196,7 @@
                 <!-- 차이 IO -->
                 <Border Grid.Column="2" Style="{StaticResource DashTile}">
                     <StackPanel>
-                        <TextBlock Text="{x:Static t:MainTexts.DiffTile}" Style="{StaticResource DashTileLabel}" />
+                        <TextBlock Text="{Binding Dash.DiffLabel}" Style="{StaticResource DashTileLabel}" TextTrimming="CharacterEllipsis" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,4">
                             <TextBlock Text="{Binding Dash.DiffMain}" Style="{StaticResource DashBig}" />
                             <TextBlock Text="{Binding Dash.DiffTotal}" Style="{StaticResource DashUnit}" />
@@ -204,10 +213,11 @@
                         <TextBlock Text="{x:Static t:MainTexts.RateTile}" Style="{StaticResource DashTileLabel}" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
                             <TextBlock Text="{Binding Dash.RateMain}" Style="{StaticResource DashBig}" />
-                            <TextBlock Text=" %" Style="{StaticResource DashUnit}" />
+                            <TextBlock Text="{Binding Dash.PercentUnit}" Style="{StaticResource DashUnit}" />
                         </StackPanel>
-                        <TextBlock Text="{Binding Dash.RateSub}" FontSize="12" FontWeight="SemiBold" />
-                        <TextBlock Text="{x:Static t:MainTexts.RateTileNote}" Style="{StaticResource DashTileNote}" />
+                        <TextBlock Text="{Binding Dash.RateSub}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <!-- 1.95: 기준 설명은 칸에서 안 잘리게 줄바꿈 -->
+                        <TextBlock Text="{x:Static t:MainTexts.RateTileNote}" Style="{StaticResource DashTileNote}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
@@ -217,10 +227,10 @@
                         <TextBlock Text="{x:Static t:MainTexts.LengthTile}" Style="{StaticResource DashTileLabel}" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
                             <TextBlock Text="{Binding Dash.LengthMain}" Style="{StaticResource DashBig}" />
-                            <TextBlock Text=" %" Style="{StaticResource DashUnit}" />
+                            <TextBlock Text="{Binding Dash.PercentUnit}" Style="{StaticResource DashUnit}" />
                         </StackPanel>
                         <TextBlock Text="{Binding Dash.LengthSub}" Style="{StaticResource DashTileNote}" TextWrapping="Wrap"
-                                   MaxHeight="44" TextTrimming="CharacterEllipsis" ToolTip="{Binding Dash.LengthSub}" />
+                                   ToolTip="{Binding Dash.LengthSub}" />
                     </StackPanel>
                 </Border>
 
@@ -232,8 +242,6 @@
                             <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
                             <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
                         </StackPanel>
-                        <TextBlock Text="{Binding LampLine}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding LampLine}" />
-                        <TextBlock Text="{Binding Meaning}" Style="{StaticResource DashTileNote}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="6" Style="{StaticResource DashTile}" DataContext="{Binding Cards[2]}" ToolTip="{Binding Meaning}">
@@ -243,8 +251,6 @@
                             <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
                             <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
                         </StackPanel>
-                        <TextBlock Text="{Binding LampLine}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding LampLine}" />
-                        <TextBlock Text="{Binding Meaning}" Style="{StaticResource DashTileNote}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -452,17 +458,9 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- 1.92: 판정 등 (정상 · 주의 · 이상) — 칸 셋이 같은 말 -->
-                                        <Border Grid.Column="2" Style="{StaticResource LampBadge}" Margin="0,0,8,0" VerticalAlignment="Center"
-                                                ToolTip="{Binding LampLine}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding LampIcon}" FontSize="13" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
-                                                <TextBlock Text="{Binding LampWord}" FontSize="13" Margin="5,0,0,0" Style="{StaticResource LampText}" />
-                                            </StackPanel>
-                                        </Border>
+                                        <!-- 1.95: 칸 머리의 판정 등은 뺌 (사용자 요청 — 판정은 위 대시보드에서) -->
 
                                         <Border Grid.Column="0" Background="{DynamicResource Brush.AccentSoft}"
                                                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
@@ -489,14 +487,14 @@
                                           그래서 높이를 화살표 단추와 같은 26 으로 맞추고 (기본 단추는
                                           MinHeight 28 · 위아래 여백 3) 머리 줄 높이가 변하지 않게 합니다.
                                         -->
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top"
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
                                                     Margin="0,0,6,0">
                                             <Button Style="{StaticResource PrimaryButton}" Content="{x:Static t:MainTexts.A3Analyze}"
                                                     Click="OnCardAnalyze" Tag="{Binding Number}" ToolTip="{Binding AnalyzeTip}"
                                                     Height="26" MinHeight="0" Padding="10,0" Margin="0" FontSize="12" />
                                         </StackPanel>
 
-                                        <Button Grid.Column="4" Style="{StaticResource ArrowButton}"
+                                        <Button Grid.Column="3" Style="{StaticResource ArrowButton}"
                                                 Content="{x:Static t:MainTexts.CardClick}" Click="OnCardClick" Tag="{Binding Number}"
                                                 VerticalAlignment="Top"
                                                 ToolTip="{x:Static t:MainTexts.CardClickTip}" />
@@ -1495,12 +1493,24 @@
                                                 </StackPanel>
 
                                                 <!-- 분석 1 / 2 / 3 — 가로 셋, 칸 셋과 같은 차례 -->
+                                                <!-- 1.95: 같은 폭 셋 → 분석 1 · 2 를 넓게, 3 은 좁게 (분석 2 글이 줄바꿈되고 오른쪽이 남던 것) -->
                                                 <ItemsControl ItemsSource="{Binding Cells}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
-                                                            <UniformGrid Rows="1" Columns="3" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="1.4*" />
+                                                                    <ColumnDefinition Width="1.4*" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                            </Grid>
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemContainerStyle>
+                                                        <Style TargetType="{x:Type ContentPresenter}">
+                                                            <Setter Property="Grid.Column" Value="{Binding Column}" />
+                                                        </Style>
+                                                    </ItemsControl.ItemContainerStyle>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type main:HistoryCellVm}">
                                                             <!--
@@ -1523,7 +1533,7 @@
                                                                                    FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"
                                                                                    TextTrimming="CharacterEllipsis" />
                                                                     </DockPanel>
-                                                                    <TextBlock Text="{Binding SummaryText}" FontSize="10"
+                                                                    <TextBlock Text="{Binding SummaryText}" FontSize="10" TextWrapping="NoWrap"
                                                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding SummaryText}" />
                                                                 </StackPanel>
                                                             </Border>

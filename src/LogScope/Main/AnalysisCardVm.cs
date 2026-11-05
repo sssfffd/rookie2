@@ -644,8 +644,10 @@ namespace LogScope.Main
                 if (_blocked) return _blockText;
                 if (Number == 1)
                 {
-                    if (!_has) return "아직 비교 전";
-                    return "점수 " + _score.ToString("0.#") + (_countMain.Length > 0 ? " · 차이 " + _countMain + " IO" : string.Empty);
+                    if (!_has) return "결과 없음";
+                    // 1.95: "점수" → "공정 일치율", "차이 IO" 는 config.txt label.diff
+                    return "공정 일치율 " + _score.ToString("0.#") + " %"
+                         + (_countMain.Length > 0 ? " · " + AppConfig.Current.DiffLabel + " " + _countMain : string.Empty);
                 }
                 if (HasVerdict)
                 {
@@ -653,7 +655,7 @@ namespace LogScope.Main
                     return _wordNote.Length > 0 ? _wordNote : _word;
                 }
                 if (_has) return "점수 " + _score.ToString("0.#");
-                return Number == 2 ? "아직 읽기 전" : "아직 결과 없음";
+                return "결과 없음";
             }
         }
 
@@ -665,7 +667,7 @@ namespace LogScope.Main
             if (grade == ScoreBands.GradeGood) return "정상";
             if (grade == ScoreBands.GradeWarn) return "주의";
             if (grade == ScoreBands.GradeBad) return "이상";
-            return "아직";
+            return "결과 없음";   // 1.95: "아직" → "결과 없음"
         }
 
         public static string IconOf(string grade)
@@ -735,6 +737,7 @@ namespace LogScope.Main
             get
             {
                 if (HasVerdict || UsesVerdict) return string.Empty;
+                if (Number == 1) return "%";   // 1.95: 분석 1 은 "공정 일치율" (%)
                 return "/ " + MaxScore.ToString("0");
             }
         }
@@ -854,10 +857,9 @@ namespace LogScope.Main
             {
                 if (_groups.Count > 0 || _lines.Count > 0) return string.Empty;
                 if (_lineNote.Length > 0) return _lineNote;
-                // 분석 3 은 그룹 이야기를 적지 않습니다 — 적을 글이 없으면 비워 둡니다 (1.36).
-                if (HasA3Box) return string.Empty;
-                if (!Ready) return "아직 만들지 않았습니다.";
-                return "그룹이 없거나 아직 비교하지 않았습니다. 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
+                // 1.95: 요약이 비어 있으면 "결과 없음" (사용자 요청). 분석 1 은 견줬는데 그룹이 없을 때만 그렇다고.
+                if (Number == 1 && _has) return "그룹이 없습니다 — 그래프 화면 왼쪽에서 IO 를 그룹으로 묶을 수 있습니다.";
+                return "결과 없음";
             }
         }
     

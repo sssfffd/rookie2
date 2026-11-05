@@ -67,15 +67,20 @@ namespace LogScope.Settings
 
         // ---- 분석 1 점수 → 판정 경계 (1.92) ----
         /// <summary>이 점수부터 정상 (초록). config.txt 의 score.good.</summary>
-        public const double DefaultScoreGood = 90;
+        public const double DefaultScoreGood = 95;   // 1.95: 90 → 95 (사용자 요청)
         /// <summary>이 점수부터 주의 (노랑), 그 아래는 이상 (빨강). config.txt 의 score.warn.</summary>
-        public const double DefaultScoreWarn = 70;
+        public const double DefaultScoreWarn = 80;   // 1.95: 70 → 80
         private double _scoreGood = DefaultScoreGood, _scoreWarn = DefaultScoreWarn;
 
         /// <summary>1.93: 오차 칸 무게 — 이 % 만큼 벗어날 때마다 그 칸을 한 칸 더 (최대 3 배). config.txt score.size.</summary>
         public const double DefaultScoreSize = 50;
         private double _scoreSize = DefaultScoreSize;
         public double ScoreSize { get { return _scoreSize; } }
+
+        /// <summary>1.95: 메인 대시보드 "차이 IO" 칸의 이름 (config.txt label.diff).</summary>
+        public const string DefaultDiffLabel = "차이 IO";
+        private string _diffLabel = DefaultDiffLabel;
+        public string DiffLabel { get { return _diffLabel; } }
 
         /// <summary>정상 경계. 0 ~ 100, 주의 경계보다 커야 합니다 (아니면 둘 다 기본값).</summary>
         public double ScoreGood { get { return _scoreGood; } }
@@ -303,6 +308,7 @@ namespace LogScope.Settings
                 if (key == "fullname") { it._fullName = value; continue; }
                 if (key == "score.good") { it._scoreGood = Number(value, DefaultScoreGood); continue; }
                 if (key == "score.warn") { it._scoreWarn = Number(value, DefaultScoreWarn); continue; }
+                if (key == "label.diff") { it._diffLabel = value; continue; }
                 if (key == "score.size") { double v = Number(value, DefaultScoreSize); it._scoreSize = v > 0 ? v : DefaultScoreSize; continue; }
 
 
@@ -359,8 +365,9 @@ namespace LogScope.Settings
             sb.AppendLine("# fullname  : 창 제목에 들어가는 긴 이름. 길이는 마음대로 (화면을 안 먹습니다).");
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
             sb.AppendLine("#             한 줄 설명은 메인 화면 칸에 \"뜻\" 으로 나옵니다 (1.92).");
-            sb.AppendLine("# score.good · score.warn : 분석 1 점수 → 판정 경계 (1.92). good 이상 = 정상,");
-            sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상. 최종 판정은 분석 1 판정입니다.");
+            sb.AppendLine("# score.good · score.warn : 분석 1 공정 일치율 → 판정 경계 (기본 95 · 80). good 이상 = 정상,");
+            sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상. 최종 판정은 결과가 있는 분석 중 가장 나쁜 판정.");
+            sb.AppendLine("# label.diff : 메인 대시보드 \"차이 IO\" 칸의 이름 (1.95).");
             sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
             sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
             sb.AppendLine();
@@ -375,6 +382,7 @@ namespace LogScope.Settings
             sb.AppendLine("score.good = " + DefaultScoreGood.ToString("0"));
             sb.AppendLine("score.warn = " + DefaultScoreWarn.ToString("0"));
             sb.AppendLine("score.size = " + DefaultScoreSize.ToString("0"));
+            sb.AppendLine("label.diff = " + DefaultDiffLabel);
             sb.AppendLine();
             return sb.ToString();
         }

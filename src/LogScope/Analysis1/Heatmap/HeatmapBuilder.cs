@@ -145,7 +145,7 @@ namespace LogScope.Analysis1.Heatmap
             res.ChangedChannels = changed;
             if (opt.ShowLengthGap)
             {
-                const string gap = "로그 길이가 다릅니다 (판정 '로그 길이') — 한쪽 로그에만 있는 시간은 '이후 없음' · '이전 없음' 칸.";
+                const string gap = "공정 시간이 다릅니다 (판정 '공정 시간') — 한쪽 로그에만 있는 시간은 '이후 없음' · '이전 없음' 칸.";
                 res.Warning = res.Warning.Length > 0 ? res.Warning + " " + gap : gap;
             }
 

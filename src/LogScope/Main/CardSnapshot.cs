@@ -46,7 +46,7 @@ namespace LogScope.Main
             {
                 if (Word.Length > 0) return Word;
                 if (HasScore) return Score.ToString("0.#", CultureInfo.InvariantCulture);
-                return "-";
+                return "결과 없음";   // 1.95: "-" → "결과 없음"
             }
         }
 
@@ -87,7 +87,9 @@ namespace LogScope.Main
                     for (int i = 0; i < Groups.Count; i++) if (Groups[i].ChangedCount > 0) changed++;
                     return "그룹 " + Groups.Count.ToString("N0") + "개 중 " + changed.ToString("N0") + "개 달라짐";
                 }
-                return LineNote;
+                // 1.95: 비었거나 예전 "아직 …" 글이면 "결과 없음" (사용자 요청 — 저장된 기록도 이렇게 보임)
+                if (string.IsNullOrEmpty(LineNote) || LineNote.StartsWith("아직", StringComparison.Ordinal)) return "결과 없음";
+                return LineNote.Replace("\r", " ").Replace("\n", " · ");
             }
         }
 

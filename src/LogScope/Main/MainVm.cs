@@ -97,7 +97,7 @@ namespace LogScope.Main
                     if (js.DiffIos > 0 && Math.Abs(js.MeanWeightedRate - js.MeanErrorRate) >= 0.05)
                         sub += " (크기 반영 " + js.MeanWeightedRate.ToString("0.#", inv) + " %)";
                     if (js.LengthFactor < 0.9995)
-                        sub += " · 로그 길이 " + ((1 - js.LengthFactor) * 100).ToString("0.#", inv) + " % 다름";
+                        sub += " · 공정 시간 " + ((1 - js.LengthFactor) * 100).ToString("0.#", inv) + " % 다름";
                     Cards[0].SetCountBlock(js.DiffIos.ToString("N0") + " / " + js.TotalIos.ToString("N0"), sub);
                     Cards[0].SetScoreNote(note);
                 }
@@ -189,7 +189,7 @@ namespace LogScope.Main
             {
                 card.ClearVerdict();
                 card.SetLines(new List<CardLineVm>(),
-                    "아직 읽지 않았습니다. 위 칸에 견줄 자리를 넣고 [분석] 을 누르면 읽습니다.");
+                    "결과 없음");   // 1.95: History 에도 이 글이 남아 짧게 (사용자 요청)
                 return;
             }
 
@@ -750,7 +750,7 @@ namespace LogScope.Main
         public const string PseudoSteps = "공정 단계";
         public const string PseudoIos = "한쪽에만 있는 IO";
         /// <summary>1.93: 로그 길이가 다름 줄.</summary>
-        public const string PseudoLength = "로그 길이";
+        public const string PseudoLength = "공정 시간";   // 1.95: "로그 길이" → "공정 시간"
 
         /// <summary>오차 줄의 [이번만 허용] · [앞으로도 허용] · [허용 풀기].</summary>
         public void Allow(JudgeItem item, AllowChoice choice)

@@ -3875,7 +3875,7 @@ namespace LogScope.Tests
             old.BeforeName = "x.xlsx"; old.AfterName = "y.xlsx";
             var oldRow = new HistoryRowVm(AnalysisRecord.FromJson(Json.Parse(Json.Write(old.ToJson()))));
             Check("옛 기록도 칸 셋", oldRow.Cells.Count == 3 && oldRow.Cells[0].HeadText == "100"
-                  && oldRow.Cells[1].HeadText == "-" && oldRow.Cells[0].InputsText == "x.xlsx  →  y.xlsx",
+                  && oldRow.Cells[1].HeadText == "결과 없음" && oldRow.Cells[0].InputsText == "x.xlsx  →  y.xlsx",
                   oldRow.Cells[0].HeadText + "|" + oldRow.Cells[1].HeadText);
             Check("옛 기록 요약 자리 글", oldRow.Cells[2].SummaryText == "요약 없음 (1.42 전에 저장)", oldRow.Cells[2].SummaryText);
 
@@ -4382,7 +4382,7 @@ namespace LogScope.Tests
             foreach (HeatCell c in gu.Cells) if (!c.HasData && c.NoAfter > 0) noAfter++;
             Check("로그 길이를 보이면 이전 로그 끝까지 · 뒷부분은 '이후 없음' 칸", g.End >= da.TimeEnd - 1e-9 && noAfter > 0 && gu.GapBuckets == noAfter,
                   g.End.ToString("0.#") + " / " + noAfter);
-            Check("알림 줄에 로그 길이", g.Warning.Contains("로그 길이"), g.Warning);
+            Check("알림 줄에 공정 시간 (1.95 이름)", g.Warning.Contains("공정 시간"), g.Warning);
         }
 
         /// <summary>점수에 오차 크기 반영 (1.93).</summary>
@@ -4455,39 +4455,37 @@ namespace LogScope.Tests
                   r.Grade.ToString());
         }
 
-        /// <summary>메인 최종 판정 · 칸마다 판정 등 (1.92).</summary>
+        /// <summary>메인 최종 판정 (1.92, 1.95: 결과가 있는 분석 중 가장 나쁜 것) · 칸마다 판정 등.</summary>
         private static void OverallVerdictRules()
         {
-            Say("메인 — 최종 판정 (분석 1 기준) · 판정 등");
+            Say("메인 — 최종 판정 (결과 있는 분석 중 가장 나쁜 것) · 판정 등");
             var main = new MainVm(new AppState());
             AnalysisCardVm c1 = main.Cards[0], c2 = main.Cards[1], c3 = main.Cards[2];
+            c3.SetBlocked(false, "", "");
             OverallVm o = main.Overall;
-            Check("결과 전 — 최종 '아직'", o.Word == "아직" && o.Reason.Contains("분석 1 을 돌리면") && !o.HasReference, o.Word + " | " + o.Reason);
-            Check("결과 전 — 칸 등도 '아직' · 근거 줄", c1.LampWord == "아직" && c1.LampLine == "아직 비교 전" && c2.LampLine == "아직 읽기 전", c1.LampLine + " | " + c2.LampLine);
+            Check("결과 전 — 최종 '결과 없음'", o.Word == "결과 없음" && !o.HasReference, o.Word + " | " + o.Reason);
+            Check("결과 전 — 칸 등도 '결과 없음' · 근거 줄", c1.LampWord == "결과 없음" && c1.LampLine == "결과 없음" && c2.LampLine == "결과 없음",
+                  c1.LampLine + " | " + c2.LampLine);
             Check("뜻 = config 의 설명", c1.Meaning.Length > 0 && c1.Meaning == c1.Summary, c1.Meaning);
 
             var seen = new List<string>();
             o.PropertyChanged += delegate (object s, System.ComponentModel.PropertyChangedEventArgs e) { seen.Add(e.PropertyName); };
-            c1.SetScore(73.1);
+            c1.SetScore(85);
             c1.SetCountBlock("5 / 120", "평균 오차율 23.7 %");
-            Check("분석 1 점수 73.1 → 주의 (90 · 70)", c1.LampWord == "주의" && c1.LampIcon == "⚠" && o.Word == "주의", c1.LampWord + " " + o.Word);
-            Check("근거 줄 — 점수 · 차이 a / b IO", c1.LampLine == "점수 73.1 · 차이 5 / 120 IO" && o.Reason == "분석 1 기준 — 점수 73.1 · 차이 5 / 120 IO", o.Reason);
+            Check("분석 1 85 → 주의 (95 · 80) · 분석 2 · 3 결과 없음은 무시", c1.LampWord == "주의" && o.Word == "주의" && !o.HasReference, o.Word);
+            Check("근거 = 분석 이름 (config) · 공정 일치율 · 차이 IO", o.Reason == c1.Title + " — 공정 일치율 85 % · 차이 IO 5 / 120", o.Reason);
             Check("칸이 바뀌면 최종도 알림", seen.Contains("Word") && seen.Contains("Reason"), string.Join(",", seen.ToArray()));
 
             c2.SetVerdict("CRITICAL", ScoreBands.GradeBad, "바뀐 값 3 개", "3");
-            Check("분석 2 이상 → 최종은 그대로 주의 (분석 1 기준), 참고로 적음", o.Word == "주의" && o.HasReference
-                  && o.ReferenceNote.Contains("분석 2 이상") && c2.LampLine == "바뀐 값 3 개", o.ReferenceNote);
-            c1.SetScore(95);
+            Check("분석 2 이상 → 최종 이상 (가장 나쁜 것) · 근거는 분석 2 이름", o.Word == "이상" && o.Reason.StartsWith(c2.Title + " — ")
+                  && o.ReferenceNote == c1.Title + " 주의 · " + c2.Title + " 이상", o.Reason + " | " + o.ReferenceNote);
             c2.SetVerdict("PASS", ScoreBands.GradeGood, "", "0");
-            Check("분석 1 95 → 정상 · 2 정상이면 참고 없음", o.Word == "정상" && o.Icon == "✔" && !o.HasReference, o.ReferenceNote);
-            c3.SetBlocked(false, "", "");
+            c1.SetScore(96);
+            Check("분석 1 96 · 분석 2 정상 → 정상", o.Word == "정상" && o.Icon == "✔", o.Word);
             c3.SetVerdict("WARNING", ScoreBands.GradeWarn, "조금 다름", "");
-            Check("분석 3 주의 → 참고에 분석 3", o.Word == "정상" && o.ReferenceNote.Contains("분석 3 주의") && c3.LampLine == "조금 다름", o.ReferenceNote + " | " + c3.LampLine);
+            Check("분석 3 주의 → 최종 주의 · 근거 분석 3", o.Word == "주의" && o.Reason == c3.Title + " — 조금 다름", o.Reason);
             c3.SetBlocked(true, "LLM 서버에 닿지 않습니다", "");
-            Check("분석 3 을 못 쓰면 등은 '못 씀' · 참고에서 빠짐", c3.LampWord == "못 씀" && c3.LampGrade == ScoreBands.GradeNone
-                  && !o.HasReference && c3.LampLine == "LLM 서버에 닿지 않습니다", c3.LampWord + " | " + o.ReferenceNote);
-            c1.SetScore(50);
-            Check("분석 1 이상 (50) 이면 그보다 나쁜 것만 참고 — 주의는 안 적음", o.Word == "이상" && !o.HasReference, o.ReferenceNote);
+            Check("분석 3 을 못 쓰면 무시 · 등은 '못 씀'", c3.LampWord == "못 씀" && o.Word == "정상" && !o.ReferenceNote.Contains(c3.Title), o.Word + " | " + o.ReferenceNote);
         }
 
         /// <summary>히트맵 칸: 정각에 맞춘 경계 · 1 초 · 칸 수 상한 (1.89).</summary>
@@ -5322,7 +5320,7 @@ namespace LogScope.Tests
             Check("판정에 쓰는 것이 그대로면 다시 찾지 않음", ReferenceEquals(first, st.Judgement), "");
 
             var main = new MainVm(st);
-            Check("메인 분석 1 칸 = 점수 / 100 · 차이 4 / 6 IO · 평균 오차율 (1.81, 점수 셈 1.92)", main.Cards[0].ScoreOutOf == "/ 100"
+            Check("메인 분석 1 칸 = 공정 일치율 % · 차이 4 / 6 IO · 평균 오차율 (1.81, 셈 1.92, % 1.95)", main.Cards[0].ScoreOutOf == "%"
                   && main.Cards[0].CountMain == "4 / 6" && main.Cards[0].CountSub.StartsWith("평균 오차율 ")
                   && Math.Abs(main.Cards[0].Score - ExpectedScore(st)) < 0.051
                   && Math.Abs(ExpectedScore(st) - 100 * (1 - 4.0 / 6) * (1 - WeightedRate(st) / 100) * LengthOf(st)) < 1e-9 && main.Cards[0].Score < 100,
@@ -5640,7 +5638,7 @@ namespace LogScope.Tests
 
             var empty = new AnalysisCardVm(3, "분석 3", "", true);
             empty.SetLines(new List<CardLineVm>(), string.Empty);
-            Check("분석 3 요약은 글이 없으면 빈 칸 (그룹 이야기 안 함)", empty.GroupNote == "", empty.GroupNote);
+            Check("분석 3 요약은 글이 없으면 '결과 없음' (1.95 — 그룹 이야기 안 함)", empty.GroupNote == "결과 없음", empty.GroupNote);
             Check("분석 3 결과를 메인 칸에 적음 (1.37 에 다시 켬)", MainVm.A3ResultOnCard, "");
             Check("분석 3 칸 머리 줄(낱말 · 개수 · Note)은 안 적음 (1.38)", !MainVm.A3HeadlineOnCard, "");
 
@@ -5925,13 +5923,14 @@ namespace LogScope.Tests
             Check("기본 이름 1", def.Title(1) == "로그 비교", def.Title(1));
             Check("기본 이름 2", def.Title(2) == "DB 분석", def.Title(2));
             Check("기본 이름 3", def.Title(3) == "분석 3", def.Title(3));
-            Check("점수 판정 경계 기본 90 · 70 (1.92)", def.ScoreGood == 90 && def.ScoreWarn == 70, def.ScoreGood + " " + def.ScoreWarn);
+            Check("공정 일치율 판정 경계 기본 95 · 80 (1.95) · 차이 IO 이름 기본", def.ScoreGood == 95 && def.ScoreWarn == 80
+                  && def.DiffLabel == "차이 IO" && AppConfig.Parse(new[] { "label.diff = 다른 IO" }).DiffLabel == "다른 IO", def.ScoreGood + " " + def.ScoreWarn);
             AppConfig sc = AppConfig.Parse(new[] { "score.good = 95", "score.warn = 80" });
             Check("score.good · score.warn 읽기", sc.ScoreGood == 95 && sc.ScoreWarn == 80, sc.ScoreGood + " " + sc.ScoreWarn);
             AppConfig flip = AppConfig.Parse(new[] { "score.good = 60", "score.warn = 80" });
-            Check("뒤집힌 경계는 둘 다 기본값", flip.ScoreGood == 90 && flip.ScoreWarn == 70, flip.ScoreGood + " " + flip.ScoreWarn);
+            Check("뒤집힌 경계는 둘 다 기본값", flip.ScoreGood == 95 && flip.ScoreWarn == 80, flip.ScoreGood + " " + flip.ScoreWarn);
             AppConfig badNum = AppConfig.Parse(new[] { "score.good = 백", "score.warn = 120" });
-            Check("숫자 아님 · 범위 밖은 기본값", badNum.ScoreGood == 90 && badNum.ScoreWarn == 70, badNum.ScoreGood + " " + badNum.ScoreWarn);
+            Check("숫자 아님 · 범위 밖은 기본값", badNum.ScoreGood == 95 && badNum.ScoreWarn == 80, badNum.ScoreGood + " " + badNum.ScoreWarn);
             AppConfig keep = AppConfig.Current;
             try
             {

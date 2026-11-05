@@ -6,11 +6,10 @@ using LogScope.Common;
 namespace LogScope.Main
 {
     /// <summary>
-    /// 메인 화면 왼쪽 기둥의 <b>최종 판정</b> (1.92, 사용자 결정).
+    /// 메인 화면의 <b>최종 판정</b> (1.92, 1.95 에 규칙 바꿈 — 사용자 결정).
     ///
-    /// <b>최종 판정 = 분석 1 의 판정</b> (분석 1 이 메인). 분석 2 · 3 은 참고 — 분석 1 보다 나쁘면 아래에
-    /// "참고: 분석 2 주의" 로 적어 놓치지 않게 합니다. 칸 셋의 판정 등 (정상 · 주의 · 이상) 을 그대로 읽어서
-    /// 칸과 기둥이 어긋날 일이 없습니다 (칸이 바뀌면 여기도 바로 바뀜).
+    /// <b>최종 판정 = 결과가 있는 분석 (1 · 2 · 3) 중 가장 나쁜 판정</b>. 돌리지 않은 분석 (결과 없음 · 못 씀) 은 무시합니다.
+    /// 근거는 그 분석의 <b>이름</b> (config.txt) 으로 적습니다. 칸 셋의 판정 등을 그대로 읽어 칸과 어긋날 일이 없습니다.
     /// </summary>
     public sealed class OverallVm : ObservableObject
     {
@@ -31,10 +30,24 @@ namespace LogScope.Main
             }
         }
 
-        private AnalysisCardVm Main { get { return _cards.Count > 0 ? _cards[0] : null; } }
+        /// <summary>결과가 있는 칸 중 가장 나쁜 것 (같으면 앞 번호). 없으면 null.</summary>
+        private AnalysisCardVm Worst
+        {
+            get
+            {
+                AnalysisCardVm w = null;
+                foreach (AnalysisCardVm c in _cards)
+                {
+                    int r = AnalysisCardVm.RankOf(c.LampGrade);
+                    if (r == 0) continue;
+                    if (w == null || r > AnalysisCardVm.RankOf(w.LampGrade)) w = c;
+                }
+                return w;
+            }
+        }
 
-        /// <summary>색 — 분석 1 칸의 것 그대로.</summary>
-        public string Grade { get { return Main != null ? Main.Grade : ScoreBands.GradeNone; } }
+        /// <summary>색 — 가장 나쁜 칸의 것.</summary>
+        public string Grade { get { AnalysisCardVm w = Worst; return w != null ? w.LampGrade : ScoreBands.GradeNone; } }
 
         /// <summary>판정 등 모양 (칸과 같은 스타일을 쓰려고 같은 이름).</summary>
         public string LampGrade { get { return Grade; } }
@@ -45,31 +58,26 @@ namespace LogScope.Main
 
         public string Icon { get { return AnalysisCardVm.IconOf(Grade); } }
 
-        /// <summary>왜 그 판정인지 한 줄.</summary>
+        /// <summary>왜 그 판정인지 한 줄 — 가장 나쁜 분석의 이름과 근거.</summary>
         public string Reason
         {
             get
             {
-                if (Main == null || Grade == ScoreBands.GradeNone) return "분석 1 을 돌리면 최종 판정이 나옵니다";
-                return "분석 1 기준 — " + Main.LampLine;
+                AnalysisCardVm w = Worst;
+                if (w == null) return "분석을 돌리면 최종 판정이 나옵니다";
+                return w.Title + " — " + w.LampLine;
             }
         }
 
-        /// <summary>분석 2 · 3 중 분석 1 보다 나쁜 것 (참고). 없으면 빈 글자.</summary>
+        /// <summary>결과가 있는 분석마다 "이름 판정" (예: "로그 비교 주의 · DB 분석 정상"). 하나뿐이면 빈 글자.</summary>
         public string ReferenceNote
         {
             get
             {
-                int mine = AnalysisCardVm.RankOf(Grade);
                 var parts = new List<string>();
-                for (int i = 1; i < _cards.Count; i++)
-                {
-                    AnalysisCardVm c = _cards[i];
-                    int r = AnalysisCardVm.RankOf(c.LampGrade);   // 못 쓰는 칸 (회색) 은 참고에서 뺌
-                    if (r > mine && r >= 2)
-                        parts.Add("분석 " + c.Number + " " + c.LampWord);
-                }
-                return parts.Count == 0 ? string.Empty : "참고: " + string.Join(" · ", parts.ToArray()) + " — 따로 확인해 보세요";
+                foreach (AnalysisCardVm c in _cards)
+                    if (AnalysisCardVm.RankOf(c.LampGrade) > 0) parts.Add(c.Title + " " + c.LampWord);
+                return parts.Count < 2 ? string.Empty : string.Join(" · ", parts.ToArray());
             }
         }
 
