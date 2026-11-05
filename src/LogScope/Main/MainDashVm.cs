@@ -14,7 +14,7 @@ namespace LogScope.Main
     ///
     ///   숫자 패널 줄   최종 판정 · 점수 게이지 · 차이 IO · 평균 오차율 · 로그 길이 · 분석 2 · 분석 3
     ///   시간대별 차이  이전 로그 100 칸 막대 (차이 난 IO 수, 크게 벌어진 칸은 진하게) + 공정 단계 띠
-    ///   차이 큰 IO     크기 반영 오차율 순
+    ///   차이 발생 IO   크기 반영 오차율순, "N개 중 상위 M개" (1.97)
     ///   그룹 상태      차이 IO / 전체, 색
     ///
     /// 숫자는 모두 점수와 <b>같은 셈</b> (JudgeScore) 에서 나옵니다 — 패널마다 따로 세면 수가 어긋납니다.
@@ -143,7 +143,8 @@ namespace LogScope.Main
             Timeline = BuildTimeline(js, before, steps);
             Hotspot = HotspotOf(Timeline);
             TopIos = BuildTop(js, gradeOf, before, groups);
-            TopNote = js.DiffIos > TopCount ? "차이 IO " + js.DiffIos + " 개 중 위 " + TopCount + " 개" : string.Empty;
+            // 1.97: 늘 "N개 중 상위 M개" (차이 IO 가 8 개 이하여도)
+            TopNote = js.DiffIos > 0 ? TopNoteOf(js.DiffIos, TopIos.Count) : string.Empty;
             Groups = BuildGroups(js, gradeOf, before, after, groups);
             RaiseAll();
         }
@@ -263,6 +264,12 @@ namespace LogScope.Main
                 list.Add(r);
             }
             return list;
+        }
+
+        /// <summary>"12개 중 상위 8개".</summary>
+        public static string TopNoteOf(int total, int shown)
+        {
+            return total.ToString("N0", Inv) + "개 중 상위 " + shown.ToString("N0", Inv) + "개";
         }
 
         private static string GroupOf(string io, List<GroupDef> groups)

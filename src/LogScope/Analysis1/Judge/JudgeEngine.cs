@@ -166,6 +166,18 @@ namespace LogScope.Analysis1.Judge
         /// 1.93: 오차 칸 하나의 무게 — 1 + 벗어난 % / sizeStep (최대 3). 허용 오차를 살짝 넘은 칸은 1 (예전과 같음),
         /// 이전 값보다 sizeStep % 벗어나면 2, 그 두 배면 3. sizeStep = config.txt score.size (기본 50).
         /// </summary>
+        /// <summary>
+        /// 1.97: 벗어난 % 중 허용 오차를 넘은 만큼. 허용 % = max(퍼센트 허용, 절대 허용 ÷ |기준 값|) — 둘 중 하나라도 안이면
+        /// 같다고 보므로 너그러운 쪽. |기준 값| 은 벗어난 % 와 값 (excess) 에서 되돌립니다. 0 아래면 0.
+        /// </summary>
+        public static double OverTolerance(double percent, double excess, double absTol, double pctTol)
+        {
+            if (double.IsNaN(percent)) return double.NaN;
+            double allow = double.IsNaN(pctTol) ? 0 : Math.Max(0, pctTol);
+            if (absTol > 0 && excess > 0 && percent > 0) allow = Math.Max(allow, absTol * percent / excess);
+            return Math.Max(0, percent - allow);
+        }
+
         public static double WeightOf(double excessPercent, double sizeStep)
         {
             if (double.IsNaN(excessPercent) || excessPercent <= 0 || !(sizeStep > 0)) return 1.0;
@@ -227,7 +239,8 @@ namespace LogScope.Analysis1.Judge
                     double pk; s.Peaks.TryGetValue(it.Io, out pk);
                     if (Math.Abs(it.MaxExcessPercent) > pk) s.Peaks[it.Io] = Math.Abs(it.MaxExcessPercent);
                 }
-                double wt = WeightOf(it.MaxExcessPercent, sizeStep);
+                // 1.97: 크기 무게는 허용 오차를 넘은 만큼으로 (사용자 요청). 모르면 예전처럼 벗어난 %.
+                double wt = WeightOf(double.IsNaN(it.OverPercent) ? it.MaxExcessPercent : it.OverPercent, sizeStep);
                 double[] m;
                 if (!marks.TryGetValue(it.Io, out m)) { m = new double[Buckets]; marks[it.Io] = m; }
                 double had; maxW.TryGetValue(it.Io, out had); if (wt > had) maxW[it.Io] = wt;
@@ -310,6 +323,11 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>그때의 오차 % (범위 끝 값 대비). 모르면 NaN.</summary>
         public double MaxExcessPercent = double.NaN;
+        /// <summary>
+        /// 1.97: <b>허용 오차를 넘은 만큼</b> (%) — 벗어난 % 에서 그 IO 의 허용 오차 (퍼센트 · 절대값 중 너그러운 쪽) 를 뺀 것.
+        /// 공정 일치율의 크기 무게가 이것을 씁니다 (허용 오차를 살짝 넘은 것은 0 에 가까움). 모르면 NaN.
+        /// </summary>
+        public double OverPercent = double.NaN;
 
         /// <summary>가장 크게 벗어난 순간과 그때의 값 설명.</summary>
         public double PeakTime;
@@ -810,6 +828,7 @@ namespace LogScope.Analysis1.Judge
                     it.Duration = Math.Max(0, r.End - r.Start);
                     it.MaxExcess = r.Excess;
                     it.MaxExcessPercent = r.Percent;
+                    it.OverPercent = cat ? ToleranceRule.NameMismatchPercent : JudgeScore.OverTolerance(r.Percent, r.Excess, abs, pct);   // 1.97
                     it.PeakTime = r.PeakTime;
                     it.PeakText = r.PeakText;
                     it.MissingInAfter = r.Reverse && !r.Forward;

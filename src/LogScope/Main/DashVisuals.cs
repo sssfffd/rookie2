@@ -186,6 +186,60 @@ namespace LogScope.Main
         }
     }
 
+    /// <summary>
+    /// 판정 표시 (1.97) — 글자 (✔ ⚠ ✖ ○ –) 는 글꼴마다 크기 · 굵기가 제각각이라 같은 크기의 원 하나로 그립니다.
+    /// 정상 = 체크, 주의 = 느낌표, 이상 = ×, 그 밖 (결과 없음 · 못 씀) = 빈 원. 크기는 Width · Height (기본 14).
+    /// 메인 화면은 결과가 없으면 이 그림을 감추고 "결과 없음" 글자만 둡니다 (LampIconTile 꼴).
+    /// </summary>
+    public sealed class LampIcon : DashVisual
+    {
+        public static readonly DependencyProperty GradeProperty = DependencyProperty.Register(
+            "Grade", typeof(string), typeof(LampIcon), new FrameworkPropertyMetadata(ScoreBands.GradeNone, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public string Grade { get { return (string)GetValue(GradeProperty); } set { SetValue(GradeProperty, value); } }
+
+        public LampIcon()
+        {
+            Width = 14; Height = 14;
+            VerticalAlignment = VerticalAlignment.Center;
+        }
+
+        protected override void OnRender(DrawingContext dc)
+        {
+            double s = Math.Min(ActualWidth, ActualHeight);
+            if (s < 4) return;
+            double r = s / 2 - 0.75;
+            var c = new Point(ActualWidth / 2, ActualHeight / 2);
+            string g = Grade;
+            bool has = g == ScoreBands.GradeGood || g == ScoreBands.GradeWarn || g == ScoreBands.GradeBad;
+            Brush main = GradeBrush(g, false);
+            if (!has)
+            {
+                var ring = new Pen { Brush = Muted, Thickness = 1.5 };
+                dc.DrawEllipse(null, ring, c, r, r);
+                return;
+            }
+            dc.DrawEllipse(main, null, c, r + 0.75, r + 0.75);
+            var mark = new Pen { Brush = Brushes.White, Thickness = Math.Max(1.4, s / 9), StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            double u = r * 0.5;
+            if (g == ScoreBands.GradeGood)
+            {
+                dc.DrawLine(mark, new Point(c.X - u, c.Y), new Point(c.X - u * 0.25, c.Y + u * 0.7));
+                dc.DrawLine(mark, new Point(c.X - u * 0.25, c.Y + u * 0.7), new Point(c.X + u, c.Y - u * 0.6));
+            }
+            else if (g == ScoreBands.GradeWarn)
+            {
+                dc.DrawLine(mark, new Point(c.X, c.Y - u), new Point(c.X, c.Y + u * 0.25));
+                dc.DrawLine(mark, new Point(c.X, c.Y + u * 0.8), new Point(c.X, c.Y + u * 0.85));
+            }
+            else
+            {
+                dc.DrawLine(mark, new Point(c.X - u * 0.75, c.Y - u * 0.75), new Point(c.X + u * 0.75, c.Y + u * 0.75));
+                dc.DrawLine(mark, new Point(c.X - u * 0.75, c.Y + u * 0.75), new Point(c.X + u * 0.75, c.Y - u * 0.75));
+            }
+        }
+    }
+
     /// <summary>오차율 막대 — 진한 = 시간 오차율, 옅은 = 크기 반영 오차율 (0 ~ 100).</summary>
     public sealed class RateBar : DashVisual
     {

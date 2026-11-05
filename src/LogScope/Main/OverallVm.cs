@@ -26,7 +26,7 @@ namespace LogScope.Main
             string n = e.PropertyName;
             if (n == "Grade" || n == "LampGrade" || n == "LampLine" || n == "LampWord" || string.IsNullOrEmpty(n))
             {
-                Raise("Grade"); Raise("LampGrade"); Raise("Word"); Raise("Icon"); Raise("Reason"); Raise("ReferenceNote"); Raise("HasReference");
+                Raise("Grade"); Raise("LampGrade"); Raise("Word"); Raise("Icon"); Raise("Reason"); Raise("HasReason"); Raise("ReferenceNote"); Raise("HasReference");
             }
         }
 
@@ -64,10 +64,13 @@ namespace LogScope.Main
             get
             {
                 AnalysisCardVm w = Worst;
-                if (w == null) return "분석을 돌리면 최종 판정이 나옵니다";
+                if (w == null) return string.Empty;           // 1.97: 결과가 없으면 "결과 없음" 한 마디만
                 return w.Title + " — " + w.LampLine;
             }
         }
+
+        /// <summary>근거 줄이 있는지 (1.97 — 결과가 없으면 줄을 감춰 "결과 없음" 이 칸 가운데에 옴).</summary>
+        public bool HasReason { get { return Reason.Length > 0; } }
 
         /// <summary>결과가 있는 분석마다 "이름 판정" (예: "로그 비교 주의 · DB 분석 정상"). 하나뿐이면 빈 글자.</summary>
         public string ReferenceNote

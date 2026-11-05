@@ -31,7 +31,7 @@ namespace LogScope.Analysis2
         /// 두 화면이 같은 글을 쓰면 한쪽이 거짓이 됩니다 — 그래서 글은
         /// 둘이지만 <b>자리는 여기 한 곳</b>입니다.
         /// </summary>
-        public const string NoneOnCard = "누르면 파일 고르기 · 끌어다 놓기 (.sql / .csv)";
+        public const string NoneOnCard = "누르거나 끌어다 놓기 · .sql / .csv 파일";
 
         /// <summary>
         /// 경로의 <b>마지막 조각</b>. 칸이 좁아서 전체 경로는 들어가지

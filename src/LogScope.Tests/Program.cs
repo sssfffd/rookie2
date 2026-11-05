@@ -4325,8 +4325,10 @@ namespace LogScope.Tests
             Check("시간대별 막대 합 = 차이 IO 들의 오차 칸 합 (점수와 같은 100 칸)", d.Timeline.Counts.Length == 100 && buckets == expect, buckets + " / " + expect);
             bool sorted = true;
             for (int i = 1; i < d.TopIos.Count; i++) if (d.TopIos[i].WeightedRate > d.TopIos[i - 1].WeightedRate) sorted = false;
-            Check("차이 큰 IO — 크기 반영 오차율 순 · 판정 낱말", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
+            Check("차이 발생 IO — 크기 반영 오차율순 · 판정 낱말", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
                   && d.TopIos.Count == Math.Min(MainDashVm.TopCount, js.DiffIos), d.TopIos.Count + " " + js.DiffIos);
+            Check("1.97 늘 'N개 중 상위 M개'", d.TopNote == js.DiffIos + "개 중 상위 " + d.TopIos.Count + "개"
+                  && MainDashVm.TopNoteOf(1234, 8) == "1,234개 중 상위 8개", d.TopNote);
             DashIoRow spike = d.TopIos.Find(x => x.Name == "SPIKE");
             Check("그룹 이름 · 언제 · 최대 % 가 붙음", spike == null || (spike.Group == "가" && spike.WhenText != "-" && spike.PeakText.StartsWith("최대")),
                   spike == null ? "SPIKE 없음" : spike.Group + " | " + spike.WhenText + " | " + spike.PeakText);
@@ -4392,6 +4394,12 @@ namespace LogScope.Tests
             Check("무게: 0 % → 1 · 25 % → 1.5 · 50 % → 2 · 100 % 이상 → 3 (score.size 50)",
                   JudgeScore.WeightOf(0, 50) == 1 && JudgeScore.WeightOf(25, 50) == 1.5 && JudgeScore.WeightOf(50, 50) == 2
                   && JudgeScore.WeightOf(100, 50) == 3 && JudgeScore.WeightOf(500, 50) == 3 && JudgeScore.WeightOf(double.NaN, 50) == 1, "");
+            // 1.97: 무게는 허용 오차를 <b>넘은 만큼</b>으로 — 이전 값 대비 7 %, 허용 5 % → 2 %
+            Check("1.97 허용 오차 넘은 만큼 — % 허용 · 절대 허용 (이전 값 대비 %로 바꿔) · 둘 중 큰 것",
+                  Math.Abs(JudgeScore.OverTolerance(7, 0.7, 0, 5) - 2) < 1e-9
+                  && Math.Abs(JudgeScore.OverTolerance(20, 2, 1, 5) - 10) < 1e-9
+                  && JudgeScore.OverTolerance(3, 0.3, 0, 5) == 0
+                  && double.IsNaN(JudgeScore.OverTolerance(double.NaN, 1, 1, 5)), "");
 
             LogDataset da = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
             LogDataset db = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
@@ -4464,6 +4472,10 @@ namespace LogScope.Tests
             c3.SetBlocked(false, "", "");
             OverallVm o = main.Overall;
             Check("결과 전 — 최종 '결과 없음'", o.Word == "결과 없음" && !o.HasReference, o.Word + " | " + o.Reason);
+            Check("1.97 결과 전 — 근거 줄 없음 (\"분석을 돌리면…\" 지움)", o.Reason.Length == 0 && !o.HasReason, o.Reason);
+            Check("1.97 칸 안내 같은 꼴 — 누르거나 끌어다 놓기 · 무엇",
+                  main.BeforeHint == "누르거나 끌어다 놓기 · 로그 파일" && main.DbBeforeHint == "누르거나 끌어다 놓기 · .sql / .csv 파일"
+                  && MainTexts.A3NoneOnCard == "누르거나 끌어다 놓기 · 폴더", main.BeforeHint + " | " + main.DbBeforeHint);
             Check("결과 전 — 칸 등도 '결과 없음' · 근거 줄", c1.LampWord == "결과 없음" && c1.LampLine == "결과 없음" && c2.LampLine == "결과 없음",
                   c1.LampLine + " | " + c2.LampLine);
             Check("뜻 = config 의 설명", c1.Meaning.Length > 0 && c1.Meaning == c1.Summary, c1.Meaning);

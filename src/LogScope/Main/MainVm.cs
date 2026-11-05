@@ -933,7 +933,7 @@ namespace LogScope.Main
         public string BeforeDetail { get { return HasText(_waitBefore) ? MainTexts.Waiting : Detail(_state.Before); } }
         public string AfterDetail { get { return HasText(_waitAfter) ? MainTexts.Waiting : Detail(_state.After); } }
 
-        private const string LogHint = "누르거나 끌어다 놓아 여세요";
+        private const string LogHint = "누르거나 끌어다 놓기 · 로그 파일";   // 1.97: 분석 2 · 3 칸과 같은 꼴
 
         private static string Detail(LogDataset ds)
         {

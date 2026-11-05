@@ -86,6 +86,26 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- 1.97: 분석 2 · 3 칸의 판정 낱말 — 결과가 없으면 왼쪽 칸들의 "결과 없음" 과 같은 글꼴 (16 · 보통 · 흐림) -->
+        <Style x:Key="LampWordTile" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource LampText}">
+            <Setter Property="FontSize" Value="22" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeNone}">
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="FontWeight" Value="Normal" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- 1.97: 판정 표시는 그림 하나 (LampIcon) — 결과가 없으면 감춤 (왼쪽 칸들처럼 "결과 없음" 글자만) -->
+        <Style x:Key="LampIconTile" TargetType="{x:Type main:LampIcon}">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LampGrade}" Value="{x:Static main:ScoreBands.GradeNone}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="DashUnit" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="4,0,0,5" />
@@ -165,14 +185,21 @@
                 <!-- 최종 판정 -->
                 <Border Grid.Column="0" DataContext="{Binding Overall}" Style="{StaticResource LampBadge}"
                         CornerRadius="8" Padding="16,12" Margin="6">
-                    <StackPanel>
+                    <!-- 1.97: 이름 줄 아래 남는 높이의 가운데에 판정 (결과가 없을 때 "결과 없음" 이 위에 붙지 않게) -->
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
                         <TextBlock Text="{x:Static t:MainTexts.FinalVerdictTile}" FontSize="12" FontWeight="SemiBold"
                                    Foreground="{DynamicResource Brush.Muted}" />
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                            <TextBlock Text="{Binding Icon}" FontSize="28" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
-                            <TextBlock Text="{Binding Word}" FontSize="32" Margin="10,0,0,0" Style="{StaticResource LampText}" />
+                            <main:LampIcon Width="24" Height="24" Grade="{Binding LampGrade}" Style="{StaticResource LampIconTile}" Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding Word}" FontSize="32" Style="{StaticResource LampText}" />
                         </StackPanel>
-                        <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" FontSize="12" />
+                        <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" FontSize="12"
+                                   Visibility="{Binding HasReason, Converter={StaticResource BoolToVisibility}}" />
                         <TextBlock Text="{Binding DataContext.Dash.Hotspot, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                    TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0" FontWeight="SemiBold"
                                    Visibility="{Binding DataContext.Dash.HasHotspot, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
@@ -181,6 +208,7 @@
                                    Foreground="{DynamicResource Brush.Muted}"
                                    Visibility="{Binding HasReference, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
+                    </Grid>
                 </Border>
 
                 <!-- 점수 -->
@@ -239,8 +267,8 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Title}" Style="{StaticResource DashTileLabel}" TextTrimming="CharacterEllipsis" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-                            <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
-                            <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
+                            <main:LampIcon Width="16" Height="16" Grade="{Binding LampGrade}" Style="{StaticResource LampIconTile}" />
+                            <TextBlock Text="{Binding LampWord}" Style="{StaticResource LampWordTile}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -248,8 +276,8 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Title}" Style="{StaticResource DashTileLabel}" TextTrimming="CharacterEllipsis" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-                            <TextBlock Text="{Binding LampIcon}" FontSize="18" FontFamily="Segoe UI Symbol" Style="{StaticResource LampText}" />
-                            <TextBlock Text="{Binding LampWord}" FontSize="22" Margin="6,0,0,0" Style="{StaticResource LampText}" />
+                            <main:LampIcon Width="16" Height="16" Grade="{Binding LampGrade}" Style="{StaticResource LampIconTile}" />
+                            <TextBlock Text="{Binding LampWord}" Style="{StaticResource LampWordTile}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -295,11 +323,21 @@
                     <!-- 차이 큰 IO -->
                     <Border Grid.Column="0" Style="{StaticResource DashTile}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="{x:Static t:MainTexts.TopHeading}" FontSize="14" FontWeight="SemiBold" />
-                                <TextBlock Text="{x:Static t:MainTexts.TopNote}" FontSize="11" Margin="12,2,0,0" Foreground="{DynamicResource Brush.Muted}" />
-                                <TextBlock Text="{Binding Dash.TopNote}" FontSize="11" Margin="12,2,0,0" Foreground="{DynamicResource Brush.Muted}" />
-                            </StackPanel>
+                            <!-- 1.97: 제목 · 오차율순 (작게) · 막대 설명 · N개 중 상위 M개 -->
+                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="{x:Static t:MainTexts.TopHeading}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Static t:MainTexts.TopNote}" FontSize="11" Margin="8,2,0,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush.Muted}" />
+                                <StackPanel Orientation="Horizontal" Margin="16,2,0,0" VerticalAlignment="Center">
+                                    <Border Width="18" Height="8" CornerRadius="1" Background="{DynamicResource Brush.Warn}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{x:Static t:MainTexts.TopBarTime}" FontSize="11" Margin="4,0,0,0" Foreground="{DynamicResource Brush.Muted}" />
+                                    <Border Width="18" Height="8" CornerRadius="1" Margin="12,0,0,0" VerticalAlignment="Center"
+                                            Background="{DynamicResource Brush.WarnSoft}" BorderBrush="{DynamicResource Brush.Warn}" BorderThickness="0.5" />
+                                    <TextBlock Text="{x:Static t:MainTexts.TopBarWeighted}" FontSize="11" Margin="4,0,0,0" Foreground="{DynamicResource Brush.Muted}" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding Dash.TopNote}" FontSize="11" FontWeight="SemiBold" Margin="16,2,0,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush.Muted}" />
+                            </WrapPanel>
                             <TextBlock Text="{x:Static t:MainTexts.TopEmpty}" Foreground="{DynamicResource Brush.Muted}"
                                        Visibility="{Binding Dash.NoTopIos, Converter={StaticResource BoolToVisibility}}" />
                             <Grid Margin="0,0,0,4" Visibility="{Binding Dash.HasTopIos, Converter={StaticResource BoolToVisibility}}">
@@ -314,7 +352,7 @@
                                 <TextBlock Grid.Column="0" Text="판정" Style="{StaticResource DashHead}" />
                                 <TextBlock Grid.Column="1" Text="IO" Style="{StaticResource DashHead}" />
                                 <TextBlock Grid.Column="2" Text="그룹" Style="{StaticResource DashHead}" />
-                                <TextBlock Grid.Column="3" Text="오차율 (크기 반영)" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="3" Text="오차율 — 시간 % (크기 반영 %)" Style="{StaticResource DashHead}" />
                                 <TextBlock Grid.Column="4" Text="최대 차이" Style="{StaticResource DashHead}" TextAlignment="Right" HorizontalAlignment="Right" />
                                 <TextBlock Grid.Column="5" Text="언제" Style="{StaticResource DashHead}" Margin="12,0,0,0" />
                             </Grid>

@@ -44,13 +44,17 @@ namespace LogScope.Main
         public const string LegendOver = "허용 오차 넘음";
         public const string LegendBig = "이전 값보다 100 % 넘게";
         public const string LegendGap = "이후 로그 없음";
-        public const string TopHeading = "차이 큰 IO";
-        public const string TopNote = "크기 반영 오차율 순 · 진한 막대 = 시간, 옅은 막대 = 크기 반영";
+        public const string TopHeading = "차이 발생 IO List";
+        /// <summary>1.97: 제목 오른쪽에 작게 — 줄 차례.</summary>
+        public const string TopNote = "오차율순";
+        /// <summary>1.97: 막대 설명 — 진한 막대 · 옅은 막대가 무엇인지.</summary>
+        public const string TopBarTime = "시간 오차율 (허용 오차 밖 시간)";
+        public const string TopBarWeighted = "크기 반영 오차율 (넘은 크기만큼 더 김)";
         public const string TopEmpty = "차이 난 IO 가 없습니다.";
         public const string GroupHeading = "그룹 상태";
         public const string GroupNote = "차이 IO / 전체";
         public const string GroupEmpty = "그룹이 없습니다 — 분석 1 그래프 화면에서 IO 를 묶을 수 있습니다.";
-        public const string DetailHeading = "분석별 자세히 — 파일 넣기 · [분석] · 그룹별 요약";
+        public const string DetailHeading = "분석별 상세요약";
         /// <summary>단추 이름</summary>
         public const string CardClick = "↗";
         /// <summary>단추 마우스를 올리면 뜨는 설명</summary>
@@ -89,7 +93,7 @@ namespace LogScope.Main
         public const string LogNotSupported = "읽을 수 있는 로그 파일이 아닙니다.";
 
         /// <summary>분석 3 의 이전/이후 칸을 아직 안 정했을 때 칸에 적는 말</summary>
-        public const string A3NoneOnCard = "누르면 폴더 고르기 · 끌어다 놓기";
+        public const string A3NoneOnCard = "누르거나 끌어다 놓기 · 폴더";
         /// <summary>단추에 연결된 기능이 없을 때 알림</summary>
         public const string A3NoHandler = "분석 3 쪽에 이 단추와 연결된 기능이 아직 없습니다.";
 
