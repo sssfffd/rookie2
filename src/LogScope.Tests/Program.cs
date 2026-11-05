@@ -4568,7 +4568,8 @@ namespace LogScope.Tests
             o.PropertyChanged += delegate (object s, System.ComponentModel.PropertyChangedEventArgs e) { seen.Add(e.PropertyName); };
             c1.SetScore(85);
             c1.SetCountBlock("5 / 120", "평균 오차율 23.7 %");
-            Check("분석 1 85 → 주의 (95 · 80) · 분석 2 · 3 결과 없음은 무시", c1.LampWord == "주의" && o.Word == "주의" && !o.HasReference, o.Word);
+            Check("분석 1 85 → 주의 (95 · 80) · 분석 2 · 3 결과 없음은 무시", c1.LampWord == "주의" && o.Word == "주의" && !o.HasReference
+                  && Math.Abs(o.CompositeScore - 85) < 1e-9, o.Word);
             Check("근거 = 분석 이름 (config) · 공정 일치율 · 차이 IO", o.Reason == c1.Title + " — 공정 일치율 85 % · 차이 IO 5 / 120", o.Reason);
             Check("칸이 바뀌면 최종도 알림", seen.Contains("Word") && seen.Contains("Reason"), string.Join(",", seen.ToArray()));
 
@@ -4584,8 +4585,26 @@ namespace LogScope.Tests
             c1.SetScore(96);
             Check("분석 1 96 · 분석 2 정상 → 정상", o.Word == "정상" && o.Icon == "✔", o.Word);
             c3.SetVerdict("WARNING", ScoreBands.GradeWarn, "조금 다름", "");
-            Check("분석 3 주의 → 최종 주의 · 근거 분석 3", o.Word == "주의" && o.Reason == c3.Title + " — 조금 다름", o.Reason);
+            // 2.02: 가중 종합 점수 — (54 × 96 + 30 × 97.5 + 16 × 87.5) / 100 = 95.09 → 정상 (분석 3 주의 하나로 최종이 주의가 되지 않음)
+            Check("2.02 분석 1 96 · 분석 2 정상 · 분석 3 주의 → 종합 95.1 정상 (가장 나쁜 것 아님) · 근거 글은 분석 3",
+                  o.Word == "정상" && Math.Abs(o.CompositeScore - 95.09) < 1e-6 && o.CompositeText.StartsWith("종합 점수 95.1")
+                  && o.Reason == c3.Title + " — 조금 다름", o.CompositeScore + " " + o.Word);
             Check("2.00 분석 3 줄 = 모듈이 적은 유의점", o.Lines.Count == 3 && o.Lines[2].Text == "조금 다름", o.Lines.Count.ToString());
+            // 2.02 넉아웃: 분석 1 이 이상이면 종합 점수와 상관없이 최종 이상
+            c3.SetVerdict("PASS", ScoreBands.GradeGood, "", "");
+            c1.SetScore(78);   // 종합 (54 × 78 + 30 × 97.5 + 16 × 97.5) / 100 = 86.97 → 점수로는 주의
+            Check("2.02 넉아웃 — 분석 1 이상 (78) 이면 종합 87 이어도 최종 이상 · 까닭을 적음", o.Word == "이상"
+                  && Math.Abs(o.CompositeScore - 86.97) < 1e-6 && o.GateNote.StartsWith(c1.Title + " 이상"), o.CompositeScore + " " + o.Word + " " + o.GateNote);
+            AppConfig keepCfg = AppConfig.Current;
+            AppConfig.Current = AppConfig.Parse(new[] { "final.gate = 0" });
+            Check("2.02 final.gate = 0 이면 점수만 (87 → 주의)", o.Word == "주의" && o.GateNote.Length == 0, o.Word);
+            AppConfig.Current = AppConfig.Parse(new[] { "final.weights = 1, 1, 1" });
+            Check("2.02 final.weights 로 비중 바꿈 (1 : 1 : 1 → 평균 91)", Math.Abs(o.CompositeScore - (78 + 97.5 + 97.5) / 3) < 1e-6, o.CompositeScore.ToString());
+            AppConfig.Current = keepCfg;
+            Check("2.02 기본 가중치 54 · 30 · 16 (AHP) · 넉아웃 켬 · 잘못 적으면 기본값",
+                  AppConfig.Default.FinalWeights[0] == 54 && AppConfig.Default.FinalWeights[1] == 30 && AppConfig.Default.FinalWeights[2] == 16
+                  && AppConfig.Default.FinalGate && AppConfig.Parse(new[] { "final.weights = 1, x" }).FinalWeights[0] == 54, "");
+            c1.SetScore(96);
             c3.SetBlocked(true, "LLM 서버에 닿지 않습니다", "");
             Check("분석 3 을 못 쓰면 무시 · 맨 위 칸도 '결과 없음' (1.98)", c3.LampWord == "결과 없음" && c3.LampGrade == ScoreBands.GradeNone && o.Word == "정상" && !o.ReferenceNote.Contains(c3.Title), o.Word + " | " + o.ReferenceNote);
         }

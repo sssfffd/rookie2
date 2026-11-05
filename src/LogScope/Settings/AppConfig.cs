@@ -78,6 +78,19 @@ namespace LogScope.Settings
         public double ScoreSize { get { return _scoreSize; } }
 
         /// <summary>
+        /// 2.02: 최종 판정의 분석별 가중치 (config.txt final.weights = 54, 30, 16). AHP (계층분석법) 쌍대비교로 정한 값 —
+        /// 분석 1 (실제 동작) 이 분석 2 (설정) 보다 2 배, 분석 3 (보조) 보다 3 배, 분석 2 가 분석 3 보다 2 배 중요하다고 두면
+        /// 고유벡터가 0.540 · 0.297 · 0.163 (일관성 비율 0.008 &lt; 0.1). 합이 100 이 아니어도 비율로 씁니다.
+        /// </summary>
+        public static readonly double[] DefaultFinalWeights = { 54, 30, 16 };
+        private double[] _finalWeights = (double[])DefaultFinalWeights.Clone();
+        public double[] FinalWeights { get { return _finalWeights; } }
+
+        /// <summary>2.02: 넉아웃 — 분석 1 이 이상이면 최종 이상, 다른 분석이 이상이면 최종은 적어도 주의 (config.txt final.gate, 기본 켬).</summary>
+        private bool _finalGate = true;
+        public bool FinalGate { get { return _finalGate; } }
+
+        /// <summary>
         /// 2.00: IO 하나가 공정 일치율에 미치는 영향 상한 (%) — config.txt score.iocap. IO 하나의 오차율이 아무리 커도
         /// 점수 셈에는 이만큼까지만 들어갑니다 (값 차이 하나가 점수를 통째로 끌어내리지 않게). 0 이하 · 100 이상이면 상한 없음.
         /// </summary>
@@ -317,6 +330,16 @@ namespace LogScope.Settings
                 if (key == "score.good") { it._scoreGood = Number(value, DefaultScoreGood); continue; }
                 if (key == "score.warn") { it._scoreWarn = Number(value, DefaultScoreWarn); continue; }
                 if (key == "label.diff") { it._diffLabel = value; continue; }
+                if (key == "final.weights")
+                {
+                    string[] parts = value.Split(new[] { ',', ':', '/', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var w = new double[3];
+                    bool ok = parts.Length == 3;
+                    for (int k = 0; ok && k < 3; k++) { w[k] = Number(parts[k], -1); if (!(w[k] >= 0)) ok = false; }
+                    if (ok && w[0] + w[1] + w[2] > 0) it._finalWeights = w;
+                    continue;
+                }
+                if (key == "final.gate") { string v = value.Trim().ToLowerInvariant(); it._finalGate = !(v == "0" || v == "off" || v == "false" || v == "끔"); continue; }
                 if (key == "score.iocap") { it._scoreIoCap = Number(value, DefaultScoreIoCap); continue; }
                 if (key == "score.size") { double v = Number(value, DefaultScoreSize); it._scoreSize = v > 0 ? v : DefaultScoreSize; continue; }
 
@@ -375,7 +398,10 @@ namespace LogScope.Settings
             sb.AppendLine("# analysis1 : 분석 화면의 이름.  \"이름 | 한 줄 설명\" 으로 적습니다.");
             sb.AppendLine("#             한 줄 설명은 메인 화면 칸에 \"뜻\" 으로 나옵니다 (1.92).");
             sb.AppendLine("# score.good · score.warn : 분석 1 공정 일치율 → 판정 경계 (기본 95 · 80). good 이상 = 정상,");
-            sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상. 최종 판정은 결과가 있는 분석 중 가장 나쁜 판정.");
+            sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상.");
+            sb.AppendLine("# final.weights : 최종 판정 = 결과가 있는 분석의 가중 종합 점수 (2.02). 분석 1 · 2 · 3 가중치 (AHP 쌍대비교 54 · 30 · 16).");
+            sb.AppendLine("#             분석 1 은 공정 일치율, 분석 2 · 3 은 판정 구간의 가운데 점수 (정상 97.5 · 주의 87.5 · 이상 40) 로 넣습니다.");
+            sb.AppendLine("# final.gate : 1 이면 분석 1 이 이상 → 최종 이상, 다른 분석이 이상 → 최종은 적어도 주의 (넉아웃). 0 이면 점수만.");
             sb.AppendLine("# label.diff : 메인 대시보드 \"차이 IO\" 칸의 이름 (1.95).");
             sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
             sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
@@ -394,6 +420,8 @@ namespace LogScope.Settings
             sb.AppendLine("score.warn = " + DefaultScoreWarn.ToString("0"));
             sb.AppendLine("score.size = " + DefaultScoreSize.ToString("0"));
             sb.AppendLine("score.iocap = " + DefaultScoreIoCap.ToString("0"));
+            sb.AppendLine("final.weights = 54, 30, 16");
+            sb.AppendLine("final.gate = 1");
             sb.AppendLine("label.diff = " + DefaultDiffLabel);
             sb.AppendLine();
             return sb.ToString();

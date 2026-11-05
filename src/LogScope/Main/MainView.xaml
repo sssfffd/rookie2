@@ -198,6 +198,10 @@
                             <main:LampIcon Width="24" Height="24" Grade="{Binding LampGrade}" Style="{StaticResource LampIconTile}" Margin="0,0,10,0" />
                             <TextBlock Text="{Binding Word}" FontSize="32" Style="{StaticResource LampText}" />
                         </StackPanel>
+                        <!-- 2.02: 최종 판정 = 가중 종합 점수 (+ 넉아웃). 셈법은 마우스를 올리면 -->
+                        <TextBlock Text="{Binding CompositeText}" FontSize="11" Foreground="{DynamicResource Brush.Muted}"
+                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding CompositeTip}"
+                                   Visibility="{Binding HasComposite, Converter={StaticResource BoolToVisibility}}" />
                         <!--
                           2.00: 결과가 있는 분석마다 두 줄 — [색 점] 분석 이름 / 무엇이 있었나 (사용자 요청 — 예전 근거 · 몰린 단계 ·
                           "이름 판정" 글은 뺌). 한글이 낱자 사이에서 꺾이지 않게 줄바꿈 없이, 넘치면 … 과 마우스 글.
