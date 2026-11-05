@@ -201,6 +201,7 @@ namespace LogScope.Analysis1.Compare
                     pct = ToleranceRule.ErrorPercent(bv, av);
                     over = ToleranceRule.IsOver(bv, av, limitAbs, limitPct);
                 }
+                if (t < opt.IgnoreUntil) over = false;   // 1.99: 초기 오차 무시
 
                 compared++;
                 sum += diff;
@@ -328,6 +329,9 @@ namespace LogScope.Analysis1.Compare
 
         /// <summary>이후 로그의 시간을 이만큼 밉니다 (시간축 단위).</summary>
         public double Shift = 0.0;
+
+        /// <summary>1.99: 초기 오차 무시 — 이전 로그 시간축으로 이 시각 전은 허용 오차를 넘어도 넘은 것으로 안 셈.</summary>
+        public double IgnoreUntil = double.NegativeInfinity;
 
         /// <summary>두 로그의 시작 시각을 자동으로 맞춥니다.</summary>
         public bool AutoAlign = true;

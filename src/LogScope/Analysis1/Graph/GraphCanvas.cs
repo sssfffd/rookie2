@@ -2633,10 +2633,15 @@ namespace LogScope.Analysis1.Graph
             var geo = new StreamGeometry();
             bool any = false;
             double width = 1.0 / _pixelsPerDip;   // 한 열의 가로 폭 (DIP)
+            // 1.99: 초기 오차 무시 — 이전 로그 시작부터 설정한 초 동안은 칠하지 않음 (판정 · 히트맵과 같게)
+            double until = _state != null ? _state.IgnoreUntil() : double.NegativeInfinity;
+            int first = 0;
+            if (!double.IsNegativeInfinity(until))
+                while (first < columns && XToTime(GridX(inner, first, frac) + width * 0.5) < until) first++;
 
             using (StreamGeometryContext ctx = geo.Open())
             {
-                int x = 0;
+                int x = first;
                 while (x < columns)
                 {
                     if (!Differs(x)) { x++; continue; }

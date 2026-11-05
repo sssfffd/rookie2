@@ -79,6 +79,12 @@ namespace LogScope.Settings
         public const string AutoAlign = "두 로그의 시작 시각을 자동으로 맞춤";
         /// <summary>글</summary>
         public const string ManualShiftTextLabel = "손으로 밀기";
+        /// <summary>1.99: 초기 오차 무시</summary>
+        public const string IgnoreStartLabel = "초기 오차 무시";
+        public const string IgnoreStartCheck = "처음";
+        public const string IgnoreStartUnit = "초 동안 오차 무시";
+        public const string IgnoreStartTip = "이전 로그 시작부터 이 시간 동안의 오차는 세지 않습니다 — 판정 · 공정 일치율 · 대시보드 · 히트맵 · 그래프 IO 목록. "
+                                           + "시간 열이 숫자면 그 숫자를 초로 봅니다 (머리에 ms · min 이 있으면 바꿔서). 시간 열이 없는 로그 (표본 번호) 에는 안 먹습니다.";
         /// <summary>입력 칸 마우스를 올리면 뜨는 설명</summary>
         public const string ManualShiftTextTip = "시간축 단위입니다. 시각 로그라면 밀리초.";
         /// <summary>글</summary>

@@ -192,14 +192,14 @@ namespace LogScope.Analysis1.Heatmap
 
             if (opt.BucketSpan > 0)
             {
-                res.BucketLabel = DescribeSpan(before.TimeKind, opt.BucketSpan);
-                return GrowToFit(opt.BucketSpan, total, cap, before.TimeKind, res);
+                res.BucketLabel = DescribeSpan(before, opt.BucketSpan);
+                return GrowToFit(opt.BucketSpan, total, cap, before, res);
             }
 
             bool clock = before.TimeKind == TimeKind.ClockMs || before.TimeKind == TimeKind.DateMs;
             double span = clock ? OneMinuteMs : Math.Max(total / 60.0, 1e-9);
-            res.BucketLabel = DescribeSpan(before.TimeKind, span);
-            return GrowToFit(span, total, cap, before.TimeKind, res);
+            res.BucketLabel = DescribeSpan(before, span);
+            return GrowToFit(span, total, cap, before, res);
         }
 
         /// <summary>
@@ -214,7 +214,7 @@ namespace LogScope.Analysis1.Heatmap
         }
 
         private static double GrowToFit(double span, double total, int maxBuckets,
-                                        TimeKind kind, HeatmapResult res)
+                                        LogDataset kind, HeatmapResult res)
         {
             if (maxBuckets <= 0) maxBuckets = 4000;
             if (span <= 0) span = Math.Max(total / 60.0, 1e-9);
@@ -227,15 +227,17 @@ namespace LogScope.Analysis1.Heatmap
             return span;
         }
 
-        private static string DescribeSpan(TimeKind kind, double span)
+        private static string DescribeSpan(LogDataset ds, double span)
         {
-            if (kind == TimeKind.ClockMs || kind == TimeKind.DateMs)
+            // 1.99: 숫자 시간 열도 초 · 분으로 (1 초 = AxisPerSecond)
+            double per = ds.AxisPerSecond();
+            if (!double.IsNaN(per) && per > 0)
             {
-                double minutes = span / OneMinuteMs;
-                if (minutes >= 1) return minutes.ToString("0.##") + "분";
-                return (span / 1000.0).ToString("0.##") + "초";
+                double sec = span / per;
+                if (sec >= 60) return (sec / 60.0).ToString("0.##") + "분";
+                return sec.ToString("0.##") + "초";
             }
-            if (kind == TimeKind.Index) return span.ToString("0.##") + "표본";
+            if (ds.TimeKind == TimeKind.Index) return span.ToString("0.##") + "표본";
             return NumberText.Plain(span);
         }
 
@@ -375,6 +377,7 @@ namespace LogScope.Analysis1.Heatmap
                         pct = ToleranceRule.ErrorPercent(b, a);
                         over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
                     }
+                    if (t < opt.IgnoreUntil) over = false;   // 1.99: 초기 오차 무시
 
 
                     HeatCell cell = row.Cells[k];
@@ -654,6 +657,9 @@ namespace LogScope.Analysis1.Heatmap
         /// 표를 씁니다 — 화면마다 "차이 난 IO" 가 달라지면 안 됩니다.
         /// </summary>
         public ToleranceTable Tolerances;
+
+        /// <summary>1.99: 초기 오차 무시 — 이전 로그 시간축으로 이 시각 전의 표본은 허용 오차를 넘어도 넘은 것으로 안 셈 (값은 그대로 보임).</summary>
+        public double IgnoreUntil = double.NegativeInfinity;
 
         /// <summary>칸이 너무 많아지지 않게 하는 상한. 0 이면 IO 수에 맞춰 (4000 ~ 20000, 1.89 — <see cref="HeatmapBuilder.AutoMaxBuckets"/>).</summary>
         public int MaxBuckets;

@@ -91,6 +91,12 @@ namespace LogScope.Analysis1.Judge
         public ToleranceTable Tolerances;
 
         /// <summary>
+        /// 1.99: 초기 오차 무시 — 이전 로그 시간축으로 이 시각 전의 값 오차는 세지 않습니다 (설정 "초기 오차 무시").
+        /// 끄면 −∞. 단계 없어짐 · 차례 · 로그 길이 같은 판정은 그대로입니다.
+        /// </summary>
+        public double IgnoreUntil = double.NegativeInfinity;
+
+        /// <summary>
         /// 전체 맞춤의 밀기 값 — 이후 시각 + Shift = 이전 시각. 단계가 없으면 이것으로 견주고, 단계가 있으면
         /// 단계 맞춤과 함께 봐서 둘 다에서 벗어난 곳만 오차로 남깁니다 (1.63). 그래프에서 고른 단계와 상관없는 값.
         /// </summary>
@@ -777,11 +783,12 @@ namespace LogScope.Analysis1.Judge
                 Seg seg = segs[s];
                 var runs = new List<ErrRun>();
                 // 이후 → 이전: 이후 값이 이전 범위 밖
+                // 1.99: 초기 오차 무시 — 이전 로그 시간축으로 opt.IgnoreUntil 전은 오차로 안 셈 (두 방향 다)
                 Scan(after, ai, seg.A0, seg.A1, before, bi, seg.B0, seg.B1, seg.Shift, seg.Slack,
-                     cat, abs, pct, false, runs);
+                     cat, abs, pct, false, runs, 0, false, opt.IgnoreUntil);
                 // 이전 → 이후: 이전에 있던 모양이 이후에 없음 (짧은 펄스가 빠진 것)
                 Scan(before, bi, seg.B0, seg.B1, after, ai, seg.A0, seg.A1, -seg.Shift, seg.Slack,
-                     cat, abs, pct, true, runs);
+                     cat, abs, pct, true, runs, 0, false, opt.IgnoreUntil);
                 if (runs.Count == 0) continue;
 
                 List<ErrRun> merged;
@@ -1083,7 +1090,8 @@ namespace LogScope.Analysis1.Judge
         private static void Scan(LogDataset tgt, int ti, int t0, int t1,
                                  LogDataset rf, int ri, int r0, int r1,
                                  double shift, double slack, bool cat, double abs, double pct,
-                                 bool reverse, List<ErrRun> runs, double addToTarget = 0, bool quick = false)
+                                 bool reverse, List<ErrRun> runs, double addToTarget = 0, bool quick = false,
+                                 double ignoreUntil = double.NegativeInfinity)
         {
             if (t1 < t0 || r1 < r0) return;
             double[] xt = tgt.Times; float[] xv = tgt.Channels[ti].Values;
@@ -1107,6 +1115,7 @@ namespace LogScope.Analysis1.Judge
                 double outT = reverse ? xt[k] : t;           // 이전 로그 시간축
                 float x = cat || addToTarget == 0 ? xv[k] : (float)(xv[k] + addToTarget);   // 1.66 값 보정 제안용
                 if (t < refStart || t > refEnd || float.IsNaN(x)) { cur = Close(cur, runs); continue; }
+                if (outT < ignoreUntil) { cur = Close(cur, runs); continue; }   // 1.99: 초기 오차 무시
 
                 while (add <= r1 && rt[add] <= t + slack)
                 {

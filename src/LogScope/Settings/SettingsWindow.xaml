@@ -111,6 +111,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static t:SettingsTexts.RelativeTolerancePercentTextLabel}"
@@ -135,6 +136,19 @@
                         <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource Muted}"
                                    Margin="10,0,0,0" VerticalAlignment="Center"
                                    Text="{x:Static t:SettingsTexts.Note5}" />
+
+                        <!-- 1.99: 초기 오차 무시 — [v] 처음 [ 10 ] 초 동안 오차 무시 -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{x:Static t:SettingsTexts.IgnoreStartLabel}"
+                                   Style="{StaticResource FieldLabel}" />
+                        <StackPanel Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,3"
+                                    ToolTip="{x:Static t:SettingsTexts.IgnoreStartTip}">
+                            <CheckBox Content="{x:Static t:SettingsTexts.IgnoreStartCheck}" VerticalAlignment="Center"
+                                      IsChecked="{Binding IgnoreStart, Mode=TwoWay}" />
+                            <TextBox Width="70" Margin="8,0,0,0" VerticalAlignment="Center"
+                                     Text="{Binding IgnoreStartSecondsText, UpdateSourceTrigger=LostFocus}"
+                                     IsEnabled="{Binding IgnoreStart}" />
+                            <TextBlock Text="{x:Static t:SettingsTexts.IgnoreStartUnit}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="{x:Static t:SettingsTexts.SortMetricIndexLabel}"
                                    Style="{StaticResource FieldLabel}" />

@@ -36,7 +36,8 @@ namespace LogScope.Analysis1.Heatmap
             // 1.55: "10초" 를 더했습니다. 0.1 초 기록에서 1 분 칸은 600 표본이 한 칸에 묶여
             // 아킹 같은 짧은 튐이 어느 순간인지 가늠하기 어렵습니다.
             // 1.89: "1초" · "5초" 를 더했습니다 (사용자 요청 — 짧은 튐을 칸 하나로).
-            get { return new[] { "자동 (시각이면 1분)", "1초", "5초", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
+            // 1.99: 시간 열이 숫자인 로그도 고를 수 있게 (숫자를 초로 봄) — "자동" 은 시각이면 1 분, 숫자면 60 칸.
+            get { return new[] { "자동 (시각 1분 · 숫자 60칸)", "1초", "5초", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
         }
 
         private int _bucketIndex;
@@ -52,21 +53,24 @@ namespace LogScope.Analysis1.Heatmap
             get
             {
                 LogDataset ds = _state.TimeReference;
-                bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
-                if (!clock) return 0;   // 시각 로그가 아니면 "분" 이 뜻이 없습니다.
+                // 1.99: 시각 로그 (밀리초) 뿐 아니라 숫자 시간 열도 — 1 초가 축으로 얼마인지 (AxisPerSecond). 표본 번호 축만 자동.
+                double per = ds != null ? ds.AxisPerSecond() : double.NaN;
+                if (double.IsNaN(per) || per <= 0) return 0;
 
+                double sec;
                 switch (_bucketIndex)
                 {
-                    case 1: return 1000.0;
-                    case 2: return 5000.0;
-                    case 3: return 10000.0;
-                    case 4: return 60000.0;
-                    case 5: return 5 * 60000.0;
-                    case 6: return 10 * 60000.0;
-                    case 7: return 30 * 60000.0;
-                    case 8: return 60 * 60000.0;
+                    case 1: sec = 1; break;
+                    case 2: sec = 5; break;
+                    case 3: sec = 10; break;
+                    case 4: sec = 60; break;
+                    case 5: sec = 5 * 60; break;
+                    case 6: sec = 10 * 60; break;
+                    case 7: sec = 30 * 60; break;
+                    case 8: sec = 60 * 60; break;
                     default: return 0;
                 }
+                return sec * per;
             }
         }
 
@@ -80,10 +84,13 @@ namespace LogScope.Analysis1.Heatmap
 
                 LogDataset ds = _state.TimeReference;
                 bool clock = ds != null && (ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs);
-                return clock
-                    ? "시간축이 시각이라 초 · 분 단위로 자르고, 칸 경계를 정각 (00 초 · 00 분) 에 맞춥니다."
-                      + " 칸이 너무 많으면 (IO 수에 따라 4000 ~ 20000 칸) 폭을 두 배씩 넓히고 아래 칸 폭 글에 적습니다."
-                    : "시간축이 시각이 아니라(샘플 번호 또는 단위 없는 숫자) 전체를 60 칸으로 나눕니다 — 칸 폭은 고를 수 없습니다.";
+                if (clock)
+                    return "시간축이 시각이라 초 · 분 단위로 자르고, 칸 경계를 정각 (00 초 · 00 분) 에 맞춥니다."
+                         + " 칸이 너무 많으면 (IO 수에 따라 4000 ~ 20000 칸) 폭을 두 배씩 넓히고 아래 칸 폭 글에 적습니다.";
+                if (ds != null && ds.TimeKind == TimeKind.Number)
+                    return "시간 열이 숫자라 그 숫자를 초로 봅니다 (머리에 ms · min 이 있으면 바꿔서). 자동이면 전체를 60 칸으로."
+                         + " 칸이 너무 많으면 폭을 두 배씩 넓히고 아래 칸 폭 글에 적습니다.";
+                return "시간 열이 없어 (표본 번호) 전체를 60 칸으로 나눕니다 — 초 · 분이 뜻이 없어 칸 폭은 고를 수 없습니다.";
             }
         }
 
@@ -107,14 +114,14 @@ namespace LogScope.Analysis1.Heatmap
         /// 것이 없습니다 — 고를 수 있게 두면 골라 놓고 왜 안 먹는지
         /// 찾게 됩니다.
         /// </summary>
-        /// 1.89: 시간축이 시각이 아니어도 못 고릅니다 (초 · 분이 뜻이 없어 60 칸으로 나눔 — 골라도 안 먹던 것).
+        /// 1.89: 시간축이 시각이 아니면 못 골랐으나, 1.99 부터 숫자 시간 열은 숫자를 초로 봐서 고를 수 있음 (표본 번호 축만 못 고름).
         public bool CanChooseSpan
         {
             get
             {
                 if (_byStep && HasSteps) return false;
                 LogDataset ds = _state.TimeReference;
-                return ds == null || ds.TimeKind == TimeKind.ClockMs || ds.TimeKind == TimeKind.DateMs;
+                return ds == null || !double.IsNaN(ds.AxisPerSecond());   // 1.99: 숫자 시간 열도 고를 수 있음
             }
         }
 
@@ -335,6 +342,7 @@ namespace LogScope.Analysis1.Heatmap
             o.OnlyNames = HeatmapOptions.NameFilter(_focusNames);
             o.Exclude = _state.NoDiffKeys();
             o.BucketSpan = BucketSpan;
+            o.IgnoreUntil = _state.IgnoreUntil();   // 1.99
             o.AbsoluteTolerance = _state.Settings.AbsoluteTolerance;
             o.RelativePercent = RelativePercent;
             // IO 별 허용 오차. 히트맵 위의 퍼센트 칸으로 기본값을 바꿔 가며

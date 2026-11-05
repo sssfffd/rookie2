@@ -64,6 +64,13 @@ namespace LogScope.Settings
         public double AbsoluteTolerance;
 
         /// <summary>
+        /// 1.99: 초기 오차 무시 — 켜면 이전 로그 시작부터 <see cref="IgnoreStartSeconds"/> 초 동안의 오차는 오차로 세지 않습니다
+        /// (판정 · 공정 일치율 · 대시보드 · 히트맵 · 그래프 IO 목록). 공정 시작 때 흔들리는 값을 빼려고.
+        /// </summary>
+        public bool IgnoreStart;
+        public double IgnoreStartSeconds = 10;
+
+        /// <summary>
         /// IO 하나에만 따로 걸어 둔 허용 오차. 여기 없는 IO 는 위의 기본값을
         /// 씁니다. 자세한 규칙은 <see cref="ToleranceTable"/>.
         /// </summary>
@@ -266,6 +273,8 @@ namespace LogScope.Settings
 
             root["relativeTolerancePercent"] = RelativeTolerancePercent;
             root["absoluteTolerance"] = AbsoluteTolerance;
+            root["ignoreStart"] = IgnoreStart;
+            root["ignoreStartSec"] = IgnoreStartSeconds;
 
             // IO 별 허용 오차. 안 정한 쪽(NaN)은 아예 안 적습니다 —
             // JSON 에 NaN 을 담을 수 없기도 하고, 없는 것이 곧 "기본값" 입니다.
@@ -447,6 +456,9 @@ namespace LogScope.Settings
                 ? Json.GetDouble(root, "alignLevel", double.NaN)
                 : double.NaN;
             s.StepIo = Json.GetString(root, "stepIo", string.Empty);
+            s.IgnoreStart = Json.GetBool(root, "ignoreStart", false);
+            s.IgnoreStartSeconds = Json.GetDouble(root, "ignoreStartSec", 10);
+            if (double.IsNaN(s.IgnoreStartSeconds) || s.IgnoreStartSeconds < 0) s.IgnoreStartSeconds = 10;
             s.StepZeroAtStart = Json.GetBool(root, "stepZero", false);
             s.StepSplit = Json.GetBool(root, "stepSplit", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);

@@ -152,6 +152,27 @@ namespace LogScope.Settings
             }
         }
 
+        /// <summary>1.99: 초기 오차 무시 켜기.</summary>
+        public bool IgnoreStart
+        {
+            get { return _s.IgnoreStart; }
+            set { if (_s.IgnoreStart == value) return; _s.IgnoreStart = value; Raise(); }
+        }
+
+        /// <summary>1.99: 초기 오차 무시 — 처음 몇 초 (0 이상).</summary>
+        public string IgnoreStartSecondsText
+        {
+            get { return _s.IgnoreStartSeconds.ToString("0.###", CultureInfo.InvariantCulture); }
+            set
+            {
+                double v;
+                if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return;
+                if (double.IsNaN(v) || v < 0 || v > 1e7) return;
+                _s.IgnoreStartSeconds = v;
+                Raise();
+            }
+        }
+
         public void ResetTolerance()
         {
             _s.RelativeTolerancePercent = ToleranceRule.DefaultPercent;

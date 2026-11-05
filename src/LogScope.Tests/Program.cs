@@ -170,6 +170,7 @@ namespace LogScope.Tests
                 ScoreMagnitudeRules();
                 HeatmapSignedRules();
                 MainDashRules();
+                IgnoreStartRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4304,6 +4305,48 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>1.99: 초기 오차 무시 — 처음 N 초의 오차는 판정 · 히트맵 · 비교에서 안 셈. 숫자 시간 열의 초 환산.</summary>
+        private static void IgnoreStartRules()
+        {
+            Say("초기 오차 무시 · 숫자 시간 열의 초");
+            LogDataset a = Open(Path.Combine(_dir, "heat_a.csv"), Orientation.Auto);
+            LogDataset b = Open(Path.Combine(_dir, "heat_b.csv"), Orientation.Auto);   // 120 ~ 180 초에 10 % 차이
+
+            var opt = new HeatmapOptions();
+            Check("끄면 히트맵에 차이 줄", HeatmapBuilder.Build(a, b, opt, null).Rows.Count == 1, "");
+            opt.IgnoreUntil = a.TimeStart + 200 * 1000.0;
+            Check("처음 200 초 무시 → 히트맵 차이 없음", HeatmapBuilder.Build(a, b, opt, null).Rows.Count == 0, "");
+
+            var st = new AppState();
+            st.Before = a; st.After = b;
+            st.Recompare(null);
+            int before = st.Judgement.Items.FindAll(x => x.Kind == JudgeKind.Value).Count;
+            st.Settings.IgnoreStart = true; st.Settings.IgnoreStartSeconds = 200;
+            Check("설정이 바뀌면 다시 비교할 것으로 봄 (서명에 들어감)", st.CompareSignature().Contains("|ign:"), "");
+            st.Recompare(null);
+            int after = st.Judgement.Items.FindAll(x => x.Kind == JudgeKind.Value).Count;
+            Check("처음 200 초 무시 → 판정 값 오차 없음 · 비교도 차이 없음", before > 0 && after == 0 && st.Comparison.Changed().Count == 0,
+                  before + " → " + after);
+            st.Settings.IgnoreStartSeconds = 150;
+            st.Recompare(null);
+            List<JudgeItem> left = st.Judgement.Items.FindAll(x => x.Kind == JudgeKind.Value);
+            Check("처음 150 초 무시 → 150 초 뒤만 남음", left.Count > 0 && left.TrueForAll(x => x.Start >= a.TimeStart + 150000 - 1e-6),
+                  left.Count > 0 ? a.FormatTime(left[0].Start) : "없음");
+            st.Settings.IgnoreStart = false;
+            Check("끄면 −∞", double.IsNegativeInfinity(st.IgnoreUntil()), "");
+
+            var n = new LogDataset { TimeKind = TimeKind.Number };
+            Check("숫자 시간 열 = 초 (단위 없음 1 · ms 1000 · min 1/60) · 표본 번호 NaN",
+                  n.AxisPerSecond() == 1 && new LogDataset { TimeKind = TimeKind.Number, TimeUnit = "ms" }.AxisPerSecond() == 1000
+                  && Math.Abs(new LogDataset { TimeKind = TimeKind.Number, TimeUnit = "min" }.AxisPerSecond() - 1.0 / 60) < 1e-12
+                  && double.IsNaN(new LogDataset { TimeKind = TimeKind.Index }.AxisPerSecond())
+                  && a.AxisPerSecond() == 1000, "");
+
+            var s = new AppSettings { IgnoreStart = true, IgnoreStartSeconds = 7.5 };
+            AppSettings back = AppSettings.FromJson(Json.Parse(Json.Write(s.ToJson())));
+            Check("설정 저장 · 읽기", back.IgnoreStart && back.IgnoreStartSeconds == 7.5, back.IgnoreStartSeconds.ToString());
         }
 
         /// <summary>메인 대시보드 (1.94) — 숫자가 칸 · 점수와 같은 셈인지.</summary>

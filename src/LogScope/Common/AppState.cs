@@ -185,10 +185,23 @@ namespace LogScope.Common
             return set;
         }
 
+        /// <summary>
+        /// 1.99: 초기 오차 무시 — 이 시각 (이전 로그 시간축) 전의 오차는 세지 않습니다. 끔 · 로그 없음 · 초가 뜻 없는 축이면 −∞.
+        /// </summary>
+        public double IgnoreUntil()
+        {
+            if (!Settings.IgnoreStart || Before == null || Before.Times.Length == 0) return double.NegativeInfinity;
+            double per = Before.AxisPerSecond();
+            double sec = Settings.IgnoreStartSeconds;
+            if (double.IsNaN(per) || double.IsNaN(sec) || sec <= 0) return double.NegativeInfinity;
+            return Before.TimeStart + sec * per;
+        }
+
         public DiffOptions BuildDiffOptions()
         {
             var o = new DiffOptions();
             o.Exclude = NoDiffKeys();
+            o.IgnoreUntil = IgnoreUntil();
             o.AbsoluteTolerance = Settings.AbsoluteTolerance;
             o.RelativePercent = Settings.RelativeTolerancePercent;
             o.Tolerances = ToleranceTable.From(Settings.RelativeTolerancePercent,
@@ -259,7 +272,8 @@ namespace LogScope.Common
               .Append('/').Append(Settings.AlignOccurrence).Append('/').Append(Settings.AlignLevel.ToString("R", inv))
               .Append("|trig:").Append(TriggerShift.ToString("R", inv))
               .Append("|rel:").Append(Settings.RelativeTolerancePercent.ToString("R", inv))
-              .Append("|abs:").Append(Settings.AbsoluteTolerance.ToString("R", inv));
+              .Append("|abs:").Append(Settings.AbsoluteTolerance.ToString("R", inv))
+              .Append("|ign:").Append(IgnoreUntil().ToString("R", inv));
             foreach (ToleranceOverride t in Settings.Tolerances)
             {
                 if (t == null) continue;
@@ -306,6 +320,7 @@ namespace LogScope.Common
             o.Rules = Settings.AllowRules;
             o.Once = AllowOnce;
             o.Exclude = NoDiffKeys();
+            o.IgnoreUntil = IgnoreUntil();   // 1.99
             return o;
         }
 
@@ -369,7 +384,8 @@ namespace LogScope.Common
               .Append(Before.Times.Length).Append('|').Append(After.Times.Length).Append('|')
               .Append(shift.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
               .Append(Settings.RelativeTolerancePercent.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
-              .Append(Settings.AbsoluteTolerance.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+              .Append(Settings.AbsoluteTolerance.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append('|')
+              .Append(IgnoreUntil().ToString("R", System.Globalization.CultureInfo.InvariantCulture));
             for (int i = 0; i < Settings.Tolerances.Count; i++)
             {
                 ToleranceOverride t = Settings.Tolerances[i];

@@ -193,6 +193,22 @@ namespace LogScope.Analysis1.LogFile
         }
 
         public double TimeStart { get { return Times.Length > 0 ? Times[0] : 0.0; } }
+
+        /// <summary>
+        /// 1 초가 시간축으로 얼마인지 (1.99). 시각 로그 = 1000 (밀리초). 숫자 시간 열은 머리의 단위 글자로
+        /// (ms → 1000, min · 분 → 1/60, h · 시간 → 1/3600, 그 밖 · 없음 → 초로 봐서 1). 표본 번호 축은 초가 뜻이 없어 NaN.
+        /// </summary>
+        public double AxisPerSecond()
+        {
+            if (TimeKind == TimeKind.ClockMs || TimeKind == TimeKind.DateMs) return 1000.0;
+            if (TimeKind != TimeKind.Number) return double.NaN;
+            string u = (TimeUnit ?? string.Empty).Trim().ToLowerInvariant();
+            if (u == "ms" || u == "msec" || u == "millisecond" || u == "milliseconds" || u == "밀리초") return 1000.0;
+            if (u == "us" || u == "µs" || u == "usec") return 1e6;
+            if (u == "min" || u == "mins" || u == "minute" || u == "minutes" || u == "분") return 1.0 / 60.0;
+            if (u == "h" || u == "hr" || u == "hour" || u == "hours" || u == "시간") return 1.0 / 3600.0;
+            return 1.0;
+        }
         public double TimeEnd { get { return Times.Length > 0 ? Times[Times.Length - 1] : 1.0; } }
 
         /// <summary>시간축 값을 눈금 글자로 바꿉니다.</summary>
