@@ -2307,3 +2307,15 @@
 > 체크하고 시간 넣으면 몇초동안 오차는 무시하는거 넣어주셈
 
 → 답변: [195-heatmap-span-ignore-start.md](195-heatmap-span-ignore-start.md)
+
+## 요청 223 — 발표 자료 PPT (SW 구조 · 기능별 설명)
+
+> 이거 지금 발표자료 만드는데  SW구조(단계는 한 4단계 나오면될듯)만들어서 올려줘
+> 그리고 기능별 설명도 올려주고
+> 아 그리고 PPT로 만들어줘야함
+> 3장 나오면 됨
+> 구조가 프로세스 적인거 한장
+> 기술적인거 한장
+> 그리고 기능별 설명 한장
+
+→ 답변: [196-presentation-structure.md](196-presentation-structure.md)
