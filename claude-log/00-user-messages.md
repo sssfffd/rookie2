@@ -2366,3 +2366,9 @@
 > 막 2대1대1로 했다는 없어보이니까 좋은 기준이나 포장 방법좀
 
 → 답변: [201-final-weighted-ahp.md](201-final-weighted-ahp.md)
+
+## 요청 229 — 분석 3 (sequence log 분석) 판정
+
+> 그 sequence log 분석도 판정이 필요할 것 같아
+
+→ 답변: [202-a3-verdict.md](202-a3-verdict.md)

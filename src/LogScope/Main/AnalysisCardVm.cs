@@ -652,7 +652,34 @@ namespace LogScope.Main
         // 달랐습니다 (사용자 피드백 — 한눈에 안 보임). 색 (Grade) 은 이미 셋이 같은 세 가지라 그것을 낱말로 바꿉니다.
 
         /// <summary>등의 색. 칸을 못 쓸 때 (분석 3 — LLM 서버에 안 닿음) 는 회색 — 옛 판정을 지금 것으로 읽지 않게.</summary>
-        public string LampGrade { get { return _blocked ? ScoreBands.GradeNone : Grade; } }
+        public string LampGrade
+        {
+            get
+            {
+                if (_blocked) return ScoreBands.GradeNone;
+                string g = Grade;
+                // 2.03: 머리 줄 없이 판정만 (분석 3 — 머리 줄은 숨기지만 판정 · 최종 판정에는 들어가야 함)
+                return g == ScoreBands.GradeNone && _lampGrade.Length > 0 ? _lampGrade : g;
+            }
+        }
+
+        private string _lampGrade = string.Empty, _lampLine = string.Empty;
+
+        /// <summary>
+        /// 2.03: 칸 머리 줄 (크게 적는 낱말 · 점수) 없이 <b>판정 등만</b> 정합니다 — 분석 3 은 머리 줄을 숨기므로
+        /// (MainVm.A3HeadlineOnCard) 예전에는 결과가 와도 늘 "결과 없음" 이고 최종 판정에서 빠졌습니다.
+        /// grade 가 빈 글이면 지웁니다. line = 판정 근거 한 줄 (최종 판정 칸에 씀).
+        /// </summary>
+        public void SetLamp(string grade, string line)
+        {
+            grade = grade == ScoreBands.GradeNone ? string.Empty : (grade ?? string.Empty);
+            line = line ?? string.Empty;
+            if (_lampGrade == grade && _lampLine == line) return;
+            _lampGrade = grade;
+            _lampLine = line;
+            Raise("Grade");
+            RaiseLamp();
+        }
 
         /// <summary>
         /// 판정 낱말 — 정상 · 주의 · 이상, 그 밖은 "결과 없음".
@@ -683,6 +710,7 @@ namespace LogScope.Main
                     return _wordNote.Length > 0 ? _wordNote : _word;
                 }
                 if (_has) return "점수 " + _score.ToString("0.#");
+                if (_lampGrade.Length > 0 && _lampLine.Length > 0) return _lampLine;   // 2.03
                 return "결과 없음";
             }
         }
@@ -907,6 +935,8 @@ namespace LogScope.Main
             s.Count = _verdictCount;
             s.CountMain = _countMain;
             s.CountSub = _countSub;
+            s.LampGrade = _lampGrade;
+            s.LampLine = _lampLine;
             s.LineNote = _lineNote;
 
             for (int i = 0; i < _lines.Count; i++)
@@ -948,6 +978,8 @@ namespace LogScope.Main
             _wordNote = s.WordNote ?? string.Empty;
             _verdictCount = s.Count ?? string.Empty;
             _scoreNote = string.Empty;
+            _lampGrade = s.LampGrade ?? string.Empty;   // 2.03
+            _lampLine = s.LampLine ?? string.Empty;
             SetCountBlock(s.CountMain, s.CountSub);
             RaiseScore();
             Raise("HasVerdict"); Raise("VerdictCount");

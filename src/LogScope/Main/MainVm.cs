@@ -240,6 +240,7 @@ namespace LogScope.Main
                 card.ClearVerdict();
                 card.ClearScore();
                 card.SetCount(string.Empty);
+                card.SetLamp(string.Empty, string.Empty);
                 card.SetLines(new List<CardLineVm>(), string.Empty);
                 return;
             }
@@ -249,6 +250,7 @@ namespace LogScope.Main
                 card.ClearVerdict();
                 card.ClearScore();
                 card.SetCount(string.Empty);
+                card.SetLamp(string.Empty, string.Empty);
                 // 결과가 오기 전에는 안내 글도 적지 않고 비워 둡니다 (1.36 에 비워 달라고 함).
                 card.SetLines(new List<CardLineVm>(), string.Empty);
                 return;
@@ -260,15 +262,20 @@ namespace LogScope.Main
                 card.ClearVerdict();
                 card.ClearScore();
                 card.SetCount(string.Empty);
+                // 2.03: 머리 줄은 숨겨도 판정은 정함 — 대시보드 분석 3 칸 · 최종 판정 (가중 16) 에 들어감
+                string why;
+                card.SetLamp(A3Judge(r, out why), why);
             }
             else if (word.Length > 0)
             {
                 card.ClearScore();
+                card.SetLamp(string.Empty, string.Empty);
                 card.SetVerdict(word, A3Grade(r.Grade, word), r.Note ?? string.Empty, r.Count ?? string.Empty);
             }
             else
             {
                 card.ClearVerdict();
+                card.SetLamp(string.Empty, string.Empty);
                 // 범위 밖 점수는 끝으로 붙입니다 — "120 / 100" 은 읽는 사람을 헷갈리게 합니다.
                 if (double.IsNaN(r.Score) || double.IsInfinity(r.Score)) card.ClearScore();
                 else card.SetScore(Math.Max(0.0, Math.Min(AnalysisCardVm.MaxScore, r.Score)));
@@ -290,6 +297,49 @@ namespace LogScope.Main
             }
             string empty = string.IsNullOrEmpty(r.EmptyText) ? "적을 것이 없습니다." : r.EmptyText;
             card.SetLines(lines, lines.Count == 0 ? empty : string.Empty);
+        }
+
+        /// <summary>
+        /// 2.03: 분석 3 (시퀀스 로그 분석 등 사용자 모듈) 의 판정 — 사용자 요청.
+        ///   1. 모듈이 정해 왔으면 그대로: Grade, 아니면 낱말 (PASS · WARNING · CRITICAL …), 아니면 점수 (95 · 80 경계)
+        ///   2. 아니면 요약 줄의 등급으로: [오류] (또는 빨강) 가 하나라도 있으면 이상, [경고] (노랑) 가 있으면 주의, 그 밖은 정상
+        ///      — 분석 1 의 "한 단계라도 크게 다르면 이상" 과 같은 결 (오류 하나가 공정을 멈출 수 있음)
+        /// why = 최종 판정 칸에 적는 한 줄 ("오류 2 · 경고 1" 등).
+        /// </summary>
+        public static string A3Judge(Analysis3Result r, out string why)
+        {
+            why = string.Empty;
+            if (r == null) return ScoreBands.GradeNone;
+            string word = (r.Verdict ?? string.Empty).Trim();
+            string g = A3Grade(r.Grade, word);
+            if (g == ScoreBands.GradeNone && word.Length == 0 && !double.IsNaN(r.Score) && !double.IsInfinity(r.Score))
+            {
+                g = ScoreBands.GradeOf(Math.Max(0, Math.Min(100, r.Score)));
+                word = "점수 " + r.Score.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            int bad = 0, warn = 0, total = 0;
+            if (r.Lines != null)
+                foreach (Analysis3Line l in r.Lines)
+                {
+                    if (l == null) continue;
+                    total++;
+                    string lg = A3Grade(l.Grade, string.Empty);
+                    if (lg == ScoreBands.GradeNone) lg = CardLineVm.GradeOfTag(CardLineVm.TagOf(l.Label ?? string.Empty));
+                    if (lg == ScoreBands.GradeBad) bad++;
+                    else if (lg == ScoreBands.GradeWarn) warn++;
+                }
+            string counts = bad + warn == 0 ? "오류 · 경고 없음" : "오류 " + bad + " · 경고 " + warn;
+            if (g != ScoreBands.GradeNone)
+            {
+                string c = (r.Count ?? string.Empty).Trim();
+                why = (word.Length > 0 ? word : AnalysisCardVm.WordOf(g)) + (c.Length > 0 ? " · 차이 " + c + "개" : string.Empty)
+                    + (total > 0 ? " · " + counts : string.Empty);
+                return g;
+            }
+            why = counts + (total > 0 ? " (요약 " + total + "줄)" : string.Empty);
+            if (bad > 0) return ScoreBands.GradeBad;
+            if (warn > 0) return ScoreBands.GradeWarn;
+            return ScoreBands.GradeGood;
         }
 
         /// <summary>

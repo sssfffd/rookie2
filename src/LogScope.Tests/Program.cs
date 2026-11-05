@@ -172,6 +172,7 @@ namespace LogScope.Tests
                 MainDashRules();
                 IgnoreStartRules();
                 HeatmapPeakIsMaxError();
+                A3JudgeRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4306,6 +4307,50 @@ namespace LogScope.Tests
             JudgeEngine.Regrade(r, opt);
             Check("다 허용하면 PASS", r.OpenIoCount == 0 && r.Grade == JudgeGrade.Pass, r.Word);
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
+        }
+
+        /// <summary>2.03: 분석 3 (시퀀스 로그 분석) 판정 — 머리 줄은 숨겨도 판정 · 최종 판정에 들어감.</summary>
+        private static void A3JudgeRules()
+        {
+            Say("분석 3 판정 — 모듈 판정 우선, 없으면 요약 줄의 오류 · 경고");
+            Func<string[], Analysis3Result> withLines = delegate (string[] labels)
+            {
+                var r = new Analysis3Result();
+                foreach (string l in labels) r.Lines.Add(new Analysis3Line(l, ""));
+                return r;
+            };
+            string why;
+            Check("[오류] 하나라도 → 이상 · 근거 '오류 1 · 경고 1 (요약 3줄)'",
+                  MainVm.A3Judge(withLines(new[] { "[오류] 순서 다름", "[경고] 늦음", "[정상] 끝" }), out why) == ScoreBands.GradeBad
+                  && why == "오류 1 · 경고 1 (요약 3줄)", why);
+            Check("[경고] 만 → 주의", MainVm.A3Judge(withLines(new[] { "[경고] 늦음", "끝" }), out why) == ScoreBands.GradeWarn, why);
+            Check("꼬리표 없는 줄 · 줄 없음 → 정상 (결과는 왔으므로)", MainVm.A3Judge(withLines(new[] { "시퀀스 같음" }), out why) == ScoreBands.GradeGood
+                  && MainVm.A3Judge(new Analysis3Result(), out why) == ScoreBands.GradeGood && why == "오류 · 경고 없음", why);
+            var colored = withLines(new string[0]);
+            colored.Lines.Add(new Analysis3Line("단계 3 빠짐", "", Analysis3Grade.Bad));
+            Check("줄 색 (빨강) 도 오류로 셈", MainVm.A3Judge(colored, out why) == ScoreBands.GradeBad, why);
+            var pass = withLines(new[] { "[오류] 무엇" }); pass.Verdict = "PASS";
+            Check("모듈이 낱말을 정해 오면 그것 (PASS → 정상)", MainVm.A3Judge(pass, out why) == ScoreBands.GradeGood && why.StartsWith("PASS"), why);
+            var sc = new Analysis3Result { Score = 82 };
+            Check("점수만 오면 공정 일치율 경계로 (82 → 주의)", MainVm.A3Judge(sc, out why) == ScoreBands.GradeWarn && why.StartsWith("점수 82"), why);
+            Check("결과가 없으면 결과 없음", MainVm.A3Judge(null, out why) == ScoreBands.GradeNone, "");
+
+            var main = new MainVm(new AppState());
+            AnalysisCardVm c3 = main.Cards[2];
+            c3.SetBlocked(false, "", "");
+            Analysis3Link.Publish(withLines(new[] { "[오류] 시퀀스 7 빠짐", "[정상] 나머지" }));
+            main.Refresh();
+            c3.SetBlocked(false, "", "");   // 시험 환경엔 LLM 서버가 없어 Refresh 가 다시 막음
+            Check("메인: 머리 줄은 그대로 숨김 · 판정 등은 이상 · 최종 판정 줄에 들어감",
+                  !c3.HasScoreText && c3.LampGrade == ScoreBands.GradeBad && c3.LampWord == "이상"
+                  && main.Overall.Lines.Exists(x => x.Title == c3.Title && x.Text == "오류 1 · 경고 0 (요약 2줄)"),
+                  c3.LampGrade + " " + c3.LampLine);
+            CardSnapshot snap = CardSnapshot.FromJson(Json.Parse(Json.Write(c3.TakeSnapshot().ToJson())));
+            Check("History 에도 판정이 남음 (머리 글 '이상')", snap.HeadText == "이상" && snap.HeadGrade == ScoreBands.GradeBad, snap.HeadText);
+            Analysis3Link.ClearResult();
+            main.Refresh();
+            c3.SetBlocked(false, "", "");
+            Check("결과를 지우면 결과 없음", c3.LampGrade == ScoreBands.GradeNone, c3.LampGrade);
         }
 
         /// <summary>2.00: 히트맵 칸의 % 는 값 차이 (최대 오차) 가 가장 큰 순간의 것.</summary>

@@ -29,6 +29,8 @@ namespace LogScope.Main
         public string Count = string.Empty;       // "차이 발생 N 개" 의 N
         public string CountMain = string.Empty;   // 분석 1 (1.81): "5 / 120"
         public string CountSub = string.Empty;    // 분석 1 (1.81): "평균 오차율 11.7 %"
+        public string LampGrade = string.Empty;   // 2.03: 머리 줄 없이 정한 판정 (분석 3)
+        public string LampLine = string.Empty;
 
         public string LineNote = string.Empty;    // 요약이 비었을 때의 글
         public List<LineSnapshot> Lines = new List<LineSnapshot>();
@@ -46,6 +48,7 @@ namespace LogScope.Main
             {
                 if (Word.Length > 0) return Word;
                 if (HasScore) return Score.ToString("0.#", CultureInfo.InvariantCulture);
+                if (LampGrade.Length > 0) return AnalysisCardVm.WordOf(LampGrade);   // 2.03: 분석 3 판정
                 return "결과 없음";   // 1.95: "-" → "결과 없음"
             }
         }
@@ -56,7 +59,8 @@ namespace LogScope.Main
             get
             {
                 if (Word.Length > 0) return WordGrade.Length > 0 ? WordGrade : ScoreBands.GradeNone;
-                return HasScore ? ScoreBands.GradeOf(Score) : ScoreBands.GradeNone;
+                if (HasScore) return ScoreBands.GradeOf(Score);
+                return LampGrade.Length > 0 ? LampGrade : ScoreBands.GradeNone;
             }
         }
 
@@ -118,6 +122,8 @@ namespace LogScope.Main
             d["count"] = Count ?? string.Empty;
             d["countMain"] = CountMain ?? string.Empty;
             d["countSub"] = CountSub ?? string.Empty;
+            d["lampGrade"] = LampGrade ?? string.Empty;
+            d["lampLine"] = LampLine ?? string.Empty;
             d["lineNote"] = LineNote ?? string.Empty;
             d["before"] = BeforeName ?? string.Empty;
             d["after"] = AfterName ?? string.Empty;
@@ -148,6 +154,8 @@ namespace LogScope.Main
             s.Count = Json.GetString(d, "count", string.Empty);
             s.CountMain = Json.GetString(d, "countMain", string.Empty);
             s.CountSub = Json.GetString(d, "countSub", string.Empty);
+            s.LampGrade = Json.GetString(d, "lampGrade", string.Empty);
+            s.LampLine = Json.GetString(d, "lampLine", string.Empty);
             s.LineNote = Json.GetString(d, "lineNote", string.Empty);
             s.BeforeName = Json.GetString(d, "before", string.Empty);
             s.AfterName = Json.GetString(d, "after", string.Empty);
