@@ -205,3 +205,4 @@
 | `196-presentation-structure.md` | 발표 자료 PPT 3 장 — SW 구조 처리 흐름 (4단계) · 기술 구조 (4계층) · 기능별 설명 (`docs/presentation/`) |
 | `197-history-final-lines-iocap.md` | 2.00 — History 분석 2 칸 한 줄 · "크기 반영" 뺌 · 최종 판정 = 분석마다 이름 / 무엇이 있었나 · 짧은 단계 이름 아래로 · IO 하나 영향 상한 15 % |
 | `198-heatmap-maxerror-arch-deck.md` | 2.01 — 히트맵 칸 % = 값 차이가 가장 큰 순간 (최대 오차) · 발표 자료 다시 (아키텍처 분석별 · 분석 기법 · 취합 · LLM 프롬프트) |
+| `199-deck-dataflow.md` | 발표 자료 1 장을 데이터 흐름 그림으로 (입력 아이콘 → 파서 → 비교 → 결과 → 취합 → 메인 화면 · LLM) |
