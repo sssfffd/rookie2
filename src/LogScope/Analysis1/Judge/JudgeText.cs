@@ -37,7 +37,10 @@ namespace LogScope.Analysis1.Judge
                   .Append(score.DiffIos.ToString("N0")).Append(" / 전체 ").Append(score.TotalIos.ToString("N0"))
                   .Append(" 개, 평균 오차율 ").Append(score.MeanErrorRate.ToString("0.#", Inv)).Append(" %")
                   .Append(" (오차율 = 이전 로그 전체 시간을 100 칸으로 나눠 허용 안 된 오차가 걸친 칸 수, 평균은 차이 난 IO 만,")
-                  .Append(" 공정 일치율 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 크기 반영 평균 오차율 / 100) × 공정 시간 일치율)\n");
+                  .Append(" 공정 일치율 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 크기 반영 평균 오차율 / 100) × 공정 시간 일치율,")
+                  .Append(" IO 하나는 점수에 ").Append(Settings.AppConfig.Current.ScoreIoCap.ToString("0.#", Inv)).Append(" % 까지만)\n");
+                if (score.CappedIos > 0)   // 2.00
+                    sb.Append("- 영향 상한에 걸린 IO: ").Append(score.CappedIos).Append(" 개 (값 차이가 커서 점수에는 상한까지만 넣음 — IO 목록에서 확인)\n");
                 // 1.93: 크기 반영 · 로그 길이
                 sb.Append("- 크기 반영 평균 오차율: ").Append(score.MeanWeightedRate.ToString("0.#", Inv))
                   .Append(" % (오차 칸마다 1 + 벗어난 % / ").Append(Settings.AppConfig.Current.ScoreSize.ToString("0.#", Inv))

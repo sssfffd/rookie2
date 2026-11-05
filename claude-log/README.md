@@ -203,3 +203,4 @@
 | `194-a3-tile-no-result.md` | 1.98 — 맨 위 분석 3 칸: 못 쓸 때 (LLM 서버 안 닿음) 도 "못 씀" 대신 "결과 없음" |
 | `195-heatmap-span-ignore-start.md` | 1.99 — 숫자 시간 열 히트맵도 칸 폭 고르기 (60 칸 고정 풂, 100 칸과 무관) · 설정 "초기 오차 무시" (처음 N 초 오차 안 셈) |
 | `196-presentation-structure.md` | 발표 자료 PPT 3 장 — SW 구조 처리 흐름 (4단계) · 기술 구조 (4계층) · 기능별 설명 (`docs/presentation/`) |
+| `197-history-final-lines-iocap.md` | 2.00 — History 분석 2 칸 한 줄 · "크기 반영" 뺌 · 최종 판정 = 분석마다 이름 / 무엇이 있었나 · 짧은 단계 이름 아래로 · IO 하나 영향 상한 15 % |

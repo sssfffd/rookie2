@@ -121,7 +121,8 @@ namespace LogScope.Main
 
         public DashTimeline Data { get { return (DashTimeline)GetValue(DataProperty); } set { SetValue(DataProperty, value); } }
 
-        private const double Gutter = 28, StepH = 20, AxisH = 16, Gap = 4;
+        // 2.00: 단계 띠 아래에 "칸에 안 들어가는 단계 이름" 줄 둘 (OverRowH × 2) — 짧은 단계의 번호가 잘리던 것
+        private const double Gutter = 28, StepH = 20, AxisH = 16, Gap = 4, OverRowH = 13;
 
         protected override void OnRender(DrawingContext dc)
         {
@@ -129,7 +130,8 @@ namespace LogScope.Main
             DashTimeline d = Data;
             if (w < 80 || h < 60 || d == null || d.Counts.Length == 0) return;
             int n = d.Counts.Length;
-            double plotW = w - Gutter, barsH = h - StepH - AxisH - Gap * 2;
+            double plotW = w - Gutter, barsH = h - StepH - OverRowH * 2 - AxisH - Gap * 2;
+            if (barsH < 20) return;
             var plot = new Rect(Gutter, 0, plotW, barsH);
             Palette p = ThemeManager.Palette;
             dc.DrawRectangle(new SolidColorBrush(p.Plot), null, plot);
@@ -162,20 +164,36 @@ namespace LogScope.Main
                 FormattedText none = Label("공정 단계 없음", 11, Muted);
                 dc.DrawText(none, new Point(Gutter, sy + (StepH - none.Height) / 2));
             }
+            // 2.00: 칸에 다 들어가면 칸 안 가운데, 안 들어가면 (짧은 단계) 띠 아래 두 줄에 겹치지 않게 내려 적고 가는 선으로 잇습니다.
+            //       예전에는 … 으로 줄이거나 칸이 14 px 아래면 아예 안 적어서 단계 번호가 잘렸습니다.
+            double oy = sy + StepH + 1;
+            double[] lastRight = { double.NegativeInfinity, double.NegativeInfinity };
+            var tick = new Pen { Brush = Muted, Thickness = 0.75 };
             for (int i = 0; i < d.Steps.Count; i++)
             {
                 DashStep s = d.Steps[i];
                 var r = new Rect(Gutter + s.From * plotW, sy, Math.Max(1, (s.To - s.From) * plotW - 1), StepH);
                 dc.DrawRectangle(new SolidColorBrush(i % 2 == 0 ? p.Grid : p.GridStrong), null, r);
                 FormattedText name = Label(s.Name, 11, Text);
-                name.MaxTextWidth = Math.Max(1, r.Width - 6);
-                name.MaxLineCount = 1;
-                name.Trimming = TextTrimming.CharacterEllipsis;
-                if (r.Width > 14) dc.DrawText(name, new Point(r.X + Math.Max(3, (r.Width - name.Width) / 2), sy + (StepH - name.Height) / 2));
+                if (name.Width + 6 <= r.Width)
+                {
+                    dc.DrawText(name, new Point(r.X + (r.Width - name.Width) / 2, sy + (StepH - name.Height) / 2));
+                    continue;
+                }
+                FormattedText small = Label(s.Name, 10, Text);
+                double cx = r.X + r.Width / 2;
+                double x = Math.Max(Gutter, Math.Min(w - small.Width, cx - small.Width / 2));
+                // 비어 있는 줄 (앞 글과 안 겹치는 줄) 먼저, 둘 다 차 있으면 덜 찬 줄에서 오른쪽으로 밀어 적음
+                int row = x >= lastRight[0] + 4 ? 0 : x >= lastRight[1] + 4 ? 1 : (lastRight[0] <= lastRight[1] ? 0 : 1);
+                x = Math.Max(x, lastRight[row] + 4);
+                double ty = oy + row * OverRowH;
+                dc.DrawLine(tick, new Point(cx, sy + StepH), new Point(Math.Max(x, Math.Min(cx, x + small.Width)), ty + 1));
+                dc.DrawText(small, new Point(x, ty));
+                lastRight[row] = x + small.Width;
             }
 
             // 시각
-            double ay = sy + StepH + Gap;
+            double ay = sy + StepH + OverRowH * 2 + Gap;
             for (int i = 0; i < d.Labels.Length; i++)
             {
                 FormattedText t = Label(d.Labels[i], 10, Muted);

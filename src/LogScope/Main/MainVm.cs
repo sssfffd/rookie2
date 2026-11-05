@@ -91,11 +91,9 @@ namespace LogScope.Main
                     Cards[0].ClearVerdict();
                     Cards[0].SetCount(string.Empty);
                     Cards[0].SetScore(Math.Round(js.Score, 1));
-                    // 1.93: 크기 반영 오차율 (점수에 쓰는 것) · 로그 길이가 모자라면 그것도 같은 줄에.
+                    // 2.00: "크기 반영" 글은 뺌 (사용자 요청). 로그 길이가 모자라면 같은 줄에.
                     var inv = System.Globalization.CultureInfo.InvariantCulture;
                     string sub = "평균 오차율 " + js.MeanErrorRate.ToString("0.#", inv) + " %";
-                    if (js.DiffIos > 0 && Math.Abs(js.MeanWeightedRate - js.MeanErrorRate) >= 0.05)
-                        sub += " (크기 반영 " + js.MeanWeightedRate.ToString("0.#", inv) + " %)";
                     if (js.LengthFactor < 0.9995)
                         sub += " · 공정 시간 " + ((1 - js.LengthFactor) * 100).ToString("0.#", inv) + " % 다름";
                     Cards[0].SetCountBlock(js.DiffIos.ToString("N0") + " / " + js.TotalIos.ToString("N0"), sub);
@@ -739,11 +737,12 @@ namespace LogScope.Main
         private void RefreshDash(CompareResult r)
         {
             if (Dash == null) return;
-            if (IsViewingHistory) { Dash.Clear("History 를 보는 중입니다 — 대시보드는 지금 결과만 보입니다. 아래 칸이 그때의 요약입니다."); return; }
+            if (IsViewingHistory) { Dash.Clear("History 를 보는 중입니다 — 대시보드는 지금 결과만 보입니다. 아래 칸이 그때의 요약입니다."); Cards[0].SetFinding(string.Empty); return; }
             JudgeResult judge = _state.Judgement;
-            if (r == null || judge == null) { Dash.Clear(null); return; }
+            if (r == null || judge == null) { Dash.Clear(null); Cards[0].SetFinding(string.Empty); return; }
             JudgeScore js = JudgeScore.Of(judge, _state.Before, _state.After, _state.NoDiffKeys());
             Dash.Update(js, judge, _state.Before, _state.After, _state.HasSteps ? _state.StepPairs() : null, _state.Settings.Groups);
+            Cards[0].SetFinding(Dash.Finding);   // 2.00: 최종 판정 칸의 분석 1 줄
         }
 
         /// <summary>그룹이 아닌 줄 이름 (공정 단계 오차 · 한쪽에만 있는 IO).</summary>

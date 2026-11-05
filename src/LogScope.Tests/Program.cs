@@ -4370,6 +4370,8 @@ namespace LogScope.Tests
             for (int i = 1; i < d.TopIos.Count; i++) if (d.TopIos[i].WeightedRate > d.TopIos[i - 1].WeightedRate) sorted = false;
             Check("차이 발생 IO — 크기 반영 오차율순 · 판정 낱말", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
                   && d.TopIos.Count == Math.Min(MainDashVm.TopCount, js.DiffIos), d.TopIos.Count + " " + js.DiffIos);
+            Check("2.00 최종 판정 칸의 분석 1 줄 = 대시보드 차이 IO · 이상 · 주의", d.Finding.StartsWith(AppConfig.Current.DiffLabel + " ")
+                  && d.Finding.Contains("이상 ") && main.Cards[0].Finding == d.Finding, d.Finding + " | " + main.Cards[0].Finding);
             Check("1.97 늘 'N개 중 상위 M개'", d.TopNote == js.DiffIos + "개 중 상위 " + d.TopIos.Count + "개"
                   && MainDashVm.TopNoteOf(1234, 8) == "1,234개 중 상위 8개", d.TopNote);
             DashIoRow spike = d.TopIos.Find(x => x.Name == "SPIKE");
@@ -4463,6 +4465,24 @@ namespace LogScope.Tests
             Check("크게 벗어난 쪽 (300 %) 은 크기 반영 오차율 3 배 · 점수 더 낮음", Math.Abs(big.MeanWeightedRate - big.MeanErrorRate * 3) < 1e-9
                   && big.Score < small.Score, small.Score.ToString("0.#") + " > " + big.Score.ToString("0.#"));
             Check("살짝 넘은 쪽 (1 %) 은 거의 예전 그대로 (무게 1.02)", Math.Abs(small.MeanWeightedRate - small.MeanErrorRate * 1.02) < 1e-9, "");
+            // 2.00: IO 하나의 영향 상한 (score.iocap 기본 15) — 크게 벗어난 IO 도 점수에는 15 % 까지만
+            Check("2.00 영향 상한 — 30 % → 점수 셈에는 15 %, 걸린 IO 1 개 · 화면 오차율은 그대로",
+                  big.CappedIos == 1 && Math.Abs(big.ScoreRate - 15) < 1e-9 && Math.Abs(big.MeanWeightedRate - 30) < 1e-6
+                  && small.CappedIos == 0 && Math.Abs(small.ScoreRate - small.MeanWeightedRate) < 1e-9, big.ScoreRate + " " + big.CappedIos);
+            {
+                var r = new JudgeResult();
+                var it = new JudgeItem { Kind = JudgeKind.Value, Io = "SPIKE", Start = t0, End = t0 + len, Duration = len, MaxExcessPercent = 500 };
+                r.Items.Add(it);
+                JudgeScore whole = JudgeScore.Of(r, da, db, null);
+                double expect = 100 * (1 - 1.0 / whole.TotalIos) * (1 - 15 / 100.0);   // 전체 IO 가 6 개뿐이라 1/6 은 그대로 깎임
+                Check("2.00 IO 하나가 로그 내내 500 % 벗어나도 오차율 몫은 15 % 까지만", Math.Abs(whole.Score - expect) < 1e-6 && whole.CappedIos == 1,
+                      whole.Score.ToString("0.#") + " / 전체 IO " + whole.TotalIos);
+                AppConfig keep = AppConfig.Current;
+                AppConfig.Current = AppConfig.Parse(new[] { "score.iocap = 0" });
+                JudgeScore off = JudgeScore.Of(r, da, db, null);
+                AppConfig.Current = keep;
+                Check("2.00 score.iocap = 0 이면 상한 없음 (예전 셈)", off.CappedIos == 0 && off.Score < 1, off.Score.ToString("0.#"));
+            }
         }
 
         /// <summary>공정 실패로 짧게 끊긴 로그 (1.93) — 판정 · 점수에 반영.</summary>
@@ -4531,7 +4551,12 @@ namespace LogScope.Tests
             Check("근거 = 분석 이름 (config) · 공정 일치율 · 차이 IO", o.Reason == c1.Title + " — 공정 일치율 85 % · 차이 IO 5 / 120", o.Reason);
             Check("칸이 바뀌면 최종도 알림", seen.Contains("Word") && seen.Contains("Reason"), string.Join(",", seen.ToArray()));
 
+            c1.SetFinding("차이 IO 5개 — 이상 2 · 주의 3");
             c2.SetVerdict("CRITICAL", ScoreBands.GradeBad, "바뀐 값 3 개", "3");
+            Check("2.00 최종 판정 줄 — 결과 있는 분석마다 이름 · 무엇이 있었나 (한 줄)", o.Lines.Count == 2
+                  && o.Lines[0].Title == c1.Title && o.Lines[0].Text == "차이 IO 5개 — 이상 2 · 주의 3"
+                  && o.Lines[1].Title == c2.Title && o.Lines[1].Text == "바뀐 값 3 개" && o.Lines[1].LampGrade == ScoreBands.GradeBad
+                  && seen.Contains("Lines"), o.Lines.Count + " " + (o.Lines.Count > 1 ? o.Lines[1].Text : ""));
             Check("분석 2 이상 → 최종 이상 (가장 나쁜 것) · 근거는 분석 2 이름", o.Word == "이상" && o.Reason.StartsWith(c2.Title + " — ")
                   && o.ReferenceNote == c1.Title + " 주의 · " + c2.Title + " 이상", o.Reason + " | " + o.ReferenceNote);
             c2.SetVerdict("PASS", ScoreBands.GradeGood, "", "0");
@@ -4539,6 +4564,7 @@ namespace LogScope.Tests
             Check("분석 1 96 · 분석 2 정상 → 정상", o.Word == "정상" && o.Icon == "✔", o.Word);
             c3.SetVerdict("WARNING", ScoreBands.GradeWarn, "조금 다름", "");
             Check("분석 3 주의 → 최종 주의 · 근거 분석 3", o.Word == "주의" && o.Reason == c3.Title + " — 조금 다름", o.Reason);
+            Check("2.00 분석 3 줄 = 모듈이 적은 유의점", o.Lines.Count == 3 && o.Lines[2].Text == "조금 다름", o.Lines.Count.ToString());
             c3.SetBlocked(true, "LLM 서버에 닿지 않습니다", "");
             Check("분석 3 을 못 쓰면 무시 · 맨 위 칸도 '결과 없음' (1.98)", c3.LampWord == "결과 없음" && c3.LampGrade == ScoreBands.GradeNone && o.Word == "정상" && !o.ReferenceNote.Contains(c3.Title), o.Word + " | " + o.ReferenceNote);
         }
@@ -4853,7 +4879,7 @@ namespace LogScope.Tests
         /// <summary>크기 반영 평균 오차율 · 로그 길이 계수 (1.93).</summary>
         private static double WeightedRate(AppState st)
         {
-            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).MeanWeightedRate;
+            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).ScoreRate;   // 2.00: 점수 셈에 쓴 평균 (IO 마다 영향 상한)
         }
 
         private static double LengthOf(AppState st)

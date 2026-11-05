@@ -24,8 +24,9 @@ namespace LogScope.Main
         private void OnCardChanged(object sender, PropertyChangedEventArgs e)
         {
             string n = e.PropertyName;
-            if (n == "Grade" || n == "LampGrade" || n == "LampLine" || n == "LampWord" || string.IsNullOrEmpty(n))
+            if (n == "Grade" || n == "LampGrade" || n == "LampLine" || n == "LampWord" || n == "Finding" || string.IsNullOrEmpty(n))
             {
+                Raise("Lines");
                 Raise("Grade"); Raise("LampGrade"); Raise("Word"); Raise("Icon"); Raise("Reason"); Raise("HasReason"); Raise("ReferenceNote"); Raise("HasReference");
             }
         }
@@ -43,6 +44,24 @@ namespace LogScope.Main
                     if (w == null || r > AnalysisCardVm.RankOf(w.LampGrade)) w = c;
                 }
                 return w;
+            }
+        }
+
+        /// <summary>
+        /// 2.00: 최종 판정 칸 아래 줄들 — 결과가 있는 분석마다 "이름  무엇이 있었나" (사용자 요청 — 이상한 설명 대신).
+        /// 분석 1 "차이 IO 5개 — 이상 2 · 주의 3", 분석 2 "바뀐 값 3 개", 분석 3 모듈이 적은 유의점.
+        /// </summary>
+        public List<OverallLine> Lines
+        {
+            get
+            {
+                var list = new List<OverallLine>();
+                foreach (AnalysisCardVm c in _cards)
+                {
+                    if (AnalysisCardVm.RankOf(c.LampGrade) == 0) continue;
+                    list.Add(new OverallLine { Title = c.Title, Text = c.Finding, LampGrade = c.LampGrade });
+                }
+                return list;
             }
         }
 
@@ -85,5 +104,13 @@ namespace LogScope.Main
         }
 
         public bool HasReference { get { return ReferenceNote.Length > 0; } }
+    }
+
+    /// <summary>2.00: 최종 판정 칸의 한 줄 — 분석 이름 · 무엇이 있었나 · 색.</summary>
+    public sealed class OverallLine
+    {
+        public string Title { get; set; }
+        public string Text { get; set; }
+        public string LampGrade { get; set; }
     }
 }

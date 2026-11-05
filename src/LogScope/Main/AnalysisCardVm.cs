@@ -600,6 +600,30 @@ namespace LogScope.Main
         }
 
         /// <summary>점수 칸일 때 점수 옆 작은 글 (예: 고른 단계 반영 중).</summary>
+        private string _finding = string.Empty;
+
+        /// <summary>
+        /// 2.00: 최종 판정 칸에 적는 "이 분석에서 무엇이 있었나" 한 줄. 분석 1 은 대시보드가 채움 ("차이 IO 5개 — 이상 2 · 주의 3"),
+        /// 비어 있으면 판정 근거 줄 (분석 2 "바뀐 값 3 개", 분석 3 모듈이 적은 유의점).
+        /// </summary>
+        public string Finding
+        {
+            get
+            {
+                if (_blocked) return string.Empty;
+                string s = _finding.Length > 0 ? _finding : LampLine;
+                return (s ?? string.Empty).Replace("\r", " ").Replace("\n", " ").Trim();
+            }
+        }
+
+        public void SetFinding(string text)
+        {
+            text = text ?? string.Empty;
+            if (_finding == text) return;
+            _finding = text;
+            Raise("Finding");
+        }
+
         public void SetScoreNote(string note)
         {
             _scoreNote = note ?? string.Empty;
@@ -693,7 +717,7 @@ namespace LogScope.Main
 
         private void RaiseLamp()
         {
-            Raise("LampGrade"); Raise("LampWord"); Raise("LampIcon"); Raise("LampLine");
+            Raise("LampGrade"); Raise("LampWord"); Raise("LampIcon"); Raise("LampLine"); Raise("Finding");
         }
 
         /// <summary>

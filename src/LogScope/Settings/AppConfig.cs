@@ -77,6 +77,14 @@ namespace LogScope.Settings
         private double _scoreSize = DefaultScoreSize;
         public double ScoreSize { get { return _scoreSize; } }
 
+        /// <summary>
+        /// 2.00: IO 하나가 공정 일치율에 미치는 영향 상한 (%) — config.txt score.iocap. IO 하나의 오차율이 아무리 커도
+        /// 점수 셈에는 이만큼까지만 들어갑니다 (값 차이 하나가 점수를 통째로 끌어내리지 않게). 0 이하 · 100 이상이면 상한 없음.
+        /// </summary>
+        public const double DefaultScoreIoCap = 15;
+        private double _scoreIoCap = DefaultScoreIoCap;
+        public double ScoreIoCap { get { return _scoreIoCap; } }
+
         /// <summary>1.95: 메인 대시보드 "차이 IO" 칸의 이름 (config.txt label.diff).</summary>
         public const string DefaultDiffLabel = "차이 IO";
         private string _diffLabel = DefaultDiffLabel;
@@ -309,6 +317,7 @@ namespace LogScope.Settings
                 if (key == "score.good") { it._scoreGood = Number(value, DefaultScoreGood); continue; }
                 if (key == "score.warn") { it._scoreWarn = Number(value, DefaultScoreWarn); continue; }
                 if (key == "label.diff") { it._diffLabel = value; continue; }
+                if (key == "score.iocap") { it._scoreIoCap = Number(value, DefaultScoreIoCap); continue; }
                 if (key == "score.size") { double v = Number(value, DefaultScoreSize); it._scoreSize = v > 0 ? v : DefaultScoreSize; continue; }
 
 
@@ -370,6 +379,8 @@ namespace LogScope.Settings
             sb.AppendLine("# label.diff : 메인 대시보드 \"차이 IO\" 칸의 이름 (1.95).");
             sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
             sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
+            sb.AppendLine("# score.iocap : IO 하나가 공정 일치율에 미치는 영향 상한 % (2.00, 기본 15). 값 차이가 아주 큰 IO 하나가");
+            sb.AppendLine("#             점수를 통째로 끌어내리지 않게 — 그 IO 는 목록 · 판정 (이상) 에 그대로 보입니다. 0 이면 상한 없음.");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine("fullname = Log 비교 · 분석 도구");
@@ -382,6 +393,7 @@ namespace LogScope.Settings
             sb.AppendLine("score.good = " + DefaultScoreGood.ToString("0"));
             sb.AppendLine("score.warn = " + DefaultScoreWarn.ToString("0"));
             sb.AppendLine("score.size = " + DefaultScoreSize.ToString("0"));
+            sb.AppendLine("score.iocap = " + DefaultScoreIoCap.ToString("0"));
             sb.AppendLine("label.diff = " + DefaultDiffLabel);
             sb.AppendLine();
             return sb.ToString();

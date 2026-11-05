@@ -47,9 +47,8 @@ namespace LogScope.Main
         public const string TopHeading = "차이 발생 IO List";
         /// <summary>1.97: 제목 오른쪽에 작게 — 줄 차례.</summary>
         public const string TopNote = "오차율순";
-        /// <summary>1.97: 막대 설명 — 진한 막대 · 옅은 막대가 무엇인지.</summary>
-        public const string TopBarTime = "시간 오차율 (허용 오차 밖 시간)";
-        public const string TopBarWeighted = "크기 반영 오차율 (넘은 크기만큼 더 김)";
+        /// <summary>1.97: 막대 설명 (2.00 — 막대 하나: 허용 오차 밖 시간 비율).</summary>
+        public const string TopBarTime = "막대 = 로그 시간 중 허용 오차 밖 비율";
         public const string TopEmpty = "차이 난 IO 가 없습니다.";
         public const string GroupHeading = "그룹 상태";
         public const string GroupNote = "차이 IO / 전체";

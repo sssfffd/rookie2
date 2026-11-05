@@ -150,6 +150,10 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>IO 이름 → 시간 오차율 (%) — 차이 난 IO 만.</summary>
         public Dictionary<string, double> Rates = new Dictionary<string, double>(StringComparer.Ordinal);
+        /// <summary>2.00: 점수 셈에 쓴 평균 오차율 — IO 마다 score.iocap 까지만 (한쪽에만 있는 IO 는 100 그대로).</summary>
+        public double ScoreRate;
+        /// <summary>2.00: 영향 상한에 걸린 IO 수 (값 차이가 커서 점수에는 상한까지만 들어간 IO).</summary>
+        public int CappedIos;
         /// <summary>1.93: IO 이름 → 크기 반영 오차율 (%, 최대 100).</summary>
         public Dictionary<string, double> WeightedRates = new Dictionary<string, double>(StringComparer.Ordinal);
 
@@ -287,10 +291,21 @@ namespace LogScope.Analysis1.Judge
                 foreach (double v in s.WeightedRates.Values) sumW2 += v;
                 s.MeanErrorRate = sum / s.DiffIos;
                 s.MeanWeightedRate = sumW2 / s.DiffIos;
+                // 2.00: IO 하나의 영향 상한 (사용자 요청 — 값 차이 하나가 점수를 너무 크게 떨어트림)
+                double cap = Settings.AppConfig.Current.ScoreIoCap;
+                bool capped = cap > 0 && cap < 100;
+                double sumC = 0;
+                foreach (KeyValuePair<string, double> kv in s.WeightedRates)
+                {
+                    double v = kv.Value;
+                    if (capped && !s.OneSide.ContainsKey(kv.Key) && v > cap) { v = cap; s.CappedIos++; }
+                    sumC += v;
+                }
+                s.ScoreRate = sumC / s.DiffIos;
             }
             // 1.92: "몇 개가" × "얼마나 오래" — 1.93: 오래 를 크기 반영 오차율로, 그리고 로그 길이 (덮은 비율) 를 곱함.
             s.LengthFactor = Math.Max(0, Math.Min(1, 1.0 - lengthLoss));
-            s.Score = ScoreOf(s.DiffIos, s.TotalIos, s.MeanWeightedRate) * s.LengthFactor;
+            s.Score = ScoreOf(s.DiffIos, s.TotalIos, s.ScoreRate) * s.LengthFactor;
             return s;
         }
 

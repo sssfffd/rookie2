@@ -178,8 +178,10 @@ namespace LogScope.Main
         }
 
         public int Number { get; private set; }
-        public string Title { get { return _snap.Title; } }
-        public string HeadText { get { return _snap.HeadText; } }
+        // 2.00: 이름 · 판정 · 요약 모두 한 줄 — 글 안의 줄바꿈 때문에 (특히 분석 2) 칸이 두 줄로 나오던 것.
+        //       TextWrapping="NoWrap" 이어도 글 안의 \n 은 줄을 바꿉니다.
+        public string Title { get { return OneLine(_snap.Title); } }
+        public string HeadText { get { return OneLine(_snap.HeadText); } }
         public string HeadGrade { get { return _snap.HeadGrade; } }
         public string CountText { get { return OneLine(_snap.CountText); } }
 
@@ -191,7 +193,7 @@ namespace LogScope.Main
 
         /// <summary>1.95: History 줄 안의 자리 (0 · 1 · 2) — 분석 1 · 2 를 넓게, 3 은 좁게.</summary>
         public int Column { get { return Number - 1; } }
-        public string SummaryText { get { return _snap.SummaryText; } }
+        public string SummaryText { get { return OneLine(_snap.SummaryText); } }
         public string InputsText { get { return _snap.InputsText; } }
 
         /// <summary>칸에 다시 펼칠 요약.</summary>

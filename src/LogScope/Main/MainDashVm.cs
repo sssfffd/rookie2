@@ -59,6 +59,12 @@ namespace LogScope.Main
 
         public string RateMain { get; private set; }
         public string RateSub { get; private set; }
+        /// <summary>2.00: 최종 판정 칸의 분석 1 줄 — "차이 IO 5개 — 이상 2 · 주의 3" (결과 없으면 빈 글).</summary>
+        public string Finding { get; private set; }
+
+        /// <summary>2.00: 영향 상한에 걸린 IO 알림 (없으면 빈 글).</summary>
+        public string CapNote { get; private set; }
+        public bool HasCapNote { get { return !string.IsNullOrEmpty(CapNote); } }
 
         public string LengthMain { get; private set; }
         public string LengthSub { get; private set; }
@@ -94,7 +100,7 @@ namespace LogScope.Main
             // 1.95: 결과가 없으면 "—" 대신 "결과 없음" (사용자 요청)
             Score = double.NaN; ScoreText = NoResult; ScoreGrade = ScoreBands.GradeNone; BandsText = string.Empty;
             DiffMain = NoResult; DiffTotal = string.Empty; DiffShare = 0; DiffBreak = string.Empty; DiffGrade = ScoreBands.GradeNone;
-            RateMain = NoResult; RateSub = string.Empty;
+            RateMain = NoResult; RateSub = string.Empty; CapNote = string.Empty; Finding = string.Empty;
             LengthMain = NoResult; LengthSub = string.Empty; LengthGrade = ScoreBands.GradeNone;
             Hotspot = string.Empty;
             Timeline = null;
@@ -130,14 +136,21 @@ namespace LogScope.Main
             DiffShare = js.TotalIos > 0 ? Math.Min(1.0, (double)js.DiffIos / js.TotalIos) : 0;
             DiffBreak = js.DiffIos == 0 ? "차이 없음" : "이상 " + bad + " · 주의 " + warn;
             DiffGrade = js.DiffIos == 0 ? ScoreBands.GradeGood : bad > 0 ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+            Finding = js.DiffIos == 0 ? "차이 없음"
+                    : AppConfig.Current.DiffLabel + " " + js.DiffIos.ToString("N0", Inv) + "개 — 이상 " + bad + " · 주의 " + warn;
 
             RateMain = js.MeanErrorRate.ToString("0.#", Inv);
-            RateSub = js.DiffIos == 0 ? "차이 없음" : "크기 반영 " + js.MeanWeightedRate.ToString("0.#", Inv) + " %";
+            RateSub = js.DiffIos == 0 ? "차이 없음" : string.Empty;   // 2.00: "크기 반영" 글 뺌
+            // 2.00: IO 하나의 영향 상한에 걸린 IO — 점수에는 상한까지만, 사용자가 알 수 있게 게이지 아래에 적음
+            CapNote = js.CappedIos > 0
+                ? "값 차이가 큰 IO " + js.CappedIos + "개 — 점수 영향 " + AppConfig.Current.ScoreIoCap.ToString("0.#", Inv) + " % 까지만"
+                : string.Empty;
 
             double cover = js.LengthFactor * 100.0;
             LengthMain = cover.ToString("0.#", Inv);
             JudgeItem len = judge.Items.Find(x => x.Kind == JudgeKind.LogLength && !x.IsAllowed);
             LengthSub = len == null ? "이전 · 이후 공정 시간 같음" : len.What;
+            if (len != null) Finding += " · 공정 시간 다름";
             LengthGrade = len == null ? ScoreBands.GradeGood : (len.Grade == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn);
 
             Timeline = BuildTimeline(js, before, steps);
@@ -154,7 +167,7 @@ namespace LogScope.Main
             Raise("HasResult"); Raise("IsEmpty"); Raise("EmptyText"); Raise("DiffLabel"); Raise("PercentUnit");
             Raise("Score"); Raise("ScoreText"); Raise("ScoreGrade"); Raise("BandsText");
             Raise("DiffMain"); Raise("DiffTotal"); Raise("DiffShare"); Raise("DiffSharePercent"); Raise("DiffBreak"); Raise("DiffGrade");
-            Raise("RateMain"); Raise("RateSub");
+            Raise("RateMain"); Raise("RateSub"); Raise("CapNote"); Raise("HasCapNote"); Raise("Finding");
             Raise("LengthMain"); Raise("LengthSub"); Raise("LengthGrade");
             Raise("Hotspot"); Raise("HasHotspot"); Raise("Timeline");
             Raise("TopIos"); Raise("HasTopIos"); Raise("NoTopIos"); Raise("TopNote"); Raise("Groups"); Raise("HasGroups"); Raise("NoGroups");
@@ -222,10 +235,13 @@ namespace LogScope.Main
                                                 LogDataset before, List<GroupDef> groups)
         {
             var names = new List<string>(js.Rates.Keys);
+            // 2.00: 보이는 오차율 (허용 오차 밖 시간) 순 — 같으면 크기가 큰 쪽 먼저
             names.Sort(delegate (string a, string b)
             {
+                int c = js.Rates[b].CompareTo(js.Rates[a]);
+                if (c != 0) return c;
                 double wa, wb; js.WeightedRates.TryGetValue(a, out wa); js.WeightedRates.TryGetValue(b, out wb);
-                int c = wb.CompareTo(wa);
+                c = wb.CompareTo(wa);
                 return c != 0 ? c : string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
             });
             var list = new List<DashIoRow>();
@@ -238,7 +254,7 @@ namespace LogScope.Main
                 r.TimeRate = js.Rates[name];
                 double wr; js.WeightedRates.TryGetValue(name, out wr);
                 r.WeightedRate = wr;
-                r.RateText = r.TimeRate.ToString("0.#", Inv) + " % (" + wr.ToString("0.#", Inv) + " %)";
+                r.RateText = r.TimeRate.ToString("0.#", Inv) + " %";   // 2.00: 괄호 (크기 반영) 뺌
                 bool missing;
                 JudgeGrade g;
                 if (js.OneSide.TryGetValue(name, out missing))
