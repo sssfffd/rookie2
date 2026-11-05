@@ -72,6 +72,11 @@ namespace LogScope.Settings
         public const double DefaultScoreWarn = 70;
         private double _scoreGood = DefaultScoreGood, _scoreWarn = DefaultScoreWarn;
 
+        /// <summary>1.93: 오차 칸 무게 — 이 % 만큼 벗어날 때마다 그 칸을 한 칸 더 (최대 3 배). config.txt score.size.</summary>
+        public const double DefaultScoreSize = 50;
+        private double _scoreSize = DefaultScoreSize;
+        public double ScoreSize { get { return _scoreSize; } }
+
         /// <summary>정상 경계. 0 ~ 100, 주의 경계보다 커야 합니다 (아니면 둘 다 기본값).</summary>
         public double ScoreGood { get { return _scoreGood; } }
         /// <summary>주의 경계.</summary>
@@ -298,6 +303,7 @@ namespace LogScope.Settings
                 if (key == "fullname") { it._fullName = value; continue; }
                 if (key == "score.good") { it._scoreGood = Number(value, DefaultScoreGood); continue; }
                 if (key == "score.warn") { it._scoreWarn = Number(value, DefaultScoreWarn); continue; }
+                if (key == "score.size") { double v = Number(value, DefaultScoreSize); it._scoreSize = v > 0 ? v : DefaultScoreSize; continue; }
 
 
                 for (int n = 0; n < Count; n++)
@@ -355,6 +361,8 @@ namespace LogScope.Settings
             sb.AppendLine("#             한 줄 설명은 메인 화면 칸에 \"뜻\" 으로 나옵니다 (1.92).");
             sb.AppendLine("# score.good · score.warn : 분석 1 점수 → 판정 경계 (1.92). good 이상 = 정상,");
             sb.AppendLine("#             warn 이상 = 주의, 그 아래 = 이상. 최종 판정은 분석 1 판정입니다.");
+            sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
+            sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine("fullname = Log 비교 · 분석 도구");
@@ -366,6 +374,7 @@ namespace LogScope.Settings
             sb.AppendLine();
             sb.AppendLine("score.good = " + DefaultScoreGood.ToString("0"));
             sb.AppendLine("score.warn = " + DefaultScoreWarn.ToString("0"));
+            sb.AppendLine("score.size = " + DefaultScoreSize.ToString("0"));
             sb.AppendLine();
             return sb.ToString();
         }

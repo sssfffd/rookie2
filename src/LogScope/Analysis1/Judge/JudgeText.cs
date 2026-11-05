@@ -37,7 +37,12 @@ namespace LogScope.Analysis1.Judge
                   .Append(score.DiffIos.ToString("N0")).Append(" / 전체 ").Append(score.TotalIos.ToString("N0"))
                   .Append(" 개, 평균 오차율 ").Append(score.MeanErrorRate.ToString("0.#", Inv)).Append(" %")
                   .Append(" (오차율 = 이전 로그 전체 시간을 100 칸으로 나눠 허용 안 된 오차가 걸친 칸 수, 평균은 차이 난 IO 만,")
-                  .Append(" 점수 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 평균 오차율 / 100))\n");
+                  .Append(" 점수 = 100 × (1 − 차이 IO / 전체 IO) × (1 − 크기 반영 평균 오차율 / 100) × 로그 길이 계수)\n");
+                // 1.93: 크기 반영 · 로그 길이
+                sb.Append("- 크기 반영 평균 오차율: ").Append(score.MeanWeightedRate.ToString("0.#", Inv))
+                  .Append(" % (오차 칸마다 1 + 벗어난 % / ").Append(Settings.AppConfig.Current.ScoreSize.ToString("0.#", Inv))
+                  .Append(", 최대 3 배) · 로그 길이 계수 ").Append(score.LengthFactor.ToString("0.###", Inv))
+                  .Append(" (이후 로그가 이전 로그 시간을 덮은 비율)\n");
                 // 1.92: 메인 화면의 최종 판정 = 분석 1 점수 판정 (config.txt score.good · score.warn).
                 Settings.AppConfig cfg = Settings.AppConfig.Current;
                 string word = score.Score >= cfg.ScoreGood ? "정상" : score.Score >= cfg.ScoreWarn ? "주의" : "이상";
@@ -109,6 +114,7 @@ namespace LogScope.Analysis1.Judge
                 case JudgeKind.StepOrder: return "단계 차례";
                 case JudgeKind.IoMissing: return "IO 없어짐";
                 case JudgeKind.IoExtra: return "IO 생김";
+                case JudgeKind.LogLength: return "로그 길이";
                 default: return k.ToString();
             }
         }

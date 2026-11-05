@@ -344,6 +344,9 @@ namespace LogScope.Analysis1.Heatmap
                                                _state.Settings.Tolerances);
             o.IncludeUnchanged = _includeUnchanged;
             o.Judged = _state.OpenValueIoKeys();
+            // 1.93: 판정에 허용 안 된 "로그 길이" 가 있으면 겹치지 않는 시간도 칸으로 (이후 없음 · 이전 없음)
+            o.ShowLengthGap = _state.Judgement != null
+                && _state.Judgement.Items.Exists(x => x.Kind == Judge.JudgeKind.LogLength && !x.IsAllowed);
             o.Shift = _state.AppliedShift;
 
             // 단계로 자르기. 짝 목록은 화면이 짓지 않고 받아 옵니다 —

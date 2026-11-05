@@ -43,6 +43,11 @@ namespace LogScope.Analysis1.Judge
         IoMissing = 5,
         /// <summary>이후 로그에만 있는 IO.</summary>
         IoExtra = 6,
+        /// <summary>
+        /// 1.93: 로그 길이가 다름 — 이후 로그가 일찍 끝남 · 늦게 시작함 (공정 실패로 짧게 끊긴 로그) 또는 더 김.
+        /// IO 하나가 아니라 로그 전체 (Io 는 빈 글자). 시간 여유보다 클 때만.
+        /// </summary>
+        LogLength = 7,
     }
 
     /// <summary>판정. 1.64: FAIL 을 CRITICAL 로 (사용자 요청 — 모든 분석에서 같은 낱말).</summary>
@@ -118,6 +123,8 @@ namespace LogScope.Analysis1.Judge
     /// <item><b>점수</b> (1.92) = 100 × (1 − 차이 IO 수 / 전체 IO 수) × (1 − 평균 오차율 / 100). "몇 개가" 와 "얼마나 오래" 둘 다.
     ///   차이 난 IO 가 없으면 100. (1.81 ~ 1.91 은 100 − 평균 오차율 — 개수가 안 들어가 IO 30 개가 2 % 씩 달라도 98 점.)</item>
     /// <item><b>판정</b> = 점수 (config.txt score.good · score.warn, 기본 90 · 70) — 최종 판정이 이것입니다.</item>
+    /// <item>1.93: 오차 칸마다 <b>크기 무게</b> (1 + 벗어난 % / score.size, 최대 3) 를 곱해 센 오차율로 점수를 내고,
+    ///   <b>로그 길이</b> (이후 로그가 이전 로그 시간을 덮은 비율) 를 점수에 곱합니다.</item>
     /// <item>차이 개수 / 전체 개수 = 차이 난 IO 수 / 두 로그의 IO 수 (합집합, 단계 IO 뺌).</item>
     /// </list>
     /// </summary>
@@ -128,10 +135,27 @@ namespace LogScope.Analysis1.Judge
         public double Score = 100;
         public int DiffIos;
         public int TotalIos;
+        /// <summary>시간 오차율 평균 (%) — 차이 난 IO 만 (칸 수 그대로, 크기 안 봄).</summary>
         public double MeanErrorRate;
+        /// <summary>1.93: 크기를 반영한 오차율 평균 (%) — 점수에 쓰는 것.</summary>
+        public double MeanWeightedRate;
+        /// <summary>1.93: 이후 로그가 이전 로그 시간을 덮은 비율 (0 ~ 1, 로그 길이 오차를 뺀 것). 점수에 곱함.</summary>
+        public double LengthFactor = 1.0;
 
-        /// <summary>IO 이름 → 오차율 (%) — 차이 난 IO 만.</summary>
+        /// <summary>IO 이름 → 시간 오차율 (%) — 차이 난 IO 만.</summary>
         public Dictionary<string, double> Rates = new Dictionary<string, double>(StringComparer.Ordinal);
+        /// <summary>1.93: IO 이름 → 크기 반영 오차율 (%, 최대 100).</summary>
+        public Dictionary<string, double> WeightedRates = new Dictionary<string, double>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// 1.93: 오차 칸 하나의 무게 — 1 + 벗어난 % / sizeStep (최대 3). 허용 오차를 살짝 넘은 칸은 1 (예전과 같음),
+        /// 이전 값보다 sizeStep % 벗어나면 2, 그 두 배면 3. sizeStep = config.txt score.size (기본 50).
+        /// </summary>
+        public static double WeightOf(double excessPercent, double sizeStep)
+        {
+            if (double.IsNaN(excessPercent) || excessPercent <= 0 || !(sizeStep > 0)) return 1.0;
+            return 1.0 + Math.Min(2.0, Math.Abs(excessPercent) / sizeStep);
+        }
 
         public static JudgeScore Of(JudgeResult r, LogDataset before, LogDataset after, ICollection<string> exclude)
         {
@@ -151,16 +175,24 @@ namespace LogScope.Analysis1.Judge
 
             double t0 = before.TimeStart, t1 = before.TimeEnd;
             double w = (t1 - t0) / Buckets;
-            var marks = new Dictionary<string, bool[]>(StringComparer.Ordinal);
+            double sizeStep = Settings.AppConfig.Current.ScoreSize;
+            // 칸마다 그 칸에 걸친 오차의 가장 큰 무게 (0 = 오차 없음)
+            var marks = new Dictionary<string, double[]>(StringComparer.Ordinal);
+            var maxW = new Dictionary<string, double>(StringComparer.Ordinal);
             var full = new HashSet<string>(StringComparer.Ordinal);
+            double lengthLoss = 0;
             foreach (JudgeItem it in r.Items)
             {
-                if (it.IsAllowed || it.Io.Length == 0) continue;
+                if (it.IsAllowed) continue;
+                if (it.Kind == JudgeKind.LogLength) { lengthLoss += it.StepRatio; continue; }   // 1.93: 로그 길이
+                if (it.Io.Length == 0) continue;
                 if (it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra) { full.Add(it.Io); continue; }
                 if (it.Kind != JudgeKind.Value) continue;
-                bool[] m;
-                if (!marks.TryGetValue(it.Io, out m)) { m = new bool[Buckets]; marks[it.Io] = m; }
-                if (!(w > 0)) { m[0] = true; continue; }
+                double wt = WeightOf(it.MaxExcessPercent, sizeStep);
+                double[] m;
+                if (!marks.TryGetValue(it.Io, out m)) { m = new double[Buckets]; marks[it.Io] = m; }
+                double had; maxW.TryGetValue(it.Io, out had); if (wt > had) maxW[it.Io] = wt;
+                if (!(w > 0)) { if (wt > m[0]) m[0] = wt; continue; }
                 double a = Math.Min(it.Start, it.End), b = Math.Max(it.Start, it.End);
                 if (b < t0 || a > t1) continue;
                 int k0 = (int)Math.Floor((Math.Max(a, t0) - t0) / w);
@@ -169,28 +201,31 @@ namespace LogScope.Analysis1.Judge
                 if (k1 >= Buckets) k1 = Buckets - 1;
                 // 끝이 칸 경계에 딱 걸리면 그 칸은 안 셈 (길이가 있는 오차만)
                 if (k1 > k0 && b > a && (Math.Min(b, t1) - t0) / w == k1) k1--;
-                for (int k = k0; k <= k1; k++) m[k] = true;
+                for (int k = k0; k <= k1; k++) if (wt > m[k]) m[k] = wt;
             }
-            foreach (KeyValuePair<string, bool[]> kv in marks)
+            foreach (KeyValuePair<string, double[]> kv in marks)
             {
-                int n = 0;
-                foreach (bool x in kv.Value) if (x) n++;
+                int n = 0; double sumW = 0;
+                foreach (double x in kv.Value) if (x > 0) { n++; sumW += x; }
                 // 1.88: 차이 난 IO 로 세면서 오차율 0 % 는 말이 안 됨 (오차가 이전 로그 시간 밖에만 있을 때) — 적어도 한 칸.
-                if (n == 0) n = 1;
+                if (n == 0) { n = 1; sumW = maxW[kv.Key]; }
                 s.Rates[kv.Key] = n * 100.0 / Buckets;
+                s.WeightedRates[kv.Key] = Math.Min(100.0, sumW * 100.0 / Buckets);
             }
-            foreach (string io in full) s.Rates[io] = 100.0;
+            foreach (string io in full) { s.Rates[io] = 100.0; s.WeightedRates[io] = 100.0; }
 
             s.DiffIos = s.Rates.Count;
             if (s.DiffIos > 0)
             {
-                double sum = 0;
+                double sum = 0, sumW2 = 0;
                 foreach (double v in s.Rates.Values) sum += v;
+                foreach (double v in s.WeightedRates.Values) sumW2 += v;
                 s.MeanErrorRate = sum / s.DiffIos;
+                s.MeanWeightedRate = sumW2 / s.DiffIos;
             }
-            // 1.92 (사용자 결정): "몇 개가" 와 "얼마나 오래" 를 둘 다 — 100 × (1 − 차이 IO 비율) × (1 − 평균 오차율).
-            // 전에는 100 − 평균 오차율이라 IO 30 개가 조금씩 달라도 98 점이었습니다.
-            s.Score = ScoreOf(s.DiffIos, s.TotalIos, s.MeanErrorRate);
+            // 1.92: "몇 개가" × "얼마나 오래" — 1.93: 오래 를 크기 반영 오차율로, 그리고 로그 길이 (덮은 비율) 를 곱함.
+            s.LengthFactor = Math.Max(0, Math.Min(1, 1.0 - lengthLoss));
+            s.Score = ScoreOf(s.DiffIos, s.TotalIos, s.MeanWeightedRate) * s.LengthFactor;
             return s;
         }
 
@@ -450,6 +485,8 @@ namespace LogScope.Analysis1.Judge
                 res.Items.Add(it);
             }
 
+            LogLengthItems(before, after, opt, whole, res);   // 1.93
+
             if (!double.IsNaN(opt.ViewShift))
             {
                 const string v = "분석 1 그래프에서 고른 단계의 시작 맞춤으로도 봐서, 거기서 맞는 곳은 오차로 세지 않았습니다.";
@@ -457,6 +494,53 @@ namespace LogScope.Analysis1.Judge
             }
             Regrade(res, opt);
             return res;
+        }
+
+        // ---------------- 로그 길이 (1.93) ----------------
+        //
+        // 값 비교는 두 로그가 <b>겹치는 시간</b>만 봅니다. 그래서 공정이 실패해 이후 로그가 중간에 끊기면 (짧은 로그)
+        // 끊긴 뒤의 시간은 아무 데도 안 잡혀 "차이 없음" 처럼 보였습니다. 겹치지 않는 시간이 시간 여유보다 길면
+        // 로그 전체에 대한 오차 한 줄로 적습니다 — 점수 (덮은 비율) · 히트맵 (이후 로그 없음 칸) 도 이것을 씁니다.
+
+        private static void LogLengthItems(LogDataset before, LogDataset after, JudgeOptions opt, Seg whole, JudgeResult res)
+        {
+            double bS = before.TimeStart, bE = before.TimeEnd, len = bE - bS;
+            if (!(len > 0)) return;
+            double aS = after.TimeStart + opt.Shift, aE = after.TimeEnd + opt.Shift;
+            double grace = Math.Max(0, whole.Slack);
+
+            if (aS - bS > grace)
+                AddLength(res, bS, Math.Min(aS, bE), len, true, "이후 로그가 늦게 시작함",
+                          "이전 로그 앞부분에 견줄 이후 로그가 없습니다.");
+            if (bE - aE > grace)
+                AddLength(res, Math.Max(aE, bS), bE, len, true, "이후 로그가 일찍 끝남",
+                          "이전 로그 뒷부분에 견줄 이후 로그가 없습니다 — 공정이 중간에 끊겼을 (실패했을) 수 있습니다.");
+            if (bS - aS > grace)
+                AddLength(res, aS, bS, len, false, "이후 로그가 일찍 시작함",
+                          "이전 로그보다 앞의 기록이 이후 로그에만 있습니다.");
+            if (aE - bE > grace)
+                AddLength(res, bE, aE, len, false, "이후 로그가 더 김",
+                          "이전 로그가 끝난 뒤의 기록이 이후 로그에만 있습니다 — 공정이 더 오래 걸렸을 수 있습니다.");
+        }
+
+        private static void AddLength(JudgeResult res, double start, double end, double beforeLength,
+                                      bool missing, string what, string detail)
+        {
+            double d = Math.Max(0, end - start);
+            double frac = beforeLength > 0 ? d / beforeLength : 0;
+            var it = new JudgeItem();
+            it.Kind = JudgeKind.LogLength;
+            it.Start = start;
+            it.End = end;
+            it.Duration = d;
+            it.SegLength = beforeLength;
+            it.StepRatio = Math.Min(1.0, frac);
+            it.MaxExcessPercent = frac * 100.0;
+            it.MissingInAfter = missing;
+            it.What = what + " — " + DurationText(d, res.Clock, res.TimeUnit)
+                    + " (이전 로그 길이의 " + (frac * 100.0).ToString("0.#", Inv) + " %)";
+            it.Detail = detail;
+            res.Items.Add(it);
         }
 
         // ---------------- 구간 (단계) ----------------
@@ -1252,6 +1336,10 @@ namespace LogScope.Analysis1.Judge
                     case JudgeKind.StepOrder:
                         it.Grade = JudgeGrade.Critical;
                         break;
+                    case JudgeKind.LogLength:
+                        // 1.93: 이전 로그 길이의 CriticalRatio (20 %) 넘게 없거나 더 길면 CRITICAL
+                        it.Grade = it.StepRatio >= opt.CriticalRatio ? JudgeGrade.Critical : JudgeGrade.Warning;
+                        break;
                     default:
                         it.Grade = JudgeGrade.Warning;
                         break;
@@ -1320,6 +1408,11 @@ namespace LogScope.Analysis1.Judge
                     g = JudgeGrade.Critical;                       // 공정 순서가 다름
                 else if (it.Kind == JudgeKind.StepLength && g == JudgeGrade.Pass)
                     g = JudgeGrade.Warning;                        // 단계 길이만 다름
+                else if (it.Kind == JudgeKind.LogLength)          // 1.93: 로그 길이가 다름 (공정 실패로 끊김 등)
+                {
+                    if (it.Grade == JudgeGrade.Critical) g = JudgeGrade.Critical;
+                    else if (g == JudgeGrade.Pass) g = JudgeGrade.Warning;
+                }
             }
             res.Grade = g;
         }

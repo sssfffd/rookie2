@@ -87,8 +87,14 @@ namespace LogScope.Main
                     Cards[0].ClearVerdict();
                     Cards[0].SetCount(string.Empty);
                     Cards[0].SetScore(Math.Round(js.Score, 1));
-                    Cards[0].SetCountBlock(js.DiffIos.ToString("N0") + " / " + js.TotalIos.ToString("N0"),
-                                           "평균 오차율 " + js.MeanErrorRate.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " %");
+                    // 1.93: 크기 반영 오차율 (점수에 쓰는 것) · 로그 길이가 모자라면 그것도 같은 줄에.
+                    var inv = System.Globalization.CultureInfo.InvariantCulture;
+                    string sub = "평균 오차율 " + js.MeanErrorRate.ToString("0.#", inv) + " %";
+                    if (js.DiffIos > 0 && Math.Abs(js.MeanWeightedRate - js.MeanErrorRate) >= 0.05)
+                        sub += " (크기 반영 " + js.MeanWeightedRate.ToString("0.#", inv) + " %)";
+                    if (js.LengthFactor < 0.9995)
+                        sub += " · 로그 길이 " + ((1 - js.LengthFactor) * 100).ToString("0.#", inv) + " % 다름";
+                    Cards[0].SetCountBlock(js.DiffIos.ToString("N0") + " / " + js.TotalIos.ToString("N0"), sub);
                     Cards[0].SetScoreNote(note);
                 }
                 else
@@ -416,6 +422,8 @@ namespace LogScope.Main
                 {
                     return it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
                 });
+                // 1.93: 로그 길이가 다름 (공정 실패로 끊긴 로그 등) — 눌러서 보고 허용할 수 있게 줄 하나
+                AddPseudo(list, judge, PseudoLength, delegate (JudgeItem it) { return it.Kind == JudgeKind.LogLength; });
             }
 
             // 달라진 IO 를 빨리 찾을 수 있게 이름을 모아 둡니다.
@@ -716,7 +724,8 @@ namespace LogScope.Main
                 bool step = it.Kind == JudgeKind.StepLength || it.Kind == JudgeKind.StepMissing
                          || it.Kind == JudgeKind.StepExtra || it.Kind == JudgeKind.StepOrder;
                 bool io = it.Kind == JudgeKind.IoMissing || it.Kind == JudgeKind.IoExtra;
-                if ((name == PseudoSteps && step) || (name == PseudoIos && io)) list.Add(it);
+                bool len = it.Kind == JudgeKind.LogLength;
+                if ((name == PseudoSteps && step) || (name == PseudoIos && io) || (name == PseudoLength && len)) list.Add(it);
             }
             return list;
         }
@@ -724,6 +733,8 @@ namespace LogScope.Main
         /// <summary>그룹이 아닌 줄 이름 (공정 단계 오차 · 한쪽에만 있는 IO).</summary>
         public const string PseudoSteps = "공정 단계";
         public const string PseudoIos = "한쪽에만 있는 IO";
+        /// <summary>1.93: 로그 길이가 다름 줄.</summary>
+        public const string PseudoLength = "로그 길이";
 
         /// <summary>오차 줄의 [이번만 허용] · [앞으로도 허용] · [허용 풀기].</summary>
         public void Allow(JudgeItem item, AllowChoice choice)

@@ -79,6 +79,12 @@ namespace LogScope.Analysis1.Heatmap
             {
                 t0 = Math.Max(before.TimeStart, after.TimeStart + shift);
                 t1 = Math.Min(before.TimeEnd, after.TimeEnd + shift);
+                if (opt.ShowLengthGap && t1 > t0)
+                {
+                    // 1.93: 로그 길이가 다르면 (판정 "로그 길이") 겹치지 않는 시간도 칸으로 — "이후 없음" · "이전 없음".
+                    t0 = Math.Min(before.TimeStart, after.TimeStart + shift);
+                    t1 = Math.Max(before.TimeEnd, after.TimeEnd + shift);
+                }
                 if (!(t1 > t0))
                 {
                     res.Warning = "두 로그의 시간 구간이 겹치지 않습니다.";
@@ -132,11 +138,16 @@ namespace LogScope.Analysis1.Heatmap
                 // 1.68: 정상 판정이 있으면 "차이 난 IO" 는 판정 기준 (메인 칸과 같은 IO). 칸 색은 그대로 이 계산.
                 bool diff = opt.Judged != null ? opt.Judged.Contains(LogDataset.LooseKey(bc.Name)) : row.HasDifference;
                 if (diff) changed++;
-                if (diff || opt.IncludeUnchanged) res.Rows.Add(row);
+                if (diff || opt.IncludeUnchanged || (opt.ShowLengthGap && row.GapBuckets > 0)) res.Rows.Add(row);
             }
 
             res.ComparedChannels = compared;
             res.ChangedChannels = changed;
+            if (opt.ShowLengthGap)
+            {
+                const string gap = "로그 길이가 다릅니다 (판정 '로그 길이') — 한쪽 로그에만 있는 시간은 '이후 없음' · '이전 없음' 칸.";
+                res.Warning = res.Warning.Length > 0 ? res.Warning + " " + gap : gap;
+            }
 
             // 많이 벌어진 IO 가 위로 오게.
             //
@@ -192,13 +203,13 @@ namespace LogScope.Analysis1.Heatmap
         }
 
         /// <summary>
-        /// 칸 수 상한 (1.89). 칸 하나가 IO 마다 28 바이트라 IO 수 × 칸 수가 300 만 칸 (≈ 84 MB) 을 넘지 않게,
+        /// 칸 수 상한 (1.89). 칸 하나가 IO 마다 44 바이트 (1.93 — 부호 · 한쪽 없음 칸) 라 IO 수 × 칸 수가 240 만 칸 (≈ 100 MB) 을 넘지 않게,
         /// 그래도 4000 칸보다는 적지 않게, 20000 칸보다는 많지 않게. 1 초 칸으로 IO 60 개면 20000 칸 (5 시간 반) 까지.
         /// 판은 보이는 칸만 그려서 칸 수가 그리기를 느리게 하지는 않습니다.
         /// </summary>
         public static int AutoMaxBuckets(int ioCount)
         {
-            long byMemory = 3000000L / Math.Max(1, ioCount);
+            long byMemory = 2400000L / Math.Max(1, ioCount);
             return (int)Math.Max(4000, Math.Min(20000, byMemory));
         }
 
@@ -266,6 +277,8 @@ namespace LogScope.Analysis1.Heatmap
             double[] bt = before.Times, at = after.Times;
             float[] bv = bc.Values, av = ac.Values;
             int an = after.SampleCount;
+            // 1.93: 이후 로그 마지막 표본 뒤로 표본 간격 하나까지는 그 표본의 구간 (그 너머는 "이후 없음")
+            double afterTail = an > 1 ? (at[an - 1] - at[0]) / (an - 1) : 0;
 
             // 돌려 쓰는 자리라 먼저 지웁니다 (위 Build 의 주석 참고).
             Array.Clear(sum, 0, buckets);
@@ -312,7 +325,14 @@ namespace LogScope.Analysis1.Heatmap
 
                     while (j + 1 < an && at[j + 1] <= ta) j++;
                     if (j >= an) break;
-                    if (at[j] > ta) continue;      // 아직 이후 로그의 기록 구간에 들어오지 않음
+                    // 1.93: 이후 로그의 기록 구간 밖 (아직 시작 전 · 이미 끝남) — 견줄 값이 없음. 전에는 끝난 뒤를 마지막 값으로 견줬습니다.
+                    if (at[j] > ta || ta > at[an - 1] + afterTail)
+                    {
+                        HeatCell nc = row.Cells[k];
+                        nc.NoAfter++;
+                        row.Cells[k] = nc;
+                        continue;
+                    }
 
                     float b = bv[i];
                     double a;
@@ -373,6 +393,9 @@ namespace LogScope.Analysis1.Heatmap
                         {
                             cell.PeakPercent = (float)pct;
                             cell.PeakDiff = (float)diff;
+                            // 1.93: 부호 (이후 − 이전) 와 그때의 이전 값 — 칸에 +/− 와 100 % 넘는 값을 적으려고
+                            cell.PeakDelta = byName ? float.NaN : (float)(a - b);
+                            cell.PeakBefore = byName ? float.NaN : b;
                         }
                     }
                     row.Cells[k] = cell;
@@ -382,6 +405,17 @@ namespace LogScope.Analysis1.Heatmap
             for (int k = 0; k < buckets; k++)
             {
                 HeatCell cell = row.Cells[k];
+                // 1.93: 이전 표본이 없는 칸인데 이후 로그는 기록이 있으면 "이전 없음" (이후 로그가 더 김 · 일찍 시작)
+                if (cell.Samples == 0 && cell.NoAfter == 0 && an > 0)
+                {
+                    double fa = cuts.From(k) - shift, ta2 = cuts.To(k) - shift;
+                    if (fa <= at[an - 1] && ta2 >= at[0] && (cuts.From(k) > before.TimeEnd || cuts.To(k) < before.TimeStart))
+                    {
+                        cell.NoBefore = 1;
+                        row.Cells[k] = cell;
+                    }
+                }
+                if (cell.Samples == 0 && (cell.NoAfter > 0 || cell.NoBefore > 0)) row.GapBuckets++;
                 if (cell.Samples == 0) continue;
                 cell.Mean = (float)(sum[k] / cell.Samples);
                 cell.Rms = (float)Math.Sqrt(sumSq[k] / cell.Samples);
@@ -480,6 +514,18 @@ namespace LogScope.Analysis1.Heatmap
         /// <summary>견준 표본 수. 0 이면 이 구간에 기록이 없습니다.</summary>
         public int Samples;
 
+        /// <summary>1.93: 가장 크게 벌어진 순간의 <b>부호 있는</b> 차이 (이후 − 이전). 이름 비교면 NaN.</summary>
+        public float PeakDelta;
+
+        /// <summary>1.93: 그 순간의 이전 값 (% 의 기준). 0 이면 % 를 낼 수 없어 값 차이로 적습니다.</summary>
+        public float PeakBefore;
+
+        /// <summary>1.93: 이전 표본은 있는데 이후 로그가 기록 구간 밖이라 못 견준 수 (이후 로그가 짧음).</summary>
+        public int NoAfter;
+
+        /// <summary>1.93: 이전 로그는 기록이 없는데 이후 로그만 있는 칸이면 1.</summary>
+        public int NoBefore;
+
         /// <summary>허용 오차를 넘은 표본 수.</summary>
         public int OverSamples;
 
@@ -494,6 +540,9 @@ namespace LogScope.Analysis1.Heatmap
         public int AfterIndex = -1;
 
         public HeatCell[] Cells;
+
+        /// <summary>1.93: 한쪽 로그에만 기록이 있는 칸 수 ("이후 없음" · "이전 없음").</summary>
+        public int GapBuckets;
 
         /// <summary>
         /// 차이가 난 칸들 중 가장 큰 오차(%). <b>색 진하기에만</b> 씁니다.
@@ -544,6 +593,24 @@ namespace LogScope.Analysis1.Heatmap
             return c.PeakPercent;
         }
 
+        /// <summary>
+        /// 1.93: 칸에 적을 <b>부호 있는</b> % — 이전 값 기준 ((이후 − 이전) / |이전| × 100, 100 % 넘어도 그대로).
+        /// 이전 값이 0 이면 NaN (그때는 <see cref="SignedValueOf"/> 로 값 차이를 적음). 이름 비교도 NaN.
+        /// </summary>
+        public double SignedPercentOf(HeatCell c)
+        {
+            if (!c.HasData || c.OverSamples == 0) return 0;
+            if (float.IsNaN(c.PeakDelta) || float.IsNaN(c.PeakBefore) || c.PeakBefore == 0) return double.NaN;
+            return c.PeakDelta / Math.Abs((double)c.PeakBefore) * 100.0;
+        }
+
+        /// <summary>1.93: 부호 있는 값 차이 (이후 − 이전). 이름 비교면 NaN.</summary>
+        public double SignedValueOf(HeatCell c)
+        {
+            if (!c.HasData || c.OverSamples == 0) return 0;
+            return c.PeakDelta;
+        }
+
         /// <summary>칸을 값으로 볼 때 적을 숫자. PercentOf 와 같은 순간입니다.</summary>
         public double ValueOf(HeatCell c)
         {
@@ -590,6 +657,12 @@ namespace LogScope.Analysis1.Heatmap
 
         /// <summary>칸이 너무 많아지지 않게 하는 상한. 0 이면 IO 수에 맞춰 (4000 ~ 20000, 1.89 — <see cref="HeatmapBuilder.AutoMaxBuckets"/>).</summary>
         public int MaxBuckets;
+
+        /// <summary>
+        /// 1.93: 로그 길이가 다를 때 (판정에 허용 안 된 "로그 길이" 가 있을 때) 겹치지 않는 시간도 칸으로 보이고,
+        /// 그런 칸이 있는 IO 줄은 차이가 없어도 넣습니다 ("이후 없음" · "이전 없음").
+        /// </summary>
+        public bool ShowLengthGap;
 
         /// <summary>차이가 없는 IO 도 줄로 넣을지.</summary>
         public bool IncludeUnchanged;

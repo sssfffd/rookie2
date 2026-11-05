@@ -166,6 +166,9 @@ namespace LogScope.Tests
                 ScoreAtLeastOneBucket();
                 HeatmapAlignedCells();
                 OverallVerdictRules();
+                ShortLogRules();
+                ScoreMagnitudeRules();
+                HeatmapSignedRules();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4302,6 +4305,114 @@ namespace LogScope.Tests
             Check("오차 줄 낱말도 CRITICAL 이름", JudgeResult.WordOf(JudgeGrade.Critical) == "CRITICAL", "");
         }
 
+        /// <summary>히트맵 — 부호 · 100 % 넘는 값 · 이전 값 0 · 짧게 끊긴 로그 (1.93).</summary>
+        private static void HeatmapSignedRules()
+        {
+            Say("히트맵 — +/− · 100 % 넘음 · 이전 0 · 이후 없음");
+            var a = new StringBuilder("Time,UP,DOWN,ZERO\n");
+            var b = new StringBuilder("Time,UP,DOWN,ZERO\n");
+            for (int i = 0; i <= 600; i++)
+            {
+                string t = (i * 0.1).ToString("0.0", CultureInfo.InvariantCulture);
+                a.Append(t).Append(",2,10,0\n");
+                if (i <= 300) b.Append(t).Append(",8.8,4,5\n");   // 30 초에서 끊김
+            }
+            LogDataset da = Open(WriteText("hm_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset db = Open(WriteText("hm_b.csv", b.ToString()), Orientation.Auto);
+
+            var o = new HeatmapOptions();
+            HeatmapResult r = HeatmapBuilder.Build(da, db, o, null);
+            HeatRow up = r.Rows.Find(x => x.Name == "UP"), down = r.Rows.Find(x => x.Name == "DOWN"), zero = r.Rows.Find(x => x.Name == "ZERO");
+            HeatCell cu = up.Cells[0], cd = down.Cells[0], cz = zero.Cells[0];
+            Check("2 → 8.8 = +340 % (100 % 넘어도 그대로, 이전 값 기준)", Math.Abs(up.SignedPercentOf(cu) - 340) < 0.01
+                  && Math.Abs(up.SignedValueOf(cu) - 6.8) < 1e-4, up.SignedPercentOf(cu).ToString("0.##"));
+            Check("10 → 4 = −60 % (부호)", Math.Abs(down.SignedPercentOf(cd) + 60) < 0.01, down.SignedPercentOf(cd).ToString("0.##"));
+            Check("이전 0 → 5 는 % 없음 (NaN) · 값 차이 +5", double.IsNaN(zero.SignedPercentOf(cz)) && Math.Abs(zero.SignedValueOf(cz) - 5) < 1e-6, "");
+            Check("색 · 차례용 % 는 그대로 (부호 없음, 이전 0 은 100)", Math.Abs(up.PercentOf(cu) - 340) < 0.01 && Math.Abs(down.PercentOf(cd) - 60) < 0.01
+                  && zero.PercentOf(cz) == 100, "");
+            Check("길이 차이를 안 보일 때는 겹치는 30 초만 · 끝난 뒤를 마지막 값으로 견주지 않음",
+                  r.End <= db.TimeEnd + 0.2 && up.GapBuckets == 0, r.End.ToString("0.#"));
+
+            o.ShowLengthGap = true;
+            HeatmapResult g = HeatmapBuilder.Build(da, db, o, null);
+            HeatRow gu = g.Rows.Find(x => x.Name == "UP");
+            int noAfter = 0;
+            foreach (HeatCell c in gu.Cells) if (!c.HasData && c.NoAfter > 0) noAfter++;
+            Check("로그 길이를 보이면 이전 로그 끝까지 · 뒷부분은 '이후 없음' 칸", g.End >= da.TimeEnd - 1e-9 && noAfter > 0 && gu.GapBuckets == noAfter,
+                  g.End.ToString("0.#") + " / " + noAfter);
+            Check("알림 줄에 로그 길이", g.Warning.Contains("로그 길이"), g.Warning);
+        }
+
+        /// <summary>점수에 오차 크기 반영 (1.93).</summary>
+        private static void ScoreMagnitudeRules()
+        {
+            Say("점수 — 오차 크기 반영");
+            Check("무게: 0 % → 1 · 25 % → 1.5 · 50 % → 2 · 100 % 이상 → 3 (score.size 50)",
+                  JudgeScore.WeightOf(0, 50) == 1 && JudgeScore.WeightOf(25, 50) == 1.5 && JudgeScore.WeightOf(50, 50) == 2
+                  && JudgeScore.WeightOf(100, 50) == 3 && JudgeScore.WeightOf(500, 50) == 3 && JudgeScore.WeightOf(double.NaN, 50) == 1, "");
+
+            LogDataset da = Open(Path.Combine(_dir, "judge_a.csv"), Orientation.Auto);
+            LogDataset db = Open(Path.Combine(_dir, "judge_b.csv"), Orientation.Auto);
+            double t0 = da.TimeStart, len = da.TimeEnd - da.TimeStart;
+            Func<double, JudgeScore> scoreWith = delegate (double pct)
+            {
+                var r = new JudgeResult();
+                var it = new JudgeItem();
+                it.Kind = JudgeKind.Value; it.Io = "SPIKE";
+                it.Start = t0; it.End = t0 + len * 0.10; it.Duration = len * 0.10;   // 10 칸
+                it.MaxExcessPercent = pct;
+                r.Items.Add(it);
+                return JudgeScore.Of(r, da, db, null);
+            };
+            JudgeScore small = scoreWith(1), big = scoreWith(300);
+            Check("같은 시간 (10 칸) — 시간 오차율은 같음", Math.Abs(small.MeanErrorRate - big.MeanErrorRate) < 1e-9
+                  && Math.Abs(small.MeanErrorRate - 10) < 1.01, small.MeanErrorRate + " " + big.MeanErrorRate);
+            Check("크게 벗어난 쪽 (300 %) 은 크기 반영 오차율 3 배 · 점수 더 낮음", Math.Abs(big.MeanWeightedRate - big.MeanErrorRate * 3) < 1e-9
+                  && big.Score < small.Score, small.Score.ToString("0.#") + " > " + big.Score.ToString("0.#"));
+            Check("살짝 넘은 쪽 (1 %) 은 거의 예전 그대로 (무게 1.02)", Math.Abs(small.MeanWeightedRate - small.MeanErrorRate * 1.02) < 1e-9, "");
+        }
+
+        /// <summary>공정 실패로 짧게 끊긴 로그 (1.93) — 판정 · 점수에 반영.</summary>
+        private static void ShortLogRules()
+        {
+            Say("짧게 끊긴 로그 — 로그 길이 오차 · 점수");
+            var a = new StringBuilder("Time,A,B\n");
+            var b = new StringBuilder("Time,A,B\n");
+            var c = new StringBuilder("Time,A,B\n");
+            for (int i = 0; i <= 1000; i++)
+            {
+                double t = i * 0.1, v = Math.Sin(i * 0.05) * 10;
+                string line = t.ToString("0.0", CultureInfo.InvariantCulture) + "," + v.ToString("0.###", CultureInfo.InvariantCulture) + ",5\n";
+                a.Append(line);
+                if (i <= 300) b.Append(line);    // 30 초에서 끊김 (공정 실패)
+                if (i <= 995) c.Append(line);    // 0.5 초 짧음 (시간 여유 안)
+            }
+            LogDataset full = Open(WriteText("len_full.csv", a.ToString()), Orientation.Auto);
+            LogDataset cut = Open(WriteText("len_cut.csv", b.ToString()), Orientation.Auto);
+            LogDataset near = Open(WriteText("len_near.csv", c.ToString()), Orientation.Auto);
+
+            JudgeResult r = JudgeEngine.Run(full, cut, null, new JudgeOptions(), null);
+            JudgeItem it = r.Items.Find(x => x.Kind == JudgeKind.LogLength);
+            Check("이후 로그가 30 초에서 끊김 → '일찍 끝남' 오차 1 개", it != null && it.What.StartsWith("이후 로그가 일찍 끝남")
+                  && r.Items.FindAll(x => x.Kind == JudgeKind.LogLength).Count == 1, it == null ? "없음" : it.What);
+            Check("없는 부분 70 % · CRITICAL · 판정도 CRITICAL", it != null && Math.Abs(it.StepRatio - 0.7) < 0.01
+                  && it.Grade == JudgeGrade.Critical && r.Grade == JudgeGrade.Critical, it == null ? "" : it.StepRatio + " " + it.Grade);
+            Check("겹치는 30 초는 값이 같아 값 오차 없음", !r.Items.Exists(x => x.Kind == JudgeKind.Value), "");
+            JudgeScore js = JudgeScore.Of(r, full, cut, null);
+            Check("점수에 반영 — 덮은 비율 30 % → 30 점 (값 차이 없음)", Math.Abs(js.Score - 30) < 1.0 && Math.Abs(js.LengthFactor - 0.3) < 0.01,
+                  js.Score.ToString("0.#") + " / " + js.LengthFactor.ToString("0.##"));
+
+            JudgeResult ok = JudgeEngine.Run(full, near, null, new JudgeOptions(), null);
+            Check("0.5 초 짧은 것은 시간 여유 안 → 로그 길이 오차 없음 · 100 점", !ok.Items.Exists(x => x.Kind == JudgeKind.LogLength)
+                  && JudgeScore.Of(ok, full, near, null).Score == 100, "");
+
+            var once = new JudgeOptions();
+            once.Once = new HashSet<string> { it.Key };
+            JudgeEngine.Regrade(r, once);
+            Check("이번만 허용하면 판정 PASS · 점수 100", r.Grade == JudgeGrade.Pass && JudgeScore.Of(r, full, cut, null).Score == 100,
+                  r.Grade.ToString());
+        }
+
         /// <summary>메인 최종 판정 · 칸마다 판정 등 (1.92).</summary>
         private static void OverallVerdictRules()
         {
@@ -4359,8 +4470,8 @@ namespace LogScope.Tests
             HeatBuckets u = HeatBuckets.Uniform(t0, t1, 60000, false);
             Check("시각이 아니면 예전처럼 시작부터 (정각 맞춤 없음)", u.From(1) == t0 + 60000, "");
 
-            Check("칸 수 상한 — IO 60 개 20000 · 200 개 15000 · 2000 개 4000",
-                  HeatmapBuilder.AutoMaxBuckets(60) == 20000 && HeatmapBuilder.AutoMaxBuckets(200) == 15000
+            Check("칸 수 상한 — IO 60 개 20000 · 200 개 12000 (1.93: 칸이 커짐) · 2000 개 4000",
+                  HeatmapBuilder.AutoMaxBuckets(60) == 20000 && HeatmapBuilder.AutoMaxBuckets(200) == 12000
                   && HeatmapBuilder.AutoMaxBuckets(2000) == 4000, "");
         }
 
@@ -4642,6 +4753,17 @@ namespace LogScope.Tests
         private static double MeanRate(AppState st)
         {
             return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).MeanErrorRate;
+        }
+
+        /// <summary>크기 반영 평균 오차율 · 로그 길이 계수 (1.93).</summary>
+        private static double WeightedRate(AppState st)
+        {
+            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).MeanWeightedRate;
+        }
+
+        private static double LengthOf(AppState st)
+        {
+            return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).LengthFactor;
         }
 
         /// <summary>지금 판정의 점수 (1.92 셈 — JudgeScore.ScoreOf).</summary>
@@ -5116,7 +5238,13 @@ namespace LogScope.Tests
             Check("누르면 오차 창에 둘 · 차례는 앞으로도 허용 단추 없음", pop.Rows.Count == 2
                   && pop.Summary == "오차 2" && pop.Rows[0].Item.Kind == JudgeKind.StepOrder
                   && !pop.Rows[0].CanAllowAlways && pop.Rows[0].IsOpen && pop.Rows[1].CanAllowAlways, pop.Rows.Count.ToString());
-            Check("알림 줄은 History 그룹에 안 섞임", main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count, "");
+            int pseudoRows = 0;
+            foreach (GroupSummaryVm gr in main.Cards[0].Groups) if (gr.IsPseudo) pseudoRows++;
+            Check("알림 줄 · 판정 줄 (로그 길이 등) 은 History 그룹에 안 섞임",
+                  main.Cards[0].TakeSnapshot().Groups.Count == main.Cards[0].Groups.Count - pseudoRows, pseudoRows.ToString());
+            JudgeItem lenItem = st.Judgement.Items.Find(x => x.Kind == JudgeKind.LogLength);
+            Check("이후 로그가 5 초 더 김 → 로그 길이 오차 · 줄 '로그 길이' (1.93)", lenItem != null && lenItem.What.StartsWith("이후 로그가 더 김")
+                  && main.Cards[0].Groups.Exists(x => x.IsPseudo && x.GroupName == MainVm.PseudoLength), lenItem == null ? "없음" : lenItem.What);
 
             // 단계가 하나 없어지면
             var c = new StringBuilder("Time,STEP,PV\n");
@@ -5155,7 +5283,7 @@ namespace LogScope.Tests
             Check("메인 분석 1 칸 = 점수 / 100 · 차이 4 / 6 IO · 평균 오차율 (1.81, 점수 셈 1.92)", main.Cards[0].ScoreOutOf == "/ 100"
                   && main.Cards[0].CountMain == "4 / 6" && main.Cards[0].CountSub.StartsWith("평균 오차율 ")
                   && Math.Abs(main.Cards[0].Score - ExpectedScore(st)) < 0.051
-                  && Math.Abs(ExpectedScore(st) - 100 * (1 - 4.0 / 6) * (1 - MeanRate(st) / 100)) < 1e-9 && main.Cards[0].Score < 100,
+                  && Math.Abs(ExpectedScore(st) - 100 * (1 - 4.0 / 6) * (1 - WeightedRate(st) / 100) * LengthOf(st)) < 1e-9 && main.Cards[0].Score < 100,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].CountMain);
 
             // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----

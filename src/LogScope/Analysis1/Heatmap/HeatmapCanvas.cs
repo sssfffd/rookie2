@@ -328,7 +328,15 @@ namespace LogScope.Analysis1.Heatmap
                     Color textColor;
                     string label;
 
-                    if (!hc.HasData)
+                    if (!hc.HasData && (hc.NoAfter > 0 || hc.NoBefore > 0))
+                    {
+                        // 1.93: 한쪽 로그에만 기록 — 로그 길이가 다름 (공정 실패로 끊긴 로그 등). 차이처럼 진하게.
+                        Color c1 = Blend(p.HeatLow, p.HeatHigh, 1.0);
+                        fill = Frozen(c1);
+                        textColor = Readable(c1);
+                        label = showNumbers ? (hc.NoAfter > 0 ? "이후 없음" : "이전 없음") : null;
+                    }
+                    else if (!hc.HasData)
                     {
                         fill = p.HeatNoDataBrush;
                         textColor = p.Muted;
@@ -515,8 +523,25 @@ namespace LogScope.Analysis1.Heatmap
         /// </summary>
         private string CellText(HeatRow row, HeatCell cell)
         {
-            if (_showPercent) return NumberText.Short(row.PercentOf(cell)) + "%";
-            return NumberText.Short(row.ValueOf(cell));
+            // 1.93: 부호 (+ 높아짐 · − 낮아짐), 이전 값 기준 % 는 100 % 를 넘어도 그대로. 이전 값이 0 이면 % 대신 값 차이 (Δ).
+            if (row.ByName) return "≠";
+            if (_showPercent)
+            {
+                double sp = row.SignedPercentOf(cell);
+                if (double.IsNaN(sp)) return "Δ" + Signed(row.SignedValueOf(cell));
+                return Signed(sp) + "%";
+            }
+            return Signed(row.SignedValueOf(cell));
+        }
+
+        /// <summary>"+12" · "−3.4" (빼기는 긴 줄표 −).</summary>
+        private static string Signed(double v)
+        {
+            if (double.IsNaN(v)) return "-";
+            string s = NumberText.Short(Math.Abs(v));
+            if (v > 0) return "+" + s;
+            if (v < 0) return "−" + s;
+            return s;
         }
 
         /// <summary>설명 줄에 쓸, 값과 단위를 붙인 글자.</summary>
@@ -607,6 +632,10 @@ namespace LogScope.Analysis1.Heatmap
             // 어느 단계인지 알 수 없습니다.
             string when = _result.ByStep ? _result.BucketText(c) + "   " + span : span;
 
+            if (!cell.HasData && cell.NoAfter > 0)
+                return row.Name + "   " + when + "   이후 없음 — 이후 로그가 이 시간에 기록이 없습니다 (짧게 끊긴 로그 · 판정 '로그 길이')";
+            if (!cell.HasData && cell.NoBefore > 0)
+                return row.Name + "   " + when + "   이전 없음 — 이후 로그에만 기록이 있습니다 (판정 '로그 길이')";
             if (!cell.HasData) return row.Name + "   " + when + "   기록 없음";
 
             string bar = row.ByName
@@ -620,10 +649,13 @@ namespace LogScope.Analysis1.Heatmap
 
             // 칸에 적히는 값과 허용 오차는 같은 잣대입니다. 그래서 둘을
             // 나란히 적어 두면 왜 빨간지 바로 읽힙니다.
+            // 1.93: 부호 · 이전 값 기준 % (100 % 넘어도) · 이전 값 → 이후 값. 이전 값이 0 이면 % 대신 값 차이.
+            double sp = row.SignedPercentOf(cell);
             string peak = row.ByName
                 ? "이름이 다름"
-                : NumberText.Plain(row.PercentOf(cell)) + "%"
-                  + " (" + WithUnit(row.ValueOf(cell), row) + ")";
+                : (double.IsNaN(sp) ? "이전 값 0 이라 % 없음, 값 차이 " + Signed(row.SignedValueOf(cell)) : Signed(sp) + "% (이전 값 기준)")
+                  + " (이전 " + NumberText.Plain(cell.PeakBefore) + " → 이후 " + NumberText.Plain(cell.PeakBefore + cell.PeakDelta)
+                  + ", " + Signed(row.SignedValueOf(cell)) + (row.Unit.Length > 0 ? " " + row.Unit : string.Empty) + ")";
 
             return row.Name + "   " + when + "   차이 발생"
                  + "   가장 크게 벌어진 순간 " + peak
