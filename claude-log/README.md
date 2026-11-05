@@ -200,3 +200,4 @@
 | `191-dashboard-names-final-verdict.md` | 1.95 — 최종 판정 = 결과 있는 분석 중 가장 나쁜 것 (이름으로) · 공정 일치율 (95 · 80) · 공정 시간 일치율 · IO별 평균 오차율 · label.diff · "결과 없음" · History 폭 |
 | `192-remove-meaning-line.md` | 1.96 — 분석 칸 머리 아래 "뜻" 줄 지움 (설명은 대시보드 분석 2 · 3 칸 마우스 글) |
 | `193-overview-icons-top-list.md` | 1.97 — 판정 그림 통일 (LampIcon) · 분석 2 · 3 "결과 없음" 글꼴 · 최종 판정 가운데 · 안내 통일 · 분석별 상세요약 · 차이 발생 IO List · 허용 오차 넘은 만큼으로 무게 |
+| `194-a3-tile-no-result.md` | 1.98 — 맨 위 분석 3 칸: 못 쓸 때 (LLM 서버 안 닿음) 도 "못 씀" 대신 "결과 없음" |

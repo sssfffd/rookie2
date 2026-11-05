@@ -4497,7 +4497,7 @@ namespace LogScope.Tests
             c3.SetVerdict("WARNING", ScoreBands.GradeWarn, "조금 다름", "");
             Check("분석 3 주의 → 최종 주의 · 근거 분석 3", o.Word == "주의" && o.Reason == c3.Title + " — 조금 다름", o.Reason);
             c3.SetBlocked(true, "LLM 서버에 닿지 않습니다", "");
-            Check("분석 3 을 못 쓰면 무시 · 등은 '못 씀'", c3.LampWord == "못 씀" && o.Word == "정상" && !o.ReferenceNote.Contains(c3.Title), o.Word + " | " + o.ReferenceNote);
+            Check("분석 3 을 못 쓰면 무시 · 맨 위 칸도 '결과 없음' (1.98)", c3.LampWord == "결과 없음" && c3.LampGrade == ScoreBands.GradeNone && o.Word == "정상" && !o.ReferenceNote.Contains(c3.Title), o.Word + " | " + o.ReferenceNote);
         }
 
         /// <summary>히트맵 칸: 정각에 맞춘 경계 · 1 초 · 칸 수 상한 (1.89).</summary>

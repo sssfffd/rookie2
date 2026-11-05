@@ -188,7 +188,7 @@ namespace LogScope.Main
 
     /// <summary>
     /// 판정 표시 (1.97) — 글자 (✔ ⚠ ✖ ○ –) 는 글꼴마다 크기 · 굵기가 제각각이라 같은 크기의 원 하나로 그립니다.
-    /// 정상 = 체크, 주의 = 느낌표, 이상 = ×, 그 밖 (결과 없음 · 못 씀) = 빈 원. 크기는 Width · Height (기본 14).
+    /// 정상 = 체크, 주의 = 느낌표, 이상 = ×, 그 밖 (결과 없음) = 빈 원. 크기는 Width · Height (기본 14).
     /// 메인 화면은 결과가 없으면 이 그림을 감추고 "결과 없음" 글자만 둡니다 (LampIconTile 꼴).
     /// </summary>
     public sealed class LampIcon : DashVisual

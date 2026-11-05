@@ -2292,3 +2292,9 @@
 > 그리고 지금 IO별 이상 주의 기준 알려주고
 
 → 답변: [193-overview-icons-top-list.md](193-overview-icons-top-list.md)
+
+## 요청 221 — 맨 위 분석 3 칸 "결과 없음"
+
+> 최상단에 분석3 결과 없음으로 만들라니까
+
+→ 답변: [194-a3-tile-no-result.md](194-a3-tile-no-result.md)

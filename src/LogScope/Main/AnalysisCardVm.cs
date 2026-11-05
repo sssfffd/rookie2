@@ -630,11 +630,15 @@ namespace LogScope.Main
         /// <summary>등의 색. 칸을 못 쓸 때 (분석 3 — LLM 서버에 안 닿음) 는 회색 — 옛 판정을 지금 것으로 읽지 않게.</summary>
         public string LampGrade { get { return _blocked ? ScoreBands.GradeNone : Grade; } }
 
-        /// <summary>판정 낱말 — 정상 · 주의 · 이상, 결과가 없으면 "아직", 못 쓰면 "못 씀".</summary>
-        public string LampWord { get { return _blocked ? "못 씀" : WordOf(Grade); } }
+        /// <summary>
+        /// 판정 낱말 — 정상 · 주의 · 이상, 그 밖은 "결과 없음".
+        /// 1.98: 칸을 못 쓸 때 (분석 3 — LLM 서버에 안 닿음) 도 "못 씀" 이 아니라 "결과 없음" (사용자 요청 — 맨 위 칸).
+        /// 못 쓰는 까닭은 아래 분석 칸에 그대로 적힙니다.
+        /// </summary>
+        public string LampWord { get { return WordOf(LampGrade); } }
 
         /// <summary>판정 표시 — ✔ · ⚠ · ✖ · ○ (못 쓰면 –).</summary>
-        public string LampIcon { get { return _blocked ? "–" : IconOf(Grade); } }
+        public string LampIcon { get { return IconOf(LampGrade); } }
 
         /// <summary>그 판정의 근거 한 줄 ("점수 73.1 · 차이 5 / 120 IO", "바뀐 값 3 개" …).</summary>
         public string LampLine
