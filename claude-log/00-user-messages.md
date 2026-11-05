@@ -2278,3 +2278,9 @@
 > 그냥 결과없음으로 바꿔줘 각 요약칸도 비어있으면 결과 없음으로 만들어주고
 
 → 답변: [191-dashboard-names-final-verdict.md](191-dashboard-names-final-verdict.md)
+
+## 요청 219 — 분석 칸 아래 "뜻" 줄 지우기
+
+> 그리고 각 분석 밑에 뜻이라고 적혀있는 것들 다 지워줘
+
+→ 답변: [192-remove-meaning-line.md](192-remove-meaning-line.md)

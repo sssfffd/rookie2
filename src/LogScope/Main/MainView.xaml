@@ -500,12 +500,8 @@
                                                 ToolTip="{x:Static t:MainTexts.CardClickTip}" />
                                     </Grid>
 
-                                    <!-- 1.92: "뜻" — 이 분석이 무엇을 보는지 (config.txt analysisN 의 설명). 한 줄, 길면 … · 마우스로 전체. -->
-                                    <TextBlock Margin="0,0,0,8" FontSize="11" Style="{StaticResource Muted}"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Meaning}">
-                                        <Run Text="{x:Static t:MainTexts.MeaningLabel}" FontWeight="SemiBold" />
-                                        <Run Text="{Binding Meaning, Mode=OneWay}" />
-                                    </TextBlock>
+                                    <!-- 1.96: 칸 머리 아래 "뜻" 줄은 뺌 (사용자 요청). 설명은 위 대시보드 분석 2 · 3 칸에 마우스를 올리면. -->
+                                    <Border Height="6" />
 
                                     <!-- 점수 (또는 판정 낱말) — <b>한 줄, 높이 고정</b> (1.09).
 

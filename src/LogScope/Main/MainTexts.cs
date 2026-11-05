@@ -34,8 +34,6 @@ namespace LogScope.Main
         public const string Heading = "분석 결과";
 
         // ---- 대시보드 (1.94) ----
-        /// <summary>칸 머리 아래 "뜻" 앞 글 (1.92)</summary>
-        public const string MeaningLabel = "뜻  ";
         public const string FinalVerdictTile = "최종 판정";
         public const string ScoreTile = "공정 일치율";
         public const string RateTile = "IO별 평균 오차율";

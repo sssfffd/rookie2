@@ -198,3 +198,4 @@
 | `189-main-dashboard-mockup.md` | 메인 화면 대시보드 시안 (Grafana 스탯 · Splunk 타임라인 · 장비 상태 타일 · Top-N) — 코드 변경 전 확인용 |
 | `190-main-dashboard.md` | 1.94 — 메인 대시보드 (숫자 패널 · 점수 게이지 · 시간대별 차이 + 단계 띠 · 차이 큰 IO · 그룹 타일), 예전 분석 칸은 아래 "분석별 자세히" |
 | `191-dashboard-names-final-verdict.md` | 1.95 — 최종 판정 = 결과 있는 분석 중 가장 나쁜 것 (이름으로) · 공정 일치율 (95 · 80) · 공정 시간 일치율 · IO별 평균 오차율 · label.diff · "결과 없음" · History 폭 |
+| `192-remove-meaning-line.md` | 1.96 — 분석 칸 머리 아래 "뜻" 줄 지움 (설명은 대시보드 분석 2 · 3 칸 마우스 글) |
