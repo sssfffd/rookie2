@@ -2379,3 +2379,9 @@
 > 너무 상세하게는 말고 알아보기 쉽게 깔끔하게 작성해줘 ppt로 할꺼야
 
 → 답변: [203-deck-overview-llm.md](203-deck-overview-llm.md)
+
+## 요청 231 — 보고 자료: 화면 캡처 + 기능 설명만
+
+> 아니 저렇게 자세하게 할 거 없고 화면 캡처하고 기능 설명만 하면 되는데
+
+→ 답변: [204-deck-capture-simple.md](204-deck-capture-simple.md)
