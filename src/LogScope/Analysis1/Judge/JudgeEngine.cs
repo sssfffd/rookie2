@@ -150,7 +150,7 @@ namespace LogScope.Analysis1.Judge
 
         /// <summary>IO 이름 → 시간 오차율 (%) — 차이 난 IO 만.</summary>
         public Dictionary<string, double> Rates = new Dictionary<string, double>(StringComparer.Ordinal);
-        /// <summary>2.00: 점수 셈에 쓴 평균 오차율 — IO 마다 score.iocap 까지만 (한쪽에만 있는 IO 는 100 그대로).</summary>
+        /// <summary>2.05: 점수 셈에 쓴 오차율 = 가장 심한 IO 의 크기 반영 오차율, score.iocap (15 %) 까지만 (한쪽에만 있는 IO 도).</summary>
         public double ScoreRate;
         /// <summary>2.00: 영향 상한에 걸린 IO 수 (값 차이가 커서 점수에는 상한까지만 들어간 IO).</summary>
         public int CappedIos;
@@ -292,16 +292,19 @@ namespace LogScope.Analysis1.Judge
                 s.MeanErrorRate = sum / s.DiffIos;
                 s.MeanWeightedRate = sumW2 / s.DiffIos;
                 // 2.00: IO 하나의 영향 상한 (사용자 요청 — 값 차이 하나가 점수를 너무 크게 떨어트림)
+                // 2.05: 평균 → <b>가장 심한 IO</b> (사용자 요청 — "IO 를 허용할수록 점수가 낮아짐").
+                //       차이 IO 들의 평균을 쓰면, 오차가 작은 IO 를 허용했을 때 남은 IO 의 평균이 올라가 점수가 떨어졌습니다.
+                //       가장 심한 IO 의 오차율 (상한 score.iocap) 은 IO 를 빼면 같거나 작아지므로, 허용하면 점수가 늘 같거나 오릅니다.
                 double cap = Settings.AppConfig.Current.ScoreIoCap;
                 bool capped = cap > 0 && cap < 100;
-                double sumC = 0;
+                double worst = 0;
                 foreach (KeyValuePair<string, double> kv in s.WeightedRates)
                 {
                     double v = kv.Value;
-                    if (capped && !s.OneSide.ContainsKey(kv.Key) && v > cap) { v = cap; s.CappedIos++; }
-                    sumC += v;
+                    if (capped && v > cap) { v = cap; s.CappedIos++; }
+                    if (v > worst) worst = v;
                 }
-                s.ScoreRate = sumC / s.DiffIos;
+                s.ScoreRate = worst;
             }
             // 1.92: "몇 개가" × "얼마나 오래" — 1.93: 오래 를 크기 반영 오차율로, 그리고 로그 길이 (덮은 비율) 를 곱함.
             s.LengthFactor = Math.Max(0, Math.Min(1, 1.0 - lengthLoss));
@@ -309,7 +312,7 @@ namespace LogScope.Analysis1.Judge
             return s;
         }
 
-        /// <summary>점수 셈 한 곳 (1.92): 100 × (1 − 차이 IO / 전체 IO) × (1 − 평균 오차율 / 100).</summary>
+        /// <summary>점수 셈 한 곳 (1.92): 100 × (1 − 차이 IO / 전체 IO) × (1 − 오차율 / 100). 2.05 부터 오차율 = 가장 심한 IO (상한 15).</summary>
         public static double ScoreOf(int diffIos, int totalIos, double meanErrorRate)
         {
             if (diffIos <= 0) return 100.0;

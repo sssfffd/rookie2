@@ -405,7 +405,7 @@ namespace LogScope.Settings
             sb.AppendLine("# label.diff : 메인 대시보드 \"차이 IO\" 칸의 이름 (1.95).");
             sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
             sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
-            sb.AppendLine("# score.iocap : IO 하나가 공정 일치율에 미치는 영향 상한 % (2.00, 기본 15). 값 차이가 아주 큰 IO 하나가");
+            sb.AppendLine("# score.iocap : 공정 일치율에 쓰는 '가장 심한 IO 의 오차율' 상한 % (2.00 · 2.05, 기본 15). 값 차이가 아주 큰 IO 하나가");
             sb.AppendLine("#             점수를 통째로 끌어내리지 않게 — 그 IO 는 목록 · 판정 (이상) 에 그대로 보입니다. 0 이면 상한 없음.");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);

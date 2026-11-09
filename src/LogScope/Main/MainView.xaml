@@ -412,8 +412,20 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <main:RateBar Height="10" TimeRate="{Binding PeakBar}" Grade="{Binding LampGrade}" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding RateText}" Margin="8,0,0,0" FontSize="11" />
+                                                    <main:RateBar Height="10" TimeRate="{Binding PeakBar}" Grade="{Binding BarGrade}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding RateText}" Margin="8,0,0,0" FontSize="11">
+                                                        <!-- 2.05: 최대 오차 100 % 이상이면 빨강 굵게 -->
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="{x:Type TextBlock}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Over100}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Bad}" />
+                                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </Grid>
                                                 <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontWeight="SemiBold" VerticalAlignment="Center"
                                                            HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />

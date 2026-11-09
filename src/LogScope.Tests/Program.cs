@@ -4438,6 +4438,7 @@ namespace LogScope.Tests
                 if (MainDashVm.OnsetKey(js, d.TopIos[i].Name, st.Before, 1) < MainDashVm.OnsetKey(js, d.TopIos[i - 1].Name, st.Before, 1)) sorted = false;
             Check("2.04 차이 발생 IO — 먼저 발생한 순 · 판정 낱말 · 막대 = 최대 오차 비율 (100 넘으면 100)", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
                   && d.TopIos.TrueForAll(x => x.PeakBar >= 0 && x.PeakBar <= 100)
+                  && d.TopIos.TrueForAll(x => !x.Over100 || x.BarGrade == ScoreBands.GradeBad)   // 2.05: 100 % 이상이면 빨강
                   && d.TopIos.Count == Math.Min(MainDashVm.TopCount, js.DiffIos), d.TopIos.Count + " " + js.DiffIos);
             Check("2.00 최종 판정 칸의 분석 1 줄 = 대시보드 차이 IO · 이상 · 주의", d.Finding.StartsWith(AppConfig.Current.DiffLabel + " ")
                   && d.Finding.Contains("이상 ") && main.Cards[0].Finding == d.Finding, d.Finding + " | " + main.Cards[0].Finding);
@@ -4855,8 +4856,29 @@ namespace LogScope.Tests
             Check("A 오차율 11 % (10 칸 + 1 칸)", Math.Abs(ra - 11) < 1e-9, ra.ToString(CultureInfo.InvariantCulture));
             Check("허용된 B 는 안 셈 · 한쪽에만 있는 C 는 100 %", !js.Rates.ContainsKey("B") && Math.Abs(rc - 100) < 1e-9, rc.ToString(CultureInfo.InvariantCulture));
             Check("차이 2 / 전체 4 (A B C D)", js.DiffIos == 2 && js.TotalIos == 4, js.DiffIos + " / " + js.TotalIos);
-            Check("평균 오차율 = 차이 난 IO 만 (11 + 100) / 2 = 55.5 · 점수 100 × (1 − 2/4) × (1 − 0.555) = 22.25 (1.92)",
-                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.Score - 22.25) < 1e-9, js.MeanErrorRate + " / " + js.Score);
+            // 2.05: 점수에는 평균 대신 가장 심한 IO 의 오차율 (상한 15 %) — 평균 오차율 (화면 숫자) 은 그대로 55.5
+            Check("2.05 평균 오차율 55.5 (화면) · 점수 100 × (1 − 2/4) × (1 − 15/100) = 42.5 (가장 심한 IO, 상한 15)",
+                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.ScoreRate - 15) < 1e-9 && Math.Abs(js.Score - 42.5) < 1e-9,
+                  js.MeanErrorRate + " / " + js.Score);
+            {
+                // 2.05: IO 를 허용할수록 점수가 같거나 올라야 함 (예전: 오차가 작은 IO 를 허용하면 남은 평균이 올라 점수가 떨어짐)
+                var r2 = new JudgeResult();
+                double len2 = da.TimeEnd - da.TimeStart;
+                string[] ios = { "A", "B", "D" };
+                double[] cover = { 0.30, 0.01, 0.01 };
+                for (int k = 0; k < 3; k++)
+                {
+                    var it2 = new JudgeItem { Kind = JudgeKind.Value, Io = ios[k], Start = da.TimeStart, End = da.TimeStart + len2 * cover[k], Duration = len2 * cover[k] };
+                    r2.Items.Add(it2);
+                }
+                double before = JudgeScore.Of(r2, da, db, null).Score;
+                r2.Items[2].Allowed = AllowState.Once;   // 오차 작은 D 허용
+                double mid = JudgeScore.Of(r2, da, db, null).Score;
+                r2.Items[1].Allowed = AllowState.Once;   // 오차 작은 B 허용
+                double after = JudgeScore.Of(r2, da, db, null).Score;
+                Check("2.05 허용할수록 점수 같거나 오름 (작은 IO 를 허용해도 안 떨어짐)", mid >= before - 1e-9 && after >= mid - 1e-9,
+                      before.ToString("0.##") + " → " + mid.ToString("0.##") + " → " + after.ToString("0.##"));
+            }
             // 1.92 셈 — 사용자에게 보인 세 경우 (전체 IO 120)
             Check("① IO 5 개 3 · 8 · 1 · 100 · 6.5 % → 73.1", Math.Abs(JudgeScore.ScoreOf(5, 120, 118.5 / 5) - 73.12) < 0.01,
                   JudgeScore.ScoreOf(5, 120, 118.5 / 5).ToString("0.##"));

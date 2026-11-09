@@ -323,6 +323,7 @@ namespace LogScope.Main
                 {
                     r.LampGrade = ScoreBands.GradeBad;
                     r.PeakBar = 100;
+                    r.Over100 = true;
                     r.RateText = missing ? "이후에 없음" : "이후에만 있음";
                     r.WhenText = "전체";
                 }
@@ -335,6 +336,7 @@ namespace LogScope.Main
                     {
                         r.PeakBar = Math.Max(0, Math.Min(100, pk));
                         r.RateText = NumberText.Short(pk) + " %";
+                        r.Over100 = pk >= 100;   // 2.05: 이전 값보다 100 % 넘게 벗어나면 빨강
                     }
                     else { r.PeakBar = 0; r.RateText = "-"; }
                     double[] sp;
@@ -439,6 +441,10 @@ namespace LogScope.Main
         public double PeakBar { get; set; }
         /// <summary>막대 옆 글 — 최대 오차 비율 ("34 %", 한쪽에만 있으면 "이후에 없음").</summary>
         public string RateText { get; set; }
+        /// <summary>2.05: 최대 오차 비율이 100 % 이상 (또는 한쪽 로그에만 있음) — 막대 · 글을 빨강으로.</summary>
+        public bool Over100 { get; set; }
+        /// <summary>막대 색 — 100 % 넘으면 빨강 (이상), 아니면 그 IO 의 판정 색.</summary>
+        public string BarGrade { get { return Over100 ? ScoreBands.GradeBad : LampGrade; } }
         /// <summary>2.04: 오차 시간 (허용 오차 밖 시간 비율, "18 %").</summary>
         public string TimeText { get; set; }
         /// <summary>옛 이름 — 2.04 부터 RateText (최대 오차 비율) 와 같음.</summary>
