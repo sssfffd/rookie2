@@ -173,6 +173,7 @@ namespace LogScope.Tests
                 IgnoreStartRules();
                 HeatmapPeakIsMaxError();
                 A3JudgeRules();
+                HeatmapNarrowBuckets();
                 JudgeStateRules();
                 JudgeScreenRules();
                 GalleryModeRules();
@@ -4351,6 +4352,31 @@ namespace LogScope.Tests
             main.Refresh();
             c3.SetBlocked(false, "", "");
             Check("결과를 지우면 결과 없음", c3.LampGrade == ScoreBands.GradeNone, c3.LampGrade);
+        }
+
+        /// <summary>2.06: 0.1 초 칸 — 기록 간격 0.1 초에 시각이 흔들려 (…99 · …01) 표본 없는 칸이 "기록 없음" 이던 것.</summary>
+        private static void HeatmapNarrowBuckets()
+        {
+            Say("히트맵 0.1 초 칸 — 표본이 안 들어간 칸도 견줌");
+            var a = new StringBuilder("Time,V,S\n");
+            var b = new StringBuilder("Time,V,S\n");
+            for (int i = 0; i < 60; i++)
+            {
+                int ms = i * 100 + (i % 2 == 1 ? -1 : 1);   // 1 · 99 · 201 · 299 … → 100 ~ 200 같은 칸이 비게 됨
+                string t = "00:00:" + (ms / 1000).ToString("00") + "." + (ms % 1000).ToString("000");
+                a.Append(t).Append(",10,").Append(i < 30 ? "RUN" : "STOP").Append('\n');
+                b.Append(t).Append(',').Append(i >= 40 && i < 44 ? 14 : 10).Append(',').Append(i < 30 ? "RUN" : "STOP").Append('\n');
+            }
+            LogDataset da = Open(WriteCsv("narrow_a.csv", a.ToString()), Orientation.Auto);
+            LogDataset db = Open(WriteCsv("narrow_b.csv", b.ToString()), Orientation.Auto);
+            var opt = new HeatmapOptions { BucketSpan = 100, IncludeUnchanged = true };
+            HeatmapResult r = HeatmapBuilder.Build(da, db, opt, null);
+            int empty = 0, cells = 0;
+            foreach (HeatRow row in r.Rows)
+                foreach (HeatCell c in row.Cells) { cells++; if (!c.HasData && c.NoAfter == 0 && c.NoBefore == 0) empty++; }
+            Check("0.1 초 칸에 '기록 없음' 이 없음 (두 로그가 다 덮는 곳)", cells > 0 && empty == 0, empty + " / " + cells);
+            HeatRow v = FindRow(r, "V");
+            Check("값이 다른 4 표본 (4.0 ~ 4.4 초) 은 그대로 차이", v != null && v.OverBuckets >= 3, v == null ? "없음" : v.OverBuckets.ToString());
         }
 
         /// <summary>2.00: 히트맵 칸의 % 는 값 차이 (최대 오차) 가 가장 큰 순간의 것.</summary>

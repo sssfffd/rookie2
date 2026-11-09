@@ -407,6 +407,56 @@ namespace LogScope.Analysis1.Heatmap
                 }
             }
 
+            // 2.06: 칸이 기록 간격보다 좁으면 (0.1 초 칸에 0.1 초 기록 + 시각 흔들림 — 0.099 · 0.201 …) 이전 표본이 하나도
+            //       안 들어간 칸이 생겨 "기록 없음" 으로 보였습니다 (사용자 요청). 두 로그가 다 그 시각을 덮으면
+            //       칸 가운데 시각의 값 (아날로그는 이웃 표본 사이 보간, 디지털 · 상태는 직전 값) 으로 견줍니다.
+            double bStart = before.TimeStart, bEnd = before.TimeEnd;
+            for (int k = 0; k < buckets; k++)
+            {
+                HeatCell cell = row.Cells[k];
+                if (cell.Samples > 0 || cell.NoAfter > 0 || an == 0) continue;
+                double from = cuts.From(k), to = cuts.To(k);
+                double mid = (Math.Max(from, bStart) + Math.Min(to, bEnd)) / 2;
+                if (!(mid >= bStart && mid <= bEnd) || to <= bStart || from >= bEnd) continue;   // 이전 로그 밖 (이전 없음은 아래에서)
+                double shiftK = cuts.ShiftOf(k, shift);
+                double ta = mid - shiftK;
+                if (ta < at[0] || ta > at[an - 1] + afterTail) continue;                           // 이후 로그 밖
+                double b = before.SampleAt(bi, mid);
+                double a = after.SampleAt(ai, Math.Min(ta, at[an - 1]));
+                double diff, pct;
+                bool over;
+                if (byName)
+                {
+                    string bs = StateText(bc, b), as_ = StateText(ac, a);
+                    if (bs == null && as_ == null) continue;
+                    bool same = string.Equals(bs, as_, StringComparison.Ordinal);
+                    diff = same ? 0.0 : 1.0;
+                    pct = same ? 0.0 : ToleranceRule.NameMismatchPercent;
+                    over = !same && ToleranceRule.NameMismatchIsOver;
+                }
+                else
+                {
+                    if (double.IsNaN(b) || double.IsNaN(a)) continue;
+                    diff = Math.Abs(b - a);
+                    pct = ToleranceRule.ErrorPercent(b, a);
+                    over = ToleranceRule.IsOver(b, a, limitAbs, limitPct);
+                }
+                if (mid < opt.IgnoreUntil) over = false;
+                cell.Samples = 1;
+                sum[k] = diff;
+                sumSq[k] = diff * diff;
+                cell.Max = (float)diff;
+                if (over && !double.IsNaN(pct))
+                {
+                    cell.OverSamples = 1;
+                    cell.PeakPercent = (float)pct;
+                    cell.PeakDiff = (float)diff;
+                    cell.PeakDelta = byName ? float.NaN : (float)(a - b);
+                    cell.PeakBefore = byName ? float.NaN : (float)b;
+                }
+                row.Cells[k] = cell;
+            }
+
             double rowPeakDiff = -1;
             for (int k = 0; k < buckets; k++)
             {
