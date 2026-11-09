@@ -4579,23 +4579,18 @@ namespace LogScope.Tests
             Check("크게 벗어난 쪽 (300 %) 은 크기 반영 오차율 3 배 · 점수 더 낮음", Math.Abs(big.MeanWeightedRate - big.MeanErrorRate * 3) < 1e-9
                   && big.Score < small.Score, small.Score.ToString("0.#") + " > " + big.Score.ToString("0.#"));
             Check("살짝 넘은 쪽 (1 %) 은 거의 예전 그대로 (무게 1.02)", Math.Abs(small.MeanWeightedRate - small.MeanErrorRate * 1.02) < 1e-9, "");
-            // 2.00: IO 하나의 영향 상한 (score.iocap 기본 15) — 크게 벗어난 IO 도 점수에는 15 % 까지만
-            Check("2.00 영향 상한 — 30 % → 점수 셈에는 15 %, 걸린 IO 1 개 · 화면 오차율은 그대로",
-                  big.CappedIos == 1 && Math.Abs(big.ScoreRate - 15) < 1e-9 && Math.Abs(big.MeanWeightedRate - 30) < 1e-6
-                  && small.CappedIos == 0 && Math.Abs(small.ScoreRate - small.MeanWeightedRate) < 1e-9, big.ScoreRate + " " + big.CappedIos);
+            // 2.06: IO 하나가 깎는 것은 100 / 전체 IO 점까지 — 크기 반영 오차율은 그 IO 의 일치도 (0 ~ 0.5) 에만
+            Check("2.06 차이 IO 하나의 일치도 = 0.5 × (1 − 크기 반영 오차율) · 점수 = 셈과 같음",
+                  Math.Abs(big.Credit - (big.TotalIos - 1 + 0.5 * (1 - 0.30))) < 1e-6 && Math.Abs(big.Score - CreditScore(big)) < 1e-9
+                  && Math.Abs(small.Score - CreditScore(small)) < 1e-9, big.Credit + " " + big.Score);
             {
                 var r = new JudgeResult();
                 var it = new JudgeItem { Kind = JudgeKind.Value, Io = "SPIKE", Start = t0, End = t0 + len, Duration = len, MaxExcessPercent = 500 };
                 r.Items.Add(it);
                 JudgeScore whole = JudgeScore.Of(r, da, db, null);
-                double expect = 100 * (1 - 1.0 / whole.TotalIos) * (1 - 15 / 100.0);   // 전체 IO 가 6 개뿐이라 1/6 은 그대로 깎임
-                Check("2.00 IO 하나가 로그 내내 500 % 벗어나도 오차율 몫은 15 % 까지만", Math.Abs(whole.Score - expect) < 1e-6 && whole.CappedIos == 1,
+                double expect = 100 * (whole.TotalIos - 1.0) / whole.TotalIos;   // 그 IO 일치도 0 — 나머지 5 / 6 은 그대로
+                Check("2.06 IO 하나가 로그 내내 500 % 벗어나도 그 IO 몫 (1/6) 만 깎임 → 83.3", Math.Abs(whole.Score - expect) < 1e-6,
                       whole.Score.ToString("0.#") + " / 전체 IO " + whole.TotalIos);
-                AppConfig keep = AppConfig.Current;
-                AppConfig.Current = AppConfig.Parse(new[] { "score.iocap = 0" });
-                JudgeScore off = JudgeScore.Of(r, da, db, null);
-                AppConfig.Current = keep;
-                Check("2.00 score.iocap = 0 이면 상한 없음 (예전 셈)", off.CappedIos == 0 && off.Score < 1, off.Score.ToString("0.#"));
             }
         }
 
@@ -4745,7 +4740,7 @@ namespace LogScope.Tests
             r.Items.Add(it);
             JudgeScore js = JudgeScore.Of(r, st.Before, st.After, null);
             Check("시간 밖 오차만 있는 IO 도 1 % (0 % 아님)", js.DiffIos == 1 && js.Rates["SPIKE"] == 1.0
-                  && Math.Abs(js.Score - JudgeScore.ScoreOf(1, js.TotalIos, 1.0)) < 1e-9 && js.Score < 99.0,
+                  && Math.Abs(js.Score - CreditScore(js)) < 1e-9 && js.Score < 99.9,
                   js.DiffIos + " / " + js.Score);
         }
 
@@ -4883,9 +4878,20 @@ namespace LogScope.Tests
             Check("허용된 B 는 안 셈 · 한쪽에만 있는 C 는 100 %", !js.Rates.ContainsKey("B") && Math.Abs(rc - 100) < 1e-9, rc.ToString(CultureInfo.InvariantCulture));
             Check("차이 2 / 전체 4 (A B C D)", js.DiffIos == 2 && js.TotalIos == 4, js.DiffIos + " / " + js.TotalIos);
             // 2.05: 점수에는 평균 대신 가장 심한 IO 의 오차율 (상한 15 %) — 평균 오차율 (화면 숫자) 은 그대로 55.5
-            Check("2.05 평균 오차율 55.5 (화면) · 점수 100 × (1 − 2/4) × (1 − 15/100) = 42.5 (가장 심한 IO, 상한 15)",
-                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.ScoreRate - 15) < 1e-9 && Math.Abs(js.Score - 42.5) < 1e-9,
+            // 2.06: 정상 2 (B 허용 · D) + A 0.5 × (1 − 0.11) + C 0 (한쪽에만) = 2.445 → 100 × 2.445 / 4 = 61.125
+            Check("2.06 평균 오차율 55.5 (화면) · 점수 = 100 × (2 + 0.445 + 0) / 4 = 61.1 (정상 비율 50 % 보다 낮지 않음)",
+                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.Score - 61.125) < 1e-9 && js.Score >= 50,
                   js.MeanErrorRate + " / " + js.Score);
+            {
+                // 2.06 사용자 예 ("200 개 중 50 개 정상이면 적어도 25") — 여기서는 전체 4 중 1 개만 정상, 나머지 3 개가 로그 내내 크게 다름
+                var r9 = new JudgeResult();
+                double l9 = da.TimeEnd - da.TimeStart;
+                foreach (string io in new[] { "A", "B", "C" })
+                    r9.Items.Add(new JudgeItem { Kind = JudgeKind.Value, Io = io, Start = da.TimeStart, End = da.TimeEnd, Duration = l9, MaxExcessPercent = 900 });
+                JudgeScore j9 = JudgeScore.Of(r9, da, db, null);
+                Check("2.06 정상 비율이 바닥 — 4 개 중 1 개 정상 · 3 개가 내내 크게 달라도 25 (예전 셈이면 0 가까이)",
+                      j9.TotalIos == 4 && j9.DiffIos == 3 && Math.Abs(j9.Score - 25) < 1e-9 && JudgeScore.ScoreOf(3, 4, 100) < 1, j9.Score.ToString("0.##"));
+            }
             {
                 // 2.05: IO 를 허용할수록 점수가 같거나 올라야 함 (예전: 오차가 작은 IO 를 허용하면 남은 평균이 올라 점수가 떨어짐)
                 var r2 = new JudgeResult();
@@ -5044,6 +5050,14 @@ namespace LogScope.Tests
         }
 
         /// <summary>지금 판정의 점수 (1.92 셈 — JudgeScore.ScoreOf).</summary>
+        /// <summary>2.06 셈: 100 × (정상 IO + Σ 0.5 × (1 − 크기 반영 오차율 / 100)) / 전체 IO × 공정 시간 일치율.</summary>
+        private static double CreditScore(JudgeScore js)
+        {
+            double c = js.TotalIos - js.DiffIos;
+            foreach (double v in js.WeightedRates.Values) c += 0.5 * (1 - Math.Min(100, v) / 100);
+            return 100 * c / js.TotalIos * js.LengthFactor;
+        }
+
         private static double ExpectedScore(AppState st)
         {
             return JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()).Score;
@@ -5565,7 +5579,7 @@ namespace LogScope.Tests
             Check("메인 분석 1 칸 = 공정 일치율 % · 차이 4 / 6 IO · 평균 오차율 (1.81, 셈 1.92, % 1.95)", main.Cards[0].ScoreOutOf == "%"
                   && main.Cards[0].CountMain == "4 / 6" && main.Cards[0].CountSub.StartsWith("평균 오차율 ")
                   && Math.Abs(main.Cards[0].Score - ExpectedScore(st)) < 0.051
-                  && Math.Abs(ExpectedScore(st) - 100 * (1 - 4.0 / 6) * (1 - WeightedRate(st) / 100) * LengthOf(st)) < 1e-9 && main.Cards[0].Score < 100,
+                  && Math.Abs(ExpectedScore(st) - CreditScore(JudgeScore.Of(st.Judgement, st.Before, st.After, st.NoDiffKeys()))) < 1e-9 && main.Cards[0].Score < 100,
                   main.Cards[0].ScoreText + " / " + main.Cards[0].CountMain);
 
             // ---- 메인 분석 1 칸: 그룹 → IO 펼침 → IO 누르면 오차 창 → 허용 (1.59 · 1.62) ----
