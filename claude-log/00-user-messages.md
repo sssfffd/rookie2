@@ -2435,3 +2435,10 @@
 > 0.101이랑 0.100이런거 비교안되서 그런지 기록 없음이라 뜨는 것들이 있는데 손봐주셈
 
 → 답변: [210-heatmap-narrow-cells.md](210-heatmap-narrow-cells.md)
+
+## 요청 238 — "종합 분석 결과" → "종합 Report"
+
+> 그리고 종합 분석 결과 대신
+> 종합 Report로 이름 바꿔주셈
+
+→ 답변: [211-rename-report.md](211-rename-report.md)
