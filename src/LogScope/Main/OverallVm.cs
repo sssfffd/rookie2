@@ -33,7 +33,7 @@ namespace LogScope.Main
             string n = e.PropertyName;
             if (n == "Grade" || n == "LampGrade" || n == "LampLine" || n == "LampWord" || n == "Finding" || string.IsNullOrEmpty(n))
             {
-                Raise("Lines"); Raise("CompositeScore"); Raise("CompositeText"); Raise("HasComposite"); Raise("GateNote"); Raise("CompositeTip");
+                Raise("Lines"); Raise("CompositeScore"); Raise("CompositeText"); Raise("HasComposite"); Raise("GateNote"); Raise("CompositeTip"); Raise("ScoreBeside"); Raise("HasScoreBeside"); Raise("HasGateNote");
                 Raise("Grade"); Raise("LampGrade"); Raise("Word"); Raise("Icon"); Raise("Reason"); Raise("HasReason"); Raise("ReferenceNote"); Raise("HasReference");
             }
         }
@@ -150,6 +150,25 @@ namespace LogScope.Main
         }
 
         public bool HasComposite { get { return CompositeText.Length > 0; } }
+
+        /// <summary>
+        /// 2.04: 판정 낱말 오른쪽에 붙는 종합 점수 ("91.2") — 정상 · 주의 일 때만 (사용자 요청).
+        /// 이상은 넉아웃으로 정해질 수 있어 점수를 붙이면 "점수는 높은데 왜 이상?" 으로 읽힘.
+        /// </summary>
+        public string ScoreBeside
+        {
+            get
+            {
+                string g = Grade;
+                if (g != ScoreBands.GradeGood && g != ScoreBands.GradeWarn) return string.Empty;
+                double s = CompositeScore;
+                return double.IsNaN(s) ? string.Empty : s.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
+        public bool HasScoreBeside { get { return ScoreBeside.Length > 0; } }
+
+        public bool HasGateNote { get { return GateNote.Length > 0; } }
 
         /// <summary>2.02: 마우스를 올리면 — 셈법 한 줄.</summary>
         public string CompositeTip

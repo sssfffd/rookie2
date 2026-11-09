@@ -46,9 +46,10 @@ namespace LogScope.Main
         public const string LegendGap = "이후 로그 없음";
         public const string TopHeading = "차이 발생 IO List";
         /// <summary>1.97: 제목 오른쪽에 작게 — 줄 차례.</summary>
-        public const string TopNote = "오차율순";
+        public const string TopNote = "먼저 발생한 순 · 단위";   // 2.04 (예전 "오차율순")
+        public const string TopOnsetTip = "오차가 처음 난 시각을 이 단위로 묶어 차례를 정합니다. 같은 단위 안이면 최대 오차가 큰 IO 먼저.";
         /// <summary>1.97: 막대 설명 (2.00 — 막대 하나: 허용 오차 밖 시간 비율).</summary>
-        public const string TopBarTime = "막대 = 로그 시간 중 허용 오차 밖 비율";
+        public const string TopBarTime = "막대 = 최대 오차 비율 (이전 값 대비, 100 % 넘으면 꽉 참)";   // 2.04
         public const string TopEmpty = "차이 난 IO 가 없습니다.";
         public const string GroupHeading = "그룹 상태";
         public const string GroupNote = "차이 IO / 전체";

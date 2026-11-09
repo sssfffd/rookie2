@@ -70,6 +70,9 @@ namespace LogScope.Settings
         public bool IgnoreStart;
         public double IgnoreStartSeconds = 10;
 
+        /// <summary>2.04: 메인 "차이 발생 IO List" 의 발생 순서를 볼 단위 (초) — 0.1 · 1 · 10. 같은 단위 안에서는 최대 오차가 큰 쪽 먼저.</summary>
+        public double OnsetSeconds = 1;
+
         /// <summary>
         /// IO 하나에만 따로 걸어 둔 허용 오차. 여기 없는 IO 는 위의 기본값을
         /// 씁니다. 자세한 규칙은 <see cref="ToleranceTable"/>.
@@ -275,6 +278,7 @@ namespace LogScope.Settings
             root["absoluteTolerance"] = AbsoluteTolerance;
             root["ignoreStart"] = IgnoreStart;
             root["ignoreStartSec"] = IgnoreStartSeconds;
+            root["onsetSec"] = OnsetSeconds;
 
             // IO 별 허용 오차. 안 정한 쪽(NaN)은 아예 안 적습니다 —
             // JSON 에 NaN 을 담을 수 없기도 하고, 없는 것이 곧 "기본값" 입니다.
@@ -459,6 +463,8 @@ namespace LogScope.Settings
             s.IgnoreStart = Json.GetBool(root, "ignoreStart", false);
             s.IgnoreStartSeconds = Json.GetDouble(root, "ignoreStartSec", 10);
             if (double.IsNaN(s.IgnoreStartSeconds) || s.IgnoreStartSeconds < 0) s.IgnoreStartSeconds = 10;
+            s.OnsetSeconds = Json.GetDouble(root, "onsetSec", 1);
+            if (!(s.OnsetSeconds > 0)) s.OnsetSeconds = 1;
             s.StepZeroAtStart = Json.GetBool(root, "stepZero", false);
             s.StepSplit = Json.GetBool(root, "stepSplit", false);
             s.DbBeforePath = Json.GetString(root, "dbBefore", string.Empty);

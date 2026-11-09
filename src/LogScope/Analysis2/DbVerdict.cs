@@ -11,8 +11,8 @@ namespace LogScope.Analysis2
     ///
     /// 기준은 <b>차이 발생(값이 달라진 IO) 개수</b>입니다.
     /// <code>
-    ///   0 개            → PASS
-    ///   1 ~ 99 개       → WARNING
+    ///   0 ~ 9 개        → PASS      (2.04 — 사용자 요청: 10 개부터 주의. 예전 1 개부터)
+    ///   10 ~ 99 개      → WARNING
     ///   100 개 이상     → CRITICAL
     /// </code>
     ///
@@ -29,6 +29,9 @@ namespace LogScope.Analysis2
         /// <summary>차이 발생이 이 수부터 CRITICAL (1.64 에 CRITICAL 에서 이름만 바꿈).</summary>
         public const int CriticalFrom = 100;
 
+        /// <summary>2.04: 차이 발생이 이 수부터 WARNING (그 아래는 PASS — 몇 개 바뀐 것은 정상으로).</summary>
+        public const int WarningFrom = 10;
+
         public const string Pass = "PASS";
         public const string Warning = "WARNING";
         public const string Critical = "CRITICAL";
@@ -42,7 +45,7 @@ namespace LogScope.Analysis2
         /// <summary>차이 발생 개수로 가른 판정.</summary>
         public static string Of(int changed)
         {
-            if (changed <= 0) return Pass;
+            if (changed < WarningFrom) return Pass;
             return changed >= CriticalFrom ? Critical : Warning;
         }
 
@@ -104,11 +107,13 @@ namespace LogScope.Analysis2
                      + "개). 파일을 다시 확인해 주세요.";
             }
 
-            if (word == Pass) return "차이 없습니다.";
+            if (t.Changed <= 0) return "차이 없습니다.";
 
             string head = "차이 발생 " + t.Changed.ToString("N0") + "개";
             if (names == null || names.Count == 0)
-                return head + " (" + CriticalFrom.ToString("N0") + "개부터 CRITICAL)";
+                return head + (word == Pass
+                    ? " (" + WarningFrom.ToString("N0") + "개부터 WARNING)"
+                    : " (" + CriticalFrom.ToString("N0") + "개부터 CRITICAL)");
 
             // 여기서 적는 것은 <b>한 줄</b>이라 여덟 개까지입니다. 넘겨받은
             // 목록이 더 길 수 있어서 (요약 칸은 더 많이 적습니다) 여기서

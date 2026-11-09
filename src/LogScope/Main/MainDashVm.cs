@@ -91,6 +91,48 @@ namespace LogScope.Main
             Clear(null);
         }
 
+        // ---- 2.04: 차이 발생 IO List 의 발생 순서 단위 ----
+
+        /// <summary>발생 순서를 볼 단위 (초). 고르면 목록을 다시 세웁니다.</summary>
+        public static readonly double[] OnsetSteps = { 0.1, 1, 10 };
+        public IEnumerable<string> OnsetChoices { get { return new[] { "0.1초", "1초", "10초" }; } }
+
+        /// <summary>설정 (고른 단위를 저장) — MainVm 이 넣어 줌. 없으면 1 초.</summary>
+        public AppSettings Settings { get; set; }
+
+        public int OnsetIndex
+        {
+            get
+            {
+                double sec = Settings != null ? Settings.OnsetSeconds : 1;
+                for (int i = 0; i < OnsetSteps.Length; i++) if (Math.Abs(OnsetSteps[i] - sec) < 1e-9) return i;
+                return 1;
+            }
+            set
+            {
+                if (value < 0 || value >= OnsetSteps.Length || value == OnsetIndex) return;
+                if (Settings != null) Settings.OnsetSeconds = OnsetSteps[value];
+                Raise("OnsetIndex");
+                RebuildTop();
+            }
+        }
+
+        private double OnsetSecondsNow { get { return OnsetSteps[OnsetIndex]; } }
+
+        // 목록을 다시 세울 재료 (단위를 바꿀 때)
+        private JudgeScore _lastJs;
+        private Dictionary<string, JudgeGrade> _lastGrade;
+        private LogDataset _lastBefore;
+        private List<GroupDef> _lastGroups;
+
+        private void RebuildTop()
+        {
+            if (!_has || _lastJs == null) return;
+            TopIos = BuildTop(_lastJs, _lastGrade, _lastBefore, _lastGroups, OnsetSecondsNow);
+            TopNote = _lastJs.DiffIos > 0 ? TopNoteOf(_lastJs.DiffIos, TopIos.Count) : string.Empty;
+            Raise("TopIos"); Raise("HasTopIos"); Raise("NoTopIos"); Raise("TopNote");
+        }
+
         /// <summary>결과 없음 (또는 History 보는 중). why 가 있으면 그 글을 보입니다.</summary>
         public void Clear(string why)
         {
@@ -155,7 +197,8 @@ namespace LogScope.Main
 
             Timeline = BuildTimeline(js, before, steps);
             Hotspot = HotspotOf(Timeline);
-            TopIos = BuildTop(js, gradeOf, before, groups);
+            _lastJs = js; _lastGrade = gradeOf; _lastBefore = before; _lastGroups = groups;
+            TopIos = BuildTop(js, gradeOf, before, groups, OnsetSecondsNow);
             // 1.97: 늘 "N개 중 상위 M개" (차이 IO 가 8 개 이하여도)
             TopNote = js.DiffIos > 0 ? TopNoteOf(js.DiffIos, TopIos.Count) : string.Empty;
             Groups = BuildGroups(js, gradeOf, before, after, groups);
@@ -231,17 +274,36 @@ namespace LogScope.Main
 
         // ---------------- 차이 큰 IO ----------------
 
+        /// <summary>
+        /// 2.04: IO 의 오차가 처음 난 자리 — 이전 로그 시작부터 onsetSec 초 단위로 센 칸 번호. 한쪽 로그에만 있는 IO 는
+        /// 처음부터라 -1. 시간 열이 없는 로그 (표본 번호) 는 단위를 못 정해 시각 그대로.
+        /// </summary>
+        public static double OnsetKey(JudgeScore js, string name, LogDataset before, double onsetSec)
+        {
+            if (js.OneSide.ContainsKey(name)) return -1;
+            double[] sp;
+            if (!js.Spans.TryGetValue(name, out sp) || !(sp[1] >= sp[0])) return double.MaxValue;
+            double t = sp[0] - (before != null ? before.TimeStart : 0);
+            double per = before != null ? before.AxisPerSecond() : double.NaN;
+            if (double.IsNaN(per) || !(per > 0) || !(onsetSec > 0)) return t;
+            return Math.Floor(Math.Max(0, t) / (onsetSec * per) + 1e-9);
+        }
+
         private static List<DashIoRow> BuildTop(JudgeScore js, Dictionary<string, JudgeGrade> gradeOf,
-                                                LogDataset before, List<GroupDef> groups)
+                                                LogDataset before, List<GroupDef> groups, double onsetSec)
         {
             var names = new List<string>(js.Rates.Keys);
-            // 2.00: 보이는 오차율 (허용 오차 밖 시간) 순 — 같으면 크기가 큰 쪽 먼저
+            // 2.04: 오차가 <b>먼저 난 순서</b> (사용자 요청) — onsetSec 단위로 같은 칸이면 최대 오차가 큰 쪽 먼저, 그다음 이름
+            var key = new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (string n in names) key[n] = OnsetKey(js, n, before, onsetSec);
             names.Sort(delegate (string a, string b)
             {
-                int c = js.Rates[b].CompareTo(js.Rates[a]);
+                int c = key[a].CompareTo(key[b]);
                 if (c != 0) return c;
-                double wa, wb; js.WeightedRates.TryGetValue(a, out wa); js.WeightedRates.TryGetValue(b, out wb);
-                c = wb.CompareTo(wa);
+                double pa, pb;
+                if (!js.Peaks.TryGetValue(a, out pa)) pa = js.OneSide.ContainsKey(a) ? double.MaxValue : 0;
+                if (!js.Peaks.TryGetValue(b, out pb)) pb = js.OneSide.ContainsKey(b) ? double.MaxValue : 0;
+                c = pb.CompareTo(pa);
                 return c != 0 ? c : string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
             });
             var list = new List<DashIoRow>();
@@ -254,20 +316,27 @@ namespace LogScope.Main
                 r.TimeRate = js.Rates[name];
                 double wr; js.WeightedRates.TryGetValue(name, out wr);
                 r.WeightedRate = wr;
-                r.RateText = r.TimeRate.ToString("0.#", Inv) + " %";   // 2.00: 괄호 (크기 반영) 뺌
+                r.TimeText = r.TimeRate.ToString("0.#", Inv) + " %";   // 2.04: 오차 시간은 옆 칸 글로
                 bool missing;
                 JudgeGrade g;
                 if (js.OneSide.TryGetValue(name, out missing))
                 {
                     r.LampGrade = ScoreBands.GradeBad;
-                    r.PeakText = missing ? "이후에 없음" : "이후에만 있음";
+                    r.PeakBar = 100;
+                    r.RateText = missing ? "이후에 없음" : "이후에만 있음";
                     r.WhenText = "전체";
                 }
                 else
                 {
                     r.LampGrade = gradeOf.TryGetValue(name, out g) && g == JudgeGrade.Critical ? ScoreBands.GradeBad : ScoreBands.GradeWarn;
+                    // 2.04: 막대 = 최대 오차 비율 (이전 값 대비 가장 크게 벗어난 %, 100 % 넘으면 꽉 참)
                     double pk;
-                    r.PeakText = js.Peaks.TryGetValue(name, out pk) ? "최대 " + NumberText.Short(pk) + " %" : "-";
+                    if (js.Peaks.TryGetValue(name, out pk) && !double.IsNaN(pk))
+                    {
+                        r.PeakBar = Math.Max(0, Math.Min(100, pk));
+                        r.RateText = NumberText.Short(pk) + " %";
+                    }
+                    else { r.PeakBar = 0; r.RateText = "-"; }
                     double[] sp;
                     if (js.Spans.TryGetValue(name, out sp) && sp[1] >= sp[0])
                     {
@@ -282,10 +351,10 @@ namespace LogScope.Main
             return list;
         }
 
-        /// <summary>"12개 중 상위 8개".</summary>
+        /// <summary>"12개 중 먼저 발생한 8개" (2.04 — 발생 순).</summary>
         public static string TopNoteOf(int total, int shown)
         {
-            return total.ToString("N0", Inv) + "개 중 상위 " + shown.ToString("N0", Inv) + "개";
+            return total.ToString("N0", Inv) + "개 중 먼저 발생한 " + shown.ToString("N0", Inv) + "개";
         }
 
         private static string GroupOf(string io, List<GroupDef> groups)
@@ -366,8 +435,14 @@ namespace LogScope.Main
         public string LampGrade { get; set; }
         public double TimeRate { get; set; }
         public double WeightedRate { get; set; }
+        /// <summary>2.04: 막대 채움 = 최대 오차 비율 (0 ~ 100, 넘으면 100).</summary>
+        public double PeakBar { get; set; }
+        /// <summary>막대 옆 글 — 최대 오차 비율 ("34 %", 한쪽에만 있으면 "이후에 없음").</summary>
         public string RateText { get; set; }
-        public string PeakText { get; set; }
+        /// <summary>2.04: 오차 시간 (허용 오차 밖 시간 비율, "18 %").</summary>
+        public string TimeText { get; set; }
+        /// <summary>옛 이름 — 2.04 부터 RateText (최대 오차 비율) 와 같음.</summary>
+        public string PeakText { get { return RateText; } }
         public string WhenText { get; set; }
     }
 

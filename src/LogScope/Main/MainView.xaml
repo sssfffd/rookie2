@@ -197,11 +197,15 @@
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                             <main:LampIcon Width="24" Height="24" Grade="{Binding LampGrade}" Style="{StaticResource LampIconTile}" Margin="0,0,10,0" />
                             <TextBlock Text="{Binding Word}" FontSize="32" Style="{StaticResource LampText}" />
+                            <!-- 2.04: 정상 · 주의 일 때 오른쪽에 종합 점수 (셈법은 마우스를 올리면) -->
+                            <TextBlock Text="{Binding ScoreBeside}" FontSize="22" Margin="12,0,0,3" VerticalAlignment="Bottom"
+                                       FontWeight="SemiBold" Foreground="{DynamicResource Brush.Muted}" ToolTip="{Binding CompositeTip}"
+                                       Visibility="{Binding HasScoreBeside, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
-                        <!-- 2.02: 최종 판정 = 가중 종합 점수 (+ 넉아웃). 셈법은 마우스를 올리면 -->
-                        <TextBlock Text="{Binding CompositeText}" FontSize="11" Foreground="{DynamicResource Brush.Muted}"
+                        <!-- 2.02: 넉아웃으로 판정이 바뀌었으면 그 까닭 (2.04 — 점수는 낱말 옆으로) -->
+                        <TextBlock Text="{Binding GateNote}" FontSize="11" Foreground="{DynamicResource Brush.Muted}"
                                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding CompositeTip}"
-                                   Visibility="{Binding HasComposite, Converter={StaticResource BoolToVisibility}}" />
+                                   Visibility="{Binding HasGateNote, Converter={StaticResource BoolToVisibility}}" />
                         <!--
                           2.00: 결과가 있는 분석마다 두 줄 — [색 점] 분석 이름 / 무엇이 있었나 (사용자 요청 — 예전 근거 · 몰린 단계 ·
                           "이름 판정" 글은 뺌). 한글이 낱자 사이에서 꺾이지 않게 줄바꿈 없이, 넘치면 … 과 마우스 글.
@@ -353,6 +357,10 @@
                                 <TextBlock Text="{x:Static t:MainTexts.TopHeading}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <TextBlock Text="{x:Static t:MainTexts.TopNote}" FontSize="11" Margin="8,2,0,0" VerticalAlignment="Center"
                                            Foreground="{DynamicResource Brush.Muted}" />
+                                <!-- 2.04: 발생 순서를 볼 단위 (0.1초 · 1초 · 10초) — 같은 단위 안에서는 최대 오차가 큰 IO 먼저 -->
+                                <ComboBox ItemsSource="{Binding Dash.OnsetChoices}" SelectedIndex="{Binding Dash.OnsetIndex, Mode=TwoWay}"
+                                          Width="70" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11"
+                                          ToolTip="{x:Static t:MainTexts.TopOnsetTip}" />
                                 <StackPanel Orientation="Horizontal" Margin="16,2,0,0" VerticalAlignment="Center">
                                     <Border Width="18" Height="8" CornerRadius="1" Background="{DynamicResource Brush.Warn}" VerticalAlignment="Center" />
                                     <TextBlock Text="{x:Static t:MainTexts.TopBarTime}" FontSize="11" Margin="4,0,0,0" Foreground="{DynamicResource Brush.Muted}" />
@@ -374,8 +382,9 @@
                                 <TextBlock Grid.Column="0" Text="판정" Style="{StaticResource DashHead}" />
                                 <TextBlock Grid.Column="1" Text="IO" Style="{StaticResource DashHead}" />
                                 <TextBlock Grid.Column="2" Text="그룹" Style="{StaticResource DashHead}" />
-                                <TextBlock Grid.Column="3" Text="오차율 (허용 오차 밖 시간)" Style="{StaticResource DashHead}" />
-                                <TextBlock Grid.Column="4" Text="최대 차이" Style="{StaticResource DashHead}" TextAlignment="Right" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="3" Text="최대 오차율" Style="{StaticResource DashHead}" />
+                                <TextBlock Grid.Column="4" Text="오차 시간" Style="{StaticResource DashHead}" TextAlignment="Right" HorizontalAlignment="Right"
+                                           ToolTip="로그 시간 중 허용 오차 밖에 있던 비율" />
                                 <TextBlock Grid.Column="5" Text="언제" Style="{StaticResource DashHead}" Margin="12,0,0,0" />
                             </Grid>
                             <ItemsControl ItemsSource="{Binding Dash.TopIos}">
@@ -403,10 +412,10 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <main:RateBar Height="10" TimeRate="{Binding TimeRate}" Grade="{Binding LampGrade}" />
+                                                    <main:RateBar Height="10" TimeRate="{Binding PeakBar}" Grade="{Binding LampGrade}" />
                                                     <TextBlock Grid.Column="1" Text="{Binding RateText}" Margin="8,0,0,0" FontSize="11" />
                                                 </Grid>
-                                                <TextBlock Grid.Column="4" Text="{Binding PeakText}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontWeight="SemiBold" VerticalAlignment="Center"
                                                            HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Grid.Column="5" Text="{Binding WhenText}" Margin="12,0,0,0" VerticalAlignment="Center"
                                                            Foreground="{DynamicResource Brush.Muted}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WhenText}" />
@@ -1418,23 +1427,12 @@
                                 <DataTemplate DataType="{x:Type main:LlmCheckVm}">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,10,0" Background="Transparent"
                                                 ToolTip="{Binding Note}" ToolTipService.ShowOnDisabled="True">
+                                        <!-- 2.04: 체크와 이름만 (점 · "완료 / 안 함" 글 · "분석 N" 뺌). 결과가 없으면 체크가 꺼져 있고 까닭은 마우스 글 -->
                                         <CheckBox IsChecked="{Binding Checked, Mode=TwoWay}" IsEnabled="{Binding Ready}"
                                                   VerticalAlignment="Center" Margin="0,0,6,0" />
-                                        <Border x:Name="CheckDot" Width="10" Height="10" CornerRadius="5"
-                                                VerticalAlignment="Center" Margin="0,0,7,0"
-                                                Background="{DynamicResource Brush.Muted}" />
                                         <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis" />
-                                        <TextBlock x:Name="CheckState" Text="{Binding StateText}" Margin="8,0,0,0"
-                                                   VerticalAlignment="Center" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource Brush.Muted}" />
                                     </StackPanel>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding Ready}" Value="True">
-                                            <Setter TargetName="CheckDot" Property="Background" Value="{DynamicResource Brush.Good}" />
-                                            <Setter TargetName="CheckState" Property="Foreground" Value="{DynamicResource Brush.Good}" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

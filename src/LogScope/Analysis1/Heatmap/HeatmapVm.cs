@@ -37,7 +37,8 @@ namespace LogScope.Analysis1.Heatmap
             // 아킹 같은 짧은 튐이 어느 순간인지 가늠하기 어렵습니다.
             // 1.89: "1초" · "5초" 를 더했습니다 (사용자 요청 — 짧은 튐을 칸 하나로).
             // 1.99: 시간 열이 숫자인 로그도 고를 수 있게 (숫자를 초로 봄) — "자동" 은 시각이면 1 분, 숫자면 60 칸.
-            get { return new[] { "자동 (시각 1분 · 숫자 60칸)", "1초", "5초", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
+            // 2.04: "0.1초" 를 더했습니다 (사용자 요청). 칸이 너무 많으면 (IO 수에 따라 4000 ~ 20000 칸) 폭을 두 배씩 넓히고 칸 폭 글에 적습니다.
+            get { return new[] { "자동 (시각 1분 · 숫자 60칸)", "0.1초", "1초", "5초", "10초", "1분", "5분", "10분", "30분", "1시간" }; }
         }
 
         private int _bucketIndex;
@@ -60,14 +61,15 @@ namespace LogScope.Analysis1.Heatmap
                 double sec;
                 switch (_bucketIndex)
                 {
-                    case 1: sec = 1; break;
-                    case 2: sec = 5; break;
-                    case 3: sec = 10; break;
-                    case 4: sec = 60; break;
-                    case 5: sec = 5 * 60; break;
-                    case 6: sec = 10 * 60; break;
-                    case 7: sec = 30 * 60; break;
-                    case 8: sec = 60 * 60; break;
+                    case 1: sec = 0.1; break;   // 2.04
+                    case 2: sec = 1; break;
+                    case 3: sec = 5; break;
+                    case 4: sec = 10; break;
+                    case 5: sec = 60; break;
+                    case 6: sec = 5 * 60; break;
+                    case 7: sec = 10 * 60; break;
+                    case 8: sec = 30 * 60; break;
+                    case 9: sec = 60 * 60; break;
                     default: return 0;
                 }
                 return sec * per;

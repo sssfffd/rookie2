@@ -3947,7 +3947,7 @@ namespace LogScope.Tests
             Check("LLM 서버에 안 닿으면 버튼 꺼짐 · 덮음 (1.51)", !p.CanRun && p.IsBlocked, "");
             p.SetServer(true, "", "");
             Check("하나만 완료여도 버튼 켜짐", p.CanRun && p.Checks[1].Ready && p.Checks[1].StateText == "완료"
-                  && p.Checks[0].StateText == "안 함" && p.Checks[1].Title == "분석 2 · DB 비교", p.Checks[1].Title);
+                  && p.Checks[0].StateText == "안 함" && p.Checks[1].Title == "DB 비교", p.Checks[1].Title);   // 2.04: "분석 N · " 없이
 
             p.Start();
             Check("도는 중엔 버튼 꺼짐 · 진행 모름", p.IsRunning && !p.CanRun && p.ProgressUnknown && !p.ShowEmpty, "");
@@ -4432,16 +4432,37 @@ namespace LogScope.Tests
             int buckets = 0; foreach (int c in d.Timeline.Counts) buckets += c;
             int expect = 0; foreach (KeyValuePair<string, double> kv in js.Rates) if (!js.OneSide.ContainsKey(kv.Key)) expect += (int)Math.Round(kv.Value);
             Check("시간대별 막대 합 = 차이 IO 들의 오차 칸 합 (점수와 같은 100 칸)", d.Timeline.Counts.Length == 100 && buckets == expect, buckets + " / " + expect);
+            // 2.04: 먼저 발생한 순 (1 초 단위) — 같은 칸이면 최대 오차 큰 쪽 먼저
             bool sorted = true;
-            for (int i = 1; i < d.TopIos.Count; i++) if (d.TopIos[i].WeightedRate > d.TopIos[i - 1].WeightedRate) sorted = false;
-            Check("차이 발생 IO — 크기 반영 오차율순 · 판정 낱말", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
+            for (int i = 1; i < d.TopIos.Count; i++)
+                if (MainDashVm.OnsetKey(js, d.TopIos[i].Name, st.Before, 1) < MainDashVm.OnsetKey(js, d.TopIos[i - 1].Name, st.Before, 1)) sorted = false;
+            Check("2.04 차이 발생 IO — 먼저 발생한 순 · 판정 낱말 · 막대 = 최대 오차 비율 (100 넘으면 100)", d.HasTopIos && sorted && d.TopIos[0].Word.Length > 0
+                  && d.TopIos.TrueForAll(x => x.PeakBar >= 0 && x.PeakBar <= 100)
                   && d.TopIos.Count == Math.Min(MainDashVm.TopCount, js.DiffIos), d.TopIos.Count + " " + js.DiffIos);
             Check("2.00 최종 판정 칸의 분석 1 줄 = 대시보드 차이 IO · 이상 · 주의", d.Finding.StartsWith(AppConfig.Current.DiffLabel + " ")
                   && d.Finding.Contains("이상 ") && main.Cards[0].Finding == d.Finding, d.Finding + " | " + main.Cards[0].Finding);
-            Check("1.97 늘 'N개 중 상위 M개'", d.TopNote == js.DiffIos + "개 중 상위 " + d.TopIos.Count + "개"
-                  && MainDashVm.TopNoteOf(1234, 8) == "1,234개 중 상위 8개", d.TopNote);
+            {
+                // 단위: 0.15 초 · 0.45 초에 처음 난 두 IO — 0.1 초 단위면 다른 칸 (먼저 난 쪽 먼저), 1 초 단위면 같은 칸 (최대 오차 큰 쪽 먼저)
+                var jj = new JudgeScore();
+                double t0 = st.Before.TimeStart, per = st.Before.AxisPerSecond();
+                jj.Spans["A"] = new[] { t0 + 0.15 * per, t0 + 1 * per };
+                jj.Spans["B"] = new[] { t0 + 0.45 * per, t0 + 1 * per };
+                jj.OneSide["C"] = true;
+                Check("2.04 발생 칸 — 0.1 초면 1 · 4, 1 초면 둘 다 0, 한쪽에만 있는 IO 는 -1 (맨 앞)",
+                      MainDashVm.OnsetKey(jj, "A", st.Before, 0.1) == 1 && MainDashVm.OnsetKey(jj, "B", st.Before, 0.1) == 4
+                      && MainDashVm.OnsetKey(jj, "A", st.Before, 1) == 0 && MainDashVm.OnsetKey(jj, "B", st.Before, 1) == 0
+                      && MainDashVm.OnsetKey(jj, "C", st.Before, 1) == -1, "");
+                d.Settings = st.Settings;
+                d.OnsetIndex = 0;
+                Check("2.04 단위를 고르면 설정에 남음 (0.1 초)", st.Settings.OnsetSeconds == 0.1 && d.OnsetIndex == 0, st.Settings.OnsetSeconds.ToString());
+                d.OnsetIndex = 2;
+                Check("2.04 10 초", st.Settings.OnsetSeconds == 10 && d.HasTopIos, "");
+                d.OnsetIndex = 1;
+            }
+            Check("2.04 늘 'N개 중 먼저 발생한 M개'", d.TopNote == js.DiffIos + "개 중 먼저 발생한 " + d.TopIos.Count + "개"
+                  && MainDashVm.TopNoteOf(1234, 8) == "1,234개 중 먼저 발생한 8개", d.TopNote);
             DashIoRow spike = d.TopIos.Find(x => x.Name == "SPIKE");
-            Check("그룹 이름 · 언제 · 최대 % 가 붙음", spike == null || (spike.Group == "가" && spike.WhenText != "-" && spike.PeakText.StartsWith("최대")),
+            Check("그룹 이름 · 언제 · 최대 % 가 붙음", spike == null || (spike.Group == "가" && spike.WhenText != "-" && spike.PeakText.EndsWith("%") && spike.TimeText.EndsWith("%")),
                   spike == null ? "SPIKE 없음" : spike.Group + " | " + spike.WhenText + " | " + spike.PeakText);
             Check("그룹 타일 — 있는 IO 만 셈 · 차이 IO 수", d.HasGroups && d.Groups[0].Total == "/ 2"
                   && d.Groups[0].Diff == ((js.Rates.ContainsKey("SPIKE") ? 1 : 0) + (js.Rates.ContainsKey("FLAT") ? 1 : 0)).ToString(), d.Groups[0].Diff + " " + d.Groups[0].Total);
@@ -4634,10 +4655,12 @@ namespace LogScope.Tests
             Check("2.02 분석 1 96 · 분석 2 정상 · 분석 3 주의 → 종합 95.1 정상 (가장 나쁜 것 아님) · 근거 글은 분석 3",
                   o.Word == "정상" && Math.Abs(o.CompositeScore - 95.09) < 1e-6 && o.CompositeText.StartsWith("종합 점수 95.1")
                   && o.Reason == c3.Title + " — 조금 다름", o.CompositeScore + " " + o.Word);
+            Check("2.04 정상 · 주의면 낱말 오른쪽에 종합 점수", o.ScoreBeside == "95.1" && o.HasScoreBeside, o.ScoreBeside);
             Check("2.00 분석 3 줄 = 모듈이 적은 유의점", o.Lines.Count == 3 && o.Lines[2].Text == "조금 다름", o.Lines.Count.ToString());
             // 2.02 넉아웃: 분석 1 이 이상이면 종합 점수와 상관없이 최종 이상
             c3.SetVerdict("PASS", ScoreBands.GradeGood, "", "");
             c1.SetScore(78);   // 종합 (54 × 78 + 30 × 97.5 + 16 × 97.5) / 100 = 86.97 → 점수로는 주의
+            Check("2.04 이상이면 점수를 붙이지 않음 (넉아웃이면 점수와 판정이 어긋나 보임)", !o.HasScoreBeside && o.HasGateNote, o.ScoreBeside);
             Check("2.02 넉아웃 — 분석 1 이상 (78) 이면 종합 87 이어도 최종 이상 · 까닭을 적음", o.Word == "이상"
                   && Math.Abs(o.CompositeScore - 86.97) < 1e-6 && o.GateNote.StartsWith(c1.Title + " 이상"), o.CompositeScore + " " + o.Word + " " + o.GateNote);
             AppConfig keepCfg = AppConfig.Current;
@@ -5211,6 +5234,11 @@ namespace LogScope.Tests
             dash.Refresh();
             var heat = new HeatmapVm(st, new AlignVm(st));
             HeatmapResult hr = HeatmapBuilder.Build(st.Before, st.After, heat.BuildOptions(), null);
+            heat.BucketIndex = 1;
+            var choices = new List<string>(heat.BucketChoices);
+            Check("2.04 히트맵 칸 폭 0.1초 (두 번째 고르기)", choices[1] == "0.1초" && choices[2] == "1초"
+                  && Math.Abs(heat.BucketSpan - 0.1 * st.Before.AxisPerSecond()) < 1e-9, heat.BucketSpan.ToString());
+            heat.BucketIndex = 0;
             var g = new GraphVm(st, new AlignVm(st), new StepVm(st));
             g.Reload();
             HashSet<string> names = st.ChangedNames();
@@ -5892,7 +5920,9 @@ namespace LogScope.Tests
             Say("DB — 판정 PASS · WARNING · FAIL");
 
             Check("0 개는 PASS", DbVerdict.Of(0) == DbVerdict.Pass, DbVerdict.Of(0));
-            Check("1 개는 WARNING", DbVerdict.Of(1) == DbVerdict.Warning, DbVerdict.Of(1));
+            // 2.04: 10 개부터 WARNING (사용자 요청)
+            Check("1 ~ 9 개는 PASS (2.04)", DbVerdict.Of(1) == DbVerdict.Pass && DbVerdict.Of(9) == DbVerdict.Pass, DbVerdict.Of(9));
+            Check("10 개부터 WARNING (2.04)", DbVerdict.Of(10) == DbVerdict.Warning && DbVerdict.WarningFrom == 10, DbVerdict.Of(10));
             Check("99 개는 WARNING", DbVerdict.Of(99) == DbVerdict.Warning, DbVerdict.Of(99));
             Check("100 개는 FAIL", DbVerdict.Of(100) == DbVerdict.Critical, DbVerdict.Of(100));
             Check("101 개도 FAIL", DbVerdict.Of(101) == DbVerdict.Critical, DbVerdict.Of(101));
@@ -5946,8 +5976,9 @@ namespace LogScope.Tests
             Check("못 적은 개수를 알려 줌", w2.Contains("외 27개"), w2);
 
             // 이름을 모으지 않은 자리에서는 CRITICAL 기준을 알려 줍니다 (1.64 에 FAIL → CRITICAL).
-            Check("이름이 없으면 CRITICAL 기준을 알려 줌",
-                  DbVerdict.Why(few).Contains("100개부터 CRITICAL"), DbVerdict.Why(few));
+            // 2.04: few (3 개) 는 이제 PASS 라 다음 기준 (10 개부터 WARNING) 을 알려 줌
+            Check("이름이 없으면 다음 판정 기준을 알려 줌 (PASS → 10개부터 WARNING)",
+                  DbVerdict.Why(few).Contains("10개부터 WARNING"), DbVerdict.Why(few));
             Check("DB 판정 낱말 CRITICAL", DbVerdict.Of(100) == "CRITICAL" && DbVerdict.Critical == "CRITICAL", DbVerdict.Of(100));
 
             // ---- 판정에 안 들어간 수 ----

@@ -45,6 +45,7 @@ namespace LogScope.Main
             };
             Overall = new OverallVm(Cards);   // 1.92: 왼쪽 기둥의 최종 판정 (분석 1 기준, 2 · 3 은 참고)
             Dash = new MainDashVm();          // 1.94: 위쪽 대시보드
+            Dash.Settings = _state.Settings;  // 2.04: 발생 순서 단위 저장
             Llm = new LlmPanelVm();
             ReloadHistory();   // Refresh 까지 안에서 같이 돕니다.
             Refresh();

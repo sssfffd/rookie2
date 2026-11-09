@@ -237,7 +237,7 @@ namespace LogScope.Main
         /// <summary>LLM 에 보낼지 — 결과가 있고 체크했을 때.</summary>
         public bool Use { get { return _ready && _selected; } }
 
-        /// <summary>"분석 1 · 로그 비교".</summary>
+        /// <summary>분석 이름 (config.txt) — 2.04 부터 "분석 N · " 없이.</summary>
         public string Title { get { return _title; } }
 
         public bool Ready { get { return _ready; } }
@@ -250,7 +250,7 @@ namespace LogScope.Main
 
         public void Set(string title, bool ready, string note)
         {
-            _title = "분석 " + Number + " · " + (title ?? string.Empty);
+            _title = title ?? string.Empty;   // 2.04: "분석 N · " 을 뺌 — 체크와 이름만 (사용자 요청)
             _ready = ready;
             _note = note ?? string.Empty;
             Raise("Title"); Raise("Ready"); Raise("StateText"); Raise("Note");
