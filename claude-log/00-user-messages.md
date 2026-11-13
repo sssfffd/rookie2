@@ -2456,3 +2456,9 @@
 > 지금 종합 판정 점수랑 일치율 점수 어떻게 계산되는지 말해줘
 
 → 답변: [213-q-score-explained.md](213-q-score-explained.md)
+
+## 요청 241 — (질문) 횡전개
+
+> 너 횡전개 알아?
+
+→ 답변: [214-q-yokoten.md](214-q-yokoten.md)
