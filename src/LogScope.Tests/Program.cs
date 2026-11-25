@@ -3346,6 +3346,13 @@ namespace LogScope.Tests
             Check("긴 단계가 더 넓음", w[1] > w[0] && w[1] > w[2], null);
             Near("비례가 맞음", w[1] / w[0], bands[1].Length / bands[0].Length, 1e-6);
 
+            // 2.11: 그래프 칸은 최소 폭 0 + 틈 — 칸마다 1 초가 같은 폭 (파형은 가로 이동만, 늘어나지 않음)
+            double[] lx, lw;
+            bands.Layout(0, 1000, 10, 0, out lx, out lw);
+            Near("칸 0 · 1 의 초당 폭이 같음", lw[0] / bands[0].Length, lw[1] / bands[1].Length, 1e-6);
+            Near("칸 1 · 2 의 초당 폭이 같음", lw[1] / bands[1].Length, lw[2] / bands[2].Length, 1e-6);
+            Near("칸 사이 틈", lx[1] - (lx[0] + lw[0]), 10, 1e-6);
+
             // 최소 폭 — 짧은 칸이 선 한 줄이 되면 그 단계는 못 봅니다.
             double[] m = bands.Widths(1000, 200);
             Near("폭의 합은 그대로", m[0] + m[1] + m[2], 1000, 1e-6);

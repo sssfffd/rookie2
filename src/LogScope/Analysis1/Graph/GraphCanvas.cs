@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows;
 using System;
+using LogScope.Analysis1.Compare;
 using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Common;
@@ -763,6 +764,15 @@ namespace LogScope.Analysis1.Graph
         private const double GutterW = 80;
         private const double AxisH = 26;
         private const double HeaderH = 21;
+
+        /// <summary>2.11: 전체 그래프 (단계로 나누지 않을 때) 레인 머리 아래의 단계 띠 높이 — 구간마다 단계 이름 (1 · 2 · 3 …).</summary>
+        private const double StepStripH = 15;
+
+        /// <summary>단계 띠를 그릴지 — 단계가 있고 단계 칸으로 나눠 보지 않을 때 (나눠 볼 때는 위 머리 줄이 같은 일을 함).</summary>
+        private bool ShowStepStrip { get { return !StepMode && _state != null && _state.Before != null && _state.HasSteps; } }
+
+        /// <summary>레인 위쪽에서 그림 칸까지 — 머리 + (단계 띠).</summary>
+        private double LaneTopPad { get { return HeaderH + (ShowStepStrip ? StepStripH : 0); } }
         private const double MinLaneH = 64;
 
         /// <summary>
@@ -889,10 +899,11 @@ namespace LogScope.Analysis1.Graph
         private bool StepMode { get { return _stepBands != null && !_stepBands.IsEmpty; } }
 
         /// <summary>
-        /// 칸 하나의 최소 폭. 짧은 단계가 <b>선 한 줄</b>로 찌그러지면 그
-        /// 단계는 아예 못 봅니다.
+        /// 칸 하나의 최소 폭. 2.11: 44 → 0 (사용자 요청 — "단계별로 쪼개도 가로축 이동만, 파형이 달라지면 안 됨").
+        /// 최소 폭을 두면 짧은 단계 칸만 늘어나 그 칸의 파형이 가로로 늘어나 보였습니다. 이제 모든 칸이 <b>같은 시간 축척</b>
+        /// (칸 폭 = 단계 길이에 비례) 이라 칸 사이에서 바뀌는 것은 밀기 (가로 이동) 뿐. 아주 짧은 단계는 좁게 — 눌러서 그 단계만 보기.
         /// </summary>
-        private const double StepMinWidth = 44;
+        private const double StepMinWidth = 0;
 
         /// <summary>
         /// 칸 사이의 틈. 금 한 줄만 긋는 것보다 띄우는 쪽이 낫습니다 —
@@ -1305,7 +1316,7 @@ namespace LogScope.Analysis1.Graph
             double x = TimeToX(t);
             if (double.IsNaN(x)) return;
             x = Snap(x);
-            dc.DrawLine(pen, new Point(x, lane.Top + HeaderH), new Point(x, lane.Bottom - 2));
+            dc.DrawLine(pen, new Point(x, lane.Top + LaneTopPad), new Point(x, lane.Bottom - 2));
         }
 
         /// <summary>자기 구간을 가진 Lane 줄의 오른쪽 아래에 "이 줄만 a ~ b" (1.77) — 아래 시간 눈금과 다르다는 표시.</summary>
@@ -1326,7 +1337,7 @@ namespace LogScope.Analysis1.Graph
             if (double.IsNaN(x)) return;
             double cx = Snap(ToCellX(x, plot, cellPlot));
             if (cx < cellPlot.Left || cx > cellPlot.Right) return;
-            dc.DrawLine(pen, new Point(cx, lane.Top + HeaderH), new Point(cx, lane.Bottom - 2));
+            dc.DrawLine(pen, new Point(cx, lane.Top + LaneTopPad), new Point(cx, lane.Bottom - 2));
         }
 
         /// <summary>
@@ -1418,7 +1429,7 @@ namespace LogScope.Analysis1.Graph
 
             // 오른쪽 위, 레인 머리글 아래. 머리글 오른쪽에는 커서 값이
             // 적히므로 그 줄을 비켜야 합니다.
-            double right = plot.Right - 6, top = plot.Top + HeaderH + 6;
+            double right = plot.Right - 6, top = plot.Top + LaneTopPad + 6;
             var box = new Rect(right - w, top, w, h);
             if (box.Left < plot.Left || box.Bottom > plot.Bottom) return;   // 너무 좁으면 접습니다
 
@@ -1687,8 +1698,9 @@ namespace LogScope.Analysis1.Graph
             // 그림 색으로 두면 틈과 칸이 같은 색이라 띄운 뜻이 사라집니다.
             dc.DrawRectangle(StepMode ? Frozen(p.Window) : p.PlotBrush, p.BorderPen, rect);
 
-            var inner = new Rect(rect.X + gutter, rect.Y + HeaderH, Math.Max(4, rect.Width - gutter),
-                                 Math.Max(8, rect.Height - HeaderH - 4));
+            double pad = LaneTopPad;   // 2.11: 단계 띠 자리
+            var inner = new Rect(rect.X + gutter, rect.Y + pad, Math.Max(4, rect.Width - gutter),
+                                 Math.Max(8, rect.Height - pad - 4));
 
             double lo, hi;
             bool usable;
@@ -1719,6 +1731,7 @@ namespace LogScope.Analysis1.Graph
             }
 
             DrawJudgeMarks(dc, p, inner, ios);
+            if (ShowStepStrip) DrawStepStrip(dc, p, new Rect(inner.X, rect.Y + HeaderH, inner.Width, StepStripH), inner);   // 2.11
             DrawLaneHeader(dc, p, rect, ios);
 
             // 1.83: 고른 그래프는 테두리 (휠 확대가 이 그래프에서만 됨)
@@ -1806,18 +1819,78 @@ namespace LogScope.Analysis1.Graph
                 if (!_marks.TryGetValue(LogDataset.LooseKey(vm.Name), out items)) continue;
                 foreach (JudgeItem it in items)
                 {
-                    double xa = TimeToX(it.Start), xb = TimeToX(it.End);
-                    if (double.IsNaN(xa) && double.IsNaN(xb)) continue;
-                    if (double.IsNaN(xa)) xa = xb;
-                    if (double.IsNaN(xb)) xb = xa;
-                    double x0 = inner.Left + (Math.Min(xa, xb) - plot.Left) / plot.Width * inner.Width;
-                    double x1 = inner.Left + (Math.Max(xa, xb) - plot.Left) / plot.Width * inner.Width;
-                    if (x1 < inner.Left || x0 > inner.Right) continue;
-                    if (x1 - x0 < 3) { double c = (x0 + x1) * 0.5; x0 = c - 1.5; x1 = c + 1.5; }
                     bool ok = it.IsAllowed;
-                    dc.DrawRectangle(ok ? okFill : openFill, null, new Rect(x0, inner.Top, x1 - x0, inner.Height));
-                    dc.DrawRectangle(ok ? okBar : openBar, null, new Rect(x0, inner.Top, x1 - x0, 4));
+                    foreach (double[] seg in MarkSpans(Math.Min(it.Start, it.End), Math.Max(it.Start, it.End)))
+                    {
+                        double x0 = inner.Left + (seg[0] - plot.Left) / plot.Width * inner.Width;
+                        double x1 = inner.Left + (seg[1] - plot.Left) / plot.Width * inner.Width;
+                        if (x1 < inner.Left || x0 > inner.Right) continue;
+                        if (x1 - x0 < 3) { double c = (x0 + x1) * 0.5; x0 = c - 1.5; x1 = c + 1.5; }
+                        dc.DrawRectangle(ok ? okFill : openFill, null, new Rect(x0, inner.Top, x1 - x0, inner.Height));
+                        dc.DrawRectangle(ok ? okBar : openBar, null, new Rect(x0, inner.Top, x1 - x0, 4));
+                    }
                 }
+            }
+            dc.Pop();
+        }
+
+        /// <summary>
+        /// 2.11: 시간 구간 [a, b] (이전 로그 시간) 이 판에서 차지하는 가로 자리들 (판 좌표). 단계 칸으로 나눠 볼 때는 칸마다
+        /// 보이는 구간과 겹치는 만큼씩 — 예전에는 시작 · 끝 시각만 자리로 바꿔서, 둘 다 보이는 칸 밖이면 (오차 한가운데를
+        /// 확대해 볼 때 · 칸 사이에 걸칠 때) 주황 띠가 통째로 안 그려졌습니다.
+        /// </summary>
+        private List<double[]> MarkSpans(double a, double b)
+        {
+            var list = new List<double[]>();
+            if (StepMode)
+            {
+                double[] xs, ws;
+                StepLayout(PlotArea, out xs, out ws);
+                for (int i = 0; i < xs.Length; i++)
+                {
+                    double v0, v1;
+                    StepView(i, out v0, out v1);
+                    double s = Math.Max(a, v0), e = Math.Min(b, v1);
+                    if (e < s || !(v1 > v0)) continue;
+                    list.Add(new[] { xs[i] + (s - v0) * ws[i] / (v1 - v0), xs[i] + (e - v0) * ws[i] / (v1 - v0) });
+                }
+                return list;
+            }
+            double xa = TimeToX(a), xb = TimeToX(b);
+            if (!double.IsNaN(xa) && !double.IsNaN(xb)) list.Add(new[] { xa, xb });
+            return list;
+        }
+
+        /// <summary>
+        /// 2.11: 전체 그래프 (단계로 나누지 않을 때) 레인 머리 아래의 <b>단계 띠</b> (사용자 요청 — "전체 그래프를 볼 때 위에
+        /// 이 구간이 몇 단계인지 1, 2, 3 쭉"). 이전 로그의 단계 구간 (그래프 가로축 = 이전 로그 시간) 마다 칸 하나, 이름 (좁으면 번호).
+        /// </summary>
+        private void DrawStepStrip(DrawingContext dc, Palette p, Rect strip, Rect inner)
+        {
+            StepPairList pairs = _state.StepPairs();
+            Rect plot = PlotArea;
+            if (pairs == null || plot.Width <= 0) return;
+            dc.DrawRectangle(p.AxisStripBrush, null, strip);
+            dc.PushClip(new RectangleGeometry(strip));
+            int n = 0;
+            for (int i = 0; i < pairs.Count; i++)
+            {
+                StepPair sp = pairs[i];
+                if (sp.BeforeIndex < 0 || double.IsNaN(sp.BeforeStart) || double.IsNaN(sp.BeforeEnd)) continue;
+                n++;
+                double xa = TimeToX(sp.BeforeStart), xb = TimeToX(sp.BeforeEnd);
+                if (double.IsNaN(xa) || double.IsNaN(xb)) continue;
+                double x0 = inner.Left + (xa - plot.Left) / plot.Width * inner.Width;
+                double x1 = inner.Left + (xb - plot.Left) / plot.Width * inner.Width;
+                if (x1 < strip.Left || x0 > strip.Right) continue;
+                var cell = new Rect(x0, strip.Top + 1, Math.Max(1, x1 - x0), strip.Height - 2);
+                dc.DrawRectangle(n % 2 == 0 ? p.AxisStripBrush : Frozen(p.Window), p.BorderPen, cell);
+                // 보이는 자리 가운데에 이름 — 좁으면 번호, 그래도 안 들어가면 안 적음
+                double vx0 = Math.Max(x0, strip.Left), vx1 = Math.Min(x1, strip.Right);
+                FormattedText t = Text(sp.Label, FontSmall, p.TextBrush);
+                if (t.Width + 4 > vx1 - vx0) t = Text(n.ToString(CultureInfo.InvariantCulture), FontSmall, p.TextBrush);
+                if (t.Width + 2 > vx1 - vx0) continue;
+                dc.DrawText(t, new Point((vx0 + vx1 - t.Width) * 0.5, cell.Top + (cell.Height - t.Height) * 0.5));
             }
             dc.Pop();
         }
@@ -3172,16 +3245,16 @@ namespace LogScope.Analysis1.Graph
                 if (_hitCell < 0 || _hitCell >= _channels.Count) return false;
                 Rect cell = GalleryCell(_hitCell, plot);
                 key = _channels[_hitCell].Name;
-                inner = new Rect(plot.Left, cell.Top + HeaderH, plot.Width,
-                                 Math.Max(8, cell.Height - CellTimeH - HeaderH - 4));
+                inner = new Rect(plot.Left, cell.Top + LaneTopPad, plot.Width,
+                                 Math.Max(8, cell.Height - CellTimeH - LaneTopPad - 4));
                 ios = new[] { _channels[_hitCell] };
                 return true;
             }
 
             if (!_laneMode)
             {
-                inner = new Rect(plot.Left, plot.Top + HeaderH, plot.Width,
-                                 Math.Max(8, plot.Height - HeaderH - 4));
+                inner = new Rect(plot.Left, plot.Top + LaneTopPad, plot.Width,
+                                 Math.Max(8, plot.Height - LaneTopPad - 4));
                 ios = _channels.ToArray();
                 return true;
             }
@@ -3195,7 +3268,7 @@ namespace LogScope.Analysis1.Graph
 
             double top = plot.Top + idx * laneH - scrollY;
             key = _channels[idx].Name;
-            inner = new Rect(plot.Left, top + HeaderH, plot.Width, Math.Max(8, laneH - HeaderH - 4));
+            inner = new Rect(plot.Left, top + LaneTopPad, plot.Width, Math.Max(8, laneH - LaneTopPad - 4));
             ios = new[] { _channels[idx] };
             return true;
         }
