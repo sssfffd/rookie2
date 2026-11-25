@@ -1921,14 +1921,37 @@ namespace LogScope.Analysis1.Graph
 
                 // 보이는 자리 가운데에 "번호 이름" — 좁으면 번호만, 그래도 안 들어가면 안 적음
                 double vx0 = Math.Max(x0, strip.Left), vx1 = Math.Min(x1, strip.Right);
-                string num = (i + 1).ToString(CultureInfo.InvariantCulture);
-                FormattedText t = Text(num + "  " + steps.Label(i), FontSmall, p.TextBrush);
+                // 2.13: 단계 이름 하나만 (2.12 는 "순서 번호  이름" 이라 단계 IO 가 숫자면 "4  4" 처럼 두 번 찍힘).
+                // 칸이 좁으면 순서 번호 — 이름이 이미 숫자면 번호로 바꾸지 않음 (넓을 때 "2", 좁을 때 "6" 처럼 달라 보이지 않게).
+                string label = StepRulerLabel(steps.Label(i), i, false);
+                FormattedText t = Text(label, FontSmall, p.TextBrush);
                 t.SetFontWeight(FontWeights.SemiBold);
-                if (t.Width + 6 > vx1 - vx0) { t = Text(num, FontSmall, p.TextBrush); t.SetFontWeight(FontWeights.SemiBold); }
+                if (t.Width + 6 > vx1 - vx0)
+                {
+                    string shortLabel = StepRulerLabel(steps.Label(i), i, true);
+                    if (shortLabel == label) continue;
+                    t = Text(shortLabel, FontSmall, p.TextBrush);
+                    t.SetFontWeight(FontWeights.SemiBold);
+                }
                 if (t.Width + 2 > vx1 - vx0) continue;
                 dc.DrawText(t, new Point((vx0 + vx1 - t.Width) * 0.5, cell.Top + (cell.Height - t.Height) * 0.5));
             }
             dc.Pop();
+        }
+
+        /// <summary>
+        /// 단계 띠 칸 글자 (2.13). 넓으면 단계 이름 그대로, 좁으면 (<paramref name="narrow"/>) 순서 번호 — 다만 이름이 이미
+        /// 숫자 (단계 IO 가 숫자) 면 좁아도 이름 그대로. 이름이 비면 순서 번호.
+        /// </summary>
+        public static string StepRulerLabel(string name, int index, bool narrow)
+        {
+            string num = (index + 1).ToString(CultureInfo.InvariantCulture);
+            string n = (name ?? string.Empty).Trim();
+            if (n.Length == 0) return num;
+            if (!narrow) return n;
+            double v;
+            bool numeric = double.TryParse(n, NumberStyles.Float, CultureInfo.InvariantCulture, out v);
+            return numeric ? n : num;
         }
 
         /// <summary>

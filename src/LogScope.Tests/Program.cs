@@ -3346,6 +3346,12 @@ namespace LogScope.Tests
             Check("긴 단계가 더 넓음", w[1] > w[0] && w[1] > w[2], null);
             Near("비례가 맞음", w[1] / w[0], bands[1].Length / bands[0].Length, 1e-6);
 
+            // 2.13: 단계 띠 글자는 하나만 — 숫자 단계 IO 면 "4" (2.12 는 "4  4")
+            Check("띠 글자 = 이름 하나", GraphCanvas.StepRulerLabel("4", 3, false) == "4", GraphCanvas.StepRulerLabel("4", 3, false));
+            Check("좁아도 숫자 이름 그대로", GraphCanvas.StepRulerLabel("2", 5, true) == "2", GraphCanvas.StepRulerLabel("2", 5, true));
+            Check("좁으면 글자 이름은 번호", GraphCanvas.StepRulerLabel("가열", 1, true) == "2", GraphCanvas.StepRulerLabel("가열", 1, true));
+            Check("이름 없으면 번호", GraphCanvas.StepRulerLabel("", 0, false) == "1", null);
+
             // 2.11: 그래프 칸은 최소 폭 0 + 틈 — 칸마다 1 초가 같은 폭 (파형은 가로 이동만, 늘어나지 않음)
             double[] lx, lw;
             bands.Layout(0, 1000, 10, 0, out lx, out lw);
