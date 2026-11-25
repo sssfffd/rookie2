@@ -405,8 +405,8 @@ namespace LogScope.Settings
             sb.AppendLine("# label.diff : 메인 대시보드 \"차이 IO\" 칸의 이름 (1.95).");
             sb.AppendLine("# score.size : 오차 크기 반영 (1.93). 이전 값보다 이 % 만큼 벗어날 때마다 그 오차 칸을");
             sb.AppendLine("#             한 칸 더 셉니다 (최대 3 배). 작을수록 크기에 민감합니다.");
-            sb.AppendLine("# 공정 일치율 (2.09) = 100 × (정상 IO + 차이 IO 마다 (1 − 크기 반영 오차율)) / 전체 IO × 공정 시간 일치율.");
-            sb.AppendLine("#             정상 IO 는 늘 꽉 차게 셈 (200 개 중 100 개 오차면 50 ~ 99). score.iocap 은 2.08 부터 쓰지 않음.");
+            sb.AppendLine("# 공정 일치율 (2.10) = 100 × (정상 IO + 차이 IO 마다 0.75 × (1 − 크기 반영 오차율)) / 전체 IO × 공정 시간 일치율.");
+            sb.AppendLine("#             정상 IO 는 늘 꽉 차게 셈 (200 개 중 100 개 오차면 50 ~ 87). score.iocap 은 2.08 부터 쓰지 않음.");
             sb.AppendLine();
             sb.AppendLine("name = " + DefaultName);
             sb.AppendLine("fullname = Log 비교 · 분석 도구");
