@@ -4,7 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows;
 using System;
-using LogScope.Analysis1.Compare;
+using LogScope.Analysis1.Compare;
 using LogScope.Analysis1.Judge;
 using LogScope.Analysis1.LogFile;
 using LogScope.Common;
@@ -765,13 +765,32 @@ namespace LogScope.Analysis1.Graph
         private const double AxisH = 26;
         private const double HeaderH = 21;
 
-        /// <summary>2.11: 전체 그래프 (단계로 나누지 않을 때) 레인 머리 아래의 단계 띠 높이 — 구간마다 단계 이름 (1 · 2 · 3 …).</summary>
+        /// <summary>갤러리 칸마다 머리 아래에 두는 단계 띠 높이 (2.11).</summary>
         private const double StepStripH = 15;
 
-        /// <summary>단계 띠를 그릴지 — 단계가 있고 단계 칸으로 나눠 보지 않을 때 (나눠 볼 때는 위 머리 줄이 같은 일을 함).</summary>
-        private bool ShowStepStrip { get { return !StepMode && _state != null && _state.Before != null && _state.HasSteps; } }
+        /// <summary>
+        /// 2.12: 나눠 보지 않을 때 그래프에 표시할 단계 — 가로축 기준 로그 (이전, 없으면 이후) 의 단계 표.
+        /// 비교의 <b>단계 IO</b> 만 적으면 나옵니다. 2.11 은 두 로그의 단계가 짝지어져야만 (HasSteps) 나와서,
+        /// [단계마다] 를 눌러야 단계가 보이는 것처럼 됐습니다. 나눠 볼 때는 칸 머리 줄이 같은 일을 해서 null.
+        /// </summary>
+        private StepTable MarkSteps
+        {
+            get
+            {
+                if (StepMode || _state == null) return null;
+                LogDataset ds = _state.TimeReference;
+                if (ds == null || ds.Steps == null || ds.Steps.IsEmpty) return null;
+                return ds.Steps;
+            }
+        }
 
-        /// <summary>레인 위쪽에서 그림 칸까지 — 머리 + (단계 띠).</summary>
+        /// <summary>줄 · 겹쳐보기: 그래프 맨 위 한 줄 단계 띠 (모든 줄이 같은 시간).</summary>
+        private bool ShowStepRuler { get { return !_galleryMode && MarkSteps != null; } }
+
+        /// <summary>갤러리: 칸마다 머리 아래 단계 띠 (칸이 가로 3 개라 맨 위 한 줄로는 자리가 안 맞음).</summary>
+        private bool ShowStepStrip { get { return _galleryMode && MarkSteps != null; } }
+
+        /// <summary>레인 위쪽에서 그림 칸까지 — 머리 + (갤러리 단계 띠).</summary>
         private double LaneTopPad { get { return HeaderH + (ShowStepStrip ? StepStripH : 0); } }
         private const double MinLaneH = 64;
 
@@ -782,7 +801,7 @@ namespace LogScope.Analysis1.Graph
         /// </summary>
         private const double StepHeadH = 22;
 
-        private double TopH { get { return StepMode ? StepHeadH : 0; } }
+        private double TopH { get { return StepMode || ShowStepRuler ? StepHeadH : 0; } }
 
         /// <summary>
         /// 단계 칸 꼬리를 그리는 동안만: 0 = 두 로그 다, 1 = 이전만, 2 = 이후만
@@ -1234,6 +1253,8 @@ namespace LogScope.Analysis1.Graph
 
             DrawTimeAxis(dc, p, plot);
             if (StepMode) DrawStepHead(dc, p, plot);
+            else if (ShowStepRuler)   // 2.12: 나눠 보지 않을 때도 맨 위에 단계 띠
+                DrawStepStrip(dc, p, new Rect(plot.Left, 0, plot.Width, StepHeadH), plot, true);
             if (!AnyLaneTime)
             {
                 DrawCursor(dc, p, plot, _cursorA, p.CursorAPen, p.CursorA, "A");
@@ -1731,7 +1752,8 @@ namespace LogScope.Analysis1.Graph
             }
 
             DrawJudgeMarks(dc, p, inner, ios);
-            if (ShowStepStrip) DrawStepStrip(dc, p, new Rect(inner.X, rect.Y + HeaderH, inner.Width, StepStripH), inner);   // 2.11
+            DrawStepBounds(dc, p, inner);   // 2.12: 단계 경계 점선 (나눠 보지 않을 때)
+            if (ShowStepStrip) DrawStepStrip(dc, p, new Rect(inner.X, rect.Y + HeaderH, inner.Width, StepStripH), inner, false);   // 2.11
             DrawLaneHeader(dc, p, rect, ios);
 
             // 1.83: 고른 그래프는 테두리 (휠 확대가 이 그래프에서만 됨)
@@ -1862,37 +1884,75 @@ namespace LogScope.Analysis1.Graph
         }
 
         /// <summary>
-        /// 2.11: 전체 그래프 (단계로 나누지 않을 때) 레인 머리 아래의 <b>단계 띠</b> (사용자 요청 — "전체 그래프를 볼 때 위에
-        /// 이 구간이 몇 단계인지 1, 2, 3 쭉"). 이전 로그의 단계 구간 (그래프 가로축 = 이전 로그 시간) 마다 칸 하나, 이름 (좁으면 번호).
+        /// 단계 띠 (사용자 요청 — "비교의 단계 IO 를 넣으면 전체 그래프 위에 이 구간이 몇 단계인지 1, 2, 3 쭉").
+        /// 2.12: 줄 · 겹쳐보기는 그래프 맨 위 한 줄 (<paramref name="ruler"/>), 갤러리는 칸마다 머리 아래 (2.11).
+        /// 가로축 기준 로그의 단계마다 칸 하나 — 다음 단계 시작까지 이어 붙이고, "1 준비" (좁으면 "1", 더 좁으면 비움).
         /// </summary>
-        private void DrawStepStrip(DrawingContext dc, Palette p, Rect strip, Rect inner)
+        private void DrawStepStrip(DrawingContext dc, Palette p, Rect strip, Rect inner, bool ruler)
         {
-            StepPairList pairs = _state.StepPairs();
+            StepTable steps = MarkSteps;
+            LogDataset ds = _state != null ? _state.TimeReference : null;
             Rect plot = PlotArea;
-            if (pairs == null || plot.Width <= 0) return;
-            dc.DrawRectangle(p.AxisStripBrush, null, strip);
-            dc.PushClip(new RectangleGeometry(strip));
-            int n = 0;
-            for (int i = 0; i < pairs.Count; i++)
+            if (steps == null || ds == null || plot.Width <= 0) return;
+
+            if (ruler)
             {
-                StepPair sp = pairs[i];
-                if (sp.BeforeIndex < 0 || double.IsNaN(sp.BeforeStart) || double.IsNaN(sp.BeforeEnd)) continue;
-                n++;
-                double xa = TimeToX(sp.BeforeStart), xb = TimeToX(sp.BeforeEnd);
+                dc.DrawRectangle(p.AxisStripBrush, null, new Rect(0, strip.Top, ActualWidth, strip.Height));
+                dc.DrawLine(p.BorderPen, new Point(0, strip.Bottom - 0.5), new Point(ActualWidth, strip.Bottom - 0.5));
+                FormattedText cap = Text("단계", FontSmall, p.MutedBrush);
+                if (cap.Width + 8 < strip.Left)
+                    dc.DrawText(cap, new Point(strip.Left - cap.Width - 6, strip.Top + (strip.Height - cap.Height) * 0.5));
+            }
+            else dc.DrawRectangle(p.AxisStripBrush, null, strip);
+
+            Brush fillA = Tinted(p.Accent, 0.22), fillB = Tinted(p.Accent, 0.08);
+            dc.PushClip(new RectangleGeometry(strip));
+            for (int i = 0; i < steps.Count; i++)
+            {
+                double ta = steps.StartTime(ds, i);
+                double tb = i + 1 < steps.Count ? steps.StartTime(ds, i + 1) : steps.EndTime(ds, i);
+                double xa = TimeToX(ta), xb = TimeToX(tb);
                 if (double.IsNaN(xa) || double.IsNaN(xb)) continue;
                 double x0 = inner.Left + (xa - plot.Left) / plot.Width * inner.Width;
                 double x1 = inner.Left + (xb - plot.Left) / plot.Width * inner.Width;
                 if (x1 < strip.Left || x0 > strip.Right) continue;
-                var cell = new Rect(x0, strip.Top + 1, Math.Max(1, x1 - x0), strip.Height - 2);
-                dc.DrawRectangle(n % 2 == 0 ? p.AxisStripBrush : Frozen(p.Window), p.BorderPen, cell);
-                // 보이는 자리 가운데에 이름 — 좁으면 번호, 그래도 안 들어가면 안 적음
+                var cell = new Rect(x0, strip.Top + 2, Math.Max(1, x1 - x0), strip.Height - 4);
+                dc.DrawRectangle(i % 2 == 0 ? fillA : fillB, p.BorderPen, cell);
+
+                // 보이는 자리 가운데에 "번호 이름" — 좁으면 번호만, 그래도 안 들어가면 안 적음
                 double vx0 = Math.Max(x0, strip.Left), vx1 = Math.Min(x1, strip.Right);
-                FormattedText t = Text(sp.Label, FontSmall, p.TextBrush);
-                if (t.Width + 4 > vx1 - vx0) t = Text(n.ToString(CultureInfo.InvariantCulture), FontSmall, p.TextBrush);
+                string num = (i + 1).ToString(CultureInfo.InvariantCulture);
+                FormattedText t = Text(num + "  " + steps.Label(i), FontSmall, p.TextBrush);
+                t.SetFontWeight(FontWeights.SemiBold);
+                if (t.Width + 6 > vx1 - vx0) { t = Text(num, FontSmall, p.TextBrush); t.SetFontWeight(FontWeights.SemiBold); }
                 if (t.Width + 2 > vx1 - vx0) continue;
                 dc.DrawText(t, new Point((vx0 + vx1 - t.Width) * 0.5, cell.Top + (cell.Height - t.Height) * 0.5));
             }
             dc.Pop();
+        }
+
+        /// <summary>
+        /// 2.12: 나눠 보지 않을 때 그림 칸 안의 <b>단계 경계</b> 점선 — 맨 위 단계 띠의 칸 경계가 파형 어디에 오는지.
+        /// 줄마다 제 시간 (줄 확대) 이어도 그 줄의 자리로 그립니다.
+        /// </summary>
+        private void DrawStepBounds(DrawingContext dc, Palette p, Rect inner)
+        {
+            StepTable steps = MarkSteps;
+            LogDataset ds = _state != null ? _state.TimeReference : null;
+            Rect plot = PlotArea;
+            if (steps == null || ds == null || plot.Width <= 0 || steps.Count < 2) return;
+
+            var pen = new Pen(Tinted(p.Accent, 0.55), 1.0);
+            pen.DashStyle = new DashStyle(new double[] { 3, 3 }, 0);
+            pen.Freeze();
+            for (int i = 1; i < steps.Count; i++)
+            {
+                double xx = TimeToX(steps.StartTime(ds, i));
+                if (double.IsNaN(xx)) continue;
+                double x = Snap(inner.Left + (xx - plot.Left) / plot.Width * inner.Width);
+                if (x < inner.Left || x > inner.Right) continue;
+                dc.DrawLine(pen, new Point(x, inner.Top), new Point(x, inner.Bottom));
+            }
         }
 
         private static Brush Tinted(Color c, double opacity)

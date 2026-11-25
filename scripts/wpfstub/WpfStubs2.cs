@@ -33,9 +33,14 @@ namespace System.Windows.Media
         public Brush Brush; public double Thickness;
         public PenLineJoin LineJoin;
         public PenLineCap StartLineCap, EndLineCap, DashCap;
-        public object DashStyle;
+        public DashStyle DashStyle;
         public Pen() { }
         public Pen(Brush b, double t) { Brush = b; Thickness = t; }
+    }
+    public class DashStyle : Freezable
+    {
+        public DashStyle() { }
+        public DashStyle(System.Collections.Generic.IEnumerable<double> dashes, double offset) { }
     }
     public class Typeface
     {
