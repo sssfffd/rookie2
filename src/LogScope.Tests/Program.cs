@@ -4580,8 +4580,8 @@ namespace LogScope.Tests
                   && big.Score < small.Score, small.Score.ToString("0.#") + " > " + big.Score.ToString("0.#"));
             Check("살짝 넘은 쪽 (1 %) 은 거의 예전 그대로 (무게 1.02)", Math.Abs(small.MeanWeightedRate - small.MeanErrorRate * 1.02) < 1e-9, "");
             // 2.06: IO 하나가 깎는 것은 100 / 전체 IO 점까지 — 크기 반영 오차율은 그 IO 의 일치도 (0 ~ 0.5) 에만
-            Check("2.06 차이 IO 하나의 일치도 = 0.5 × (1 − 크기 반영 오차율) · 점수 = 셈과 같음",
-                  Math.Abs(big.Credit - (big.TotalIos - 1 + 0.5 * (1 - 0.30))) < 1e-6 && Math.Abs(big.Score - CreditScore(big)) < 1e-9
+            Check("2.09 차이 IO 하나의 일치도 = 1 − 크기 반영 오차율 · 점수 = 셈과 같음",
+                  Math.Abs(big.Credit - (big.TotalIos - 1 + (1 - 0.30))) < 1e-6 && Math.Abs(big.Score - CreditScore(big)) < 1e-9
                   && Math.Abs(small.Score - CreditScore(small)) < 1e-9, big.Credit + " " + big.Score);
             {
                 var r = new JudgeResult();
@@ -4878,10 +4878,17 @@ namespace LogScope.Tests
             Check("허용된 B 는 안 셈 · 한쪽에만 있는 C 는 100 %", !js.Rates.ContainsKey("B") && Math.Abs(rc - 100) < 1e-9, rc.ToString(CultureInfo.InvariantCulture));
             Check("차이 2 / 전체 4 (A B C D)", js.DiffIos == 2 && js.TotalIos == 4, js.DiffIos + " / " + js.TotalIos);
             // 2.05: 점수에는 평균 대신 가장 심한 IO 의 오차율 (상한 15 %) — 평균 오차율 (화면 숫자) 은 그대로 55.5
-            // 2.06: 정상 2 (B 허용 · D) + A 0.5 × (1 − 0.11) + C 0 (한쪽에만) = 2.445 → 100 × 2.445 / 4 = 61.125
-            Check("2.06 평균 오차율 55.5 (화면) · 점수 = 100 × (2 + 0.445 + 0) / 4 = 61.1 (정상 비율 50 % 보다 낮지 않음)",
-                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.Score - 61.125) < 1e-9 && js.Score >= 50,
+            // 2.09: 정상 2 (B 허용 · D) + A (1 − 0.11) + C 0 (한쪽에만) = 2.89 → 100 × 2.89 / 4 = 72.25
+            Check("2.09 평균 오차율 55.5 (화면) · 점수 = 100 × (2 + 0.89 + 0) / 4 = 72.25 (정상 비율 50 % 보다 낮지 않음)",
+                  Math.Abs(js.MeanErrorRate - 55.5) < 1e-9 && Math.Abs(js.Score - 72.25) < 1e-9 && js.Score >= 50,
                   js.MeanErrorRate + " / " + js.Score);
+            {
+                // 2.09 사용자 예: "200 개 중 100 개 오차면 최저 50, 오차 시간 · 오차율에 따라 50 ~ 99" — 같은 셈을 IO 수만 바꿔 확인
+                double worst = 100.0 * (100 + 100 * JudgeScore.DiffCredit * (1 - 1.0)) / 200;      // 100 개가 내내 크게 다름
+                double light = 100.0 * (100 + 100 * JudgeScore.DiffCredit * (1 - 0.01)) / 200;     // 100 개가 1 칸 (1 %) 씩만
+                Check("2.09 200 중 100 개 오차 → 50 (최저) ~ 99.5 (1 % 씩만)", Math.Abs(worst - 50) < 1e-9 && Math.Abs(light - 99.5) < 1e-9,
+                      worst + " ~ " + light);
+            }
             {
                 // 2.06 사용자 예 ("200 개 중 50 개 정상이면 적어도 25") — 여기서는 전체 4 중 1 개만 정상, 나머지 3 개가 로그 내내 크게 다름
                 var r9 = new JudgeResult();
@@ -5054,7 +5061,7 @@ namespace LogScope.Tests
         private static double CreditScore(JudgeScore js)
         {
             double c = js.TotalIos - js.DiffIos;
-            foreach (double v in js.WeightedRates.Values) c += 0.5 * (1 - Math.Min(100, v) / 100);
+            foreach (double v in js.WeightedRates.Values) c += JudgeScore.DiffCredit * (1 - Math.Min(100, v) / 100);
             return 100 * c / js.TotalIos * js.LengthFactor;
         }
 
